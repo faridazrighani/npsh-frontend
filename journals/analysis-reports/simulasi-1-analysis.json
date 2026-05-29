@@ -1,0 +1,1114 @@
+{
+  "id": "simulation-case-1",
+  "title": "Pump Feed Water to Deaerator - Detailed Engineering Validation",
+  "statusSummary": {
+    "sampleCaseLoaded": "Available",
+    "simulationRun": "Recalculated from .untirta and network optimization proposal generated",
+    "journalComparison": "Detailed by Fluid Basis, SRC, Pipe, Pump, SNK, and Outlet Readout",
+    "largestDeviation": "1.3% (Pipe Suction - Darcy f; OK - Colebrook/app basis)",
+    "hydraulicStatus": "Safe: NPSHa 6.4656 m > NPSHr 2.4002 m",
+    "dataConfidence": "Warning: Manual - verify vendor data",
+    "optimizationStatus": "Proposal Ready; proposed NPSHr 3.479 m retained as proposal only",
+    "engineeringConclusion": "Conditionally validated with documented journal caveats and equivalent SRC/SNK closures"
+  },
+  "caseSummary": [
+    "The report is expanded proportionally: concise Fluid/SRC identity rows, detailed pipe-loss and NPSH rows, and a dedicated outlet/optimization readout.",
+    "The validated operating point is Q = 50 m3/h and H = 24 m. The 42 m head in the journal is nameplate context, not the operating head used for simulation closure.",
+    "Application recalculation gives required head 24.000 m, NPSHa 6.4656 m, NPSHr 2.4002 m, and Safe hydraulic NPSH status.",
+    "All available journal geometry, flow, viscosity, head-loss, pump-head, efficiency, and NPSH values are either mapped directly or documented as derived/equivalent.",
+    "SRC pressure and SNK reference pressure are equivalent application closures because the journal does not provide simulator boundary pressures.",
+    "Optimize Pump From Network was run as a proposal. It confirms the 50 m3/h and 24 m network requirement, but it is not allowed to overwrite the journal NPSHr value used for academic validation."
+  ],
+  "journalData": [
+    {
+      "metric": "Fluid Basis - Fluid Name",
+      "value": "Water / feed water",
+      "source": "Journal context"
+    },
+    {
+      "metric": "Fluid Basis - Temperature",
+      "value": "100 deg C",
+      "source": "Journal fluid temperature basis"
+    },
+    {
+      "metric": "Fluid Basis - Density rho",
+      "value": "958.205912 kg/m3",
+      "source": "Derived from gamma = 9400 N/m3 and g = 9.81"
+    },
+    {
+      "metric": "Fluid Basis - Specific gravity",
+      "value": "0.958206",
+      "source": "Derived from density / 1000"
+    },
+    {
+      "metric": "Fluid Basis - Specific weight",
+      "value": "9400 N/m3",
+      "source": "Journal calculation"
+    },
+    {
+      "metric": "Fluid Basis - Kinematic viscosity",
+      "value": "8.03e-7 m2/s",
+      "source": "Journal calculation"
+    },
+    {
+      "metric": "Fluid Basis - Dynamic viscosity",
+      "value": "0.769439 cP",
+      "source": "Derived rho x nu"
+    },
+    {
+      "metric": "Fluid Basis - Vapor pressure",
+      "value": "1.01325 bar a physical basis; NPSH line has printed unit inconsistency",
+      "source": "Journal NPSH section"
+    },
+    {
+      "metric": "Fluid Basis - Vapor pressure head",
+      "value": "10.7793 m",
+      "source": "Derived Pv/gamma using physical pressure basis"
+    },
+    {
+      "metric": "SRC - Source Type",
+      "value": "Hot feed-water tank / reservoir source",
+      "source": "Journal system description"
+    },
+    {
+      "metric": "SRC - Boundary Pressure",
+      "value": "Not provided as simulator boundary",
+      "source": "Requires app-equivalent closure"
+    },
+    {
+      "metric": "SRC - Source Elevation",
+      "value": "Datum not stated; suction static head hs = 0.5 m",
+      "source": "Journal static head calculation"
+    },
+    {
+      "metric": "SRC - Volumetric Flow / Mass Flow",
+      "value": "50 m3/h / 47910.296 kg/h derived",
+      "source": "Journal Q and derived rho Q"
+    },
+    {
+      "metric": "SRC - Volumetric Flow Calculated",
+      "value": "50 m3/h",
+      "source": "Journal duty flow"
+    },
+    {
+      "metric": "Pipe Suction - Major / Minor / Total Loss",
+      "value": "0.0796 / 2.5507 / 2.6303 m",
+      "source": "Journal suction loss calculation"
+    },
+    {
+      "metric": "Pipe Suction - Total K / Re / Darcy f / epsD",
+      "value": "14.6708 / 2.22501e5 / 0.0225 / 0.0015306",
+      "source": "Journal plus equivalent K reconstruction"
+    },
+    {
+      "metric": "Pipe Discharge - Major / Minor / Total Loss",
+      "value": "1.761 / 9.9265 / 11.6875 m",
+      "source": "Journal discharge loss calculation"
+    },
+    {
+      "metric": "Pipe Discharge - Total K / Re / Darcy f / epsD",
+      "value": "18.4477 / 2.9694e5 / 0.0241 / 0.0020325",
+      "source": "Journal plus equivalent K reconstruction"
+    },
+    {
+      "metric": "Pump - Elevation / Nozzle Elevations",
+      "value": "Pump datum 0 m; suction nozzle -0.5 m equivalent; discharge nozzle 0 m",
+      "source": "Derived from hs = 0.5 m and pipe endpoints"
+    },
+    {
+      "metric": "Pump - Head / Flow",
+      "value": "24 m at 50 m3/h",
+      "source": "Table 8; detailed head 23.8178 m rounded"
+    },
+    {
+      "metric": "Pump - NPSHa / NPSHr",
+      "value": "6.4656 / 2.4002 m",
+      "source": "Journal NPSH section"
+    },
+    {
+      "metric": "Pump - Hydraulic NPSH Status",
+      "value": "Safe because NPSHa > NPSHr",
+      "source": "Journal comparison 6.4656 > 2.4002"
+    },
+    {
+      "metric": "Pump - Efficiency / Power",
+      "value": "eta = 62%; P = 5.0578 kW table basis",
+      "source": "Journal Table 8"
+    },
+    {
+      "metric": "SNK - Flow Demand / Elevation",
+      "value": "50 m3/h / 10 m",
+      "source": "Journal discharge/deaerator side"
+    },
+    {
+      "metric": "SNK - Reference Pressure",
+      "value": "Not provided as simulator boundary",
+      "source": "Requires app-equivalent closure"
+    },
+    {
+      "metric": "Calculated Outlet Readout",
+      "value": "Not explicitly tabulated in journal",
+      "source": "Derived by application from SNK and discharge pipe"
+    }
+  ],
+  "applicationData": [
+    {
+      "metric": "Fluid Basis - Fluid Name",
+      "value": "Water",
+      "source": ".untirta model.FLUID.props"
+    },
+    {
+      "metric": "Fluid Basis - Temperature",
+      "value": "100 deg C",
+      "source": ".untirta model.FLUID.props"
+    },
+    {
+      "metric": "Fluid Basis - Density rho",
+      "value": "958.348384 kg/m3",
+      "source": "Application fluid basis"
+    },
+    {
+      "metric": "Fluid Basis - Specific gravity",
+      "value": "0.958375",
+      "source": "Application fluid basis"
+    },
+    {
+      "metric": "Fluid Basis - Specific weight",
+      "value": "9398.187176 N/m3",
+      "source": "Application fluid basis"
+    },
+    {
+      "metric": "Fluid Basis - Kinematic viscosity",
+      "value": "8.0300e-7 m2/s (0.803 cSt)",
+      "source": "Set from journal nu"
+    },
+    {
+      "metric": "Fluid Basis - Dynamic viscosity",
+      "value": "0.769554 cP",
+      "source": "rho x nu"
+    },
+    {
+      "metric": "Fluid Basis - Vapor pressure",
+      "value": "1.01418 bar a",
+      "source": "Physical 100 deg C water basis"
+    },
+    {
+      "metric": "Fluid Basis - Vapor pressure head",
+      "value": "10.7875 m",
+      "source": "Pv/(rho g)"
+    },
+    {
+      "metric": "SRC - Source Type",
+      "value": "Fixed Flow Source",
+      "source": ".untirta SRC-100"
+    },
+    {
+      "metric": "SRC - Boundary Pressure",
+      "value": "1.820926476 bar a",
+      "source": "Equivalent closure to reproduce NPSHa"
+    },
+    {
+      "metric": "SRC - Source Elevation",
+      "value": "0 m",
+      "source": "Application datum"
+    },
+    {
+      "metric": "SRC - Volumetric Flow / Mass Flow",
+      "value": "50 m3/h / 47917.419 kg/h",
+      "source": ".untirta SRC-100"
+    },
+    {
+      "metric": "SRC - Volumetric Flow Calculated",
+      "value": "50 m3/h",
+      "source": "massFlow / density"
+    },
+    {
+      "metric": "Pipe Suction - Major Loss",
+      "value": "0.08038 m",
+      "source": "App recalculation"
+    },
+    {
+      "metric": "Pipe Suction - Minor Loss",
+      "value": "2.535154 m",
+      "source": "App recalculation"
+    },
+    {
+      "metric": "Pipe Suction - Total Head Loss",
+      "value": "2.615534 m",
+      "source": "App recalculation"
+    },
+    {
+      "metric": "Pipe Suction - Total K",
+      "value": "14.670755",
+      "source": "Direct K plus equivalent K"
+    },
+    {
+      "metric": "Pipe Suction - Primary Re",
+      "value": "224717",
+      "source": "App recalculation"
+    },
+    {
+      "metric": "Pipe Suction - Darcy f",
+      "value": "0.02279245",
+      "source": "Colebrook/app basis"
+    },
+    {
+      "metric": "Pipe Suction - eps/D",
+      "value": "0.00153061",
+      "source": "roughness / diameter"
+    },
+    {
+      "metric": "Pipe Discharge - Major Loss",
+      "value": "1.756237 m",
+      "source": "App recalculation"
+    },
+    {
+      "metric": "Pipe Discharge - Minor Loss",
+      "value": "9.912272 m",
+      "source": "App recalculation"
+    },
+    {
+      "metric": "Pipe Discharge - Total Head Loss",
+      "value": "11.668509 m",
+      "source": "App recalculation"
+    },
+    {
+      "metric": "Pipe Discharge - Total K",
+      "value": "18.447708",
+      "source": "Direct K plus equivalent K"
+    },
+    {
+      "metric": "Pipe Discharge - Primary Re",
+      "value": "298404.7",
+      "source": "App recalculation"
+    },
+    {
+      "metric": "Pipe Discharge - Darcy f",
+      "value": "0.02412174",
+      "source": "Colebrook/app basis"
+    },
+    {
+      "metric": "Pipe Discharge - eps/D",
+      "value": "0.00203252",
+      "source": "roughness / diameter"
+    },
+    {
+      "metric": "Pump - Elevation",
+      "value": "0 m",
+      "source": ".untirta P-100"
+    },
+    {
+      "metric": "Pump - Suction Nozzle Elev.",
+      "value": "-0.5 m",
+      "source": ".untirta P-100"
+    },
+    {
+      "metric": "Pump - Discharge Nozzle Elev.",
+      "value": "0 m",
+      "source": ".untirta P-100"
+    },
+    {
+      "metric": "Pump - Hydraulic NPSH Status",
+      "value": "Safe",
+      "source": "NPSHa > NPSHr check"
+    },
+    {
+      "metric": "Pump - Engineering Status",
+      "value": "Safe",
+      "source": "Application NPSH evaluation"
+    },
+    {
+      "metric": "Pump - Data Confidence",
+      "value": "Warning: Manual - verify vendor data",
+      "source": "Manual NPSHr / engineering-fit curve"
+    },
+    {
+      "metric": "Pump - Flow Evaluated",
+      "value": "50 m3/h",
+      "source": "SNK-100 flow demand"
+    },
+    {
+      "metric": "Pump - Pump Head",
+      "value": "24 m",
+      "source": "Network required head"
+    },
+    {
+      "metric": "Pump - NPSHa / NPSHr",
+      "value": "6.4656 / 2.4002 m",
+      "source": "Application NPSH evaluation"
+    },
+    {
+      "metric": "Pump - NPSHr Source",
+      "value": "Manual input",
+      "source": "Manual input from journal"
+    },
+    {
+      "metric": "Pump - NPSH Margin / Ratio",
+      "value": "4.0654 m / 2.6938",
+      "source": "NPSHa - NPSHr; NPSHa/NPSHr"
+    },
+    {
+      "metric": "Pump - Required NPSHa / NPSH Excess",
+      "value": "3.0002 m / 3.4654 m",
+      "source": "App margin basis"
+    },
+    {
+      "metric": "Pump - Suction Pressure",
+      "value": "1.622 bar a",
+      "source": "Calculated at pump suction"
+    },
+    {
+      "metric": "Pump - Suction Loss",
+      "value": "2.6155 m",
+      "source": "Application suction pipe total"
+    },
+    {
+      "metric": "Pump - Dominant Loss",
+      "value": "PIPE-1 journal-calibrated suction loss; largest suction segment PIPE-1-Seg-3 Globe valve 3 in equivalent = 1.0541 m",
+      "source": "Application diagnostic"
+    },
+    {
+      "metric": "Optimize Pump From Network - Workflow Status",
+      "value": "Proposal Ready; readiness Ready",
+      "source": "Network optimization proposal"
+    },
+    {
+      "metric": "Optimize Pump From Network - Target Flow",
+      "value": "50 m3/h",
+      "source": "SNK-100 Flow Demand"
+    },
+    {
+      "metric": "Optimize Pump From Network - Required System Head",
+      "value": "24 m",
+      "source": "Boundary head difference plus losses"
+    },
+    {
+      "metric": "Optimize Pump From Network - NPSHa at Design",
+      "value": "6.466 m",
+      "source": "Network NPSHa at target flow"
+    },
+    {
+      "metric": "Optimize Pump From Network - Max Allowable NPSHr",
+      "value": "3.662 m",
+      "source": "Minimum allowable value across design/worst AOR"
+    },
+    {
+      "metric": "Optimize Pump From Network - Proposed NPSHr",
+      "value": "3.479 m",
+      "source": "Proposal only; journal NPSHr is retained in model inputs"
+    },
+    {
+      "metric": "Optimize Pump From Network - Worst AOR Point",
+      "value": "65 m3/h, 130% BEP, NPSHa 4.662 m",
+      "source": "AOR envelope scan"
+    },
+    {
+      "metric": "SNK - Flow Demand",
+      "value": "50 m3/h",
+      "source": ".untirta SNK-100"
+    },
+    {
+      "metric": "SNK - Pressure Basis",
+      "value": "Static",
+      "source": ".untirta SNK-100"
+    },
+    {
+      "metric": "SNK - Reference Pressure",
+      "value": "1.743707129 bar a",
+      "source": "Equivalent closure"
+    },
+    {
+      "metric": "SNK - SNK Elevation",
+      "value": "10 m",
+      "source": ".untirta SNK-100"
+    },
+    {
+      "metric": "Outlet Readout - Boundary Mode",
+      "value": "Flow Demand Boundary",
+      "source": "Calculated Outlet Readout"
+    },
+    {
+      "metric": "Outlet Readout - Boundary Pressure Input",
+      "value": "1.744 bar a",
+      "source": "Calculated Outlet Readout"
+    },
+    {
+      "metric": "Outlet Readout - Boundary Abs. Pressure",
+      "value": "1.743707129 bar a",
+      "source": "Calculated Outlet Readout"
+    },
+    {
+      "metric": "Outlet Readout - Pressure Head",
+      "value": "18.5473 m",
+      "source": "P/(rho g)"
+    },
+    {
+      "metric": "Outlet Readout - Discharge Loss",
+      "value": "11.668509 m",
+      "source": "App discharge pipe total"
+    },
+    {
+      "metric": "Outlet Readout - Terminal Velocity Head",
+      "value": "0.537317 m",
+      "source": "V2/(2g)"
+    },
+    {
+      "metric": "Outlet Readout - SNK Hydraulic Head",
+      "value": "29.0846 m",
+      "source": "Pressure head + elevation + velocity head"
+    },
+    {
+      "metric": "Outlet Readout - Flow Rate",
+      "value": "50 m3/h",
+      "source": "Calculated Outlet Readout"
+    },
+    {
+      "metric": "Outlet Readout - Mass Flow",
+      "value": "47917.419 kg/h",
+      "source": "Calculated Outlet Readout"
+    },
+    {
+      "metric": "Outlet Readout - Pipe Endpoint Static P",
+      "value": "1.744 bar a",
+      "source": "Calculated Outlet Readout"
+    },
+    {
+      "metric": "Outlet Readout - Pipe Endpoint Stagnation P",
+      "value": "1.794 bar a",
+      "source": "Calculated Outlet Readout"
+    },
+    {
+      "metric": "Outlet Readout - Required Boundary P",
+      "value": "1.744 bar a",
+      "source": "Calculated Outlet Readout"
+    },
+    {
+      "metric": "Outlet Readout - Vapor Pressure",
+      "value": "1.01418 bar a",
+      "source": "Fluid Basis"
+    },
+    {
+      "metric": "Outlet Readout - Vapor Margin",
+      "value": "0.729527 bar (7.7598 m)",
+      "source": "Boundary pressure - vapor pressure"
+    }
+  ],
+  "comparisons": [
+    {
+      "metric": "Fluid Basis - Temperature",
+      "journal": 100,
+      "application": 100,
+      "unit": "deg C",
+      "errorPercent": 0,
+      "status": "OK"
+    },
+    {
+      "metric": "Fluid Basis - Density rho",
+      "journal": 958.205912334,
+      "application": 958.348383592,
+      "unit": "kg/m3",
+      "errorPercent": 0.01486854299848639,
+      "status": "OK - derived from gamma"
+    },
+    {
+      "metric": "Fluid Basis - Specific gravity",
+      "journal": 0.958205912334,
+      "application": 0.958375218099,
+      "unit": "-",
+      "errorPercent": 0.017669037731535345,
+      "status": "OK - derived"
+    },
+    {
+      "metric": "Fluid Basis - Specific weight",
+      "journal": 9400,
+      "application": 9398.18717596,
+      "unit": "N/m3",
+      "errorPercent": 0.019285362161466996,
+      "status": "OK - rounding"
+    },
+    {
+      "metric": "Fluid Basis - Kinematic viscosity",
+      "journal": 8.03e-7,
+      "application": 8.03e-7,
+      "unit": "m2/s",
+      "errorPercent": 0,
+      "status": "OK"
+    },
+    {
+      "metric": "Fluid Basis - Dynamic viscosity",
+      "journal": 0.769439347604,
+      "application": 0.769553752025,
+      "unit": "cP",
+      "errorPercent": 0.014868542998479757,
+      "status": "OK - derived"
+    },
+    {
+      "metric": "Fluid Basis - Vapor pressure",
+      "journal": 1.01325,
+      "application": 1.01417993818,
+      "unit": "bar a",
+      "errorPercent": 0.09177776257374236,
+      "status": "Review - physical 100 deg C basis"
+    },
+    {
+      "metric": "Fluid Basis - Vapor pressure head",
+      "journal": 10.7792553191,
+      "application": 10.7875443278,
+      "unit": "m",
+      "errorPercent": 0.076897785994879,
+      "status": "Review - journal NPSH line has unit caveat"
+    },
+    {
+      "metric": "SRC - Boundary pressure",
+      "journal": "Not stated",
+      "application": 1.82092647642,
+      "unit": "bar a",
+      "errorPercent": null,
+      "status": "Equivalent closure"
+    },
+    {
+      "metric": "SRC - Source elevation datum",
+      "journal": 0,
+      "application": 0,
+      "unit": "m",
+      "errorPercent": null,
+      "status": "OK - model datum"
+    },
+    {
+      "metric": "SRC - Static head to pump suction",
+      "journal": 0.5,
+      "application": 0.5,
+      "unit": "m",
+      "errorPercent": 0,
+      "status": "OK"
+    },
+    {
+      "metric": "SRC - Volumetric flow",
+      "journal": 50,
+      "application": 50,
+      "unit": "m3/h",
+      "errorPercent": 0,
+      "status": "OK"
+    },
+    {
+      "metric": "SRC - Mass flow",
+      "journal": 47910.2956167,
+      "application": 47917.4191796,
+      "unit": "kg/h",
+      "errorPercent": 0.014868542998489238,
+      "status": "Derived OK"
+    },
+    {
+      "metric": "SRC - Volumetric flow calculated",
+      "journal": 50,
+      "application": 50,
+      "unit": "m3/h",
+      "errorPercent": 0,
+      "status": "OK"
+    },
+    {
+      "metric": "Pipe Suction - Major loss",
+      "journal": 0.0796,
+      "application": 0.0803797738187,
+      "unit": "m",
+      "errorPercent": 0.9796153501852639,
+      "status": "OK - constants/rounding"
+    },
+    {
+      "metric": "Pipe Suction - Minor loss",
+      "journal": 2.5507,
+      "application": 2.5351543179,
+      "unit": "m",
+      "errorPercent": 0.6094672872323,
+      "status": "OK - equivalent K/rounding"
+    },
+    {
+      "metric": "Pipe Suction - Total head loss",
+      "journal": 2.6303,
+      "application": 2.61553409172,
+      "unit": "m",
+      "errorPercent": 0.5613773439032388,
+      "status": "OK - rounding"
+    },
+    {
+      "metric": "Pipe Suction - Total K",
+      "journal": 14.6707549131,
+      "application": 14.6707549131,
+      "unit": "-",
+      "errorPercent": 0,
+      "status": "OK - includes equivalent contraction K"
+    },
+    {
+      "metric": "Pipe Suction - Primary Re",
+      "journal": 222501,
+      "application": 224717.037713,
+      "unit": "-",
+      "errorPercent": 0.9959675294660728,
+      "status": "OK - turbulent; exact Q/pi basis"
+    },
+    {
+      "metric": "Pipe Suction - Darcy f",
+      "journal": 0.0225,
+      "application": 0.0227924453015,
+      "unit": "-",
+      "errorPercent": 1.2997568955999528,
+      "status": "OK - Colebrook/app basis"
+    },
+    {
+      "metric": "Pipe Suction - eps/D",
+      "journal": 0.0015306122449,
+      "application": 0.0015306122449,
+      "unit": "-",
+      "errorPercent": 0,
+      "status": "OK"
+    },
+    {
+      "metric": "Pipe Discharge - Major loss",
+      "journal": 1.761,
+      "application": 1.75623677195,
+      "unit": "m",
+      "errorPercent": 0.27048427314177814,
+      "status": "OK - constants/rounding"
+    },
+    {
+      "metric": "Pipe Discharge - Minor loss",
+      "journal": 9.9265,
+      "application": 9.91227216765,
+      "unit": "m",
+      "errorPercent": 0.14333181234779713,
+      "status": "OK - equivalent K/rounding"
+    },
+    {
+      "metric": "Pipe Discharge - Total head loss",
+      "journal": 11.6875,
+      "application": 11.6685089396,
+      "unit": "m",
+      "errorPercent": 0.16249035638699197,
+      "status": "OK - rounding"
+    },
+    {
+      "metric": "Pipe Discharge - Total K",
+      "journal": 18.4477083569,
+      "application": 18.4477083569,
+      "unit": "-",
+      "errorPercent": 0,
+      "status": "OK - split as 4 table elbows + 2 calculation elbows"
+    },
+    {
+      "metric": "Pipe Discharge - Primary Re",
+      "journal": 296940,
+      "application": 298404.738426,
+      "unit": "-",
+      "errorPercent": 0.49327757329026445,
+      "status": "OK - turbulent; exact Q/pi basis"
+    },
+    {
+      "metric": "Pipe Discharge - Darcy f",
+      "journal": 0.0241,
+      "application": 0.0241217401028,
+      "unit": "-",
+      "errorPercent": 0.0902078955749681,
+      "status": "OK"
+    },
+    {
+      "metric": "Pipe Discharge - eps/D",
+      "journal": 0.0020325203252,
+      "application": 0.0020325203252,
+      "unit": "-",
+      "errorPercent": 0,
+      "status": "OK"
+    },
+    {
+      "metric": "Pump - Elevation",
+      "journal": 0,
+      "application": 0,
+      "unit": "m",
+      "errorPercent": null,
+      "status": "OK - pump datum"
+    },
+    {
+      "metric": "Pump - Suction nozzle elevation",
+      "journal": -0.5,
+      "application": -0.5,
+      "unit": "m",
+      "errorPercent": 0,
+      "status": "OK - gives hs 0.5 m"
+    },
+    {
+      "metric": "Pump - Discharge nozzle elevation",
+      "journal": 0,
+      "application": 0,
+      "unit": "m",
+      "errorPercent": null,
+      "status": "OK"
+    },
+    {
+      "metric": "Pump - Flow evaluated",
+      "journal": 50,
+      "application": 50,
+      "unit": "m3/h",
+      "errorPercent": 0,
+      "status": "OK"
+    },
+    {
+      "metric": "Pump - Pump head design",
+      "journal": 24,
+      "application": 24,
+      "unit": "m",
+      "errorPercent": 0,
+      "status": "OK"
+    },
+    {
+      "metric": "Pump - Pump head evaluated",
+      "journal": 24,
+      "application": 24,
+      "unit": "m",
+      "errorPercent": 0,
+      "status": "OK"
+    },
+    {
+      "metric": "Pump - NPSHa",
+      "journal": 6.4656,
+      "application": 6.4656,
+      "unit": "m",
+      "errorPercent": 0,
+      "status": "OK"
+    },
+    {
+      "metric": "Pump - NPSHr",
+      "journal": 2.4002,
+      "application": 2.4002,
+      "unit": "m",
+      "errorPercent": 0,
+      "status": "OK"
+    },
+    {
+      "metric": "Pump - NPSH margin",
+      "journal": 4.0654,
+      "application": 4.0654,
+      "unit": "m",
+      "errorPercent": 0,
+      "status": "OK - derived"
+    },
+    {
+      "metric": "Pump - NPSH ratio",
+      "journal": 2.69377551871,
+      "application": 2.6938,
+      "unit": "-",
+      "errorPercent": 0.000908809700567515,
+      "status": "OK - derived"
+    },
+    {
+      "metric": "Pump - Required NPSHa",
+      "journal": 3.0002,
+      "application": 3.0002,
+      "unit": "m",
+      "errorPercent": 0,
+      "status": "Derived by app margin basis"
+    },
+    {
+      "metric": "Pump - NPSH excess",
+      "journal": 3.4654,
+      "application": 3.4654,
+      "unit": "m",
+      "errorPercent": 1.281494805361755e-14,
+      "status": "Derived by app margin basis"
+    },
+    {
+      "metric": "Pump - Suction pressure",
+      "journal": "Not stated",
+      "application": 1.622,
+      "unit": "bar a",
+      "errorPercent": null,
+      "status": "Calculated/equivalent"
+    },
+    {
+      "metric": "Pump - Suction loss",
+      "journal": 2.6303,
+      "application": 2.6155,
+      "unit": "m",
+      "errorPercent": 0.5626734593012259,
+      "status": "OK - constants/rounding"
+    },
+    {
+      "metric": "Pump - Shaft power",
+      "journal": 5.0578,
+      "application": 5.05278880428,
+      "unit": "kW",
+      "errorPercent": 0.09907856621729991,
+      "status": "OK - app exact gamma/Q"
+    },
+    {
+      "metric": "Optimize Pump From Network - Readiness",
+      "journal": "Ready",
+      "application": "Ready",
+      "unit": "",
+      "errorPercent": null,
+      "status": "OK"
+    },
+    {
+      "metric": "Optimize Pump From Network - Target flow",
+      "journal": 50,
+      "application": 50,
+      "unit": "m3/h",
+      "errorPercent": 0,
+      "status": "OK"
+    },
+    {
+      "metric": "Optimize Pump From Network - Required system head",
+      "journal": 24,
+      "application": 24,
+      "unit": "m",
+      "errorPercent": 0,
+      "status": "OK"
+    },
+    {
+      "metric": "Optimize Pump From Network - NPSHa at design",
+      "journal": 6.4656,
+      "application": 6.466,
+      "unit": "m",
+      "errorPercent": 0.006186587478346262,
+      "status": "OK"
+    },
+    {
+      "metric": "Optimize Pump From Network - Max allowable NPSHr",
+      "journal": "Derived",
+      "application": 3.662,
+      "unit": "m",
+      "errorPercent": null,
+      "status": "Proposal result"
+    },
+    {
+      "metric": "Optimize Pump From Network - Proposed NPSHr",
+      "journal": "Derived",
+      "application": 3.479,
+      "unit": "m",
+      "errorPercent": null,
+      "status": "Proposal only; journal NPSHr retained"
+    },
+    {
+      "metric": "Optimize Pump From Network - Worst AOR flow",
+      "journal": "AOR scan",
+      "application": 65,
+      "unit": "m3/h",
+      "errorPercent": null,
+      "status": "Proposal result"
+    },
+    {
+      "metric": "SNK - Flow demand",
+      "journal": 50,
+      "application": 50,
+      "unit": "m3/h",
+      "errorPercent": 0,
+      "status": "OK"
+    },
+    {
+      "metric": "SNK - Reference pressure",
+      "journal": "Not stated",
+      "application": 1.74370712905,
+      "unit": "bar a",
+      "errorPercent": null,
+      "status": "Equivalent closure"
+    },
+    {
+      "metric": "SNK - Elevation",
+      "journal": 10,
+      "application": 10,
+      "unit": "m",
+      "errorPercent": 0,
+      "status": "OK"
+    },
+    {
+      "metric": "Outlet Readout - Boundary abs pressure",
+      "journal": "Not stated",
+      "application": 1.74370712905,
+      "unit": "bar a",
+      "errorPercent": null,
+      "status": "Equivalent closure"
+    },
+    {
+      "metric": "Outlet Readout - Pressure head",
+      "journal": "Derived/equivalent",
+      "application": 18.547318125,
+      "unit": "m",
+      "errorPercent": null,
+      "status": "App calculation"
+    },
+    {
+      "metric": "Outlet Readout - Discharge loss",
+      "journal": 11.6875,
+      "application": 11.6685089396,
+      "unit": "m",
+      "errorPercent": 0.16249035638699197,
+      "status": "OK - constants/rounding"
+    },
+    {
+      "metric": "Outlet Readout - Terminal velocity head",
+      "journal": "Derived",
+      "application": 0.537317263254,
+      "unit": "m",
+      "errorPercent": null,
+      "status": "App calculation"
+    },
+    {
+      "metric": "Outlet Readout - SNK hydraulic head",
+      "journal": "Derived/equivalent",
+      "application": 29.0846353882,
+      "unit": "m",
+      "errorPercent": null,
+      "status": "App calculation"
+    },
+    {
+      "metric": "Outlet Readout - Flow rate",
+      "journal": 50,
+      "application": 50,
+      "unit": "m3/h",
+      "errorPercent": 0,
+      "status": "OK"
+    },
+    {
+      "metric": "Outlet Readout - Mass flow",
+      "journal": 47910.2956167,
+      "application": 47917.419,
+      "unit": "kg/h",
+      "errorPercent": 0.014868168085118885,
+      "status": "Derived OK"
+    },
+    {
+      "metric": "Outlet Readout - Pipe endpoint static P",
+      "journal": "Not stated",
+      "application": 1.744,
+      "unit": "bar a",
+      "errorPercent": null,
+      "status": "App result"
+    },
+    {
+      "metric": "Outlet Readout - Pipe endpoint stagnation P",
+      "journal": "Not stated",
+      "application": 1.794,
+      "unit": "bar a",
+      "errorPercent": null,
+      "status": "App result"
+    },
+    {
+      "metric": "Outlet Readout - Required boundary P",
+      "journal": "Not stated",
+      "application": 1.744,
+      "unit": "bar a",
+      "errorPercent": null,
+      "status": "App closure"
+    },
+    {
+      "metric": "Outlet Readout - Vapor pressure",
+      "journal": 1.01325,
+      "application": 1.01417993818,
+      "unit": "bar a",
+      "errorPercent": 0.09177776257374236,
+      "status": "Review - physical 100 deg C basis"
+    },
+    {
+      "metric": "Outlet Readout - Vapor margin",
+      "journal": "Derived",
+      "application": 7.75977379715,
+      "unit": "m",
+      "errorPercent": null,
+      "status": "Positive margin at outlet"
+    }
+  ],
+  "findings": [
+    "Hydraulic NPSH Status = Safe comes from NPSHa > NPSHr: 6.4656 m > 2.4002 m. This is an engineering inequality, not a manual label.",
+    "Engineering Status = Safe because the selected margin basis is satisfied: Required NPSHa is 3.0002 m and available NPSHa is 6.4656 m.",
+    "Data Confidence remains Warning because NPSHr is a manual journal value and the full manufacturer/test pump curve is not published.",
+    "The journal Table 3 lists four discharge elbows, but the calculation section uses six elbows. The model now shows this explicitly as four table elbows plus two calculation-only elbows.",
+    "The journal has two arithmetic/typing caveats in pipe losses: the suction subtotal is printed once as 2.6393 m even though the terms sum to 2.6303 m, and the discharge sudden-change line prints 2.9873 m while the published discharge total uses 2.9047 m.",
+    "The journal NPSHa substitution line contains hs/unit inconsistency. The published final NPSHa 6.4656 m is retained and documented as the validation target.",
+    "Pipe-loss deviations are small and explainable by exact Q = 50/3600 m3/s, exact pi, g = 9.81 m/s2, and app Colebrook/friction implementation.",
+    "Optimize Pump From Network proposes NPSHr = 3.479 m as a margin-envelope candidate; the model retains journal NPSHr = 2.4002 m for literature matching."
+  ],
+  "formulas": [
+    {
+      "name": "Density from specific weight",
+      "formula": "rho = gamma / g = 9400 / 9.81 = 958.2059 kg/m3 journal-derived basis"
+    },
+    {
+      "name": "Dynamic viscosity",
+      "formula": "mu = rho x nu; app: 958.3483836 x 8.03e-7 = 0.000769554 Pa.s = 0.769554 cP"
+    },
+    {
+      "name": "Vapor pressure head",
+      "formula": "Hv = Pv x 100000 / (rho x g)"
+    },
+    {
+      "name": "Reynolds number",
+      "formula": "Re = V D / nu"
+    },
+    {
+      "name": "Relative roughness",
+      "formula": "eps/D = pipe roughness / internal diameter"
+    },
+    {
+      "name": "Darcy-Weisbach major loss",
+      "formula": "h_major = f (L / D) (V^2 / 2g)"
+    },
+    {
+      "name": "Minor loss",
+      "formula": "h_minor = K (V^2 / 2g)"
+    },
+    {
+      "name": "System head closure",
+      "formula": "H_required = H_discharge boundary - H_suction boundary + hL_suction + hL_discharge = 29.085 - 19.369 + 2.616 + 11.669 = 24.000 m"
+    },
+    {
+      "name": "NPSHa",
+      "formula": "NPSHa = H_suction boundary - hL_suction - z_pump - H_vapor = 19.369 - 2.616 - (-0.500) - 10.788 = 6.466 m"
+    },
+    {
+      "name": "NPSH acceptance",
+      "formula": "Safe when NPSHa > NPSHr and NPSHa >= Required NPSHa; 6.4656 > 2.4002 and 6.4656 > 3.0002"
+    },
+    {
+      "name": "NPSH margin and ratio",
+      "formula": "Margin = NPSHa - NPSHr = 4.0654 m; Ratio = NPSHa / NPSHr = 2.6938"
+    },
+    {
+      "name": "Pump power",
+      "formula": "P = gamma Q H / eta. Table 8 uses gamma=9400 N/m3, Q=0.0139 m3/s, H=24 m, eta=0.62 -> 5.0578 kW."
+    },
+    {
+      "name": "Error percent",
+      "formula": "errorPercent = ABS(application - journal) / ABS(journal) x 100%"
+    },
+    {
+      "name": "Optimize Pump From Network",
+      "formula": "Proposal uses current SRC -> suction pipe -> pump -> discharge pipe -> SNK network to calculate target flow, required head, NPSHa, allowable NPSHr, and AOR envelope."
+    },
+    {
+      "name": "Journal pump efficiency caveat",
+      "formula": "Case 1 uses eta = 62%. Abstract power follows exact H = 23.8178 m, while Table 8/app duty follows rounded H = 24 m."
+    },
+    {
+      "name": "Dynamic report source",
+      "formula": "Analysis Report = detailed static report JSON + decoded .untirta validationAudit/model/results at open time; static Case 1 formulas override generic dynamic caveats by name."
+    }
+  ],
+  "optimization": {
+    "objective": "Run Optimize Pump From Network to verify the network-derived duty point and record the allowable NPSHr envelope without replacing the journal duty inputs.",
+    "baseline": "Q = 50 m3/h; required head = 24.000 m; NPSHa = 6.4656 m; journal NPSHr = 2.4002 m; margin = 4.0654 m; status = Safe.",
+    "result": "Proposal Ready: target flow 50 m3/h, required system head 24 m, NPSHa at design 6.466 m, max allowable NPSHr 3.662 m, proposed NPSHr 3.479 m. Worst AOR point is 65 m3/h at 130% BEP with NPSHa 4.662 m. Journal NPSHr 2.4002 m is retained for validation.",
+    "constraints": [
+      "Do not modify application code.",
+      "Retain journal duty point: Q = 50 m3/h, H = 24 m, eta = 62%, NPSHr = 2.4002 m.",
+      "Treat SRC/SNK pressures as equivalent closures because direct boundary pressures are not published.",
+      "Keep NPSHa greater than NPSHr and Required NPSHa at the active duty point.",
+      "Do not claim engineering-fit pump curve endpoints as vendor/manufacturer curve data."
+    ],
+    "method": [
+      "Decode and checksum-verify the .untirta file.",
+      "Recalculate Fluid Basis, SRC, suction pipe, pump, discharge pipe, SNK, and outlet readout from the stored model.",
+      "Compare each numeric item against journal values or journal-derived values using absolute percent error.",
+      "Run the existing pump optimization proposal engine against the current SRC -> Pipe -> Pump -> Pipe -> SNK network.",
+      "Record optimization results in the Analysis Report and .untirta audit metadata, while retaining the journal NPSHr input."
+    ]
+  },
+  "conclusion": "The simulation case is conditionally validated for academic/engineering defense. The main duty point, pipe-loss basis, and NPSH result match the journal within traceable rounding/equivalent-boundary assumptions. The only non-direct inputs are SRC/SNK equivalent pressures and non-duty pump-curve placeholders, both explicitly documented."
+}
