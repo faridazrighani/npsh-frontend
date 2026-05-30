@@ -8,7 +8,7 @@ This folder is now a protected static frontend package. The displayed hydraulic/
 
 Checks passed:
 
-- No `.env`, `.map`, `.pem`, `.key`, `.log`, or similar sensitive artifact was found.
+- No `.env`, source-content `.map`, `.pem`, `.key`, `.log`, or similar sensitive artifact was found.
 - Public metadata points to `https://npsh.virsim.id/`.
 - Runtime API config points to `https://npsh-api.virsim.id` in backend-primary protected mode.
 - Required public assets are present: `index.html`, `app.bundle.min.js`, `style.min.css`, `png/favicon.ico`, `vendor/`, `journals/`, and `toolbar/`.
@@ -29,7 +29,7 @@ Important dependency:
 Upload guidance:
 
 - Upload this folder to the public `npsh-frontend` repository after the private `npsh-api` deployment is ready.
-- Keep source maps out of the public repository.
+- Keep source maps with source content out of the public repository; only the public-safe `app.bundle.min.js.map` self-map stub is allowed.
 - Keep PDF files out of the public repository unless rights/public redistribution are explicitly approved.
 - Keep unbundled frontend source files out of this folder unless they are directly referenced by `index.html`.
 - Keep `npsh-api` private.

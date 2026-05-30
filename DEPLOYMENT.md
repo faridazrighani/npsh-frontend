@@ -27,6 +27,6 @@ Protected runtime:
 
 Important:
 
-- Do not upload source maps.
+- Do not upload source maps with source content; `app.bundle.min.js.map` is a public-safe self-map stub for PageSpeed diagnostics.
 - Do not add backend formula/source files to this public repository.
 - If the API is offline, protected calculations will not run.

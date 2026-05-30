@@ -32,6 +32,7 @@ README.md               public package overview
 UPLOAD_READINESS.md     readiness checklist
 index.html              static app entry
 app.bundle.min.js       protected frontend bundle
+app.bundle.min.js.map   public-safe self source map stub, no sourcesContent
 engineering-bilingual-improvements.js bilingual engineering terminology, trace-key registry, runtime UI workflow localization, and diagnostics overlay
 engineering-library-governance.js public-safe library manifest, trace schema, unit/fluid/equipment/literature governance, OCR terminology, formula-literature map, and quality gates
 style.min.css           minified styles
@@ -57,7 +58,7 @@ Do not add to this folder:
 - backend formula source
 - `core/simulation-engine.js`
 - `.env`
-- source maps
+- source maps with source content
 - unbundled frontend source files
 - public PDF files
 - private keys or certificates
