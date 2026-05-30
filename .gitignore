@@ -1,0 +1,14 @@
+*.map
+node_modules/
+.env
+.env.*
+!.env.example
+.codex-artifacts/
+book_pdf/
+npsh-frontend/
+outputs/
+test-artifacts/
+*.log
+npm-debug.log*
+desktop.ini
+*.pdf
