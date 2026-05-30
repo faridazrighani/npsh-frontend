@@ -4,116 +4,52 @@
     {
       "id": "simulation-case-1",
       "menuTitle": "Simulation Cases 1",
-      "menuTitleI18n": {
-        "en": "Simulation Cases 1",
-        "id": "Kasus Simulasi 1"
-      },
       "title": "Pump Feed Water to Deaerator",
-      "titleI18n": {
-        "en": "Pump Feed Water to Deaerator",
-        "id": "Pompa air umpan ke deaerator"
-      },
       "sampleFile": "journals/simulasi_1/simulasi_performansi_pompa_air_umpan_tangki_deaerator.untirta",
       "analysisReport": "journals/analysis-reports/simulasi-1-analysis.json"
     },
     {
       "id": "simulation-case-2",
       "menuTitle": "Simulation Cases 2",
-      "menuTitleI18n": {
-        "en": "Simulation Cases 2",
-        "id": "Kasus Simulasi 2"
-      },
       "title": "Reflux Centrifugal Pump Evaluation",
-      "titleI18n": {
-        "en": "Reflux Centrifugal Pump Evaluation",
-        "id": "Evaluasi pompa sentrifugal reflux"
-      },
       "sampleFile": "journals/simulasi_2/simulasi_kinerja_pompa_sentrifugal_reflux_kilang.untirta",
       "analysisReport": "journals/analysis-reports/simulasi-2-analysis.json",
       "disabled": true,
-      "disabledReason": "Temporarily disabled - journal data incomplete.",
-      "disabledReasonI18n": {
-        "en": "Temporarily disabled - journal data incomplete.",
-        "id": "Sementara dinonaktifkan - data jurnal belum lengkap."
-      }
+      "disabledReason": "Temporarily disabled - journal data incomplete."
     },
     {
       "id": "simulation-case-3",
       "menuTitle": "Simulation Cases 3",
-      "menuTitleI18n": {
-        "en": "Simulation Cases 3",
-        "id": "Kasus Simulasi 3"
-      },
       "title": "Pipe Diameter Head Loss Analysis",
-      "titleI18n": {
-        "en": "Pipe Diameter Head Loss Analysis",
-        "id": "Analisis head loss pada diameter pipa"
-      },
       "sampleFile": "journals/simulasi_3/Analisa_Head_Losses_pada_Diameter_Pipa.untirta",
       "analysisReport": "journals/analysis-reports/simulasi-3-analysis.json",
       "disabled": true,
-      "disabledReason": "Temporarily disabled - journal data incomplete.",
-      "disabledReasonI18n": {
-        "en": "Temporarily disabled - journal data incomplete.",
-        "id": "Sementara dinonaktifkan - data jurnal belum lengkap."
-      }
+      "disabledReason": "Temporarily disabled - journal data incomplete."
     },
     {
       "id": "simulation-case-4",
       "menuTitle": "Simulation Cases 4",
-      "menuTitleI18n": {
-        "en": "Simulation Cases 4",
-        "id": "Kasus Simulasi 4"
-      },
       "title": "Methanol Pump NPSH and Impeller Damage",
-      "titleI18n": {
-        "en": "Methanol Pump NPSH and Impeller Damage",
-        "id": "Analisis NPSH pompa metanol dan kerusakan impeller"
-      },
       "sampleFile": "journals/simulasi_4/Methanol_Analisa_NPSH_Kerusakan_Impeller.untirta",
       "analysisReport": "journals/analysis-reports/simulasi-4-analysis.json"
     },
     {
       "id": "simulation-case-5",
       "menuTitle": "Simulation Cases 5",
-      "menuTitleI18n": {
-        "en": "Simulation Cases 5",
-        "id": "Kasus Simulasi 5"
-      },
       "title": "Multistage Centrifugal Pump 118.5 kW",
-      "titleI18n": {
-        "en": "Multistage Centrifugal Pump 118.5 kW",
-        "id": "Pompa sentrifugal multistage 118,5 kW"
-      },
       "sampleFile": "journals/simulasi_5/Kinerja_Sentrifugal_Multistage_118,5_KW.untirta",
       "analysisReport": "journals/analysis-reports/simulasi-5-analysis.json",
       "disabled": true,
-      "disabledReason": "Temporarily disabled - journal data incomplete.",
-      "disabledReasonI18n": {
-        "en": "Temporarily disabled - journal data incomplete.",
-        "id": "Sementara dinonaktifkan - data jurnal belum lengkap."
-      }
+      "disabledReason": "Temporarily disabled - journal data incomplete."
     },
     {
       "id": "simulation-case-6",
       "menuTitle": "Simulation Cases 6",
-      "menuTitleI18n": {
-        "en": "Simulation Cases 6",
-        "id": "Kasus Simulasi 6"
-      },
       "title": "P-2941A Hot Water Pump Evaluation",
-      "titleI18n": {
-        "en": "P-2941A Hot Water Pump Evaluation",
-        "id": "Evaluasi pompa air panas P-2941A"
-      },
       "sampleFile": "journals/simulasi_6/Evaluasi_Pompa_Sentrifugal_P-2941A_sebagai_Pompa_Air_Panas.untirta",
       "analysisReport": "journals/analysis-reports/simulasi-6-analysis.json",
       "disabled": true,
-      "disabledReason": "Temporarily disabled - journal data incomplete.",
-      "disabledReasonI18n": {
-        "en": "Temporarily disabled - journal data incomplete.",
-        "id": "Sementara dinonaktifkan - data jurnal belum lengkap."
-      }
+      "disabledReason": "Temporarily disabled - journal data incomplete."
     }
   ]
 }

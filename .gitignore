@@ -1,0 +1,11 @@
+*.map
+node_modules/
+.env
+.env.*
+!.env.example
+outputs/
+test-artifacts/
+*.log
+npm-debug.log*
+desktop.ini
+*.pdf
