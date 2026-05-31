@@ -11,7 +11,7 @@ C:\Users\Zfaryana\Desktop\npshs\npsh-frontend
 Purpose:
 
 - Protected public static package for `https://npsh.virsim.id/`.
-- Requires the private same-origin API at `https://npsh.virsim.id/api/*`.
+- Requires the private same-origin API at `https://npsh.virsim.id/api/*`, proxied by `_worker.js` to the `NPSH_API` Service Binding.
 
 Summary:
 
@@ -26,6 +26,7 @@ Top-level contents:
 .gitignore              upload guardrail
 .nojekyll               compatibility marker for static hosts
 CNAME                   custom domain: npsh.virsim.id
+_worker.js              Cloudflare Pages advanced-mode proxy for /api/* and static assets
 DEPLOYMENT.md           frontend deployment runbook
 FILE_MANIFEST.md        local folder inventory
 README.md               public package overview
@@ -63,6 +64,7 @@ app.bundle.min.js.map sourcesContent: absent
 Route audit cache key: engineering-route-trace-audit.js?v=20260531-auditv7
 Defense export cache key: engineering-defense-export-package.js?v=20260531-defensev2
 Runtime API config: same-origin /api/simulate
+Pages API proxy: _worker.js -> env.NPSH_API.fetch(request), static fallback -> env.ASSETS.fetch(request)
 ```
 
 Do not add to this folder:

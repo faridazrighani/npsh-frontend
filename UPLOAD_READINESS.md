@@ -14,6 +14,7 @@ Checks passed:
 - Required public assets are present: `index.html`, `app.bundle.min.js`, `style.min.css`, `png/favicon.ico`, `vendor/`, `journals/`, and `toolbar/`.
 - Custom-domain file is present: `CNAME` -> `npsh.virsim.id`.
 - Deployment runbook is present: `DEPLOYMENT.md`.
+- Pages advanced-mode proxy is present: `_worker.js` forwards `/api/*` to the `NPSH_API` Service Binding and serves static assets through `env.ASSETS`.
 - Protected bundle scan did not detect `hydraulic-network-formulas`, `pump-formulas`, `pipe-formulas`, `calculatePumpSystemHead`, `calculateDarcy`, or `calculateReynolds`.
 - Phase 5 local freeze validation passed.
 - The general reference PDF collection was moved out of the public frontend package to the local private reference archive.
@@ -23,12 +24,13 @@ Checks passed:
 
 Important dependency:
 
-- The same-origin private application service must serve both `/` and `/api/*` before public users can run protected calculations.
+- The `npsh-frontend` Cloudflare Pages production environment must bind `NPSH_API` to the `npsh-api` Worker before public users can run protected calculations.
 - Simulation-case PDF files are private-local only unless public redistribution is explicitly approved later.
 
 Upload guidance:
 
 - Prepare this folder into the backend `public/` static root with `npm --prefix npsh-api run build:same-origin`, or upload equivalent public artifacts to the same-origin application host.
+- On Cloudflare Pages, add a production Service Binding named `NPSH_API` that points to Worker `npsh-api`, then redeploy this Pages project.
 - Keep source maps with source content out of the public repository; only the public-safe `app.bundle.min.js.map` self-map stub is allowed.
 - Keep PDF files out of the public repository unless rights/public redistribution are explicitly approved.
 - Keep unbundled frontend source files out of this folder unless they are directly referenced by `index.html`.

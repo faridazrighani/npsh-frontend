@@ -8,7 +8,7 @@ Current live topology recommendation:
 
 ```text
 https://npsh.virsim.id/      Cloudflare Pages frontend
-https://npsh.virsim.id/api/* Cloudflare Worker backend route
+https://npsh.virsim.id/api/* Cloudflare Pages Function proxy to npsh-api Worker
 ```
 
 Custom domain:
@@ -21,9 +21,17 @@ Upload order:
 
 1. Upload this updated frontend package to Cloudflare Pages.
 2. Deploy the private Worker from `npsh-api/worker.mjs`.
-3. Attach the Worker route `npsh.virsim.id/api/*` in the `virsim.id` zone.
-4. Verify `https://npsh.virsim.id/api/health`.
-5. Open `https://npsh.virsim.id/` and run a thesis validation case.
+3. In the `npsh-frontend` Pages project, add a production Service Binding:
+
+```text
+Variable name: NPSH_API
+Service: npsh-api
+Environment: production
+```
+
+4. Redeploy `npsh-frontend` so `_worker.js` and the binding are active.
+5. Verify `https://npsh.virsim.id/api/health`.
+6. Open `https://npsh.virsim.id/` and run a thesis validation case.
 
 Protected runtime:
 
@@ -37,4 +45,5 @@ Important:
 - Do not add backend formula/source files to this public repository.
 - If the API is offline, protected calculations will not run.
 - GitHub Pages alone cannot serve the protected `/api/*` backend; use a same-origin app host or an equivalent edge route for `/api/*`.
-- Cloudflare Pages can remain the frontend host if `/api/*` is served by the Cloudflare Worker route.
+- Cloudflare Pages can remain the frontend host when `_worker.js` proxies `/api/*` to the `NPSH_API` Service Binding.
+- If the Cloudflare account later has access to the `virsim.id` zone, a direct Worker route `npsh.virsim.id/api/*` is also valid, but the current account can use the Pages Function proxy without owning the zone.
