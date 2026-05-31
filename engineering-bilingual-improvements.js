@@ -666,13 +666,128 @@
     }
   }
 
+  function isLocalPreviewHost() {
+    const hostname = String(root.location?.hostname || '').toLowerCase();
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '[::1]';
+  }
+
+  function getRequestUrl(input) {
+    return typeof input === 'string' ? input : input?.url || '';
+  }
+
+  function isBackendSimulationFetch(input) {
+    const requestUrl = getRequestUrl(input);
+    if (!requestUrl) return false;
+    try {
+      const url = new URL(requestUrl, root.location?.href || 'http://localhost/');
+      return /\/api\/simulate\/?$/.test(url.pathname);
+    } catch (error) {
+      return /\/api\/simulate\b/i.test(requestUrl);
+    }
+  }
+
+  function createBackendSimulationOfflineResponse(input, error = null) {
+    const statusText = error?.name === 'AbortError' ? 'Backend timeout' : 'Backend unavailable';
+    const payload = {
+      status: 'frontend-local-fallback',
+      message: isLocalPreviewHost()
+        ? 'Local preview skipped the protected backend request; realtime frontend solve remains active.'
+        : 'Protected backend request was unavailable; frontend fallback remains active.',
+      error: error?.message || '',
+      requestUrl: getRequestUrl(input)
+    };
+    return new Response(JSON.stringify(payload), {
+      status: 503,
+      statusText,
+      headers: { 'content-type': 'application/json; charset=utf-8' }
+    });
+  }
+
+  function shouldShortCircuitBackendSimulationFetch(input) {
+    return isLocalPreviewHost() && isBackendSimulationFetch(input);
+  }
+
+  function installRealtimeAutosolveBridge() {
+    if (!root.document) return;
+    const installMarker = root.document.documentElement;
+    if (root.__EngineeringRealtimeAutosolveInstalled || installMarker?.dataset.engineeringRealtimeAutosolveInstalled === 'true') return;
+    try {
+      root.__EngineeringRealtimeAutosolveInstalled = true;
+    } catch (error) {
+      // Some embedded audit contexts make window non-extensible; the DOM marker is enough.
+    }
+    if (installMarker?.dataset) installMarker.dataset.engineeringRealtimeAutosolveInstalled = 'true';
+
+    let timer = null;
+    let running = false;
+    let pending = false;
+
+    const getSolveButton = () => root.document.getElementById('btn-solve');
+    const markActive = () => {
+      const button = getSolveButton();
+      if (!button) return;
+      button.classList.add('active', 'solve-autosolve-active');
+      button.setAttribute('aria-pressed', 'true');
+      button.dataset.autosolve = 'active';
+    };
+
+    const isSolveInput = (target) => {
+      if (!target || !target.matches?.('input, select, textarea')) return false;
+      if (target.disabled || target.readOnly || target.type === 'file') return false;
+      return !!target.closest?.('.task-window, .full-editor-modal, .canvas-task-window, #taskWindowBody, [data-task-prop-body="true"]');
+    };
+
+    const runSolve = () => {
+      timer = null;
+      if (typeof root.updateSimulation !== 'function') return;
+      if (running) {
+        pending = true;
+        return;
+      }
+      running = true;
+      pending = false;
+      Promise.resolve(root.updateSimulation({
+        refreshReason: 'solve',
+        trigger: 'autosolve',
+        renderSidebarAfter: false,
+        allowExternalApiOnLocal: false,
+        autoSolve: true
+      }))
+        .catch((error) => console.warn('Realtime autosolve used the frontend fallback.', error))
+        .finally(() => {
+          running = false;
+          if (pending) timer = root.setTimeout?.(runSolve, 120);
+        });
+    };
+
+    const scheduleSolve = (event) => {
+      if (!isSolveInput(event.target) || event.isComposing) return;
+      markActive();
+      if (timer) root.clearTimeout?.(timer);
+      timer = root.setTimeout?.(runSolve, event.type === 'input' ? 260 : 80);
+    };
+
+    markActive();
+    root.document.addEventListener('input', scheduleSolve, true);
+    root.document.addEventListener('change', scheduleSolve, true);
+  }
+
   function patchSimulationCaseFetch() {
     if (typeof root.fetch !== 'function' || root.fetch.__engineeringBilingualPatched) return false;
     const originalFetch = root.fetch.bind(root);
     const patchedFetch = async function engineeringBilingualFetch(input, init) {
-      const response = await originalFetch(input, init);
+      if (shouldShortCircuitBackendSimulationFetch(input)) {
+        return createBackendSimulationOfflineResponse(input);
+      }
+      let response;
       try {
-        const requestUrl = typeof input === 'string' ? input : input?.url || '';
+        response = await originalFetch(input, init);
+      } catch (error) {
+        if (isBackendSimulationFetch(input)) return createBackendSimulationOfflineResponse(input, error);
+        throw error;
+      }
+      try {
+        const requestUrl = getRequestUrl(input);
         const responseUrl = response?.url || requestUrl;
         if (!String(responseUrl || requestUrl).includes('journals/simulation-cases.json')) return response;
         const manifest = await response.clone().json();
@@ -700,6 +815,7 @@
     if (typeof root.document === 'undefined') return;
     patchRuntimeFunctions();
     patchSimulationCaseFetch();
+    installRealtimeAutosolveBridge();
 
     const scan = () => localizeRuntimeNodeTree(root.document.body || root.document);
     if (root.document.readyState === 'loading') {
