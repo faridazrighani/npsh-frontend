@@ -1,0 +1,57 @@
+{
+  "site": {
+    "name": "Modeling & Simulation of a Pumping System for Evaluating Cavitation Potential in Centrifugal Pumps Based on NPSH Analysis",
+    "shortName": "Centrifugal Pumps NPSH Analysis",
+    "title": "Modeling & Simulation of a Pumping System for Evaluating Cavitation Potential in Centrifugal Pumps Based on NPSH Analysis",
+    "description": "Academic pump system modeling and simulation application for evaluating cavitation potential in centrifugal pumps based on NPSH analysis for various fluids.",
+    "url": "https://npsh.virsim.id/",
+    "canonicalUrl": "https://npsh.virsim.id/",
+    "field": "Mechanical Engineering",
+    "languages": ["en", "id"],
+    "primaryLocale": "en_US",
+    "alternateLocales": ["id_ID"],
+    "themeColor": "#123b5a",
+    "colorScheme": "light",
+    "faviconUrl": "https://npsh.virsim.id/png/favicon.ico",
+    "sitemapUrl": "https://npsh.virsim.id/sitemap.xml",
+    "rights": "Copyright 2026 Farid Azrighani. All rights reserved.",
+    "date": "2026",
+    "dateModified": "2026-05-31",
+    "keywords": [
+      "NPSH analysis",
+      "net positive suction head",
+      "centrifugal pump",
+      "cavitation potential",
+      "pump system simulation",
+      "hydraulic calculation",
+      "fluid basis",
+      "Mechanical Engineering",
+      "UNTIRTA"
+    ]
+  },
+  "creator": {
+    "name": "Farid Azrighani",
+    "orcid": "https://orcid.org/0009-0003-6720-5545"
+  },
+  "publisher": {
+    "name": "Sultan Ageng Tirtayasa University",
+    "url": "https://untirta.ac.id/",
+    "department": "Mechanical Engineering",
+    "logoUrl": "https://npsh.virsim.id/png/untirta-75.webp",
+    "logoWidth": 75,
+    "logoHeight": 75
+  },
+  "image": {
+    "url": "https://npsh.virsim.id/png/pumping_simulation_NPSH_analysis_cavitation_potential_centrifugal.webp",
+    "type": "image/webp",
+    "width": 450,
+    "height": 636,
+    "alt": "Academic NPSH-based centrifugal pump cavitation analysis simulation preview"
+  },
+  "article": {
+    "url": null,
+    "pdfUrl": null,
+    "datePublished": null,
+    "dateOnline": null
+  }
+}

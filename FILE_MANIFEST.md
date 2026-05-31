@@ -16,8 +16,8 @@ Purpose:
 Summary:
 
 ```text
-Total files: 143
-Total size: 63,247,647 bytes
+Total files: 146
+Total size: 63,265,145 bytes
 ```
 
 Top-level contents:
@@ -32,6 +32,8 @@ FILE_MANIFEST.md        local folder inventory
 README.md               public package overview
 UPLOAD_READINESS.md     readiness checklist
 index.html              static app entry
+seo.metadata.json       data-driven academic SEO metadata source
+tools/                  static metadata rendering and validation utilities
 app.bundle.min.js       protected frontend bundle
 app.bundle.min.js.map   public-safe self source map stub, no sourcesContent
 engineering-bilingual-improvements.js bilingual engineering terminology, trace-key registry, runtime UI workflow localization, and diagnostics overlay
