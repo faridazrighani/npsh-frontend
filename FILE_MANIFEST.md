@@ -1,6 +1,6 @@
 # Frontend File Manifest
 
-Date: 2026-05-31
+Date: 2026-06-02
 
 Folder:
 
@@ -16,8 +16,8 @@ Purpose:
 Summary:
 
 ```text
-Total files: 146
-Total size: 63,265,145 bytes
+Total files: 153
+Total size: 63,438,899 bytes
 ```
 
 Top-level contents:
@@ -36,6 +36,8 @@ seo.metadata.json       data-driven academic SEO metadata source
 tools/                  static metadata rendering and validation utilities
 app.bundle.min.js       protected frontend bundle
 app.bundle.min.js.map   public-safe self source map stub, no sourcesContent
+engineering-npsh-margin-runtime.js public-safe ANSI/HI NPSH margin preset bridge used by Pump Object Properties readouts
+engineering-pump-readiness-visibility-runtime.js public-safe final-defense guard that hides developer Pump Action Readiness diagnostics unless debug flag is enabled
 engineering-bilingual-improvements.js bilingual engineering terminology, trace-key registry, runtime UI workflow localization, and diagnostics overlay
 engineering-library-governance.js public-safe library manifest, trace schema, unit/fluid/equipment/literature governance, OCR terminology, formula-literature map, and quality gates
 engineering-route-trace-audit.js public-safe backend route-trace audit bridge, dependency fingerprint handoff, stale-result metadata capture, advanced engineering validation display, defense export context capture, backend schema mismatch warning, and software dependency-change gate display
@@ -66,6 +68,8 @@ app.bundle.min.js.map sourcesContent: absent
 Route audit cache key: engineering-route-trace-audit.js?v=20260531-auditv7
 Defense export cache key: engineering-defense-export-package.js?v=20260531-defensev2
 Runtime API config: same-origin /api/simulate
+NPSH margin runtime cache key: engineering-npsh-margin-runtime.js?v=20260602-npsh-margin1
+Pump readiness visibility cache key: engineering-pump-readiness-visibility-runtime.js?v=20260602-pump-readiness-visibility1
 Pages API proxy: _worker.js -> env.NPSH_API.fetch(request), static fallback -> env.ASSETS.fetch(request)
 ```
 
