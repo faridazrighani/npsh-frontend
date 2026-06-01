@@ -184,16 +184,21 @@ function buildStructuredData(config) {
       breadcrumb: { '@id': `${siteUrl}#breadcrumb` }
     },
     {
-      '@type': ['WebApplication', 'SoftwareApplication'],
+      '@type': 'WebApplication',
       '@id': `${siteUrl}#webapplication`,
       name: site.name,
       alternateName: site.shortName,
       url: siteUrl,
       description: site.description,
-      applicationCategory: 'EngineeringApplication',
+      applicationCategory: 'EducationalApplication',
       applicationSubCategory: site.field,
       operatingSystem: 'Web browser',
       browserRequirements: 'Requires a modern browser with JavaScript enabled',
+      isAccessibleForFree: true,
+      offers: {
+        '@type': 'Offer',
+        price: 0
+      },
       inLanguage: site.languages,
       keywords: site.keywords,
       creator: { '@id': personId(siteUrl) },
@@ -356,6 +361,13 @@ function validateRenderedHtml(html) {
   const parsed = JSON.parse(ldMatch[1]);
   assert.strictEqual(parsed['@context'], 'https://schema.org', 'JSON-LD context must be schema.org');
   assert(Array.isArray(parsed['@graph']) && parsed['@graph'].length >= 7, 'JSON-LD graph is incomplete');
+  const webApplication = parsed['@graph'].find(entry => entry['@id'] === 'https://npsh.virsim.id/#webapplication');
+  assert(webApplication, 'WebApplication JSON-LD node is missing');
+  assert.strictEqual(webApplication['@type'], 'WebApplication', 'WebApplication JSON-LD should use a single WebApplication type.');
+  assert.strictEqual(webApplication.applicationCategory, 'EducationalApplication', 'WebApplication category should use a Google-supported software app category.');
+  assert.strictEqual(webApplication.isAccessibleForFree, true, 'WebApplication should disclose free access.');
+  assert.strictEqual(webApplication.offers?.['@type'], 'Offer', 'WebApplication should expose a free Offer.');
+  assert.strictEqual(webApplication.offers?.price, 0, 'WebApplication free Offer price should be 0.');
 }
 
 function renderIndex(original, seoBlock) {
