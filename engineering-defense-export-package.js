@@ -5,6 +5,12 @@
   const PANEL_BODY_ID = 'engineeringDefenseExportPackagePanelBody';
   const MENU_BUTTON_ID = 'menu-tools-defense-export-package';
   const DEFENDED_ROUTE_ORDER = 'First Opening -> Fluid Basis -> SRC -> Pipe/Fitting/Valve (suction) -> Pump -> Pipe/Fitting/Valve (discharge) -> SNK';
+  const SRC_STANDARD_FORM_FALLBACK = Object.freeze({
+    schemaVersion: 'src-standard-form.v1',
+    lockVersion: 'source-standard-form-all-surfaces-v1',
+    valuePolicy: 'live-user-import-or-calculated-values-only',
+    requiredSections: Object.freeze(['Source Definition', 'Boundary Data', 'Flow Specification', 'Fluid Basis Link'])
+  });
 
   function escapeText(value) {
     return String(value ?? '')
@@ -74,6 +80,10 @@
     };
   }
 
+  function sourceStandardFormContract() {
+    return root.EngineeringSourceStandardForm?.contract || SRC_STANDARD_FORM_FALLBACK;
+  }
+
   function finalCitationStatus(libraryGovernance) {
     if (typeof libraryGovernance?.getCitationPageLockStatus === 'function') {
       return libraryGovernance.getCitationPageLockStatus();
@@ -127,6 +137,7 @@
     const routeSteps = routeTrace.steps || [];
     const fluidStep = routeStep(routeTrace, 'fluid');
     const sourceStep = routeStep(routeTrace, 'source');
+    const sourceStandard = sourceStandardFormContract();
     const sinkStep = routeStep(routeTrace, 'sink');
     const pumpStep = routeStep(routeTrace, 'pump');
     const suctionSteps = stagedRouteSteps(routeTrace, /suction/i).filter((step) => ['pipe', 'valve', 'checkValve'].includes(step.type));
@@ -158,8 +169,18 @@
         id: 'src-boundary',
         taskWindow: 'SRC',
         status: evidenceStatus(!!sourceStep),
-        inputEvidence: sourceStep ? `${sourceStep.id} is upstream of pump.` : 'SRC boundary is missing.',
-        outputEvidence: sourceStep ? `Boundary data=${sourceStep.audit?.dataStatus?.status || '-'}.` : 'Connect SRC before final NPSH route defense.',
+        inputEvidence: sourceStep
+          ? `${sourceStep.id} is upstream of pump; standard form=${sourceStandard?.lockVersion || '-'}.`
+          : 'SRC boundary is missing.',
+        outputEvidence: sourceStep
+          ? `Boundary data=${sourceStep.audit?.dataStatus?.status || '-'}; sections=${(sourceStandard?.requiredSections || []).join(', ') || '-'}; Source Formula Defense=required.`
+          : 'Connect SRC before final NPSH route defense.',
+        standardForm: sourceStandard ? {
+          schemaVersion: sourceStandard.schemaVersion,
+          lockVersion: sourceStandard.lockVersion,
+          valuePolicy: sourceStandard.valuePolicy,
+          requiredSections: sourceStandard.requiredSections || []
+        } : null,
         requiredForDefense: true
       },
       {
