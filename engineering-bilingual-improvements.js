@@ -639,6 +639,7 @@
     ['runtime.title.warnings', 'Warnings', 'Warning'],
     ['runtime.title.dynamicInventory', 'Dynamic Inventory', 'Dynamic Inventory'],
     ['runtime.title.dynamicInventoryReview', 'Dynamic Inventory Review', 'Review Dynamic Inventory'],
+    ['menu.flowDynamicState', 'Flow Dynamic State', 'Flow Dynamic State'],
     ['runtime.title.dynamicStepSize', 'Dynamic Step Size', 'Ukuran Step Dinamis'],
     ['runtime.title.realtimeInterval', 'Realtime Interval', 'Interval Realtime'],
     ['runtime.title.curveData', 'Curve Data', 'Data Kurva'],
