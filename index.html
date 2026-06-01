@@ -184,23 +184,31 @@
           },
           "breadcrumb": {
             "@id": "https://npsh.virsim.id/#breadcrumb"
+          },
+          "mainEntity": {
+            "@id": "https://npsh.virsim.id/#learningresource"
           }
         },
         {
-          "@type": "WebApplication",
-          "@id": "https://npsh.virsim.id/#webapplication",
+          "@type": "LearningResource",
+          "@id": "https://npsh.virsim.id/#learningresource",
           "name": "Modeling & Simulation of a Pumping System for Evaluating Cavitation Potential in Centrifugal Pumps Based on NPSH Analysis",
           "alternateName": "Centrifugal Pumps NPSH Analysis",
           "url": "https://npsh.virsim.id/",
           "description": "Academic pump system modeling and simulation application for evaluating cavitation potential in centrifugal pumps based on NPSH analysis for various fluids.",
-          "applicationCategory": "EducationalApplication",
-          "applicationSubCategory": "Mechanical Engineering",
-          "operatingSystem": "Web browser",
-          "browserRequirements": "Requires a modern browser with JavaScript enabled",
-          "isAccessibleForFree": true,
-          "offers": {
-            "@type": "Offer",
-            "price": 0
+          "learningResourceType": "Interactive simulation",
+          "educationalUse": [
+            "Simulation",
+            "Engineering analysis"
+          ],
+          "teaches": [
+            "Net Positive Suction Head (NPSH) analysis",
+            "Centrifugal pump cavitation potential",
+            "Hydraulic route calculation"
+          ],
+          "audience": {
+            "@type": "EducationalAudience",
+            "educationalRole": "Mechanical engineering student"
           },
           "inLanguage": [
             "en",
@@ -217,6 +225,12 @@
             "Mechanical Engineering",
             "UNTIRTA"
           ],
+          "isPartOf": {
+            "@id": "https://npsh.virsim.id/#website"
+          },
+          "mainEntityOfPage": {
+            "@id": "https://npsh.virsim.id/#webpage"
+          },
           "creator": {
             "@id": "https://npsh.virsim.id/#creator"
           },
@@ -243,6 +257,7 @@
     }
     </script>
     <!-- SEO_METADATA_END -->
+
 
     <noscript><link rel="stylesheet" href="style.min.css?v=20260531-pagespeed7"></noscript>
     <style data-critical-about>
