@@ -1784,6 +1784,83 @@
       getSourceDefenseText('Pump NPSHa dependency: NPSHa = source head - suction losses - vapor pressure head - pump elevation correction.', 'Dependensi NPSHa pompa: NPSHa = source head - kehilangan sisi isap - head tekanan uap - koreksi elevasi pompa.')
     ]));
 
+    appendSourceDefenseCard(layout, getSourceDefenseText('Advisor Questions & Answers', 'Potensi Pertanyaan Dosen & Jawaban'), () => createSourceDefenseTable(
+      [
+        getSourceDefenseText('Parameter', 'Parameter'),
+        getSourceDefenseText('Likely Question', 'Potensi Pertanyaan'),
+        getSourceDefenseText('Defense Answer', 'Jawaban Defense'),
+        getSourceDefenseText('Used In', 'Dipakai Pada')
+      ],
+      [
+        [
+          getSourceDefenseText('Source Type', 'Tipe Source'),
+          getSourceDefenseText('Why was this source type selected?', 'Mengapa tipe source ini dipilih?'),
+          getSourceDefenseText('It defines how SRC behaves as the upstream boundary before the suction route reaches the pump.', 'Tipe ini mendefinisikan perilaku SRC sebagai boundary hulu sebelum route suction menuju pompa.'),
+          getSourceDefenseText('Boundary model, source head', 'Model boundary, head source')
+        ],
+        [
+          getSourceDefenseText('Pressure Basis', 'Basis Tekanan'),
+          getSourceDefenseText('Why does gauge pressure need conversion?', 'Mengapa tekanan gauge harus dikonversi?'),
+          getSourceDefenseText('NPSH is defended on an absolute pressure basis, so gauge pressure is converted before pressure head is calculated.', 'NPSH dipertahankan pada basis tekanan absolut, sehingga tekanan gauge dikonversi sebelum head tekanan dihitung.'),
+          getSourceDefenseText('Pressure head, NPSHa', 'Head tekanan, NPSHa')
+        ],
+        [
+          getSourceDefenseText('Boundary Pressure', 'Tekanan Boundary'),
+          getSourceDefenseText('Which formula uses this pressure?', 'Tekanan ini masuk ke rumus mana?'),
+          getSourceDefenseText('Boundary pressure becomes pressure head using H_p = P_abs / (rho x g).', 'Tekanan boundary menjadi head tekanan dengan H_p = P_abs / (rho x g).'),
+          getSourceDefenseText('Source hydraulic head', 'Head hidrolik source')
+        ],
+        [
+          getSourceDefenseText('Source Elevation', 'Elevasi Source'),
+          getSourceDefenseText('What is the effect of source elevation?', 'Apa pengaruh elevasi source?'),
+          getSourceDefenseText('Elevation adds or subtracts static head at the upstream boundary.', 'Elevasi menambah atau mengurangi static head pada boundary hulu.'),
+          getSourceDefenseText('Static head, NPSHa', 'Static head, NPSHa')
+        ],
+        [
+          getSourceDefenseText('Flow Basis', 'Basis Aliran'),
+          getSourceDefenseText('Why does SRC need a flow basis?', 'Mengapa SRC perlu basis flow?'),
+          getSourceDefenseText('Flow is passed to the hydraulic route so velocity, Reynolds number, and suction losses can be solved.', 'Flow diteruskan ke route hidrolik agar velocity, Reynolds number, dan suction loss dapat dihitung.'),
+          getSourceDefenseText('Pipe/Fitting/Valve loss, pump duty', 'Loss Pipe/Fitting/Valve, duty pompa')
+        ],
+        [
+          getSourceDefenseText('Density', 'Densitas'),
+          getSourceDefenseText('Where is density used?', 'Densitas digunakan di mana?'),
+          getSourceDefenseText('Density converts pressure to head and converts mass flow to volumetric flow when mass flow is selected.', 'Densitas mengonversi tekanan menjadi head dan mengonversi mass flow menjadi volumetric flow jika mode mass flow dipilih.'),
+          getSourceDefenseText('Head conversion, flow conversion', 'Konversi head, konversi flow')
+        ],
+        [
+          getSourceDefenseText('Kinematic Viscosity', 'Viskositas Kinematik'),
+          getSourceDefenseText('Is viscosity used by pipe, fitting, valve, and Moody chart?', 'Apakah viskositas dipakai oleh pipe, fitting, valve, dan Diagram Moody?'),
+          getSourceDefenseText('Yes. Kinematic viscosity is used for Reynolds number, then friction factor or Moody interpretation, then hydraulic loss.', 'Ya. Viskositas kinematik dipakai untuk Reynolds number, lalu friction factor atau interpretasi Moody, lalu hydraulic loss.'),
+          getSourceDefenseText('Reynolds number, friction loss', 'Reynolds number, friction loss')
+        ],
+        [
+          getSourceDefenseText('Vapor Pressure', 'Tekanan Uap'),
+          getSourceDefenseText('Why is vapor pressure important for cavitation?', 'Mengapa tekanan uap penting untuk kavitasi?'),
+          getSourceDefenseText('Vapor pressure head is subtracted from NPSHa; higher vapor pressure reduces cavitation margin.', 'Head tekanan uap dikurangkan dari NPSHa; tekanan uap yang lebih tinggi menurunkan margin kavitasi.'),
+          getSourceDefenseText('NPSHa, cavitation risk', 'NPSHa, risiko kavitasi')
+        ],
+        [
+          getSourceDefenseText('Temperature Basis', 'Basis Temperatur'),
+          getSourceDefenseText('Why is temperature controlled from Fluid Basis?', 'Mengapa temperatur dikontrol dari Basis Fluida?'),
+          getSourceDefenseText('Fluid Basis is the single auditable property source, so SRC uses the same density, viscosity, and vapor pressure as the network.', 'Basis Fluida adalah sumber properti tunggal yang auditable, sehingga SRC memakai densitas, viskositas, dan tekanan uap yang sama dengan network.'),
+          getSourceDefenseText('Fluid properties, audit trace', 'Properti fluida, audit trace')
+        ],
+        [
+          getSourceDefenseText('Route Completeness', 'Kelengkapan Route'),
+          getSourceDefenseText('Why can the trace be partial?', 'Mengapa trace bisa parsial?'),
+          getSourceDefenseText('SRC boundary data can be audited first; final suction loss requires a solved route from SRC through suction PFV to pump.', 'Data boundary SRC dapat diaudit lebih dulu; suction loss final memerlukan route solved dari SRC melalui PFV suction ke pompa.'),
+          getSourceDefenseText('Route trace, suction loss', 'Route trace, suction loss')
+        ],
+        [
+          getSourceDefenseText('Stale Calculation', 'Perhitungan Stale'),
+          getSourceDefenseText('What happens after SRC or Fluid Basis changes?', 'Apa yang terjadi setelah SRC atau Basis Fluida berubah?'),
+          getSourceDefenseText('Run Solve so the route trace, suction loss, and NPSHa are recalculated from the latest inputs.', 'Jalankan Solve agar route trace, suction loss, dan NPSHa dihitung ulang dari input terbaru.'),
+          getSourceDefenseText('Traceability, final validation', 'Traceability, validasi final')
+        ]
+      ]
+    ));
+
     appendSourceDefenseCard(layout, getSourceDefenseText('Validation Gate / Why Trace Was Partial', 'Gate Validasi / Mengapa Trace Parsial'), () => createSourceDefenseList([
       getSourceDefenseText('Complete the solid hydraulic route SRC -> suction pipe/fitting/valve -> pump before expecting suction-loss substitution.', 'Lengkapi route hidrolik solid SRC -> suction pipe/fitting/valve -> pump sebelum mengharapkan substitusi suction loss.'),
       getSourceDefenseText('Run Solve after changing SRC, Fluid Basis, suction PFV, or pump elevation so the route-dependent trace becomes current.', 'Jalankan Hitung setelah mengubah SRC, Basis Fluida, PFV suction, atau elevasi pompa agar trace yang bergantung route menjadi current.'),
