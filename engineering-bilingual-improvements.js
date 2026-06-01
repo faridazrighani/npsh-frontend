@@ -2078,9 +2078,21 @@
           getSourceDefenseText('Boundary model, source head', 'Model boundary, head source')
         ],
         [
+          getSourceDefenseText('Type Meaning', 'Makna Tipe'),
+          getSourceDefenseText('Why is this explanation shown?', 'Mengapa penjelasan ini ditampilkan?'),
+          getSourceDefenseText('It documents the engineering meaning of the selected Source Type so the boundary assumption is auditable before calculation.', 'Ini mendokumentasikan makna engineering dari Tipe Source yang dipilih agar asumsi boundary dapat diaudit sebelum perhitungan.'),
+          getSourceDefenseText('Boundary assumption defense', 'Defense asumsi boundary')
+        ],
+        [
           getSourceDefenseText('Pressure Basis', 'Basis Tekanan'),
           getSourceDefenseText('Why does gauge pressure need conversion?', 'Mengapa tekanan gauge harus dikonversi?'),
           getSourceDefenseText('NPSH is defended on an absolute pressure basis, so gauge pressure is converted before pressure head is calculated.', 'NPSH dipertahankan pada basis tekanan absolut, sehingga tekanan gauge dikonversi sebelum head tekanan dihitung.'),
+          getSourceDefenseText('Pressure head, NPSHa', 'Head tekanan, NPSHa')
+        ],
+        [
+          getSourceDefenseText('Calculated Abs. Pressure', 'Tekanan Abs. Terhitung'),
+          getSourceDefenseText('Why is absolute pressure shown separately?', 'Mengapa tekanan absolut ditampilkan terpisah?'),
+          getSourceDefenseText('NPSH calculation requires absolute pressure. Gauge pressure is converted using atmospheric pressure before pressure head is calculated.', 'Perhitungan NPSH membutuhkan tekanan absolut. Tekanan gauge dikonversi menggunakan tekanan atmosfer sebelum head tekanan dihitung.'),
           getSourceDefenseText('Pressure head, NPSHa', 'Head tekanan, NPSHa')
         ],
         [
@@ -2102,6 +2114,18 @@
           getSourceDefenseText('Pipe/Fitting/Valve loss, pump duty', 'Loss Pipe/Fitting/Valve, duty pompa')
         ],
         [
+          getSourceDefenseText('Mass Flow', 'Mass Flow'),
+          getSourceDefenseText('Why does mass flow become volumetric flow?', 'Mengapa mass flow menjadi volumetric flow?'),
+          getSourceDefenseText('Hydraulic velocity, Reynolds number, and pipe losses require volumetric flow, so mass flow is divided by density.', 'Velocity hidrolik, Reynolds number, dan pipe loss membutuhkan volumetric flow, sehingga mass flow dibagi dengan densitas.'),
+          getSourceDefenseText('Pipe velocity, Reynolds number', 'Velocity pipa, Reynolds number')
+        ],
+        [
+          getSourceDefenseText('Volumetric Flow (Calculated)', 'Volumetric Flow (Terhitung)'),
+          getSourceDefenseText('Is this user input or calculated result?', 'Apakah ini input user atau hasil perhitungan?'),
+          getSourceDefenseText('It is calculated from mass flow and density, then used by the hydraulic route for pipe/fitting/valve loss.', 'Ini dihitung dari mass flow dan densitas, lalu dipakai route hidrolik untuk loss pipe/fitting/valve.'),
+          getSourceDefenseText('Hydraulic loss, pump duty', 'Loss hidrolik, duty pompa')
+        ],
+        [
           getSourceDefenseText('Density', 'Densitas'),
           getSourceDefenseText('Where is density used?', 'Densitas digunakan di mana?'),
           getSourceDefenseText('Density converts pressure to head and converts mass flow to volumetric flow when mass flow is selected.', 'Densitas mengonversi tekanan menjadi head dan mengonversi mass flow menjadi volumetric flow jika mode mass flow dipilih.'),
@@ -2114,9 +2138,27 @@
           getSourceDefenseText('Reynolds number, friction loss', 'Reynolds number, friction loss')
         ],
         [
+          getSourceDefenseText('Dynamic Viscosity', 'Viskositas Dinamik'),
+          getSourceDefenseText('Why show dynamic viscosity if Moody uses kinematic viscosity?', 'Mengapa viskositas dinamik ditampilkan jika Moody memakai viskositas kinematik?'),
+          getSourceDefenseText('Dynamic viscosity supports fluid-property audit and is related to kinematic viscosity by nu = mu / rho.', 'Viskositas dinamik mendukung audit properti fluida dan berhubungan dengan viskositas kinematik melalui nu = mu / rho.'),
+          getSourceDefenseText('Fluid property defense', 'Defense properti fluida')
+        ],
+        [
+          getSourceDefenseText('Specific Weight', 'Berat Spesifik'),
+          getSourceDefenseText('Why is specific weight needed?', 'Mengapa berat spesifik diperlukan?'),
+          getSourceDefenseText('Specific weight rho x g links pressure, head, and hydraulic energy terms used in pressure-head and NPSH defense.', 'Berat spesifik rho x g menghubungkan tekanan, head, dan energi hidrolik yang dipakai pada defense pressure-head dan NPSH.'),
+          getSourceDefenseText('Pressure head, NPSH basis', 'Head tekanan, basis NPSH')
+        ],
+        [
           getSourceDefenseText('Vapor Pressure', 'Tekanan Uap'),
           getSourceDefenseText('Why is vapor pressure important for cavitation?', 'Mengapa tekanan uap penting untuk kavitasi?'),
           getSourceDefenseText('Vapor pressure head is subtracted from NPSHa; higher vapor pressure reduces cavitation margin.', 'Head tekanan uap dikurangkan dari NPSHa; tekanan uap yang lebih tinggi menurunkan margin kavitasi.'),
+          getSourceDefenseText('NPSHa, cavitation risk', 'NPSHa, risiko kavitasi')
+        ],
+        [
+          getSourceDefenseText('Vapor Pressure Head', 'Head Tekanan Uap'),
+          getSourceDefenseText('Why convert vapor pressure to head?', 'Mengapa tekanan uap dikonversi menjadi head?'),
+          getSourceDefenseText('NPSHa is evaluated in head units, so vapor pressure is converted to vapor pressure head and subtracted from suction head.', 'NPSHa dievaluasi dalam satuan head, sehingga tekanan uap dikonversi menjadi head tekanan uap dan dikurangkan dari suction head.'),
           getSourceDefenseText('NPSHa, cavitation risk', 'NPSHa, risiko kavitasi')
         ],
         [
@@ -2124,6 +2166,12 @@
           getSourceDefenseText('Why is temperature controlled from Fluid Basis?', 'Mengapa temperatur dikontrol dari Basis Fluida?'),
           getSourceDefenseText('Fluid Basis is the single auditable property source, so SRC uses the same density, viscosity, and vapor pressure as the network.', 'Basis Fluida adalah sumber properti tunggal yang auditable, sehingga SRC memakai densitas, viskositas, dan tekanan uap yang sama dengan network.'),
           getSourceDefenseText('Fluid properties, audit trace', 'Properti fluida, audit trace')
+        ],
+        [
+          getSourceDefenseText('Fluid Basis Link', 'Link Basis Fluida'),
+          getSourceDefenseText('Why is SRC not editing fluid properties directly?', 'Mengapa SRC tidak mengedit properti fluida secara langsung?'),
+          getSourceDefenseText('SRC uses Fluid Basis as the single auditable source of fluid properties to avoid inconsistent or stale calculations.', 'SRC memakai Basis Fluida sebagai sumber properti fluida tunggal yang auditable untuk menghindari perhitungan yang tidak konsisten atau stale.'),
+          getSourceDefenseText('Audit trace, dependency control', 'Audit trace, kontrol dependensi')
         ],
         [
           getSourceDefenseText('Route Completeness', 'Kelengkapan Route'),
