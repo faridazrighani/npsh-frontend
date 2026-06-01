@@ -460,8 +460,8 @@
 
     <!-- Ribbon Toolbar -->
     <div class="ribbon">
-        <button class="ribbon-btn" id="btn-fluid-basis" title="Open Fluid Basis" data-i18n-title="ribbon.openFluidBasis">
-            <div class="ribbon-icon">
+        <button class="ribbon-btn" id="btn-fluid-basis" type="button" title="Open Fluid Basis" data-i18n-title="ribbon.openFluidBasis">
+            <span class="ribbon-icon">
                 <svg width="22" height="24" viewBox="0 0 40 50" aria-hidden="true">
                     <defs>
                         <linearGradient id="fluidBasisGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -471,14 +471,14 @@
                     </defs>
                     <path d="M 20 5 C 20 5, 5 25, 5 35 C 5 45, 15 45, 20 45 C 25 45, 35 45, 35 35 C 35 25, 20 5, 20 5 Z" fill="url(#fluidBasisGrad)" stroke="#001f3f" stroke-width="1.5"/>
                 </svg>
-            </div>
+            </span>
             <span class="ribbon-label" data-i18n-text="ribbon.fluidBasis">Fluid Basis</span>
         </button>
         <button class="basis-status-pill basis-status-unconfirmed" id="basisStatusPill" type="button" title="Open Fluid Basis and Unit Standard setup">
             <span id="basisStatusFluid">Fluid: Water @ 25 deg C</span>
             <span id="basisStatusUnits">Metric / European Engineering</span>
         </button>
-        <div class="basis-compact-status" id="basisCompactStatus" aria-label="Active fluid basis and unit standard" data-i18n-aria-label="basis.activeAria" aria-live="polite" hidden>
+        <div class="basis-compact-status" id="basisCompactStatus" role="status" aria-label="Active fluid basis and unit standard" data-i18n-aria-label="basis.activeAria" aria-live="polite" hidden>
             <span id="basisCompactFluid">Water @ 25.0 deg C</span>
             <span id="basisCompactUnits">Metric / European Engineering</span>
         </div>
@@ -530,7 +530,7 @@
             <img class="academic-logo" src="png/untirta-75.webp" width="56" height="56" alt="Sultan Ageng Tirtayasa University logo">
             <div class="academic-copy">
                 <div class="academic-university" title="Sultan Ageng Tirtayasa University - Mechanical Engineering">Sultan Ageng Tirtayasa University &ndash; Mechanical Engineering</div>
-                <div class="academic-thesis" aria-label="Modeling &amp; Simulation of a Pumping System for Evaluating Cavitation Potential in Centrifugal Pumps Based on NPSH Analysis." title="Modeling &amp; Simulation of a Pumping System for Evaluating Cavitation Potential in Centrifugal Pumps Based on NPSH Analysis.">
+                <div class="academic-thesis" title="Modeling &amp; Simulation of a Pumping System for Evaluating Cavitation Potential in Centrifugal Pumps Based on NPSH Analysis.">
                     <span class="academic-thesis-line">Modeling &amp; Simulation of a Pumping System for Evaluating Cavitation</span>
                     <span class="academic-thesis-line">Potential in Centrifugal Pumps Based on NPSH Analysis.</span>
                 </div>
@@ -541,10 +541,10 @@
         <div class="ribbon-divider academic-solve-divider"></div>
         
         <button class="ribbon-btn solve-ribbon-btn" id="btn-solve" type="button" aria-label="Run hydraulic and NPSH evaluation" title="Run hydraulic and NPSH evaluation" data-i18n-aria-label="ribbon.solveTitle" data-i18n-title="ribbon.solveTitle">
-            <div class="ribbon-icon">
+            <span class="ribbon-icon">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#28a745" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 <img class="solve-mobile-logo" src="png/untirta-75.webp" width="28" height="28" alt="" aria-hidden="true">
-            </div>
+            </span>
             <span class="ribbon-label" data-i18n-text="ribbon.solve">Solve</span>
         </button>
         <section class="academic-compact-identity" aria-label="Compact thesis identity">
@@ -569,7 +569,7 @@
             <svg class="pfd-lines" id="svg-lines">
             </svg>
 
-            <div class="canvas-status-legend" aria-label="Pump status legend">
+            <div class="canvas-status-legend" role="region" aria-label="Pump status legend">
                 <div class="canvas-overlay-title" data-i18n-text="canvas.pumpStatus">Pump Status</div>
                 <div class="canvas-legend-row"><span class="status-dot status-safe"></span><span data-i18n-text="status.safe">Safe</span></div>
                 <div class="canvas-legend-row"><span class="status-dot status-warning"></span><span data-i18n-text="status.warning">Warning</span></div>
@@ -582,7 +582,7 @@
             </div>
 
             <section class="canvas-warning-panel canvas-task-window" id="canvasWarningPanel" aria-label="Equipment warnings" aria-live="polite" hidden data-i18n-aria-label="canvas.equipmentWarnings">
-                <div class="canvas-warning-header" id="canvasWarningHeader" tabindex="0" aria-label="Move warnings window" data-i18n-aria-label="canvas.moveWarningsWindow">
+                <div class="canvas-warning-header" id="canvasWarningHeader" role="group" tabindex="0" aria-label="Move warnings window" data-i18n-aria-label="canvas.moveWarningsWindow">
                     <span data-i18n-text="canvas.warnings">Warnings</span>
                     <span class="canvas-warning-header-actions">
                         <span class="canvas-warning-count" id="canvasWarningCount">0</span>
