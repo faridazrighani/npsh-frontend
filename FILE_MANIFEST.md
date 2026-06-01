@@ -17,7 +17,7 @@ Summary:
 
 ```text
 Total files: 153
-Total size: 63,438,899 bytes
+Total size: 63,438,911 bytes
 ```
 
 Top-level contents:
@@ -69,7 +69,7 @@ Route audit cache key: engineering-route-trace-audit.js?v=20260531-auditv7
 Defense export cache key: engineering-defense-export-package.js?v=20260531-defensev2
 Runtime API config: same-origin /api/simulate
 NPSH margin runtime cache key: engineering-npsh-margin-runtime.js?v=20260602-npsh-margin1
-Pump readiness visibility cache key: engineering-pump-readiness-visibility-runtime.js?v=20260602-pump-readiness-visibility1
+Pump readiness visibility cache key: engineering-pump-readiness-visibility-runtime.js?v=20260602-pump-readiness-visibility2
 Pages API proxy: _worker.js -> env.NPSH_API.fetch(request), static fallback -> env.ASSETS.fetch(request)
 ```
 

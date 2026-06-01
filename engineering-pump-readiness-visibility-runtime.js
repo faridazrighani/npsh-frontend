@@ -56,21 +56,16 @@
     delete document.documentElement.dataset.showPumpActionReadinessPanel;
     installHiddenStyle();
     removePumpActionReadinessPanels(document);
-
-    if (!global.__pumpReadinessVisibilityObserver) {
-      global.__pumpReadinessVisibilityObserver = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-          mutation.addedNodes.forEach((node) => {
-            if (node && node.nodeType === 1) removePumpActionReadinessPanels(node);
-          });
-        });
-      });
-      global.__pumpReadinessVisibilityObserver.observe(document.documentElement, {
-        childList: true,
-        subtree: true
-      });
-    }
     return false;
+  }
+
+  function scheduleGuardRefresh() {
+    if (typeof document === "undefined" || shouldShowPumpActionReadinessPanel()) return;
+    global.clearTimeout?.(global.__pumpReadinessVisibilityRefreshTimer);
+    global.__pumpReadinessVisibilityRefreshTimer = global.setTimeout?.(() => {
+      installHiddenStyle();
+      removePumpActionReadinessPanels(document);
+    }, 80);
   }
 
   global.shouldShowPumpActionReadinessPanel = shouldShowPumpActionReadinessPanel;
@@ -80,5 +75,7 @@
     installGuard();
     document.addEventListener("DOMContentLoaded", installGuard);
     global.addEventListener?.("load", installGuard);
+    document.addEventListener("click", scheduleGuardRefresh, true);
+    document.addEventListener("pointerup", scheduleGuardRefresh, true);
   }
 }("undefined" != typeof window ? window : globalThis);
