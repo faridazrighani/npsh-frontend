@@ -181,26 +181,34 @@ function buildStructuredData(config) {
       ],
       creator: { '@id': personId(siteUrl) },
       publisher: { '@id': orgId(siteUrl) },
-      breadcrumb: { '@id': `${siteUrl}#breadcrumb` }
+      breadcrumb: { '@id': `${siteUrl}#breadcrumb` },
+      mainEntity: { '@id': `${siteUrl}#learningresource` }
     },
     {
-      '@type': 'WebApplication',
-      '@id': `${siteUrl}#webapplication`,
+      '@type': 'LearningResource',
+      '@id': `${siteUrl}#learningresource`,
       name: site.name,
       alternateName: site.shortName,
       url: siteUrl,
       description: site.description,
-      applicationCategory: 'EducationalApplication',
-      applicationSubCategory: site.field,
-      operatingSystem: 'Web browser',
-      browserRequirements: 'Requires a modern browser with JavaScript enabled',
-      isAccessibleForFree: true,
-      offers: {
-        '@type': 'Offer',
-        price: 0
+      learningResourceType: 'Interactive simulation',
+      educationalUse: [
+        'Simulation',
+        'Engineering analysis'
+      ],
+      teaches: [
+        'Net Positive Suction Head (NPSH) analysis',
+        'Centrifugal pump cavitation potential',
+        'Hydraulic route calculation'
+      ],
+      audience: {
+        '@type': 'EducationalAudience',
+        educationalRole: 'Mechanical engineering student'
       },
       inLanguage: site.languages,
       keywords: site.keywords,
+      isPartOf: { '@id': `${siteUrl}#website` },
+      mainEntityOfPage: { '@id': `${siteUrl}#webpage` },
       creator: { '@id': personId(siteUrl) },
       publisher: { '@id': orgId(siteUrl) },
       image: { '@id': imageId(siteUrl) }
@@ -361,13 +369,14 @@ function validateRenderedHtml(html) {
   const parsed = JSON.parse(ldMatch[1]);
   assert.strictEqual(parsed['@context'], 'https://schema.org', 'JSON-LD context must be schema.org');
   assert(Array.isArray(parsed['@graph']) && parsed['@graph'].length >= 7, 'JSON-LD graph is incomplete');
-  const webApplication = parsed['@graph'].find(entry => entry['@id'] === 'https://npsh.virsim.id/#webapplication');
-  assert(webApplication, 'WebApplication JSON-LD node is missing');
-  assert.strictEqual(webApplication['@type'], 'WebApplication', 'WebApplication JSON-LD should use a single WebApplication type.');
-  assert.strictEqual(webApplication.applicationCategory, 'EducationalApplication', 'WebApplication category should use a Google-supported software app category.');
-  assert.strictEqual(webApplication.isAccessibleForFree, true, 'WebApplication should disclose free access.');
-  assert.strictEqual(webApplication.offers?.['@type'], 'Offer', 'WebApplication should expose a free Offer.');
-  assert.strictEqual(webApplication.offers?.price, 0, 'WebApplication free Offer price should be 0.');
+  const learningResource = parsed['@graph'].find(entry => entry['@id'] === 'https://npsh.virsim.id/#learningresource');
+  assert(learningResource, 'LearningResource JSON-LD node is missing');
+  assert.strictEqual(learningResource['@type'], 'LearningResource', 'Academic simulation JSON-LD should avoid SoftwareApplication rich-result rating warnings.');
+  assert.strictEqual(learningResource.learningResourceType, 'Interactive simulation', 'LearningResource should describe the app as an interactive simulation.');
+  assert(Array.isArray(learningResource.teaches) && learningResource.teaches.includes('Net Positive Suction Head (NPSH) analysis'), 'LearningResource should teach NPSH analysis.');
+  assert(!parsed['@graph'].some(entry => entry['@id'] === 'https://npsh.virsim.id/#webapplication'), 'Software app rich-result node should stay removed until real public ratings/reviews exist.');
+  assert(!Object.prototype.hasOwnProperty.call(learningResource, 'aggregateRating'), 'Do not publish aggregateRating without real public ratings.');
+  assert(!Object.prototype.hasOwnProperty.call(learningResource, 'review'), 'Do not publish review without real public reviews.');
 }
 
 function renderIndex(original, seoBlock) {
