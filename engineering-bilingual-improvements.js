@@ -3,7 +3,7 @@
   const SOURCE_ADVISOR_AUDIT_LOCK = 'source-advisor-hidden-v1';
   const SOURCE_ADVISOR_AUDIT_LOCK_REASON = 'src-window-simplified-for-academic-audit';
   const SOURCE_FORMULA_DEFENSE_PLACEMENT_LOCK = 'source-formula-defense-src-header-right-v1';
-  const SOURCE_ADVISOR_HIDDEN_SECTIONS = 'pump-readiness,semantic-attachment,hydraulic-connection,defense-ready-note,boundary-role';
+  const SOURCE_ADVISOR_HIDDEN_SECTIONS = 'pump-readiness,semantic-attachment,hydraulic-connection,defense-ready-note,boundary-role,generic-meaning';
   const SOURCE_TYPE_MEANING_VISIBLE_LOCK = 'source-type-meaning-visible-v1';
 
   const CRITICAL_TERM_KEYS = Object.freeze([
@@ -1166,6 +1166,7 @@
       }
       .persistent-object-properties-task-window[data-advisor-hide-semantic-attachment="true"] [data-advisor-hidden-section="source-semantic-attachment"],
       .persistent-object-properties-task-window[data-advisor-hide-hydraulic-connection="true"] [data-advisor-hidden-section="source-hydraulic-connection"],
+      .persistent-object-properties-task-window[data-advisor-hide-generic-meaning="true"] [data-advisor-hidden-section="source-generic-meaning"],
       .persistent-object-properties-task-window [data-advisor-audit-lock="${SOURCE_ADVISOR_AUDIT_LOCK}"] {
         display: none !important;
       }
@@ -1275,6 +1276,7 @@
     const propKey = String(node?.dataset?.propKey || node?.dataset?.fieldKey || node?.getAttribute?.('data-prop-key') || node?.getAttribute?.('data-field-key') || '').trim();
     if (propKey === 'source-boundary-role') return 'source-boundary-role';
     if (isSourceTypeMeaningText(value)) return '';
+    if (isSourceGenericMeaningText(value, node)) return 'source-generic-meaning';
     if (/^Boundary Role\b/i.test(value)
       || /^Peran Boundary\b/i.test(value)
       || /^Hydraulic boundary\s*\/\s*tie-in$/i.test(value)
@@ -1338,8 +1340,21 @@
   function isSourceTypeMeaningText(text = '') {
     const value = String(text || '').replace(/\s+/g, ' ').trim();
     return /^Type Meaning\b/i.test(value)
-      || /^Makna Tipe\b/i.test(value)
-      || /^Maknanya\b/i.test(value);
+      || /^Makna Tipe\b/i.test(value);
+  }
+
+  function isSourceGenericMeaningText(text = '', node = null) {
+    const value = String(text || '').replace(/\s+/g, ' ').trim();
+    const propKey = String(node?.dataset?.propKey || node?.dataset?.fieldKey || node?.getAttribute?.('data-prop-key') || node?.getAttribute?.('data-field-key') || '').trim();
+    if (!value && !propKey) return false;
+    if (propKey === 'source-type-meaning' || /source[-_]?type[-_]?meaning|typeMeaning/i.test(propKey) || isSourceTypeMeaningText(value)) return false;
+    if (/(^|[-_])(meaning|makna)([-_]|$)/i.test(propKey)) return true;
+    if (/^Meaning\b/i.test(value) || /^Makna\b/i.test(value) || /^Maknanya\b/i.test(value)) return true;
+    return /dashed attachment may inherit/i.test(value)
+      || /flow still needs a real hydraulic path/i.test(value)
+      || /attachment dashed.*mewarisi/i.test(value)
+      || /mewarisi.*(tank|tangki|vessel).*path hidrolik/i.test(value)
+      || /path hidrolik nyata|jalur hidrolik nyata/i.test(value);
   }
 
   function normalizeSourceTypeForMeaning(sourceType = '') {
@@ -1372,12 +1387,9 @@
         id: 'Boundary manual mandiri. Data tekanan, elevasi, dan aliran dimasukkan langsung pada SRC.'
       }
     };
-    const fromApp = typeof root.getSourceTypeDescription === 'function'
-      ? root.getSourceTypeDescription({ props: { sourceType: type } })
-      : '';
     const entry = fallback[type] || fallback['Open Tank / Reservoir'];
     if (language === 'id') return entry.id;
-    return fromApp || entry.en;
+    return entry.en;
   }
 
   function getSourceTypeValueFromWindow(windowNode) {
@@ -1481,6 +1493,7 @@
     if (windowNode.dataset && windowNode.dataset.advisorHideHydraulicConnection !== 'true') windowNode.dataset.advisorHideHydraulicConnection = 'true';
     if (windowNode.dataset && windowNode.dataset.advisorHideDefenseReadyNote !== 'true') windowNode.dataset.advisorHideDefenseReadyNote = 'true';
     if (windowNode.dataset && windowNode.dataset.advisorHideBoundaryRole !== 'true') windowNode.dataset.advisorHideBoundaryRole = 'true';
+    if (windowNode.dataset && windowNode.dataset.advisorHideGenericMeaning !== 'true') windowNode.dataset.advisorHideGenericMeaning = 'true';
     keepSourceTypeMeaningRowsVisible(windowNode);
     let hidden = 0;
     windowNode.querySelectorAll?.('tr, h1, h2, h3, h4, h5, h6, legend, .fluid-field-row, .source-field-row, .object-property-row, .pipe-task-field-row, .object-task-field-row, .source-field-card, .object-field, .field-card, .task-field, [data-prop-key], [data-field-key], [class*="section-title"], [class*="section-heading"], [class*="card-title"]').forEach((row) => {
