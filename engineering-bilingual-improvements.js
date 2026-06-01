@@ -5,6 +5,7 @@
   const SOURCE_FORMULA_DEFENSE_PLACEMENT_LOCK = 'source-formula-defense-src-header-right-v1';
   const SOURCE_ADVISOR_HIDDEN_SECTIONS = 'pump-readiness,semantic-attachment,hydraulic-connection,defense-ready-note,boundary-role,generic-meaning';
   const SOURCE_TYPE_MEANING_VISIBLE_LOCK = 'source-type-meaning-visible-v1';
+  const SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK = 'source-fluid-basis-link-after-flow-v1';
 
   const CRITICAL_TERM_KEYS = Object.freeze([
     'head',
@@ -258,7 +259,10 @@
     'source-effective-elevation': { i18nKey: 'trace.source.effectiveElevation', en: 'Source Elevation', id: 'Elevasi Source' },
     'source-flow': { i18nKey: 'trace.source.flow', en: 'Volumetric Flow', id: 'Flow Volumetrik' },
     'source-fluid-density': { i18nKey: 'trace.source.fluidDensity', en: 'Density Used', id: 'Densitas Digunakan' },
+    'source-fluid-dynamic-viscosity': { i18nKey: 'trace.source.fluidDynamicViscosity', en: 'Dynamic Viscosity', id: 'Viskositas Dinamik' },
+    'source-fluid-specific-weight': { i18nKey: 'trace.source.fluidSpecificWeight', en: 'Specific Weight', id: 'Berat Spesifik' },
     'source-fluid-vapor-pressure': { i18nKey: 'trace.source.fluidVaporPressure', en: 'Vapor Pressure', id: 'Tekanan Uap' },
+    'source-fluid-vapor-pressure-head': { i18nKey: 'trace.source.fluidVaporPressureHead', en: 'Vapor Pressure Head', id: 'Head Tekanan Uap' },
     'source-fluid-viscosity': { i18nKey: 'trace.source.fluidViscosity', en: 'Kinematic Viscosity', id: 'Viskositas Kinematik' },
     'source-mass-flow': { i18nKey: 'trace.source.massFlow', en: 'Mass Flow', id: 'Laju Alir Massa' },
     'source-temperature': { i18nKey: 'trace.source.temperature', en: 'Temperature', id: 'Temperatur' },
@@ -1207,6 +1211,16 @@
         padding: 4px 12px;
         white-space: nowrap;
       }
+      .persistent-object-properties-task-window[data-source-fluid-basis-link-layout-lock="${SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK}"] .object-task-field-row[data-prop-key="source-fluid-dynamic-viscosity"],
+      .persistent-object-properties-task-window[data-source-fluid-basis-link-layout-lock="${SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK}"] .object-task-field-row[data-prop-key="source-fluid-specific-weight"],
+      .persistent-object-properties-task-window[data-source-fluid-basis-link-layout-lock="${SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK}"] .object-task-field-row[data-prop-key="source-fluid-vapor-pressure-head"] {
+        min-height: 34px;
+        overflow-anchor: none;
+      }
+      .persistent-object-properties-task-window[data-source-fluid-basis-link-layout-lock="${SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK}"] [data-source-fluid-basis-derived="true"] .prop-value {
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
       @media (max-width: 520px) {
         .persistent-object-properties-task-window .source-header-defense-layout {
           align-items: center;
@@ -1486,6 +1500,268 @@
     return restored;
   }
 
+  const SOURCE_FLUID_BASIS_EXTRA_READOUTS = Object.freeze([
+    {
+      key: 'source-fluid-dynamic-viscosity',
+      labelEn: 'Dynamic Viscosity Used',
+      labelId: 'Visk. Dinamik Digunakan',
+      unit: 'cP',
+      digits: 3,
+      valueName: 'dynamicViscosity'
+    },
+    {
+      key: 'source-fluid-specific-weight',
+      labelEn: 'Specific Weight Used',
+      labelId: 'Berat Spesifik Digunakan',
+      unit: 'N/m3',
+      digits: 3,
+      valueName: 'specificWeight'
+    },
+    {
+      key: 'source-fluid-vapor-pressure-head',
+      labelEn: 'Vapor Pressure Head',
+      labelId: 'Head Tekanan Uap',
+      unit: 'm',
+      digits: 3,
+      valueName: 'vaporPressureHead'
+    }
+  ]);
+
+  function cssEscapeSourceValue(value = '') {
+    if (typeof root.CSS !== 'undefined' && typeof root.CSS.escape === 'function') return root.CSS.escape(String(value));
+    return String(value).replace(/["\\]/g, '\\$&');
+  }
+
+  function parseSourceFluidBasisNumber(value, fallback = NaN) {
+    const number = Number.parseFloat(String(value ?? '').replace(',', '.'));
+    return Number.isFinite(number) ? number : fallback;
+  }
+
+  function getSourceFieldElement(windowNode, key) {
+    if (!windowNode?.querySelector) return null;
+    const safeKey = cssEscapeSourceValue(key);
+    return windowNode.querySelector(`[data-key="${safeKey}"]`)
+      || windowNode.querySelector(`[data-prop-key="${safeKey}"] .prop-value`)
+      || windowNode.querySelector(`[data-prop-key="${safeKey}"]`);
+  }
+
+  function getSourceFieldRow(windowNode, key) {
+    const element = getSourceFieldElement(windowNode, key);
+    return element?.closest?.('tr, .source-field-row, .object-property-row, .pipe-task-field-row, .object-task-field-row, .source-field-card, .object-field, .field-card, .task-field') || null;
+  }
+
+  function setSourceFieldReadout(windowNode, key, text) {
+    const element = getSourceFieldElement(windowNode, key);
+    if (!element) return false;
+    if (element.textContent !== text) element.textContent = text;
+    if (element.dataset) element.dataset.sourceFluidBasisLayoutLock = SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK;
+    const row = getSourceFieldRow(windowNode, key);
+    if (row?.dataset) {
+      row.dataset.propKey = key;
+      row.dataset.sourceFluidBasisLayoutLock = SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK;
+    }
+    return true;
+  }
+
+  function formatSourceFluidBasisReadout(value, unit, digits = 3) {
+    const number = parseSourceFluidBasisNumber(value, NaN);
+    if (!Number.isFinite(number)) return '-';
+    return `${number.toFixed(digits)} ${unit}`;
+  }
+
+  function readSourceFluidBasisNumber(windowNode, key, fallback = NaN) {
+    return parseSourceFluidBasisNumber(getSourceFieldElement(windowNode, key)?.textContent, fallback);
+  }
+
+  function getSourceFluidBasisValues(windowNode) {
+    const model = getRuntimeModel() || {};
+    const nodeId = String(windowNode?.dataset?.nodeId || '').trim();
+    const sourceNode = nodeId ? model[nodeId] : null;
+    const baseFluid = model?.FLUID?.props || {};
+    const effectiveFluid = typeof root.getFluidPropsAtSourceTemperature === 'function'
+      ? root.getFluidPropsAtSourceTemperature(sourceNode, baseFluid)
+      : { ...baseFluid };
+    const density = parseSourceFluidBasisNumber(effectiveFluid?.density, readSourceFluidBasisNumber(windowNode, 'source-fluid-density'));
+    const kinematicViscosity = parseSourceFluidBasisNumber(
+      effectiveFluid?.viscosity ?? effectiveFluid?.kinematicViscosity,
+      readSourceFluidBasisNumber(windowNode, 'source-fluid-viscosity')
+    );
+    const vaporPressure = parseSourceFluidBasisNumber(
+      effectiveFluid?.vaporPressure,
+      readSourceFluidBasisNumber(windowNode, 'source-fluid-vapor-pressure')
+    );
+    let dynamicViscosity = parseSourceFluidBasisNumber(
+      effectiveFluid?.dynViscosity ?? effectiveFluid?.dynamicViscosity,
+      readSourceFluidBasisNumber(windowNode, 'source-fluid-dynamic-viscosity')
+    );
+    if (!Number.isFinite(dynamicViscosity) && Number.isFinite(density) && Number.isFinite(kinematicViscosity)) {
+      dynamicViscosity = kinematicViscosity * (density / 1000);
+    }
+    let specificWeight = parseSourceFluidBasisNumber(
+      effectiveFluid?.specWeight ?? effectiveFluid?.specificWeight,
+      readSourceFluidBasisNumber(windowNode, 'source-fluid-specific-weight')
+    );
+    if (!Number.isFinite(specificWeight) && Number.isFinite(density)) specificWeight = density * 9.81;
+    let vaporPressureHead = parseSourceFluidBasisNumber(
+      effectiveFluid?.vaporPressureHead,
+      readSourceFluidBasisNumber(windowNode, 'source-fluid-vapor-pressure-head')
+    );
+    if (!Number.isFinite(vaporPressureHead) && Number.isFinite(vaporPressure) && Number.isFinite(density) && density > 0) {
+      vaporPressureHead = 1e5 * vaporPressure / (density * 9.81);
+    }
+    return {
+      density,
+      kinematicViscosity,
+      dynamicViscosity,
+      specificWeight,
+      vaporPressure,
+      vaporPressureHead
+    };
+  }
+
+  function isSourceSectionHeaderRow(row) {
+    return !!row?.querySelector?.('.prop-section-header, [data-task-prop-section], [data-section-header]');
+  }
+
+  function findSourceSectionHeader(windowNode, labels, anchorKey) {
+    if (!windowNode?.querySelectorAll) return null;
+    const normalizedLabels = labels.map((label) => String(label || '').toLowerCase());
+    const candidates = Array.from(windowNode.querySelectorAll('tr, .prop-section-header, [data-task-prop-section], [data-section-header]'));
+    const byLabel = candidates.find((candidate) => {
+      const row = candidate.closest?.('tr') || candidate;
+      const text = String(candidate.textContent || row.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      return normalizedLabels.some((label) => text === label || text.includes(label));
+    });
+    if (byLabel) return byLabel.closest?.('tr') || byLabel;
+    const anchorRow = getSourceFieldRow(windowNode, anchorKey);
+    let row = anchorRow?.previousElementSibling || null;
+    while (row) {
+      if (isSourceSectionHeaderRow(row)) return row;
+      row = row.previousElementSibling;
+    }
+    return null;
+  }
+
+  function collectSourceSectionBlock(headerRow) {
+    const rows = [];
+    let row = headerRow;
+    while (row) {
+      if (row !== headerRow && isSourceSectionHeaderRow(row)) break;
+      rows.push(row);
+      row = row.nextElementSibling;
+    }
+    return rows;
+  }
+
+  function moveSourceFluidBasisAfterFlow(windowNode) {
+    const fluidHeader = findSourceSectionHeader(windowNode, ['Fluid Basis Link', 'Link Basis Fluida'], 'source-fluid-basis');
+    const flowHeader = findSourceSectionHeader(windowNode, ['Flow Specification', 'Spesifikasi Flow', 'Spesifikasi Aliran'], 'flowInputMode');
+    if (!fluidHeader || !flowHeader || fluidHeader === flowHeader || fluidHeader.parentNode !== flowHeader.parentNode) return false;
+    const parentRows = Array.from(fluidHeader.parentNode.children || []);
+    const fluidIndex = parentRows.indexOf(fluidHeader);
+    const flowIndex = parentRows.indexOf(flowHeader);
+    if (fluidIndex < 0 || flowIndex < 0 || fluidIndex > flowIndex) return false;
+    const fluidBlock = collectSourceSectionBlock(fluidHeader);
+    const flowBlock = collectSourceSectionBlock(flowHeader);
+    let insertAfter = flowBlock[flowBlock.length - 1] || flowHeader;
+    fluidBlock.forEach((row) => {
+      insertAfter.insertAdjacentElement('afterend', row);
+      insertAfter = row;
+    });
+    return true;
+  }
+
+  function createSourceFluidBasisReadoutRow(anchorRow, config, valueText) {
+    if (!root.document || !anchorRow?.parentNode) return null;
+    const row = root.document.createElement(anchorRow.tagName?.toLowerCase() === 'tr' ? 'tr' : 'div');
+    row.className = anchorRow.className || 'pipe-task-field-row object-task-field-row';
+    row.dataset.propKey = config.key;
+    row.dataset.sourceFluidBasisDerived = 'true';
+    row.dataset.sourceFluidBasisLayoutLock = SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK;
+    const label = root.document.createElement(row.tagName.toLowerCase() === 'tr' ? 'td' : 'div');
+    label.className = 'prop-label';
+    const value = root.document.createElement(row.tagName.toLowerCase() === 'tr' ? 'td' : 'div');
+    value.className = 'prop-value';
+    value.dataset.key = config.key;
+    row.append(label, value);
+    anchorRow.insertAdjacentElement('afterend', row);
+    updateSourceFluidBasisReadoutRow(row, config, valueText);
+    return row;
+  }
+
+  function updateSourceFluidBasisReadoutRow(row, config, valueText) {
+    if (!row) return;
+    const language = getActiveRuntimeLanguage();
+    const label = row.querySelector?.('.prop-label') || row.children?.[0];
+    const value = row.querySelector?.('.prop-value, [data-key]') || row.children?.[1];
+    row.dataset.propKey = config.key;
+    row.dataset.sourceFluidBasisDerived = 'true';
+    row.dataset.sourceFluidBasisLayoutLock = SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK;
+    if (label) {
+      const nextLabel = language === 'id' ? config.labelId : config.labelEn;
+      if (label.textContent !== nextLabel) label.textContent = nextLabel;
+      label.setAttribute?.('data-i18n-fallback', config.labelEn);
+    }
+    if (value) {
+      value.dataset.key = config.key;
+      value.dataset.sourceFluidBasisLayoutLock = SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK;
+      if (value.textContent !== valueText) value.textContent = valueText;
+    }
+  }
+
+  function ensureSourceFluidBasisReadoutRow(windowNode, anchorRow, config, valueText) {
+    let row = getSourceFieldRow(windowNode, config.key);
+    if (!row) row = createSourceFluidBasisReadoutRow(anchorRow, config, valueText);
+    else if (anchorRow?.parentNode && row.parentNode === anchorRow.parentNode && row.previousElementSibling !== anchorRow) {
+      anchorRow.insertAdjacentElement('afterend', row);
+    }
+    updateSourceFluidBasisReadoutRow(row, config, valueText);
+    return row || anchorRow;
+  }
+
+  function ensureSourceFluidBasisExtraReadouts(windowNode) {
+    const values = getSourceFluidBasisValues(windowNode);
+    setSourceFieldReadout(windowNode, 'source-fluid-density', formatSourceFluidBasisReadout(values.density, 'kg/m3', 3));
+    setSourceFieldReadout(windowNode, 'source-fluid-viscosity', formatSourceFluidBasisReadout(values.kinematicViscosity, 'cSt', 3));
+    setSourceFieldReadout(windowNode, 'source-fluid-vapor-pressure', formatSourceFluidBasisReadout(values.vaporPressure, 'bar a', 6));
+    let anchor = getSourceFieldRow(windowNode, 'source-fluid-viscosity')
+      || getSourceFieldRow(windowNode, 'source-fluid-density')
+      || getSourceFieldRow(windowNode, 'source-temperature');
+    if (!anchor) return false;
+    const dynamicConfig = SOURCE_FLUID_BASIS_EXTRA_READOUTS[0];
+    anchor = ensureSourceFluidBasisReadoutRow(
+      windowNode,
+      anchor,
+      dynamicConfig,
+      formatSourceFluidBasisReadout(values[dynamicConfig.valueName], dynamicConfig.unit, dynamicConfig.digits)
+    );
+    const specificConfig = SOURCE_FLUID_BASIS_EXTRA_READOUTS[1];
+    anchor = ensureSourceFluidBasisReadoutRow(
+      windowNode,
+      anchor,
+      specificConfig,
+      formatSourceFluidBasisReadout(values[specificConfig.valueName], specificConfig.unit, specificConfig.digits)
+    );
+    const vaporRow = getSourceFieldRow(windowNode, 'source-fluid-vapor-pressure') || anchor;
+    const vaporHeadConfig = SOURCE_FLUID_BASIS_EXTRA_READOUTS[2];
+    ensureSourceFluidBasisReadoutRow(
+      windowNode,
+      vaporRow,
+      vaporHeadConfig,
+      formatSourceFluidBasisReadout(values[vaporHeadConfig.valueName], vaporHeadConfig.unit, vaporHeadConfig.digits)
+    );
+    return true;
+  }
+
+  function ensureSourceFluidBasisLinkLayout(windowNode) {
+    if (!isSourceObjectPropertiesWindow(windowNode)) return false;
+    if (windowNode.dataset?.sourceFluidBasisLinkLayoutLock !== SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK) {
+      windowNode.dataset.sourceFluidBasisLinkLayoutLock = SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK;
+    }
+    moveSourceFluidBasisAfterFlow(windowNode);
+    return ensureSourceFluidBasisExtraReadouts(windowNode);
+  }
+
   function hideSourceSemanticAttachmentRows(windowNode) {
     if (!isSourceObjectPropertiesWindow(windowNode)) return 0;
     markSourceAdvisorAuditLock(windowNode);
@@ -1494,6 +1770,7 @@
     if (windowNode.dataset && windowNode.dataset.advisorHideDefenseReadyNote !== 'true') windowNode.dataset.advisorHideDefenseReadyNote = 'true';
     if (windowNode.dataset && windowNode.dataset.advisorHideBoundaryRole !== 'true') windowNode.dataset.advisorHideBoundaryRole = 'true';
     if (windowNode.dataset && windowNode.dataset.advisorHideGenericMeaning !== 'true') windowNode.dataset.advisorHideGenericMeaning = 'true';
+    ensureSourceFluidBasisLinkLayout(windowNode);
     keepSourceTypeMeaningRowsVisible(windowNode);
     let hidden = 0;
     windowNode.querySelectorAll?.('tr, h1, h2, h3, h4, h5, h6, legend, .fluid-field-row, .source-field-row, .object-property-row, .pipe-task-field-row, .object-task-field-row, .source-field-card, .object-field, .field-card, .task-field, [data-prop-key], [data-field-key], [class*="section-title"], [class*="section-heading"], [class*="card-title"]').forEach((row) => {
@@ -1512,6 +1789,7 @@
       hidden += 1;
     });
     keepSourceTypeMeaningRowsVisible(windowNode);
+    ensureSourceFluidBasisLinkLayout(windowNode);
     return hidden;
   }
 
@@ -1620,6 +1898,7 @@
     root.__EngineeringSourceAdvisorAuditLock = Object.freeze({
       version: SOURCE_ADVISOR_AUDIT_LOCK,
       placementLock: SOURCE_FORMULA_DEFENSE_PLACEMENT_LOCK,
+      fluidBasisLinkLayoutLock: SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK,
       reason: SOURCE_ADVISOR_AUDIT_LOCK_REASON,
       appliesTo: 'persistent Source/SRC object properties windows'
     });

@@ -127,8 +127,17 @@
 
     function applyExtendedProperties(fluid) {
         const density = toFiniteNumber(fluid.density, NaN);
+        const kinematicViscosity = toFiniteNumber(fluid.viscosity ?? fluid.kinematicViscosity, NaN);
+        const dynamicViscosity = toFiniteNumber(fluid.dynViscosity ?? fluid.dynamicViscosity, NaN);
         const vaporPressure = toFiniteNumber(fluid.vaporPressure, NaN);
         if (density > 0) {
+            if (!Number.isFinite(dynamicViscosity) && Number.isFinite(kinematicViscosity)) {
+                fluid.dynViscosity = kinematicViscosity * (density / 1000);
+                fluid.dynamicViscosity = fluid.dynViscosity;
+            } else if (Number.isFinite(dynamicViscosity)) {
+                fluid.dynViscosity = dynamicViscosity;
+                fluid.dynamicViscosity = dynamicViscosity;
+            }
             fluid.sg = density / WATER_REFERENCE_DENSITY_KGM3;
             fluid.specVolume = 1 / density;
             fluid.specWeight = density * GRAVITY_MS2;
@@ -197,9 +206,15 @@
             '.object-task-field-row[data-prop-key="temp"],',
             '.object-task-field-row[data-prop-key="source-fluid-density"],',
             '.object-task-field-row[data-prop-key="source-fluid-viscosity"],',
+            '.object-task-field-row[data-prop-key="source-fluid-dynamic-viscosity"],',
+            '.object-task-field-row[data-prop-key="source-fluid-specific-weight"],',
+            '.object-task-field-row[data-prop-key="source-fluid-vapor-pressure-head"],',
             '.object-task-field-row[data-prop-key="source-fluid-vapor-pressure"]{min-height:34px;overflow-anchor:none}',
             '.object-task-field-row[data-prop-key="source-fluid-density"] .prop-value,',
             '.object-task-field-row[data-prop-key="source-fluid-viscosity"] .prop-value,',
+            '.object-task-field-row[data-prop-key="source-fluid-dynamic-viscosity"] .prop-value,',
+            '.object-task-field-row[data-prop-key="source-fluid-specific-weight"] .prop-value,',
+            '.object-task-field-row[data-prop-key="source-fluid-vapor-pressure-head"] .prop-value,',
             '.object-task-field-row[data-prop-key="source-fluid-vapor-pressure"] .prop-value,',
             '.prop-input-field[data-key="temp"]{font-variant-numeric:tabular-nums;white-space:nowrap}',
             '.object-task-field-row[data-prop-key="temperatureMode"]{display:none!important}',
@@ -207,6 +222,9 @@
             '.src-temperature-stability-lock .object-task-field-row[data-prop-key="temp"],',
             '.src-temperature-stability-lock .object-task-field-row[data-prop-key="source-fluid-density"],',
             '.src-temperature-stability-lock .object-task-field-row[data-prop-key="source-fluid-viscosity"],',
+            '.src-temperature-stability-lock .object-task-field-row[data-prop-key="source-fluid-dynamic-viscosity"],',
+            '.src-temperature-stability-lock .object-task-field-row[data-prop-key="source-fluid-specific-weight"],',
+            '.src-temperature-stability-lock .object-task-field-row[data-prop-key="source-fluid-vapor-pressure-head"],',
             '.src-temperature-stability-lock .object-task-field-row[data-prop-key="source-fluid-vapor-pressure"]{contain:layout style}'
         ].join('\n');
         document.head.appendChild(style);
@@ -249,7 +267,11 @@
             temp: toFiniteNumber(scope?.querySelector?.('[data-key="source-temperature"]')?.textContent, 25),
             density: toFiniteNumber(scope?.querySelector?.('[data-key="source-fluid-density"]')?.textContent, 997.047),
             viscosity: toFiniteNumber(scope?.querySelector?.('[data-key="source-fluid-viscosity"]')?.textContent, 0.893),
-            vaporPressure: toFiniteNumber(scope?.querySelector?.('[data-key="source-fluid-vapor-pressure"]')?.textContent, 0.032)
+            dynViscosity: toFiniteNumber(scope?.querySelector?.('[data-key="source-fluid-dynamic-viscosity"]')?.textContent, NaN),
+            dynamicViscosity: toFiniteNumber(scope?.querySelector?.('[data-key="source-fluid-dynamic-viscosity"]')?.textContent, NaN),
+            specWeight: toFiniteNumber(scope?.querySelector?.('[data-key="source-fluid-specific-weight"]')?.textContent, NaN),
+            vaporPressure: toFiniteNumber(scope?.querySelector?.('[data-key="source-fluid-vapor-pressure"]')?.textContent, 0.032),
+            vaporPressureHead: toFiniteNumber(scope?.querySelector?.('[data-key="source-fluid-vapor-pressure-head"]')?.textContent, NaN)
         };
     }
 
@@ -259,7 +281,10 @@
         const fluid = getFluidPropsAtSourceTemperature(source, readFluidBasisFromPanel(scope));
         setReadout(scope, 'source-fluid-density', fluid.density, 'kg/m3', 3);
         setReadout(scope, 'source-fluid-viscosity', fluid.viscosity, 'cSt', 3);
-        setReadout(scope, 'source-fluid-vapor-pressure', fluid.vaporPressure, 'bar a', 3);
+        setReadout(scope, 'source-fluid-dynamic-viscosity', fluid.dynViscosity ?? fluid.dynamicViscosity, 'cP', 3);
+        setReadout(scope, 'source-fluid-specific-weight', fluid.specWeight, 'N/m3', 3);
+        setReadout(scope, 'source-fluid-vapor-pressure', fluid.vaporPressure, 'bar a', 6);
+        setReadout(scope, 'source-fluid-vapor-pressure-head', fluid.vaporPressureHead, 'm', 3);
         const flowInput = scope.querySelector('input[data-key="flow"]');
         const massInput = scope.querySelector('input[data-key="massFlow"]');
         const flowReadout = scope.querySelector('[data-key="source-flow"]');
@@ -521,7 +546,7 @@
         enforceFluidBasisModeInSourceUi,
         installSourceFluidBasisOnlyUiGuard,
         sourceCustomTemperatureUiEnabled: SOURCE_CUSTOM_TEMPERATURE_UI_ENABLED,
-        version: '20260601-src-fluid-basis-only-v3'
+        version: '20260601-src-fluid-basis-link-v4'
     };
     installSourceTemperatureStabilityGuard();
     installSourceFluidBasisOnlyUiGuard();
