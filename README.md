@@ -13,6 +13,16 @@ Important runtime config:
 {"apiBaseUrl":"","simulationEndpoint":"/api/simulate","backendMode":"primary","backendPrimaryEnabled":true,"protectedFrontend":true}
 ```
 
+Local preview:
+
+```powershell
+npm.cmd run preview:local
+```
+
+The preview command serves this static frontend at `http://127.0.0.1:4173/`
+without adding runtime dependencies. Use the HTTP preview for browser checks;
+`file:///` loading is not a supported verification path for the protected bundle.
+
 Notes:
 
 - This folder is prepared as the public frontend repository.

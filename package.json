@@ -1,0 +1,9 @@
+{
+  "name": "npsh-frontend",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Static frontend package for npsh.virsim.id.",
+  "scripts": {
+    "preview:local": "node tools/serve-local-preview.cjs"
+  }
+}
