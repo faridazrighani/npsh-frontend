@@ -1,11 +1,64 @@
 (function registerEngineeringBilingualImprovements(root) {
-  const VERSION = '2026.05-bilingual-runtime-26';
+  const VERSION = '2026.05-bilingual-runtime-27';
   const SOURCE_ADVISOR_AUDIT_LOCK = 'source-advisor-hidden-v1';
   const SOURCE_ADVISOR_AUDIT_LOCK_REASON = 'src-window-simplified-for-academic-audit';
   const SOURCE_FORMULA_DEFENSE_PLACEMENT_LOCK = 'source-formula-defense-src-header-right-v1';
   const SOURCE_ADVISOR_HIDDEN_SECTIONS = 'pump-readiness,semantic-attachment,hydraulic-connection,defense-ready-note,boundary-role,generic-meaning';
   const SOURCE_TYPE_MEANING_VISIBLE_LOCK = 'source-type-meaning-visible-v1';
   const SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK = 'source-fluid-basis-link-after-flow-v1';
+  const SOURCE_STANDARD_FORM_SCHEMA_VERSION = 'src-standard-form.v1';
+  const SOURCE_STANDARD_FORM_LOCK = 'source-standard-form-all-surfaces-v1';
+  const SOURCE_STANDARD_FORM_VALUE_POLICY = 'live-user-import-or-calculated-values-only';
+  const SOURCE_STANDARD_FORM_SECTIONS = Object.freeze([
+    'Source Definition',
+    'Boundary Data',
+    'Flow Specification',
+    'Fluid Basis Link'
+  ]);
+  const SOURCE_STANDARD_FORM_FIELD_KEYS = Object.freeze([
+    'sourceType',
+    'source-type-meaning',
+    'boundaryDataSource',
+    'pressureInputBasis',
+    'pressure',
+    'source-absolute-pressure',
+    'elevation',
+    'flowInputMode',
+    'massFlow',
+    'flow',
+    'source-flow',
+    'source-fluid-basis',
+    'source-temperature',
+    'source-fluid-density',
+    'source-fluid-viscosity',
+    'source-fluid-dynamic-viscosity',
+    'source-fluid-specific-weight',
+    'source-fluid-vapor-pressure',
+    'source-fluid-vapor-pressure-head'
+  ]);
+  const SOURCE_STANDARD_REPORT_FIELDS = Object.freeze([
+    'Object ID',
+    'Source Definition',
+    'Boundary Data',
+    'Flow Specification',
+    'Fluid Basis Link',
+    'Source Formula Defense',
+    'Route Trace',
+    'Dependency Change',
+    'Stale Calculation Policy'
+  ]);
+  const SOURCE_STANDARD_FORM_CONTRACT = Object.freeze({
+    schemaVersion: SOURCE_STANDARD_FORM_SCHEMA_VERSION,
+    lockVersion: SOURCE_STANDARD_FORM_LOCK,
+    appliesTo: Object.freeze(['all-simulations', 'journal-import-src', 'defense-report-src']),
+    requiredSections: SOURCE_STANDARD_FORM_SECTIONS,
+    requiredFieldKeys: SOURCE_STANDARD_FORM_FIELD_KEYS,
+    reportFields: SOURCE_STANDARD_REPORT_FIELDS,
+    formulaDefenseButton: 'Source Formula Defense',
+    valuePolicy: SOURCE_STANDARD_FORM_VALUE_POLICY,
+    captionValuePolicy: 'Caption numbers are examples only; runtime values must come from user input, journal import, or engine calculation.',
+    layoutPolicy: 'Do not replace the caption-standard layout; enforce metadata, ordering, and audit evidence only.'
+  });
 
   const CRITICAL_TERM_KEYS = Object.freeze([
     'head',
@@ -837,12 +890,20 @@
       if (typeof stateText !== 'string') return args;
       try {
         const data = JSON.parse(stateText);
+        const sourceOrigin = data?.projectFile?.sourceFormat === 'journal-import-pdf-mvp'
+          || data?.model?.SETTINGS?.props?.importSource === 'Journal Import'
+          ? 'journal-import'
+          : 'simulation-state';
+        let changed = applySourceStandardFormToProject(data, sourceOrigin);
         if (data?.model && (!data.model.SETTINGS || !data.model.SETTINGS.props?.language)) {
           data.model.SETTINGS = data.model.SETTINGS || { type: 'settings', name: 'Simulation Settings', props: {} };
           data.model.SETTINGS.type = data.model.SETTINGS.type || 'settings';
           data.model.SETTINGS.name = data.model.SETTINGS.name || 'Simulation Settings';
           data.model.SETTINGS.props = data.model.SETTINGS.props || {};
           data.model.SETTINGS.props.language = getActiveRuntimeLanguage();
+          changed = true;
+        }
+        if (changed) {
           return [JSON.stringify(data), ...rest];
         }
       } catch (error) {
@@ -850,6 +911,7 @@
       }
       return args;
     });
+    patchSourceStandardJournalImportBuilder();
   }
 
   const runtimeOriginalTextNodes = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
@@ -966,6 +1028,83 @@
       ? [sourceId, model[sourceId]]
       : Object.entries(model).find(([, node]) => String(node?.type || '').toLowerCase() === 'source');
     return preferred ? { id: preferred[0], node: preferred[1] } : { id: sourceId || 'SRC', node: null };
+  }
+
+  function cloneSourceStandardFormContract() {
+    return {
+      ...SOURCE_STANDARD_FORM_CONTRACT,
+      appliesTo: SOURCE_STANDARD_FORM_CONTRACT.appliesTo.slice(),
+      requiredSections: SOURCE_STANDARD_FORM_SECTIONS.slice(),
+      requiredFieldKeys: SOURCE_STANDARD_FORM_FIELD_KEYS.slice(),
+      reportFields: SOURCE_STANDARD_REPORT_FIELDS.slice()
+    };
+  }
+
+  function applySourceStandardPropsToSource(sourceNode, origin = 'runtime') {
+    if (!sourceNode || String(sourceNode.type || '').toLowerCase() !== 'source') return false;
+    sourceNode.props = sourceNode.props || {};
+    const props = sourceNode.props;
+    let changed = false;
+    const assign = (key, value) => {
+      if (props[key] === value) return;
+      props[key] = value;
+      changed = true;
+    };
+    assign('standardFormSchemaVersion', SOURCE_STANDARD_FORM_SCHEMA_VERSION);
+    assign('standardFormLockVersion', SOURCE_STANDARD_FORM_LOCK);
+    assign('standardFormProfile', 'SRC Object Properties Standard');
+    assign('standardFormValuePolicy', SOURCE_STANDARD_FORM_VALUE_POLICY);
+    assign('sourceFormulaDefenseRequired', true);
+    assign('sourceFormulaDefenseButton', 'Source Formula Defense');
+    assign('sourceStandardInputOrigin', origin);
+    if (!Array.isArray(props.standardFormSections)
+      || props.standardFormSections.join('|') !== SOURCE_STANDARD_FORM_SECTIONS.join('|')) {
+      props.standardFormSections = SOURCE_STANDARD_FORM_SECTIONS.slice();
+      changed = true;
+    }
+    if (!Array.isArray(props.standardReportFields)
+      || props.standardReportFields.join('|') !== SOURCE_STANDARD_REPORT_FIELDS.join('|')) {
+      props.standardReportFields = SOURCE_STANDARD_REPORT_FIELDS.slice();
+      changed = true;
+    }
+    return changed;
+  }
+
+  function applySourceStandardFormToProject(project, origin = 'runtime') {
+    if (!project || typeof project !== 'object' || !project.model || typeof project.model !== 'object') return false;
+    let changed = false;
+    Object.values(project.model).forEach((node) => {
+      if (applySourceStandardPropsToSource(node, origin)) changed = true;
+    });
+    project.validationAudit = project.validationAudit || {};
+    const nextAudit = {
+      schemaVersion: SOURCE_STANDARD_FORM_SCHEMA_VERSION,
+      lockVersion: SOURCE_STANDARD_FORM_LOCK,
+      requiredSections: SOURCE_STANDARD_FORM_SECTIONS.slice(),
+      valuePolicy: SOURCE_STANDARD_FORM_VALUE_POLICY,
+      sourceFormulaDefenseRequired: true,
+      origin
+    };
+    const currentAudit = project.validationAudit.srcStandardForm || null;
+    if (JSON.stringify(currentAudit) !== JSON.stringify(nextAudit)) {
+      project.validationAudit.srcStandardForm = nextAudit;
+      changed = true;
+    }
+    return changed;
+  }
+
+  function patchSourceStandardJournalImportBuilder() {
+    const original = root.buildJournalImportProjectData;
+    if (typeof original !== 'function' || original.__sourceStandardFormPatched) return false;
+    function sourceStandardJournalImportProjectData(...args) {
+      const project = original.apply(this, args);
+      applySourceStandardFormToProject(project, 'journal-import');
+      return project;
+    }
+    sourceStandardJournalImportProjectData.__sourceStandardFormPatched = true;
+    sourceStandardJournalImportProjectData.__sourceStandardFormOriginal = original;
+    root.buildJournalImportProjectData = sourceStandardJournalImportProjectData;
+    return true;
   }
 
   function getFluidDefenseBasis(model) {
@@ -1239,8 +1378,46 @@
     root.document.head.appendChild(style);
   }
 
+  function markSourceStandardFormLock(windowNode) {
+    if (!windowNode?.dataset) return;
+    if (windowNode.dataset.sourceStandardFormLock !== 'locked') windowNode.dataset.sourceStandardFormLock = 'locked';
+    if (windowNode.dataset.sourceStandardFormSchemaVersion !== SOURCE_STANDARD_FORM_SCHEMA_VERSION) {
+      windowNode.dataset.sourceStandardFormSchemaVersion = SOURCE_STANDARD_FORM_SCHEMA_VERSION;
+    }
+    if (windowNode.dataset.sourceStandardFormLockVersion !== SOURCE_STANDARD_FORM_LOCK) {
+      windowNode.dataset.sourceStandardFormLockVersion = SOURCE_STANDARD_FORM_LOCK;
+    }
+    if (windowNode.dataset.sourceStandardValuePolicy !== SOURCE_STANDARD_FORM_VALUE_POLICY) {
+      windowNode.dataset.sourceStandardValuePolicy = SOURCE_STANDARD_FORM_VALUE_POLICY;
+    }
+    if (windowNode.dataset.sourceStandardSections !== SOURCE_STANDARD_FORM_SECTIONS.join('|')) {
+      windowNode.dataset.sourceStandardSections = SOURCE_STANDARD_FORM_SECTIONS.join('|');
+    }
+    if (windowNode.dataset.sourceStandardFormulaDefense !== 'required') {
+      windowNode.dataset.sourceStandardFormulaDefense = 'required';
+    }
+  }
+
+  function validateSourceStandardFormWindow(windowNode) {
+    const text = String(windowNode?.textContent || '').replace(/\s+/g, ' ');
+    const missingSections = SOURCE_STANDARD_FORM_SECTIONS.filter((section) => {
+      const localized = translateRuntimeText(section);
+      return !text.includes(section) && !text.includes(localized);
+    });
+    const hasDefenseButton = !!windowNode?.querySelector?.('.source-formula-defense-btn, [data-source-formula-defense]');
+    return {
+      ok: missingSections.length === 0 && hasDefenseButton,
+      schemaVersion: SOURCE_STANDARD_FORM_SCHEMA_VERSION,
+      lockVersion: SOURCE_STANDARD_FORM_LOCK,
+      missingSections,
+      hasDefenseButton,
+      valuePolicy: SOURCE_STANDARD_FORM_VALUE_POLICY
+    };
+  }
+
   function markSourceAdvisorAuditLock(windowNode) {
     if (!windowNode?.dataset) return;
+    markSourceStandardFormLock(windowNode);
     if (windowNode.dataset.sourceAdvisorAuditLock !== 'locked') windowNode.dataset.sourceAdvisorAuditLock = 'locked';
     if (windowNode.dataset.sourceAdvisorAuditLockVersion !== SOURCE_ADVISOR_AUDIT_LOCK) {
       windowNode.dataset.sourceAdvisorAuditLockVersion = SOURCE_ADVISOR_AUDIT_LOCK;
@@ -1899,8 +2076,17 @@
       version: SOURCE_ADVISOR_AUDIT_LOCK,
       placementLock: SOURCE_FORMULA_DEFENSE_PLACEMENT_LOCK,
       fluidBasisLinkLayoutLock: SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK,
+      standardFormLock: SOURCE_STANDARD_FORM_LOCK,
       reason: SOURCE_ADVISOR_AUDIT_LOCK_REASON,
       appliesTo: 'persistent Source/SRC object properties windows'
+    });
+    root.EngineeringSourceStandardForm = Object.freeze({
+      version: SOURCE_STANDARD_FORM_SCHEMA_VERSION,
+      lockVersion: SOURCE_STANDARD_FORM_LOCK,
+      valuePolicy: SOURCE_STANDARD_FORM_VALUE_POLICY,
+      contract: cloneSourceStandardFormContract(),
+      applyToProject: applySourceStandardFormToProject,
+      validateWindow: validateSourceStandardFormWindow
     });
     const scan = () => hideOpenSourcePumpActionReadiness(root.document);
     if (root.document.readyState === 'loading') root.document.addEventListener('DOMContentLoaded', scan, { once: true });
@@ -1969,6 +2155,9 @@
     const layout = root.document.createElement('div');
     layout.className = 'fluid-help-layout src-help-layout source-formula-defense-layout source-formula-defense-fallback-layout';
     layout.dataset.engineeringSourceFallback = 'true';
+    layout.dataset.sourceStandardFormLock = SOURCE_STANDARD_FORM_LOCK;
+    layout.dataset.sourceStandardFormSchemaVersion = SOURCE_STANDARD_FORM_SCHEMA_VERSION;
+    layout.dataset.sourceStandardValuePolicy = SOURCE_STANDARD_FORM_VALUE_POLICY;
 
     appendSourceDefenseCard(layout, getSourceDefenseText('Short Answer for Advisor', 'Jawaban Singkat untuk Advisor'), () => createSourceDefenseParagraphs([
       getSourceDefenseText(
@@ -1992,6 +2181,11 @@
           'SRC',
           id || 'SRC',
           getSourceDefenseText('Selected source object used as the upstream boundary.', 'Objek source yang dipilih sebagai boundary hulu.')
+        ],
+        [
+          getSourceDefenseText('Standard Form Profile', 'Profil Form Standard'),
+          SOURCE_STANDARD_FORM_LOCK,
+          getSourceDefenseText('SRC Object Properties uses the same section contract in every simulation, journal import, and defense report.', 'SRC Object Properties memakai kontrak section yang sama di setiap simulasi, import jurnal, dan report defense.')
         ],
         [
           getSourceDefenseText('Source Definition', 'Definisi Source'),
@@ -2189,6 +2383,8 @@
     ));
 
     appendSourceDefenseCard(layout, getSourceDefenseText('Validation Gate / Why Trace Was Partial', 'Gate Validasi / Mengapa Trace Parsial'), () => createSourceDefenseList([
+      getSourceDefenseText('SRC Standard Form is locked to Source Definition, Boundary Data, Flow Specification, and Fluid Basis Link across all simulations and journal-import SRC inputs.', 'SRC Standard Form dikunci pada Source Definition, Boundary Data, Flow Specification, dan Fluid Basis Link untuk semua simulasi dan input SRC dari import jurnal.'),
+      getSourceDefenseText('Numbers shown in captions are examples only; runtime values must come from user input, journal import review, or engine calculation.', 'Angka pada caption hanya contoh; nilai runtime wajib berasal dari input user, review import jurnal, atau kalkulasi engine.'),
       getSourceDefenseText('Complete the solid hydraulic route SRC -> suction pipe/fitting/valve -> pump before expecting suction-loss substitution.', 'Lengkapi route hidrolik solid SRC -> suction pipe/fitting/valve -> pump sebelum mengharapkan substitusi suction loss.'),
       getSourceDefenseText('Run Solve after changing SRC, Fluid Basis, suction PFV, or pump elevation so the route-dependent trace becomes current.', 'Jalankan Hitung setelah mengubah SRC, Basis Fluida, PFV suction, atau elevasi pompa agar trace yang bergantung route menjadi current.'),
       getSourceDefenseText('The static SRC boundary defense above is valid for audit even when route suction loss is not yet available.', 'Defense boundary SRC statis di atas tetap valid untuk audit walaupun suction loss route belum tersedia.')
@@ -2507,6 +2703,9 @@
     registerTextEntries,
     translateRuntimeText,
     localizeSimulationCasesManifest,
+    sourceStandardForm: cloneSourceStandardFormContract(),
+    applySourceStandardFormToProject,
+    validateSourceStandardFormWindow,
     installRuntimeLocalizationBridge,
     getDiagnostics: getBilingualDiagnostics,
     traceRegistry
@@ -2523,6 +2722,14 @@
     getSummary: getBilingualDiagnostics,
     validateTraceKeyCoverage
   };
+  root.EngineeringSourceStandardForm = root.EngineeringSourceStandardForm || Object.freeze({
+    version: SOURCE_STANDARD_FORM_SCHEMA_VERSION,
+    lockVersion: SOURCE_STANDARD_FORM_LOCK,
+    valuePolicy: SOURCE_STANDARD_FORM_VALUE_POLICY,
+    contract: cloneSourceStandardFormContract(),
+    applyToProject: applySourceStandardFormToProject,
+    validateWindow: validateSourceStandardFormWindow
+  });
   root.EngineeringBilingualImprovements = api;
 
   if (typeof module !== 'undefined' && module.exports) {
