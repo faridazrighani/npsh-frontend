@@ -1,6 +1,6 @@
 # Frontend File Manifest
 
-Date: 2026-06-02
+Date: 2026-06-03
 
 Folder:
 
@@ -17,7 +17,7 @@ Summary:
 
 ```text
 Total files: 156
-Total size: 63,496,009 bytes
+Total size: 63,496,008 bytes
 ```
 
 Top-level contents:
