@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-performance-chart-audit.v7';
+  const VERSION = 'pump-performance-chart-audit.v8';
   const MIN_CURVE_POINTS = 3;
   const PANEL_SELECTOR = '[data-pump-performance-chart-audit-panel]';
   const CHART_CANVAS_SELECTORS = [
@@ -10,7 +10,7 @@
   ];
 
   const SERIES_STYLES = {
-    pumpHead: { label: 'Pump Head', color: '#1c4568' },
+    pumpHead: { label: 'Pump Head', color: '#0070c0', width: 2.4 },
     system: { label: 'System Curve', color: '#dc2626', dash: [5, 5] },
     npsha: { label: 'NPSHa', color: '#0f766e' },
     npshr: { label: 'NPSHr', color: '#b45309' },
@@ -111,8 +111,12 @@
     if (!Array.isArray(points)) return [];
     return points
       .map((point) => {
-        const flow = pointNumber(point, ['flow', 'q', 'x', 'flowM3H']);
-        const value = pointNumber(point, valueKeys);
+        const flow = Array.isArray(point)
+          ? toNumber(point[0])
+          : pointNumber(point, ['flow', 'q', 'x', 'flowM3H']);
+        const value = Array.isArray(point)
+          ? toNumber(point[1])
+          : pointNumber(point, [...valueKeys, 'y']);
         return flow !== null && value !== null ? { flow, value, raw: point } : null;
       })
       .filter(Boolean)
@@ -250,7 +254,8 @@
     ];
     const npshrCurvePoints = [
       ...normalizePoints(props.curveData, ['npshr', 'requiredNpsh']),
-      ...normalizePoints(results.npshrCurvePoints, ['npshr', 'requiredNpsh', 'value'])
+      ...normalizePoints(results.npshrCurvePoints, ['npshr', 'requiredNpsh', 'value']),
+      ...normalizePoints(results.npshCurvePoints, ['npshr', 'requiredNpsh'])
     ];
     const systemCurvePoints = normalizePoints(
       results.systemCurvePoints || results.sysCurve,
@@ -419,11 +424,11 @@
     return value.toPrecision(1);
   }
 
-  function drawLine(ctx, points, mapPoint, color, dash = []) {
+  function drawLine(ctx, points, mapPoint, color, dash = [], width = 2) {
     if (points.length < 2) return;
     ctx.save();
     ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = width;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.setLineDash(dash);
@@ -434,6 +439,22 @@
       else ctx.lineTo(mapped.x, mapped.y);
     });
     ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawPointMarkers(ctx, points, mapPoint, color, radius = 2) {
+    if (!points.length) return;
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    points.forEach((point) => {
+      const mapped = mapPoint(point);
+      ctx.beginPath();
+      ctx.arc(mapped.x, mapped.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
     ctx.restore();
   }
 
@@ -519,7 +540,8 @@
 
     audit.visibleSeries.forEach((series) => {
       const style = SERIES_STYLES[series.name] || {};
-      drawLine(ctx, series.points, mapPoint, style.color || '#1c4568', style.dash || []);
+      drawLine(ctx, series.points, mapPoint, style.color || '#1c4568', style.dash || [], style.width || 2);
+      drawPointMarkers(ctx, series.points, mapPoint, style.color || '#1c4568', series.name === 'pumpHead' ? 2.4 : 2);
     });
 
     if (audit.chartHasDrawableCurve) {

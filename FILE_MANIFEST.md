@@ -17,7 +17,7 @@ Summary:
 
 ```text
 Total files: 156
-Total size: 63,494,129 bytes
+Total size: 63,496,009 bytes
 ```
 
 Top-level contents:
@@ -74,7 +74,7 @@ Runtime API config: same-origin /api/simulate
 NPSH margin runtime cache key: engineering-npsh-margin-runtime.js?v=20260602-npsh-margin1
 Pump readiness visibility cache key: engineering-pump-readiness-visibility-runtime.js?v=20260602-pump-readiness-visibility2
 Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260602-pump-defense-live11
-Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260602-pump-chart-audit7
+Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260603-pump-chart-audit8
 Pages API proxy: _worker.js -> env.NPSH_API.fetch(request), static fallback -> env.ASSETS.fetch(request)
 ```
 

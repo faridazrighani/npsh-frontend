@@ -47,7 +47,7 @@ function setModel(pump, extras = {}) {
 
 setModel({ props: {}, results: {} });
 let result = audit.compute('P-100');
-assert.strictEqual(result.version, 'pump-performance-chart-audit.v7');
+assert.strictEqual(result.version, 'pump-performance-chart-audit.v8');
 assert.strictEqual(result.axisMode, 'log-log');
 assert.strictEqual(result.chartHasDrawableCurve, false);
 assert.strictEqual(result.status, 'Curve Data Unavailable');
@@ -109,6 +109,34 @@ assert(result.filteredNonPositiveCount >= 1, 'Log-log chart must record omitted 
 
 setModel({
   results: {
+    pumpCurve: [
+      [5, 30],
+      [50, 24],
+      [85, 12.5]
+    ],
+    sysCurve: [
+      [5, 8.8],
+      [50, 24],
+      [85, 52]
+    ],
+    npshCurvePoints: [
+      { flow: 5, npsha: 9, npshr: 2.1 },
+      { flow: 50, npsha: 6.5, npshr: 2.4 },
+      { flow: 85, npsha: 2.1, npshr: 2.2 }
+    ],
+    curveDataSource: 'Manufacturer datasheet curve',
+    curveDataConfidence: 'Manufacturer test'
+  }
+});
+result = audit.compute('P-100');
+assert.strictEqual(result.series.pumpHead.allowed, true, 'Legacy [flow, head] pump curve points must be accepted when sourced.');
+assert.strictEqual(result.series.system.allowed, true, 'Legacy [flow, head] system curve points must be accepted when route-derived.');
+assert.strictEqual(result.series.npsha.allowed, true, 'Legacy npshCurvePoints must provide NPSHa.');
+assert.strictEqual(result.series.npshr.allowed, true, 'Legacy npshCurvePoints must provide NPSHr.');
+assert.strictEqual(result.visibleSeries.length, 4, 'Legacy simulation chart should draw the four continuous datasets when evidence is valid.');
+
+setModel({
+  results: {
     systemCurvePoints: [
       { flow: 30, head: 30 },
       { flow: 50, head: 42 },
@@ -158,14 +186,14 @@ globalThis.updatePumpChart = function lateCaptionChartOverride() {
 audit.ensureRuntimeGuards();
 assert.strictEqual(
   globalThis.updatePumpChart.__pumpPerformanceChartAuditVersion,
-  'pump-performance-chart-audit.v7',
+  'pump-performance-chart-audit.v8',
   'Audit runtime must rewrap late caption chart overrides.'
 );
 globalThis.updatePumpChart('P-100');
 assert.strictEqual(lateRendererCalls, 0, 'Audit chart draw must not call the old fallback renderer.');
 
 assert(
-  index.includes('engineering-pump-performance-chart-audit.js?v=20260602-pump-chart-audit7'),
+  index.includes('engineering-pump-performance-chart-audit.js?v=20260603-pump-chart-audit8'),
   'Index must cache-bust the pump performance chart audit runtime.'
 );
 
