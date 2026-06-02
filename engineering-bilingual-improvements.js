@@ -2500,8 +2500,17 @@
     });
   }
 
+  function shouldAllowBackendSimulationFetchOnLocal() {
+    try {
+      const raw = root.document?.getElementById('npsh-runtime-config')?.textContent || '{}';
+      return JSON.parse(raw)?.allowExternalApiOnLocal === true;
+    } catch (error) {
+      return false;
+    }
+  }
+
   function shouldShortCircuitBackendSimulationFetch(input) {
-    return isLocalPreviewHost() && isBackendSimulationFetch(input);
+    return isLocalPreviewHost() && isBackendSimulationFetch(input) && !shouldAllowBackendSimulationFetchOnLocal();
   }
 
   function installRealtimeAutosolveBridge() {
