@@ -65,7 +65,7 @@ Release integrity guardrail:
 ```text
 node npsh-api/tools/release-integrity-audit.cjs
 app.bundle.min.js.map sourcesContent: absent
-Route audit cache key: engineering-route-trace-audit.js?v=20260531-auditv7
+Route audit cache key: engineering-route-trace-audit.js?v=20260602-route-audit-contract1
 Defense export cache key: engineering-defense-export-package.js?v=20260531-defensev2
 Runtime API config: same-origin /api/simulate
 NPSH margin runtime cache key: engineering-npsh-margin-runtime.js?v=20260602-npsh-margin1

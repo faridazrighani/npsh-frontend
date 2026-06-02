@@ -22,6 +22,24 @@
     return text ? text.slice(0, 12) : '-';
   }
 
+  function auditFreshnessLabel(payload = {}) {
+    const dependencyManifest = payload.dependencyManifest || null;
+    if (!dependencyManifest) {
+      return payload.routeTrace?.schemaVersion && payload.routeTrace.schemaVersion !== 'route-trace.v2'
+        ? 'Frontend fallback / unverified'
+        : 'Unverified';
+    }
+    if (dependencyManifest.priorResultStale) return 'Recalculated after stale input change';
+    return dependencyManifest.freshness || 'Current';
+  }
+
+  function auditSourceLabel(payload = {}) {
+    if (payload.calculationAudit?.sourceOfTruth) return payload.calculationAudit.sourceOfTruth;
+    if (payload.routeTrace?.schemaVersion === 'route-trace.v2' && payload.dependencyManifest) return 'backend';
+    if (payload.routeTrace) return 'frontend fallback';
+    return '-';
+  }
+
   function formatValue(value, unit = '') {
     if (value === null || value === undefined || value === '') return '-';
     if (typeof value === 'number') {
@@ -315,7 +333,7 @@
     body.innerHTML = `
       <section class="route-audit-summary">
         <div><span>Pump</span><strong>${escapeText(pumpId || routeTrace.pumpId || '-')}</strong></div>
-        <div><span>Freshness</span><strong>${escapeText(dependencyManifest?.priorResultStale ? 'Recalculated after stale input change' : (dependencyManifest?.freshness || 'Current'))}</strong></div>
+        <div><span>Freshness</span><strong>${escapeText(auditFreshnessLabel(payload))}</strong></div>
         <div><span>Engineering Validation</span><strong>${escapeText(advancedEngineeringValidation?.status || '-')}</strong></div>
         <div><span>Calculation ID</span><strong>${escapeText(calculationAudit?.calculationId || '-')}</strong></div>
         <div><span>Dependency</span><strong>${escapeText(shortHash(dependencyManifest?.dependencyFingerprint))}</strong></div>
@@ -479,9 +497,9 @@
       <h3>Route Trace & Audit</h3>
       <div class="route-audit-pump-grid">
         <div><span>Calculation ID</span><strong>${escapeText(calculationAudit?.calculationId || '-')}</strong></div>
-        <div><span>Freshness</span><strong>${escapeText(dependencyManifest?.priorResultStale ? 'Recalculated after stale input change' : (dependencyManifest?.freshness || 'Current'))}</strong></div>
+        <div><span>Freshness</span><strong>${escapeText(auditFreshnessLabel(payload))}</strong></div>
         <div><span>Engineering Validation</span><strong>${escapeText(advancedEngineeringValidation?.status || '-')}</strong></div>
-        <div><span>Backend Source</span><strong>${escapeText(calculationAudit?.sourceOfTruth || 'backend')}</strong></div>
+        <div><span>Backend Source</span><strong>${escapeText(auditSourceLabel(payload))}</strong></div>
         <div><span>Suction Loss</span><strong>${escapeText(formatValue(routeTrace?.sections?.suction?.totalLossM, 'm'))}</strong></div>
         <div><span>Discharge Loss</span><strong>${escapeText(formatValue(routeTrace?.sections?.discharge?.totalLossM, 'm'))}</strong></div>
         <div><span>Dependency</span><strong>${escapeText(shortHash(dependencyManifest?.dependencyFingerprint))}</strong></div>
