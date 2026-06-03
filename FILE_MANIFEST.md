@@ -40,8 +40,9 @@ engineering-npsh-margin-runtime.js public-safe ANSI/HI NPSH margin preset bridge
 engineering-pump-readiness-visibility-runtime.js public-safe final-defense guard that hides developer Pump Action Readiness diagnostics unless debug flag is enabled
 engineering-bilingual-improvements.js bilingual engineering terminology, trace-key registry, runtime UI workflow localization, and diagnostics overlay
 engineering-library-governance.js public-safe library manifest, trace schema, unit/fluid/equipment/literature governance, OCR terminology, formula-literature map, and quality gates
-engineering-route-trace-audit.js public-safe backend route-trace audit bridge, dependency fingerprint handoff, stale-result metadata capture, advanced engineering validation display, defense export context capture, backend schema mismatch warning, and software dependency-change gate display
-engineering-defense-export-package.js public-safe one-click defense report exporter, UI evidence registry, task-window evidence badges, redacted audit event handoff, and print/save PDF workflow
+engineering-route-trace-audit.js public-safe backend route-trace audit bridge, dependency fingerprint handoff, stale-result metadata capture, calculation defense contract handoff, advanced engineering validation display, defense export context capture, backend schema mismatch warning, and software dependency-change gate display
+engineering-realtime-calculation-defense.js public-safe realtime stale/freshness bridge that marks calculation results stale immediately when object-property inputs change before backend refresh
+engineering-defense-export-package.js public-safe one-click defense report exporter, calculation defense contract evidence, UI evidence registry, task-window evidence badges, redacted audit event handoff, and print/save PDF workflow
 engineering-pump-formula-defense-live-audit.js public-safe live Pump Formula Defense badges, trace-row source/literature notes, and protected backend refresh bridge for advisor-facing pump NPSH evidence
 engineering-pump-performance-chart-audit.js public-safe pump performance chart audit guard that suppresses fallback/duty-point fit curves, keeps no-data charts visually clean, requires sourced curve data, and redraws eligible curves on log-log axes
 engineering-pump-performance-canonical-chart.js public-safe operational chart renderer that uses solver-owned performanceChartData before legacy chart arrays or pump props
@@ -69,8 +70,9 @@ Release integrity guardrail:
 ```text
 node npsh-api/tools/release-integrity-audit.cjs
 app.bundle.min.js.map sourcesContent: absent
-Route audit cache key: engineering-route-trace-audit.js?v=20260602-route-audit-contract1
-Defense export cache key: engineering-defense-export-package.js?v=20260531-defensev2
+Route audit cache key: engineering-route-trace-audit.js?v=20260603-route-audit-contract2
+Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260603-realtime-defense1
+Defense export cache key: engineering-defense-export-package.js?v=20260603-defensev3
 Runtime API config: same-origin /api/simulate
 NPSH margin runtime cache key: engineering-npsh-margin-runtime.js?v=20260602-npsh-margin1
 Pump readiness visibility cache key: engineering-pump-readiness-visibility-runtime.js?v=20260602-pump-readiness-visibility2

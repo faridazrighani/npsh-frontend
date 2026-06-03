@@ -69,6 +69,7 @@
       pumpNode: audit.pumpNode || null,
       routeTrace: audit.routeTrace || results.routeTrace || null,
       calculationAudit: audit.calculationAudit || results.calculationAudit || null,
+      calculationDefenseContract: audit.calculationDefenseContract || results.calculationDefenseContract || null,
       dependencyManifest: audit.dependencyManifest || results.dependencyManifest || null,
       advancedEngineeringValidation: audit.advancedEngineeringValidation || results.advancedEngineeringValidation || null,
       securityPosture: audit.securityPosture || results.securityPosture || null,
@@ -251,6 +252,7 @@
     const validation = payload.advancedEngineeringValidation || {};
     const dependency = payload.dependencyManifest || {};
     const calculation = payload.calculationAudit || {};
+    const calculationDefense = payload.calculationDefenseContract || {};
     const result = payload.result || {};
     const citationStatus = finalCitationStatus(payload.libraryGovernance);
     const pageLocks = formulaPageLocks(payload.libraryGovernance, routeTrace);
@@ -283,6 +285,7 @@
       summary: {
         routeTraceAvailable: !!payload.routeTrace,
         calculationAuditAvailable: !!payload.calculationAudit,
+        calculationDefenseContractAvailable: !!payload.calculationDefenseContract,
         dependencyManifestAvailable: !!payload.dependencyManifest,
         advancedEngineeringValidationAvailable: !!payload.advancedEngineeringValidation,
         uiEvidenceItems: registry.length,
@@ -331,6 +334,8 @@
       },
       integrity: {
         calculationId: calculation.calculationId || null,
+        calculationDefenseStatus: calculationDefense.status || null,
+        calculationDefenseFreshness: calculationDefense.freshness || null,
         dependencyFingerprint: dependency.dependencyFingerprint || null,
         apiAuditEventId: payload.apiAuditEvent?.eventId || null,
         apiAuditLoggedAt: payload.apiAuditEvent?.loggedAt || null,

@@ -65,6 +65,7 @@
       : null;
     const routeTrace = results.routeTrace || results.npshEvaluation?.routeTrace || fallbackTrace || null;
     const calculationAudit = results.calculationAudit || null;
+    const calculationDefenseContract = results.calculationDefenseContract || null;
     const dependencyManifest = results.dependencyManifest || calculationAudit?.dependencyManifest || null;
     const advancedEngineeringValidation = results.advancedEngineeringValidation || null;
     const securityPosture = results.securityPosture || null;
@@ -77,6 +78,7 @@
       pumpNode: pump?.node || null,
       routeTrace,
       calculationAudit,
+      calculationDefenseContract,
       dependencyManifest,
       advancedEngineeringValidation,
       securityPosture,
@@ -89,6 +91,7 @@
 
   function auditPayloadFromResponse(response, result) {
     const calculationAudit = response?.calculationAudit || result?.calculationAudit || null;
+    const calculationDefenseContract = response?.calculationDefenseContract || result?.calculationDefenseContract || null;
     const dependencyManifest = response?.dependencyManifest
       || result?.dependencyManifest
       || calculationAudit?.dependencyManifest
@@ -102,7 +105,27 @@
     const backendValidation = response?.backendValidation || result?.backendValidation || null;
     const defenseExportContext = response?.defenseExportContext || result?.defenseExportContext || null;
     const apiAuditEvent = response?.apiAuditEvent || result?.apiAuditEvent || null;
-    return { calculationAudit, dependencyManifest, routeTrace, advancedEngineeringValidation, securityPosture, libraryManifest, backendValidation, defenseExportContext, apiAuditEvent };
+    return { calculationAudit, calculationDefenseContract, dependencyManifest, routeTrace, advancedEngineeringValidation, securityPosture, libraryManifest, backendValidation, defenseExportContext, apiAuditEvent };
+  }
+
+  function hasBackendAuditPayload(payload = {}) {
+    return !!(
+      payload?.routeTrace
+      || payload?.dependencyManifest
+      || payload?.calculationAudit
+      || payload?.calculationDefenseContract
+      || payload?.advancedEngineeringValidation
+      || payload?.defenseExportContext
+    );
+  }
+
+  function latestBackendSimulationResponse(backendResult, response) {
+    if (hasBackendAuditPayload(response)) return response;
+    const cached = root.__npshLastBackendSimulationResponse;
+    const payload = cached?.response || null;
+    if (!payload || !hasBackendAuditPayload(payload)) return response;
+    if (payload.results === backendResult || payload.result === backendResult) return payload;
+    return response;
   }
 
   function rememberDependencyFingerprint(dependencyManifest) {
@@ -128,10 +151,12 @@
 
   function attachAuditToPumpNode(pumpNode, response, result) {
     if (!pumpNode || typeof pumpNode !== 'object') return;
-    const { calculationAudit, dependencyManifest, routeTrace, advancedEngineeringValidation, securityPosture, libraryManifest, backendValidation, defenseExportContext, apiAuditEvent } = auditPayloadFromResponse(response, result);
+    const auditResponse = latestBackendSimulationResponse(result, response);
+    const { calculationAudit, calculationDefenseContract, dependencyManifest, routeTrace, advancedEngineeringValidation, securityPosture, libraryManifest, backendValidation, defenseExportContext, apiAuditEvent } = auditPayloadFromResponse(auditResponse, result);
     if (!pumpNode.results || typeof pumpNode.results !== 'object') pumpNode.results = {};
     if (routeTrace) pumpNode.results.routeTrace = routeTrace;
     if (calculationAudit) pumpNode.results.calculationAudit = calculationAudit;
+    if (calculationDefenseContract) pumpNode.results.calculationDefenseContract = calculationDefenseContract;
     if (advancedEngineeringValidation) pumpNode.results.advancedEngineeringValidation = advancedEngineeringValidation;
     if (securityPosture) pumpNode.results.securityPosture = securityPosture;
     if (libraryManifest) pumpNode.results.libraryManifest = libraryManifest;
@@ -144,6 +169,9 @@
       pumpNode.results.isCalculationStale = false;
       pumpNode.results.previousResultWasStale = !!dependencyManifest.priorResultStale;
       rememberDependencyFingerprint(dependencyManifest);
+    }
+    if (typeof root.EngineeringRealtimeCalculationDefense?.markCurrentFromBackend === 'function' && hasBackendAuditPayload(auditResponse)) {
+      root.EngineeringRealtimeCalculationDefense.markCurrentFromBackend(auditResponse);
     }
     refreshVisibleAuditSurfaces();
   }
@@ -217,6 +245,7 @@
       routeTrace: 'route-trace.v2',
       dependencyManifest: 'dependency-manifest.v1',
       calculationAudit: 'calculation-audit.v1',
+      calculationDefenseContract: 'calculation-defense-contract.v1',
       advancedEngineeringValidation: 'advanced-engineering-validation.v1',
       defenseExportContext: 'defense-export-context.v1'
     };
@@ -226,6 +255,8 @@
     else if (payload.dependencyManifest.schemaVersion !== expected.dependencyManifest) warnings.push(`dependencyManifest schema mismatch: expected ${expected.dependencyManifest}, got ${payload.dependencyManifest.schemaVersion || 'missing'}.`);
     if (!payload.calculationAudit) warnings.push('calculationAudit is missing; calculationId and formula-source posture cannot be proven.');
     else if (payload.calculationAudit.schemaVersion !== expected.calculationAudit) warnings.push(`calculationAudit schema mismatch: expected ${expected.calculationAudit}, got ${payload.calculationAudit.schemaVersion || 'missing'}.`);
+    if (!payload.calculationDefenseContract) warnings.push('calculationDefenseContract is missing; unified formula/dependency/trace/stale defense cannot be proven.');
+    else if (payload.calculationDefenseContract.schemaVersion !== expected.calculationDefenseContract) warnings.push(`calculationDefenseContract schema mismatch: expected ${expected.calculationDefenseContract}, got ${payload.calculationDefenseContract.schemaVersion || 'missing'}.`);
     if (!payload.advancedEngineeringValidation) warnings.push('advancedEngineeringValidation is missing; NPSH acceptance review cannot be proven.');
     else if (payload.advancedEngineeringValidation.schemaVersion !== expected.advancedEngineeringValidation) warnings.push(`advancedEngineeringValidation schema mismatch: expected ${expected.advancedEngineeringValidation}, got ${payload.advancedEngineeringValidation.schemaVersion || 'missing'}.`);
     if (!payload.defenseExportContext) warnings.push('defenseExportContext is missing; one-click defense package readiness cannot be proven.');
@@ -263,6 +294,7 @@
         routeTrace: payload.routeTrace || null,
         dependencyManifest: payload.dependencyManifest || null,
         calculationAudit: payload.calculationAudit || null,
+        calculationDefenseContract: payload.calculationDefenseContract || null,
         advancedEngineeringValidation: payload.advancedEngineeringValidation || null,
         securityPosture: payload.securityPosture || null,
         libraryManifest: payload.libraryManifest || null,
@@ -279,6 +311,7 @@
       routeTrace: payload.routeTrace || null,
       dependencyManifest: payload.dependencyManifest || null,
       calculationAudit: payload.calculationAudit || null,
+      calculationDefenseContract: payload.calculationDefenseContract || null,
       advancedEngineeringValidation: payload.advancedEngineeringValidation || null,
       securityPosture: payload.securityPosture || null,
       libraryManifest: payload.libraryManifest || null,
@@ -543,6 +576,57 @@
     return true;
   }
 
+  function fetchInputUrl(input) {
+    if (typeof input === 'string') return input;
+    if (input?.url) return String(input.url);
+    return '';
+  }
+
+  function requestPumpId(init) {
+    try {
+      const body = typeof init?.body === 'string' ? JSON.parse(init.body) : null;
+      return body?.pumpId || body?.target?.pumpId || '';
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function patchSimulationFetch() {
+    const original = root.fetch;
+    if (typeof original !== 'function' || original.__routeTraceAuditFetchPatched) return false;
+    function routeTraceAuditFetch(input, init) {
+      const url = fetchInputUrl(input);
+      const shouldCapture = /\/api\/simulate(?:[?#]|$)/i.test(url);
+      const promise = original.apply(this, arguments);
+      if (!shouldCapture) return promise;
+      const pumpId = requestPumpId(init);
+      return promise.then((response) => {
+        if (!response || typeof response.json !== 'function' || response.__routeTraceAuditJsonPatched) return response;
+        const originalJson = response.json.bind(response);
+        response.json = function routeTraceAuditJson(...jsonArgs) {
+          return originalJson(...jsonArgs).then((payload) => {
+            if (payload && typeof payload === 'object') {
+              root.__npshLastBackendSimulationResponse = {
+                schemaVersion: 'route-trace-audit-response-cache.v1',
+                url,
+                pumpId: pumpId || payload.pumpId || payload.routeTrace?.pumpId || '',
+                capturedAt: new Date().toISOString(),
+                response: payload
+              };
+            }
+            return payload;
+          });
+        };
+        response.__routeTraceAuditJsonPatched = true;
+        return response;
+      });
+    }
+    routeTraceAuditFetch.__routeTraceAuditFetchPatched = true;
+    routeTraceAuditFetch.__routeTraceAuditOriginal = original;
+    root.fetch = routeTraceAuditFetch;
+    return true;
+  }
+
   function patchPrimaryResultApplier() {
     const original = root.applyBackendSimulationPrimaryResults;
     if (typeof original !== 'function' || original.__routeTraceAuditPatched) return false;
@@ -562,6 +646,7 @@
     ensureMenuButton();
     const installed = {
       payloadBuilder: patchPayloadBuilder(),
+      fetchSimulation: patchSimulationFetch(),
       primaryResultApplier: patchPrimaryResultApplier(),
       routePanel: typeof document !== 'undefined' && !!document.getElementById(PANEL_ID),
       menuButton: typeof document !== 'undefined' && !!document.getElementById(MENU_BUTTON_ID)
