@@ -228,10 +228,21 @@
     const results = pump.results || {};
     const evaluation = results.npshEvaluation || {};
     const props = pump.props || {};
+    const chartData = results.performanceChartData?.schemaVersion === 'pump-performance-chart-data.v1'
+      ? results.performanceChartData
+      : null;
+    const chartAudit = chartData?.sourceAudit || {};
     const route = routeBoundary(model, id);
     const backendLinked = /backend|primary|connected/i.test(String(results.backendCalculationSource || results.backendValidationStatus || ''));
-    const stale = !!(results.isCalculationStale || results.actionReadinessBackend?.stale || results.actionReadinessFrontend?.stale);
+    const stale = !!(
+      results.isCalculationStale
+      || results.actionReadinessBackend?.stale
+      || results.actionReadinessFrontend?.stale
+      || /stale/i.test(String(chartData?.freshness || ''))
+    );
     const curveSource = firstText(
+      chartAudit.curveDataSource,
+      chartAudit.pumpCurveSource,
       results.curveDataSource,
       results.curveSource,
       evaluation.curveBasis,
@@ -241,6 +252,8 @@
       props.npshrSourceMode
     );
     const curveConfidence = firstText(
+      chartAudit.curveDataConfidence,
+      chartAudit.npshrDataConfidence,
       results.curveDataConfidence,
       results.dataConfidence,
       evaluation.dataConfidence,
@@ -248,23 +261,31 @@
       props.curveFitCompleteness
     );
 
-    const pumpCurvePoints = [
-      ...normalizePoints(props.curveData, ['head', 'pumpHead', 'value']),
-      ...normalizePoints(results.pumpCurve, ['head', 'pumpHead', 'value'])
-    ];
-    const npshrCurvePoints = [
-      ...normalizePoints(props.curveData, ['npshr', 'requiredNpsh']),
-      ...normalizePoints(results.npshrCurvePoints, ['npshr', 'requiredNpsh', 'value']),
-      ...normalizePoints(results.npshCurvePoints, ['npshr', 'requiredNpsh'])
-    ];
-    const systemCurvePoints = normalizePoints(
-      results.systemCurvePoints || results.sysCurve,
-      ['head', 'systemHead', 'requiredHead', 'value']
-    );
-    const npshaCurvePoints = normalizePoints(
-      results.npshCurvePoints,
-      ['npsha', 'availableNpsh', 'value']
-    );
+    const pumpCurvePoints = chartData
+      ? normalizePoints(chartData.series?.pumpHead, ['value', 'head', 'pumpHead'])
+      : [
+        ...normalizePoints(props.curveData, ['head', 'pumpHead', 'value']),
+        ...normalizePoints(results.pumpCurve, ['head', 'pumpHead', 'value'])
+      ];
+    const npshrCurvePoints = chartData
+      ? normalizePoints(chartData.series?.npshr, ['value', 'npshr', 'requiredNpsh'])
+      : [
+        ...normalizePoints(props.curveData, ['npshr', 'requiredNpsh']),
+        ...normalizePoints(results.npshrCurvePoints, ['npshr', 'requiredNpsh', 'value']),
+        ...normalizePoints(results.npshCurvePoints, ['npshr', 'requiredNpsh'])
+      ];
+    const systemCurvePoints = chartData
+      ? normalizePoints(chartData.series?.systemHead, ['value', 'head', 'systemHead', 'requiredHead'])
+      : normalizePoints(
+        results.systemCurvePoints || results.sysCurve,
+        ['head', 'systemHead', 'requiredHead', 'value']
+      );
+    const npshaCurvePoints = chartData
+      ? normalizePoints(chartData.series?.npsha, ['value', 'npsha', 'availableNpsh'])
+      : normalizePoints(
+        results.npshCurvePoints,
+        ['npsha', 'availableNpsh', 'value']
+      );
 
     const series = {
       pumpHead: buildSeriesAudit('pumpHead', pumpCurvePoints, {
@@ -648,6 +669,7 @@
   function wrapFunction(name, after, options = {}) {
     const original = root[name];
     if (typeof original !== 'function' || original.__pumpPerformanceChartAuditVersion === VERSION) return false;
+    if (original.__pumpPerformanceCanonicalChartVersion) return false;
     function wrapped(...args) {
       const result = options.skipOriginal ? undefined : original.apply(this, args);
       const runAfter = () => after(...args);
@@ -718,6 +740,7 @@
   function startRuntimeGuardLoop() {
     ensureRuntimeGuards();
     installDomObserver();
+    loadCanonicalChartRenderer();
     [0, 80, 220, 500, 900, 1400, 2200, 3600, 5200, 7600].forEach((delay) => {
       root.setTimeout?.(() => {
         ensureRuntimeGuards();
@@ -726,13 +749,31 @@
     });
   }
 
+  function loadCanonicalChartRenderer() {
+    if (typeof document === 'undefined' || root.EngineeringPumpPerformanceCanonicalChart || document.getElementById('pump-performance-canonical-chart-runtime')) {
+      return false;
+    }
+    try {
+      const script = document.createElement('script');
+      script.id = 'pump-performance-canonical-chart-runtime';
+      script.src = 'engineering-pump-performance-canonical-chart.js?v=20260603-canonical-chart1';
+      script.async = false;
+      document.body.appendChild(script);
+      return true;
+    } catch (error) {
+      console.warn('Unable to load canonical pump performance chart renderer.', error);
+      return false;
+    }
+  }
+
   root.EngineeringPumpPerformanceChartAudit = {
     version: VERSION,
     minCurvePoints: MIN_CURVE_POINTS,
     refresh,
     compute: computeAudit,
     render: renderAcademicChart,
-    ensureRuntimeGuards
+    ensureRuntimeGuards,
+    loadCanonicalChartRenderer
   };
 
   if (typeof module !== 'undefined' && module.exports) {

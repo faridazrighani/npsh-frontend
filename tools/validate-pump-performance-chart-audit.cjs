@@ -136,6 +136,60 @@ assert.strictEqual(result.series.npshr.allowed, true, 'Legacy npshCurvePoints mu
 assert.strictEqual(result.visibleSeries.length, 4, 'Legacy simulation chart should draw the four continuous datasets when evidence is valid.');
 
 setModel({
+  props: {
+    curveData: [
+      { flow: 0, head: 55, eff: 0, npshr: 1 },
+      { flow: 50, head: 50, eff: 60, npshr: 1.5 },
+      { flow: 100, head: 40, eff: 75, npshr: 2 },
+      { flow: 150, head: 20, eff: 50, npshr: 4 }
+    ],
+    curveDataSource: 'Screening default'
+  },
+  results: {
+    performanceChartData: {
+      schemaVersion: 'pump-performance-chart-data.v1',
+      sourceMode: 'Basic estimated curve',
+      freshness: 'Current',
+      sourceAudit: {
+        pumpCurveSource: 'Basic estimated curve',
+        curveDataSource: 'Basic estimated curve',
+        curveDataConfidence: 'Generic sizing estimate',
+        isDefaultCurveData: true
+      },
+      dutyPoint: { flow: 50, head: 24, npsha: 6.47, npshr: 2.4, margin: 4.07 },
+      series: {
+        pumpHead: [
+          { flow: 5, value: 30 },
+          { flow: 50, value: 24 },
+          { flow: 85, value: 12 }
+        ],
+        systemHead: [
+          { flow: 5, value: 8.8 },
+          { flow: 50, value: 24 },
+          { flow: 85, value: 52 }
+        ],
+        npsha: [
+          { flow: 5, value: 9 },
+          { flow: 50, value: 6.47 },
+          { flow: 85, value: 2.1 }
+        ],
+        npshr: [
+          { flow: 5, value: 2.4 },
+          { flow: 50, value: 2.4 },
+          { flow: 85, value: 2.4 }
+        ]
+      }
+    }
+  }
+});
+result = audit.compute('P-100');
+assert.strictEqual(result.series.pumpHead.rawPointCount, 3, 'Canonical pumpHead must replace default props.curveData.');
+assert.strictEqual(result.series.pumpHead.positivePointCount, 3, 'Canonical pumpHead should keep solved positive points.');
+assert.strictEqual(result.series.system.allowed, true, 'Canonical system curve remains route-derived.');
+assert.strictEqual(result.series.npsha.allowed, true, 'Canonical NPSHa remains route-derived.');
+assert.notStrictEqual(result.series.pumpHead.points[0]?.value, 55, 'Default template head must not leak into visible chart points.');
+
+setModel({
   results: {
     systemCurvePoints: [
       { flow: 30, head: 30 },
@@ -196,5 +250,51 @@ assert(
   index.includes('engineering-pump-performance-chart-audit.js?v=20260603-pump-chart-audit8'),
   'Index must cache-bust the pump performance chart audit runtime.'
 );
+assert(
+  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260603-canonical-chart1'),
+  'Audit runtime must load the canonical operational chart renderer after audit guards.'
+);
+assert.strictEqual(typeof audit.loadCanonicalChartRenderer, 'function', 'Audit runtime must expose canonical renderer loader.');
+
+const canonical = require(path.join(rootDir, 'engineering-pump-performance-canonical-chart.js'));
+const chartModel = canonical.buildChartModel('P-100');
+assert.strictEqual(chartModel.canonical, false, 'Current test model without performanceChartData should use legacy fallback.');
+const canonicalUpdatePumpChart = globalThis.updatePumpChart;
+audit.ensureRuntimeGuards();
+assert.strictEqual(globalThis.updatePumpChart, canonicalUpdatePumpChart, 'Audit guard must not rewrap the canonical chart renderer.');
+
+setModel({
+  props: {
+    curveData: [
+      { flow: 0, head: 55, eff: 0, npshr: 1 },
+      { flow: 50, head: 50, eff: 60, npshr: 1.5 },
+      { flow: 100, head: 40, eff: 75, npshr: 2 },
+      { flow: 150, head: 20, eff: 50, npshr: 4 }
+    ]
+  },
+  results: {
+    performanceChartData: {
+      schemaVersion: 'pump-performance-chart-data.v1',
+      sourceMode: 'Basic estimated curve',
+      freshness: 'Current',
+      sourceAudit: {
+        curveDataSource: 'Basic estimated curve',
+        curveDataConfidence: 'Generic sizing estimate',
+        isDefaultCurveData: true
+      },
+      dutyPoint: { flow: 50, head: 24, npsha: 6.47, npshr: 2.4 },
+      series: {
+        pumpHead: [{ flow: 5, value: 30 }, { flow: 50, value: 24 }, { flow: 85, value: 12 }],
+        systemHead: [{ flow: 5, value: 8.8 }, { flow: 50, value: 24 }, { flow: 85, value: 52 }],
+        npsha: [{ flow: 5, value: 9 }, { flow: 50, value: 6.47 }, { flow: 85, value: 2.1 }],
+        npshr: [{ flow: 5, value: 2.4 }, { flow: 50, value: 2.4 }, { flow: 85, value: 2.4 }]
+      }
+    }
+  }
+});
+const canonicalChartModel = canonical.buildChartModel('P-100');
+assert.strictEqual(canonicalChartModel.canonical, true, 'Canonical renderer must use performanceChartData when available.');
+assert.strictEqual(canonicalChartModel.series.pumpHead[0].value, 30, 'Canonical renderer must ignore default props.curveData.');
+assert.strictEqual(canonicalChartModel.sourceAudit.isDefaultCurveData, true, 'Canonical renderer must retain default-curve audit flag.');
 
 console.log('Pump performance chart audit validation passed.');
