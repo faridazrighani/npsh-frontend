@@ -47,7 +47,7 @@ function setModel(pump, extras = {}) {
 
 setModel({ props: {}, results: {} });
 let result = audit.compute('P-100');
-assert.strictEqual(result.version, 'pump-performance-chart-audit.v8');
+assert.strictEqual(result.version, 'pump-performance-chart-audit.v9');
 assert.strictEqual(result.axisMode, 'log-log');
 assert.strictEqual(result.chartHasDrawableCurve, false);
 assert.strictEqual(result.status, 'Curve Data Unavailable');
@@ -240,14 +240,14 @@ globalThis.updatePumpChart = function lateCaptionChartOverride() {
 audit.ensureRuntimeGuards();
 assert.strictEqual(
   globalThis.updatePumpChart.__pumpPerformanceChartAuditVersion,
-  'pump-performance-chart-audit.v8',
+  'pump-performance-chart-audit.v9',
   'Audit runtime must rewrap late caption chart overrides.'
 );
 globalThis.updatePumpChart('P-100');
 assert.strictEqual(lateRendererCalls, 0, 'Audit chart draw must not call the old fallback renderer.');
 
 assert(
-  index.includes('engineering-pump-performance-chart-audit.js?v=20260603-pump-chart-audit8'),
+  index.includes('engineering-pump-performance-chart-audit.js?v=20260603-pump-chart-audit9'),
   'Index must cache-bust the pump performance chart audit runtime.'
 );
 assert(
@@ -255,6 +255,28 @@ assert(
   'Audit runtime must load the canonical operational chart renderer after audit guards.'
 );
 assert.strictEqual(typeof audit.loadCanonicalChartRenderer, 'function', 'Audit runtime must expose canonical renderer loader.');
+assert(
+  auditSource.includes('function canonicalChartRendererActive'),
+  'Audit runtime must detect the canonical renderer before drawing the audit canvas.'
+);
+
+const previousDocument = globalThis.document;
+globalThis.document = {
+  getElementById(id) {
+    return id === 'pump-performance-canonical-chart-runtime' ? { id } : null;
+  },
+  querySelectorAll() {
+    throw new Error('Audit renderer should not query chart canvases after canonical renderer is active.');
+  }
+};
+assert.doesNotThrow(() => audit.refresh('P-100'), 'Audit refresh must not draw over the canonical chart renderer.');
+assert.strictEqual(
+  globalThis.__pumpPerformanceChartAuditLast?.version,
+  'pump-performance-chart-audit.v9',
+  'Audit refresh should still retain the latest computed audit model.'
+);
+if (previousDocument === undefined) delete globalThis.document;
+else globalThis.document = previousDocument;
 
 const canonical = require(path.join(rootDir, 'engineering-pump-performance-canonical-chart.js'));
 const chartModel = canonical.buildChartModel('P-100');

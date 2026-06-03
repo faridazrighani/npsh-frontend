@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-performance-chart-audit.v8';
+  const VERSION = 'pump-performance-chart-audit.v9';
   const MIN_CURVE_POINTS = 3;
   const PANEL_SELECTOR = '[data-pump-performance-chart-audit-panel]';
   const CHART_CANVAS_SELECTORS = [
@@ -650,8 +650,18 @@
     return audit;
   }
 
+  function canonicalChartRendererActive() {
+    if (root.EngineeringPumpPerformanceCanonicalChart) return true;
+    if (typeof document === 'undefined') return false;
+    return !!document.getElementById('pump-performance-canonical-chart-runtime');
+  }
+
   function refresh(pumpId) {
     const audit = computeAudit(pumpId);
+    if (canonicalChartRendererActive()) {
+      root.__pumpPerformanceChartAuditLast = audit;
+      return audit;
+    }
     chartCanvases().forEach((canvas) => {
       removeAuditPanel(canvas);
       renderAcademicChart(canvas, audit);
