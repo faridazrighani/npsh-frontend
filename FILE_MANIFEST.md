@@ -76,7 +76,7 @@ NPSH margin runtime cache key: engineering-npsh-margin-runtime.js?v=20260602-nps
 Pump readiness visibility cache key: engineering-pump-readiness-visibility-runtime.js?v=20260602-pump-readiness-visibility2
 Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260602-pump-defense-live11
 Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260603-pump-chart-audit9
-Pump performance canonical chart cache key: engineering-pump-performance-canonical-chart.js?v=20260603-canonical-chart1
+Pump performance canonical chart cache key: engineering-pump-performance-canonical-chart.js?v=20260603-canonical-chart2
 Pages API proxy: _worker.js -> env.NPSH_API.fetch(request), static fallback -> env.ASSETS.fetch(request)
 ```
 

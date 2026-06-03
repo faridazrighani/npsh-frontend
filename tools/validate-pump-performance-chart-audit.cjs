@@ -137,6 +137,11 @@ assert.strictEqual(result.visibleSeries.length, 4, 'Legacy simulation chart shou
 
 setModel({
   props: {
+    designFlow: 50,
+    designHead: 24,
+    designEfficiency: 62,
+    designNpshr: 2.4,
+    bepFlow: 50,
     curveData: [
       { flow: 0, head: 55, eff: 0, npshr: 1 },
       { flow: 50, head: 50, eff: 60, npshr: 1.5 },
@@ -251,7 +256,7 @@ assert(
   'Index must cache-bust the pump performance chart audit runtime.'
 );
 assert(
-  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260603-canonical-chart1'),
+  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260603-canonical-chart2'),
   'Audit runtime must load the canonical operational chart renderer after audit guards.'
 );
 assert.strictEqual(typeof audit.loadCanonicalChartRenderer, 'function', 'Audit runtime must expose canonical renderer loader.');
@@ -287,6 +292,11 @@ assert.strictEqual(globalThis.updatePumpChart, canonicalUpdatePumpChart, 'Audit 
 
 setModel({
   props: {
+    designFlow: 50,
+    designHead: 24,
+    designEfficiency: 62,
+    designNpshr: 2.4,
+    bepFlow: 50,
     curveData: [
       { flow: 0, head: 55, eff: 0, npshr: 1 },
       { flow: 50, head: 50, eff: 60, npshr: 1.5 },
@@ -318,5 +328,43 @@ const canonicalChartModel = canonical.buildChartModel('P-100');
 assert.strictEqual(canonicalChartModel.canonical, true, 'Canonical renderer must use performanceChartData when available.');
 assert.strictEqual(canonicalChartModel.series.pumpHead[0].value, 30, 'Canonical renderer must ignore default props.curveData.');
 assert.strictEqual(canonicalChartModel.sourceAudit.isDefaultCurveData, true, 'Canonical renderer must retain default-curve audit flag.');
+
+setModel({
+  props: {
+    designFlow: '',
+    designHead: '',
+    designEfficiency: '',
+    designNpshr: '',
+    bepFlow: '',
+    curveData: [
+      { flow: 0, head: 55, eff: 0, npshr: 1 },
+      { flow: 50, head: 50, eff: 60, npshr: 1.5 },
+      { flow: 100, head: 40, eff: 75, npshr: 2 },
+      { flow: 150, head: 20, eff: 50, npshr: 4 }
+    ]
+  },
+  results: {
+    performanceChartData: {
+      schemaVersion: 'pump-performance-chart-data.v1',
+      sourceMode: 'Engineering Fit',
+      freshness: 'Current',
+      sourceAudit: {
+        curveDataSource: 'Engineering Fit',
+        curveDataConfidence: '-',
+        isDefaultCurveData: true
+      },
+      series: {
+        pumpHead: [{ flow: 5, value: 30 }, { flow: 50, value: 24 }]
+      }
+    }
+  }
+});
+const blockedChartModel = canonical.buildChartModel('P-100');
+assert.strictEqual(blockedChartModel.blocked, true, 'Canonical renderer must block estimated/template chart data when pump inputs are blank.');
+assert.strictEqual(blockedChartModel.series.pumpHead.length, 0, 'Blocked chart model must not expose stale pump head points.');
+assert(
+  blockedChartModel.warnings.some((warning) => /complete pump duty inputs/i.test(warning)),
+  'Blocked chart model must explain the missing input basis.'
+);
 
 console.log('Pump performance chart audit validation passed.');

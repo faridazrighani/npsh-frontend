@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-performance-canonical-chart.v1';
+  const VERSION = 'pump-performance-canonical-chart.v2';
   const CANVAS_SELECTORS = [
     '#pumpChart',
     '#captionAuditPumpChartCanvas',
@@ -101,6 +101,82 @@
     return normalizePoints(chartData?.series?.[key], ['value']);
   }
 
+  const REQUIRED_ESTIMATED_CHART_INPUTS = [
+    'designFlow',
+    'designHead',
+    'designEfficiency',
+    'designNpshr',
+    'bepFlow'
+  ];
+
+  function hasCompleteEstimatedChartInputs(props = {}) {
+    return REQUIRED_ESTIMATED_CHART_INPUTS.every((key) => {
+      const value = toNumber(props[key]);
+      return value !== null && value > 0;
+    });
+  }
+
+  function hasNonDefaultCurveData(props = {}) {
+    return normalizePoints(props.curveData || [], ['head', 'pumpHead', 'value']).length >= 2
+      && !isDefaultPumpCurve(props.curveData || []);
+  }
+
+  function chartDataNeedsEstimatedInputBasis(chartData) {
+    const audit = chartData?.sourceAudit || {};
+    const sourceText = [
+      chartData?.sourceMode,
+      audit.pumpCurveSource,
+      audit.curveDataSource,
+      audit.curveDataConfidence,
+      audit.npshrSourceMode
+    ].filter(Boolean).join(' ');
+    return !!audit.isDefaultCurveData
+      || !!audit.isEstimated
+      || !!audit.npshrIsEstimated
+      || /engineering\s*fit|basic\s*estimated|estimated|screening|default|template/i.test(sourceText);
+  }
+
+  function storedChartDataIsAllowed(pump, chartData) {
+    if (!chartDataNeedsEstimatedInputBasis(chartData)) return true;
+    const props = pump.props || {};
+    return hasCompleteEstimatedChartInputs(props)
+      || (props.curveGeneratedByEngineeringFit === true && hasNonDefaultCurveData(props));
+  }
+
+  function buildBlockedChartModel(pumpId, pump, chartData, reason) {
+    const props = pump.props || {};
+    const warnings = [
+      reason,
+      ...(Array.isArray(chartData?.warnings) ? chartData.warnings : [])
+    ].filter(Boolean);
+    return {
+      pumpId,
+      sourceMode: 'Input Required',
+      sourceAudit: {
+        ...(chartData?.sourceAudit || {}),
+        chartDataBlocked: true
+      },
+      freshness: 'Input Required',
+      warnings: [...new Set(warnings)],
+      ranges: {
+        bepFlow: toNumber(props.bepFlow ?? props.designFlow),
+        porMinPercent: toNumber(props.porMinPercent),
+        porMaxPercent: toNumber(props.porMaxPercent),
+        aorMinPercent: toNumber(props.aorMinPercent),
+        aorMaxPercent: toNumber(props.aorMaxPercent)
+      },
+      dutyPoint: {},
+      series: {
+        pumpHead: [],
+        systemHead: [],
+        npsha: [],
+        npshr: []
+      },
+      canonical: true,
+      blocked: true
+    };
+  }
+
   function buildFallbackModel(pumpId, pump) {
     const results = pump.results || {};
     const props = pump.props || {};
@@ -158,6 +234,14 @@
       ? results.performanceChartData
       : null;
     if (chartData) {
+      if (!storedChartDataIsAllowed(pump, chartData)) {
+        return buildBlockedChartModel(
+          id,
+          pump,
+          chartData,
+          'Stored pump performance chart data ignored: complete pump duty inputs or non-default sourced curve data are required.'
+        );
+      }
       return {
         pumpId: id,
         sourceMode: chartData.sourceMode || '-',
