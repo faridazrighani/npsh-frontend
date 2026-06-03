@@ -1,0 +1,1413 @@
+{
+  "schemaVersion": "simulation-case-current-system-review.v1",
+  "generatedAt": "2026-06-03T16:40:31.921Z",
+  "caseId": "simulation-case-1",
+  "targetFolder": "npsh-frontend/journals/simulasi_1",
+  "files": {
+    "untirta": "npsh-frontend/journals/simulasi_1/simulasi_performansi_pompa_air_umpan_tangki_deaerator.untirta",
+    "analysisReport": "npsh-frontend/journals/analysis-reports/simulasi-1-analysis.json",
+    "existingAuditMarkdown": "npsh-frontend/journals/simulasi_1/audit_validasi_simulasi_performansi_pompa_air_umpan_tangki_deaerator.md",
+    "reviewMarkdown": "npsh-frontend/journals/simulasi_1/review_analysis_simulasi_1_current_system.md",
+    "reviewJson": "npsh-frontend/journals/simulasi_1/review_analysis_simulasi_1_current_system.json"
+  },
+  "inputFile": {
+    "header": {
+      "fileFormat": "untirta-npsh-simulation",
+      "fileVersion": 1,
+      "compression": "none",
+      "checksum": "aa7156ebf2131db65321da0cbc594fbbb7d6ea601d41f211944c67ef3ffb57b7",
+      "payloadBytes": 40576,
+      "savedAt": "2026-05-23T13:46:04Z"
+    },
+    "checksumVerified": true,
+    "checksum": "aa7156ebf2131db65321da0cbc594fbbb7d6ea601d41f211944c67ef3ffb57b7",
+    "payloadBytes": 40576
+  },
+  "analysisSummary": {
+    "sampleCaseLoaded": "Available",
+    "simulationRun": "Recalculated from .untirta and network optimization proposal generated",
+    "journalComparison": "Detailed by Fluid Basis, SRC, Pipe, Pump, SNK, and Outlet Readout",
+    "largestDeviation": "1.3% (Pipe Suction - Darcy f; OK - Colebrook/app basis)",
+    "hydraulicStatus": "Safe: NPSHa 6.4656 m > NPSHr 2.4002 m",
+    "dataConfidence": "Warning: Manual - verify vendor data",
+    "optimizationStatus": "Proposal Ready; proposed NPSHr 3.479 m retained as proposal only",
+    "engineeringConclusion": "Conditionally validated with documented journal caveats and equivalent SRC/SNK closures"
+  },
+  "backend": {
+    "ok": true,
+    "engineMode": "backend-npsh-engine-adapter",
+    "pumpId": "P-100",
+    "result": {
+      "ok": true,
+      "hydraulicOk": true,
+      "status": "Safe",
+      "hydraulicStatus": "Safe",
+      "engineeringStatus": "Safe",
+      "flow": 50,
+      "pumpHead": 24,
+      "npsha": 6.4656,
+      "npshr": 2.4002,
+      "npshMargin": 4.0654,
+      "npshRatio": 2.6938,
+      "requiredNpsha": 3.0002,
+      "npshExcess": 3.4654,
+      "operatingRegion": "POR",
+      "operatingPercentBep": 100,
+      "npshrSource": "Manual input",
+      "suctionPressureAbs": 1.622,
+      "suctionLoss": 2.616,
+      "vaporPressureHead": 10.788,
+      "suctionVelocityHead": 0.173,
+      "dominantLoss": "PIPE-1 (2.62 m)",
+      "warnings": [],
+      "notes": [
+        "NPSH margin satisfies the selected margin basis.",
+        "Dominant suction loss: PIPE-1 (2.62 m).",
+        "Review suction pipe, valve, and fitting losses.",
+        "Fluid vapor pressure has a significant effect on available NPSH.",
+        "NPSHr uses manual user input; verify it against manufacturer/test data.",
+        "Required NPSHa by selected basis: 3.00 m.",
+        "Maintain margin above NPSHr according to the selected reliability basis.",
+        "Worst-case AOR excess NPSH: 1.26 m at 65.00 m3/h."
+      ],
+      "calculationTrace": {
+        "basis": {
+          "fluidName": "Water",
+          "temperature": 100,
+          "density": 958.348,
+          "viscosity": 0.803,
+          "vaporPressureBarA": 1.01418,
+          "gravity": 9.81
+        },
+        "steps": [
+          {
+            "title": "System Static Head",
+            "formula": "H_static = H_discharge boundary - H_suction boundary",
+            "substitution": "29.085 - 19.369 = 9.716 m",
+            "result": 9.716,
+            "unit": "m"
+          },
+          {
+            "title": "System Curve Head",
+            "formula": "H_system(Q) = H_static + hL_suction(Q) + hL_discharge(Q)",
+            "substitution": "9.716 + 2.616 + 11.669 = 24.000 m",
+            "result": 24,
+            "unit": "m"
+          },
+          {
+            "title": "Head Residual",
+            "formula": "Head residual = H_pump(Q) - H_system(Q)",
+            "substitution": "24.000 - 24.000 = 0.000 m",
+            "result": 0,
+            "unit": "m"
+          },
+          {
+            "title": "Source Absolute Pressure",
+            "formula": "Pabs = Pabs input",
+            "substitution": "1.821 = 1.821 bar a",
+            "result": 1.821,
+            "unit": "bar a"
+          },
+          {
+            "title": "Pressure Head",
+            "formula": "Hp = Pabs x 100000 / (rho x g)",
+            "substitution": "1.821 x 100000 / (958.348 x 9.810) = 19.369 m",
+            "result": 19.369,
+            "unit": "m"
+          },
+          {
+            "title": "Elevation Head",
+            "formula": "Hz = z_source - z_pump",
+            "substitution": "0.000 - -0.500 = 0.500 m",
+            "result": 0.5,
+            "unit": "m"
+          },
+          {
+            "title": "Source Velocity Head",
+            "formula": "Hvel = 0",
+            "substitution": "0.000 m",
+            "result": 0,
+            "unit": "m"
+          },
+          {
+            "title": "Suction Loss",
+            "formula": "HL = pipe major + fitting/valve minor",
+            "substitution": "0.080 + 2.535 = 2.616 m",
+            "result": 2.616,
+            "unit": "m"
+          },
+          {
+            "title": "Vapor Pressure Head",
+            "formula": "Hv = Pv x 100000 / (rho x g)",
+            "substitution": "1.014180 x 100000 / (958.348 x 9.810) = 10.788 m",
+            "result": 10.788,
+            "unit": "m"
+          },
+          {
+            "title": "NPSHa",
+            "formula": "NPSHa = Hp + z_source + Hvel - z_pump - HL - Hv",
+            "substitution": "19.369 + 0.000 + 0.000 - -0.500 - 2.616 - 10.788 = 6.466 m",
+            "result": 6.466,
+            "unit": "m"
+          },
+          {
+            "title": "NPSHr",
+            "formula": "NPSHr = pump required NPSH at operating flow",
+            "substitution": "50.000 m3/h -> 2.400 m",
+            "result": 2.4,
+            "unit": "m"
+          },
+          {
+            "title": "Operating Region",
+            "formula": "Flow %BEP = Q / Q_BEP x 100",
+            "substitution": "50.000 / 50.000 x 100 = 100.000 % BEP",
+            "result": 100,
+            "unit": "% BEP"
+          },
+          {
+            "title": "Required NPSHa",
+            "formula": "Required NPSHa = max(NPSHr x margin ratio, NPSHr + absolute margin)",
+            "substitution": "max(2.400 x 1.050, 2.400 + 0.600) = 3.000 m",
+            "result": 3,
+            "unit": "m"
+          },
+          {
+            "title": "Margin and Ratio",
+            "formula": "Margin = NPSHa - NPSHr; Ratio = NPSHa / NPSHr; Excess = NPSHa - Required NPSHa",
+            "substitution": "6.466 - 2.400 = 4.065 m; 6.466 / 2.400 = 2.694; 6.466 - 3.000 = 3.465 m",
+            "result": 3.465,
+            "unit": "m"
+          }
+        ],
+        "references": [
+          "Bernoulli energy balance",
+          "Darcy-Weisbach pipe friction",
+          "Minor loss coefficient K for fittings and valves",
+          "ANSI/HI 9.6.1-2024 NPSH margin guidance",
+          "NPSH available versus required NPSH"
+        ],
+        "formulaDefenseSchemaVersion": "pump-formula-defense.v1",
+        "academicFormulaDefenseRows": [
+          {
+            "order": 1,
+            "step": "System Static Head",
+            "inputSource": "Resolved suction and discharge boundary heads plus suction/discharge path losses.",
+            "formula": "H_static = H_discharge boundary - H_suction boundary",
+            "substitution": "29.085 - 19.369 = 9.716 m",
+            "result": 9.716,
+            "unit": "m",
+            "literature": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+            "defenseNote": "Use the formula, substitution, result, and literature basis as the advisor-facing explanation for this number."
+          },
+          {
+            "order": 2,
+            "step": "System Curve Head",
+            "inputSource": "Resolved suction and discharge boundary heads plus suction/discharge path losses.",
+            "formula": "H_system(Q) = H_static + hL_suction(Q) + hL_discharge(Q)",
+            "substitution": "9.716 + 2.616 + 11.669 = 24.000 m",
+            "result": 24,
+            "unit": "m",
+            "literature": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+            "defenseNote": "Use this to explain why the pump must provide boundary elevation/pressure difference plus suction and discharge losses."
+          },
+          {
+            "order": 3,
+            "step": "Head Residual",
+            "inputSource": "Pump head curve at evaluated flow and calculated system head at the same flow.",
+            "formula": "Head residual = H_pump(Q) - H_system(Q)",
+            "substitution": "24.000 - 24.000 = 0.000 m",
+            "result": 0,
+            "unit": "m",
+            "literature": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+            "defenseNote": "Positive residual means pump head is above system demand at that flow; negative residual means the selected curve cannot satisfy the demanded point."
+          },
+          {
+            "order": 4,
+            "step": "Source Absolute Pressure",
+            "inputSource": "SRC/tank/vessel boundary pressure basis; gauge pressure is converted to absolute pressure.",
+            "formula": "Pabs = Pabs input",
+            "substitution": "1.821 = 1.821 bar a",
+            "result": 1.821,
+            "unit": "bar a",
+            "literature": "Local thesis literature set: fluid mechanics, cavitation, and ANSI/HI NPSH margin references.",
+            "defenseNote": "NPSH uses absolute pressure. Gauge pressure must be converted before pressure-head calculation."
+          },
+          {
+            "order": 5,
+            "step": "Pressure Head",
+            "inputSource": "Absolute source pressure, active fluid density, and gravitational acceleration.",
+            "formula": "Hp = Pabs x 100000 / (rho x g)",
+            "substitution": "1.821 x 100000 / (958.348 x 9.810) = 19.369 m",
+            "result": 19.369,
+            "unit": "m",
+            "literature": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+            "defenseNote": "Use the formula, substitution, result, and literature basis as the advisor-facing explanation for this number."
+          },
+          {
+            "order": 6,
+            "step": "Elevation Head",
+            "inputSource": "Source liquid/boundary elevation and pump suction datum/nozzle elevation.",
+            "formula": "Hz = z_source - z_pump",
+            "substitution": "0.000 - -0.500 = 0.500 m",
+            "result": 0.5,
+            "unit": "m",
+            "literature": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+            "defenseNote": "Use the formula, substitution, result, and literature basis as the advisor-facing explanation for this number."
+          },
+          {
+            "order": 7,
+            "step": "Source Velocity Head",
+            "inputSource": "External header static-pressure basis or inlet pipe velocity head; reservoir velocity is normally neglected.",
+            "formula": "Hvel = 0",
+            "substitution": "0.000 m",
+            "result": 0,
+            "unit": "m",
+            "literature": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+            "defenseNote": "Use the formula, substitution, result, and literature basis as the advisor-facing explanation for this number."
+          },
+          {
+            "order": 8,
+            "step": "Suction Loss",
+            "inputSource": "Suction-side pipe segments, fittings, valves, roughness, diameter, length, and flow.",
+            "formula": "HL = pipe major + fitting/valve minor",
+            "substitution": "0.080 + 2.535 = 2.616 m",
+            "result": 2.616,
+            "unit": "m",
+            "literature": "Fluid Mechanics: Darcy-Weisbach major loss plus minor-loss coefficient K; ANSI/HI Appendix A suction head loss hf.",
+            "defenseNote": "This is often the easiest engineering lever to improve NPSHa: reduce length, fittings, K value, velocity, or roughness."
+          },
+          {
+            "order": 9,
+            "step": "Vapor Pressure Head",
+            "inputSource": "Absolute source pressure, active fluid density, and gravitational acceleration.",
+            "formula": "Hv = Pv x 100000 / (rho x g)",
+            "substitution": "1.014180 x 100000 / (958.348 x 9.810) = 10.788 m",
+            "result": 10.788,
+            "unit": "m",
+            "literature": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+            "defenseNote": "Use the formula, substitution, result, and literature basis as the advisor-facing explanation for this number."
+          },
+          {
+            "order": 10,
+            "step": "NPSHa",
+            "inputSource": "Calculated suction energy at the pump NPSH datum after suction loss and vapor pressure are subtracted.",
+            "formula": "NPSHa = Hp + z_source + Hvel - z_pump - HL - Hv",
+            "substitution": "19.369 + 0.000 + 0.000 - -0.500 - 2.616 - 10.788 = 6.466 m",
+            "result": 6.466,
+            "unit": "m",
+            "literature": "ANSI/HI 9.6.1-2024 Appendix A: NPSHA determination at the pump NPSH datum plane.",
+            "defenseNote": "NPSHa is system-derived. It can be improved by increasing source pressure/elevation or reducing suction losses/vapor pressure."
+          },
+          {
+            "order": 11,
+            "step": "NPSHr",
+            "inputSource": "Pump datasheet/manual NPSHr, engineering-fit curve, or manufacturer/test curve at evaluated flow.",
+            "formula": "NPSHr = pump required NPSH at operating flow",
+            "substitution": "50.000 m3/h -> 2.400 m",
+            "result": 2.4,
+            "unit": "m",
+            "literature": "ANSI/HI 9.6.1-2024: NPSHR is pump/manufacturer supplied for specified flow, speed, and pumped liquid.",
+            "defenseNote": "NPSHr is pump-derived. The network cannot certify it; final validation requires vendor/manufacturer/test or justified journal data."
+          },
+          {
+            "order": 12,
+            "step": "Operating Region",
+            "inputSource": "Evaluated flow and BEP Flow with configured POR/AOR limits.",
+            "formula": "Flow %BEP = Q / Q_BEP x 100",
+            "substitution": "50.000 / 50.000 x 100 = 100.000 % BEP",
+            "result": 100,
+            "unit": "% BEP",
+            "literature": "ANSI/HI operating-region guidance: POR/AOR are interpreted relative to BEP flow.",
+            "defenseNote": "Away from BEP, the application applies AOR logic and the margin basis can become stricter."
+          },
+          {
+            "order": 13,
+            "step": "Required NPSHa",
+            "inputSource": "Selected NPSH margin basis, margin ratio, absolute margin, NPSHa, and NPSHr.",
+            "formula": "Required NPSHa = max(NPSHr x margin ratio, NPSHr + absolute margin)",
+            "substitution": "max(2.400 x 1.050, 2.400 + 0.600) = 3.000 m",
+            "result": 3,
+            "unit": "m",
+            "literature": "ANSI/HI 9.6.1-2024: NPSH margin and NPSH margin ratio.",
+            "defenseNote": "The application checks both ratio and absolute margin, then uses the stricter required NPSHa."
+          },
+          {
+            "order": 14,
+            "step": "Margin and Ratio",
+            "inputSource": "Selected NPSH margin basis, margin ratio, absolute margin, NPSHa, and NPSHr.",
+            "formula": "Margin = NPSHa - NPSHr; Ratio = NPSHa / NPSHr; Excess = NPSHa - Required NPSHa",
+            "substitution": "6.466 - 2.400 = 4.065 m; 6.466 / 2.400 = 2.694; 6.466 - 3.000 = 3.465 m",
+            "result": 3.465,
+            "unit": "m",
+            "literature": "ANSI/HI 9.6.1-2024: NPSH margin and NPSH margin ratio.",
+            "defenseNote": "Safe hydraulic margin alone is not enough for thesis validation when NPSHr data confidence is weak."
+          },
+          {
+            "order": 15,
+            "step": "Data Confidence Gate",
+            "inputSource": "Hydraulic NPSH status, NPSHr source quality, and selected assessment mode.",
+            "formula": "Engineering status = hydraulic status + NPSHr data confidence",
+            "substitution": "Hydraulic: Safe; Data: Manual - verify vendor data; Engineering: Safe",
+            "result": "Safe",
+            "unit": "",
+            "literature": "ANSI/HI 9.6.1-2024 distinguishes system NPSHA from pump/manufacturer NPSHR; manufacturer/test data is preferred for final validation.",
+            "defenseNote": "This is the answer when an advisor asks why a hydraulically safe result may still show Warning in Engineering Validation."
+          }
+        ],
+        "formulaDefenseRows": [
+          {
+            "order": 1,
+            "step": "System Static Head",
+            "inputSource": "Resolved suction and discharge boundary heads plus suction/discharge path losses.",
+            "formula": "H_static = H_discharge boundary - H_suction boundary",
+            "substitution": "29.085 - 19.369 = 9.716 m",
+            "result": 9.716,
+            "unit": "m",
+            "literature": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+            "defenseNote": "Use the formula, substitution, result, and literature basis as the advisor-facing explanation for this number."
+          },
+          {
+            "order": 2,
+            "step": "System Curve Head",
+            "inputSource": "Resolved suction and discharge boundary heads plus suction/discharge path losses.",
+            "formula": "H_system(Q) = H_static + hL_suction(Q) + hL_discharge(Q)",
+            "substitution": "9.716 + 2.616 + 11.669 = 24.000 m",
+            "result": 24,
+            "unit": "m",
+            "literature": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+            "defenseNote": "Use this to explain why the pump must provide boundary elevation/pressure difference plus suction and discharge losses."
+          },
+          {
+            "order": 3,
+            "step": "Head Residual",
+            "inputSource": "Pump head curve at evaluated flow and calculated system head at the same flow.",
+            "formula": "Head residual = H_pump(Q) - H_system(Q)",
+            "substitution": "24.000 - 24.000 = 0.000 m",
+            "result": 0,
+            "unit": "m",
+            "literature": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+            "defenseNote": "Positive residual means pump head is above system demand at that flow; negative residual means the selected curve cannot satisfy the demanded point."
+          },
+          {
+            "order": 4,
+            "step": "Source Absolute Pressure",
+            "inputSource": "SRC/tank/vessel boundary pressure basis; gauge pressure is converted to absolute pressure.",
+            "formula": "Pabs = Pabs input",
+            "substitution": "1.821 = 1.821 bar a",
+            "result": 1.821,
+            "unit": "bar a",
+            "literature": "Local thesis literature set: fluid mechanics, cavitation, and ANSI/HI NPSH margin references.",
+            "defenseNote": "NPSH uses absolute pressure. Gauge pressure must be converted before pressure-head calculation."
+          },
+          {
+            "order": 5,
+            "step": "Pressure Head",
+            "inputSource": "Absolute source pressure, active fluid density, and gravitational acceleration.",
+            "formula": "Hp = Pabs x 100000 / (rho x g)",
+            "substitution": "1.821 x 100000 / (958.348 x 9.810) = 19.369 m",
+            "result": 19.369,
+            "unit": "m",
+            "literature": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+            "defenseNote": "Use the formula, substitution, result, and literature basis as the advisor-facing explanation for this number."
+          },
+          {
+            "order": 6,
+            "step": "Elevation Head",
+            "inputSource": "Source liquid/boundary elevation and pump suction datum/nozzle elevation.",
+            "formula": "Hz = z_source - z_pump",
+            "substitution": "0.000 - -0.500 = 0.500 m",
+            "result": 0.5,
+            "unit": "m",
+            "literature": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+            "defenseNote": "Use the formula, substitution, result, and literature basis as the advisor-facing explanation for this number."
+          },
+          {
+            "order": 7,
+            "step": "Source Velocity Head",
+            "inputSource": "External header static-pressure basis or inlet pipe velocity head; reservoir velocity is normally neglected.",
+            "formula": "Hvel = 0",
+            "substitution": "0.000 m",
+            "result": 0,
+            "unit": "m",
+            "literature": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+            "defenseNote": "Use the formula, substitution, result, and literature basis as the advisor-facing explanation for this number."
+          },
+          {
+            "order": 8,
+            "step": "Suction Loss",
+            "inputSource": "Suction-side pipe segments, fittings, valves, roughness, diameter, length, and flow.",
+            "formula": "HL = pipe major + fitting/valve minor",
+            "substitution": "0.080 + 2.535 = 2.616 m",
+            "result": 2.616,
+            "unit": "m",
+            "literature": "Fluid Mechanics: Darcy-Weisbach major loss plus minor-loss coefficient K; ANSI/HI Appendix A suction head loss hf.",
+            "defenseNote": "This is often the easiest engineering lever to improve NPSHa: reduce length, fittings, K value, velocity, or roughness."
+          },
+          {
+            "order": 9,
+            "step": "Vapor Pressure Head",
+            "inputSource": "Absolute source pressure, active fluid density, and gravitational acceleration.",
+            "formula": "Hv = Pv x 100000 / (rho x g)",
+            "substitution": "1.014180 x 100000 / (958.348 x 9.810) = 10.788 m",
+            "result": 10.788,
+            "unit": "m",
+            "literature": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+            "defenseNote": "Use the formula, substitution, result, and literature basis as the advisor-facing explanation for this number."
+          },
+          {
+            "order": 10,
+            "step": "NPSHa",
+            "inputSource": "Calculated suction energy at the pump NPSH datum after suction loss and vapor pressure are subtracted.",
+            "formula": "NPSHa = Hp + z_source + Hvel - z_pump - HL - Hv",
+            "substitution": "19.369 + 0.000 + 0.000 - -0.500 - 2.616 - 10.788 = 6.466 m",
+            "result": 6.466,
+            "unit": "m",
+            "literature": "ANSI/HI 9.6.1-2024 Appendix A: NPSHA determination at the pump NPSH datum plane.",
+            "defenseNote": "NPSHa is system-derived. It can be improved by increasing source pressure/elevation or reducing suction losses/vapor pressure."
+          },
+          {
+            "order": 11,
+            "step": "NPSHr",
+            "inputSource": "Pump datasheet/manual NPSHr, engineering-fit curve, or manufacturer/test curve at evaluated flow.",
+            "formula": "NPSHr = pump required NPSH at operating flow",
+            "substitution": "50.000 m3/h -> 2.400 m",
+            "result": 2.4,
+            "unit": "m",
+            "literature": "ANSI/HI 9.6.1-2024: NPSHR is pump/manufacturer supplied for specified flow, speed, and pumped liquid.",
+            "defenseNote": "NPSHr is pump-derived. The network cannot certify it; final validation requires vendor/manufacturer/test or justified journal data."
+          },
+          {
+            "order": 12,
+            "step": "Operating Region",
+            "inputSource": "Evaluated flow and BEP Flow with configured POR/AOR limits.",
+            "formula": "Flow %BEP = Q / Q_BEP x 100",
+            "substitution": "50.000 / 50.000 x 100 = 100.000 % BEP",
+            "result": 100,
+            "unit": "% BEP",
+            "literature": "ANSI/HI operating-region guidance: POR/AOR are interpreted relative to BEP flow.",
+            "defenseNote": "Away from BEP, the application applies AOR logic and the margin basis can become stricter."
+          },
+          {
+            "order": 13,
+            "step": "Required NPSHa",
+            "inputSource": "Selected NPSH margin basis, margin ratio, absolute margin, NPSHa, and NPSHr.",
+            "formula": "Required NPSHa = max(NPSHr x margin ratio, NPSHr + absolute margin)",
+            "substitution": "max(2.400 x 1.050, 2.400 + 0.600) = 3.000 m",
+            "result": 3,
+            "unit": "m",
+            "literature": "ANSI/HI 9.6.1-2024: NPSH margin and NPSH margin ratio.",
+            "defenseNote": "The application checks both ratio and absolute margin, then uses the stricter required NPSHa."
+          },
+          {
+            "order": 14,
+            "step": "Margin and Ratio",
+            "inputSource": "Selected NPSH margin basis, margin ratio, absolute margin, NPSHa, and NPSHr.",
+            "formula": "Margin = NPSHa - NPSHr; Ratio = NPSHa / NPSHr; Excess = NPSHa - Required NPSHa",
+            "substitution": "6.466 - 2.400 = 4.065 m; 6.466 / 2.400 = 2.694; 6.466 - 3.000 = 3.465 m",
+            "result": 3.465,
+            "unit": "m",
+            "literature": "ANSI/HI 9.6.1-2024: NPSH margin and NPSH margin ratio.",
+            "defenseNote": "Safe hydraulic margin alone is not enough for thesis validation when NPSHr data confidence is weak."
+          },
+          {
+            "order": 15,
+            "step": "Data Confidence Gate",
+            "inputSource": "Hydraulic NPSH status, NPSHr source quality, and selected assessment mode.",
+            "formula": "Engineering status = hydraulic status + NPSHr data confidence",
+            "substitution": "Hydraulic: Safe; Data: Manual - verify vendor data; Engineering: Safe",
+            "result": "Safe",
+            "unit": "",
+            "literature": "ANSI/HI 9.6.1-2024 distinguishes system NPSHA from pump/manufacturer NPSHR; manufacturer/test data is preferred for final validation.",
+            "defenseNote": "This is the answer when an advisor asks why a hydraulically safe result may still show Warning in Engineering Validation."
+          }
+        ]
+      }
+    },
+    "resultFingerprint": "9ba0b273a2fa20967ecb56d469f0e66665ece2688d4272506434fa25fc28ef57",
+    "nodeResultsFingerprint": "30c9c838b6a2f161cb181bb6d90b545502cbfe359cc5acf122ff202d335a37c1",
+    "routeTraceFingerprint": "3dc6484aa2b4dfa6cbb2f75a3c9aeb7aa8cc6097447a4e1f29c6e218a28281f7",
+    "actionReadinessFingerprint": "6571f7e828d4c93e2cc174c8220572a0332487216d4110a0a0ec57fa06407848"
+  },
+  "contracts": {
+    "routeTrace": "route-trace.v2",
+    "dependencyManifest": "dependency-manifest.v1",
+    "calculationAudit": "calculation-audit.v1",
+    "calculationDefenseContract": "calculation-defense-contract.v1",
+    "calculationDefenseStatus": "Ready",
+    "advancedEngineeringValidation": "advanced-engineering-validation.v1",
+    "pumpPerformanceChartData": "pump-performance-chart-data.v1"
+  },
+  "routeTrace": {
+    "text": "Fluid Basis -> SRC-100 -> PIPE-1 -> P-100 -> PIPE-2 -> SNK-100",
+    "sequence": [
+      "FLUID",
+      "SRC-100",
+      "PIPE-1",
+      "P-100",
+      "PIPE-2",
+      "SNK-100"
+    ],
+    "sections": {
+      "suction": {
+        "text": "SRC-100 -> PIPE-1 -> P-100",
+        "sequence": [
+          "SRC-100",
+          "PIPE-1",
+          "P-100"
+        ],
+        "totalLossM": 2.615534,
+        "pressureDropBar": 0.245897,
+        "directNpshImpact": true,
+        "note": "Suction pipe/fitting/valve/equipment losses subtract directly from NPSHa."
+      },
+      "discharge": {
+        "text": "P-100 -> PIPE-2 -> SNK-100",
+        "sequence": [
+          "P-100",
+          "PIPE-2",
+          "SNK-100"
+        ],
+        "totalLossM": 11.668509,
+        "pressureDropBar": 1.097003,
+        "directNpshImpact": false,
+        "note": "Discharge pipe/fitting/valve/equipment losses affect system head and outlet pressure, not direct pump suction NPSHa."
+      }
+    },
+    "steps": [
+      {
+        "id": "FLUID",
+        "type": "fluid",
+        "stage": "Fluid Basis",
+        "label": "Fluid Basis",
+        "role": "Thermodynamic and unit calculation basis",
+        "inputEvidence": "",
+        "outputEvidence": ""
+      },
+      {
+        "id": "SRC-100",
+        "type": "source",
+        "stage": "SRC",
+        "label": "SRC-100",
+        "role": "Upstream suction boundary",
+        "inputEvidence": "",
+        "outputEvidence": ""
+      },
+      {
+        "id": "PIPE-1",
+        "type": "pipe",
+        "stage": "Pipe/Fitting/Valve (suction)",
+        "label": "PIPE-1",
+        "role": "Suction path loss; subtracts directly from NPSHa",
+        "inputEvidence": "",
+        "outputEvidence": ""
+      },
+      {
+        "id": "P-100",
+        "type": "pump",
+        "stage": "Pump",
+        "label": "P-100",
+        "role": "Pump head and NPSH margin evaluation",
+        "inputEvidence": "",
+        "outputEvidence": ""
+      },
+      {
+        "id": "PIPE-2",
+        "type": "pipe",
+        "stage": "Pipe/Fitting/Valve (discharge)",
+        "label": "PIPE-2",
+        "role": "Discharge path loss; affects system head and outlet pressure",
+        "inputEvidence": "",
+        "outputEvidence": ""
+      },
+      {
+        "id": "SNK-100",
+        "type": "sink",
+        "stage": "SNK",
+        "label": "SNK-100",
+        "role": "Downstream discharge boundary",
+        "inputEvidence": "",
+        "outputEvidence": ""
+      }
+    ]
+  },
+  "dependency": {
+    "dependencyFingerprint": "ac1d9af6f169ece5dbca14c8841bbbc69f067980ffa39a001b3240548914c8d9",
+    "previousDependencyFingerprint": null,
+    "dependencyChain": [
+      "Fluid Basis -> density, viscosity, vapor pressure",
+      "SRC -> suction pressure/elevation boundary head",
+      "Pipe/Fitting/Valve (suction) -> suction loss subtracts from NPSHa",
+      "Pump -> NPSHa versus NPSHr and margin status",
+      "Pipe/Fitting/Valve (discharge) -> system head and outlet pressure",
+      "SNK -> downstream boundary closes the route calculation"
+    ],
+    "watchedRouteObjects": [
+      {
+        "id": "SRC-100",
+        "type": "source",
+        "stage": "SRC"
+      },
+      {
+        "id": "PIPE-1",
+        "type": "pipe",
+        "stage": "Pipe/Fitting/Valve (suction)"
+      },
+      {
+        "id": "P-100",
+        "type": "pump",
+        "stage": "Pump"
+      },
+      {
+        "id": "PIPE-2",
+        "type": "pipe",
+        "stage": "Pipe/Fitting/Valve (discharge)"
+      },
+      {
+        "id": "SNK-100",
+        "type": "sink",
+        "stage": "SNK"
+      }
+    ],
+    "invalidationRules": [
+      {
+        "scope": "Fluid Basis",
+        "invalidates": [
+          "all route hydraulics",
+          "NPSHa",
+          "status",
+          "exports"
+        ]
+      },
+      {
+        "scope": "SRC",
+        "invalidates": [
+          "suction boundary",
+          "suction pressure head",
+          "NPSHa"
+        ]
+      },
+      {
+        "scope": "Pipe/Fitting/Valve suction",
+        "invalidates": [
+          "suction loss",
+          "NPSHa",
+          "pump NPSH margin"
+        ]
+      },
+      {
+        "scope": "Pump",
+        "invalidates": [
+          "operating point",
+          "NPSHr",
+          "NPSH acceptance",
+          "action readiness"
+        ]
+      },
+      {
+        "scope": "Pipe/Fitting/Valve discharge",
+        "invalidates": [
+          "system head",
+          "outlet pressure",
+          "operating point"
+        ]
+      },
+      {
+        "scope": "SNK",
+        "invalidates": [
+          "discharge boundary",
+          "system head",
+          "operating point"
+        ]
+      }
+    ],
+    "staleCalculationPolicy": {
+      "serverAlwaysRecalculates": true,
+      "clientPreviousFingerprintField": "client.previousDependencyFingerprint",
+      "staleWhen": "Any Fluid Basis, SRC, suction pipe/fitting/valve, pump, discharge pipe/fitting/valve, SNK, connection, source link, or instrument link input changes.",
+      "uiExpectation": "Display the new calculationId and dependencyFingerprint; mark prior UI/export values stale when previousDependencyFingerprint differs."
+    },
+    "softwareDependencyChangeGate": {
+      "schemaVersion": "dependency-change-gate.v1",
+      "releaseIntegrityVersion": "release-integrity.v1",
+      "watches": [
+        "backend calculation engine",
+        "route trace schema",
+        "formula/literature map",
+        "citation page locks",
+        "frontend audit bridge",
+        "public runtime bundle"
+      ],
+      "validationCommand": "node npsh-api/tools/release-integrity-audit.cjs"
+    }
+  },
+  "staleValidation": {
+    "baselineDependencyFingerprint": "ac1d9af6f169ece5dbca14c8841bbbc69f067980ffa39a001b3240548914c8d9",
+    "sameInputDependencyFingerprint": "ac1d9af6f169ece5dbca14c8841bbbc69f067980ffa39a001b3240548914c8d9",
+    "sameInputPriorResultStale": false,
+    "changedInput": "PIPE-1 segment[0].length + 0.5 m",
+    "changedDependencyFingerprint": "512dc03bbd488fe9a712b26ab2537945ce3518dc52edef89d8df2e3e817a6a2d",
+    "changedPriorResultStale": true,
+    "changedNpsha": 6.4455,
+    "changedSuctionLoss": "2.64"
+  },
+  "frontendRuntime": {
+    "files": {
+      "index": "npsh-frontend/index.html",
+      "routeAudit": "npsh-frontend/engineering-route-trace-audit.js",
+      "realtimeDefense": "npsh-frontend/engineering-realtime-calculation-defense.js",
+      "chartAudit": "npsh-frontend/engineering-pump-performance-chart-audit.js",
+      "canonicalChart": "npsh-frontend/engineering-pump-performance-canonical-chart.js"
+    },
+    "checks": [
+      {
+        "id": "route-audit-loaded",
+        "area": "Frontend",
+        "pass": true,
+        "evidence": "index.html loads engineering-route-trace-audit.js."
+      },
+      {
+        "id": "realtime-defense-loaded",
+        "area": "Frontend",
+        "pass": true,
+        "evidence": "index.html loads engineering-realtime-calculation-defense.js."
+      },
+      {
+        "id": "dependency-fingerprint-handoff",
+        "area": "Frontend",
+        "pass": true,
+        "evidence": "Route audit bridge captures previous/current dependency fingerprints."
+      },
+      {
+        "id": "calculation-defense-handoff",
+        "area": "Frontend",
+        "pass": true,
+        "evidence": "Route audit bridge stores calculationDefenseContract."
+      },
+      {
+        "id": "stale-marking-bridge",
+        "area": "Frontend",
+        "pass": true,
+        "evidence": "Realtime bridge marks chart/results stale before backend refresh."
+      },
+      {
+        "id": "canonical-chart-contract",
+        "area": "Frontend",
+        "pass": true,
+        "evidence": "Canonical chart renderer prefers solver-owned performanceChartData v1."
+      },
+      {
+        "id": "chart-audit-contract",
+        "area": "Frontend",
+        "pass": true,
+        "evidence": "Chart audit runtime checks canonical chart source audit."
+      }
+    ]
+  },
+  "formulaDefenseRows": [
+    {
+      "order": 1,
+      "step": "System Static Head",
+      "formula": "H_static = H_discharge boundary - H_suction boundary",
+      "substitution": "29.085 - 19.369 = 9.716 m",
+      "result": 9.716,
+      "unit": "m",
+      "inputSource": "Resolved suction and discharge boundary heads plus suction/discharge path losses.",
+      "literature": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+      "defenseNote": "Use the formula, substitution, result, and literature basis as the advisor-facing explanation for this number."
+    },
+    {
+      "order": 2,
+      "step": "System Curve Head",
+      "formula": "H_system(Q) = H_static + hL_suction(Q) + hL_discharge(Q)",
+      "substitution": "9.716 + 2.616 + 11.669 = 24.000 m",
+      "result": 24,
+      "unit": "m",
+      "inputSource": "Resolved suction and discharge boundary heads plus suction/discharge path losses.",
+      "literature": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+      "defenseNote": "Use this to explain why the pump must provide boundary elevation/pressure difference plus suction and discharge losses."
+    },
+    {
+      "order": 3,
+      "step": "Head Residual",
+      "formula": "Head residual = H_pump(Q) - H_system(Q)",
+      "substitution": "24.000 - 24.000 = 0.000 m",
+      "result": 0,
+      "unit": "m",
+      "inputSource": "Pump head curve at evaluated flow and calculated system head at the same flow.",
+      "literature": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+      "defenseNote": "Positive residual means pump head is above system demand at that flow; negative residual means the selected curve cannot satisfy the demanded point."
+    },
+    {
+      "order": 4,
+      "step": "Source Absolute Pressure",
+      "formula": "Pabs = Pabs input",
+      "substitution": "1.821 = 1.821 bar a",
+      "result": 1.821,
+      "unit": "bar a",
+      "inputSource": "SRC/tank/vessel boundary pressure basis; gauge pressure is converted to absolute pressure.",
+      "literature": "Local thesis literature set: fluid mechanics, cavitation, and ANSI/HI NPSH margin references.",
+      "defenseNote": "NPSH uses absolute pressure. Gauge pressure must be converted before pressure-head calculation."
+    },
+    {
+      "order": 5,
+      "step": "Pressure Head",
+      "formula": "Hp = Pabs x 100000 / (rho x g)",
+      "substitution": "1.821 x 100000 / (958.348 x 9.810) = 19.369 m",
+      "result": 19.369,
+      "unit": "m",
+      "inputSource": "Absolute source pressure, active fluid density, and gravitational acceleration.",
+      "literature": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+      "defenseNote": "Use the formula, substitution, result, and literature basis as the advisor-facing explanation for this number."
+    },
+    {
+      "order": 6,
+      "step": "Elevation Head",
+      "formula": "Hz = z_source - z_pump",
+      "substitution": "0.000 - -0.500 = 0.500 m",
+      "result": 0.5,
+      "unit": "m",
+      "inputSource": "Source liquid/boundary elevation and pump suction datum/nozzle elevation.",
+      "literature": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+      "defenseNote": "Use the formula, substitution, result, and literature basis as the advisor-facing explanation for this number."
+    },
+    {
+      "order": 7,
+      "step": "Source Velocity Head",
+      "formula": "Hvel = 0",
+      "substitution": "0.000 m",
+      "result": 0,
+      "unit": "m",
+      "inputSource": "External header static-pressure basis or inlet pipe velocity head; reservoir velocity is normally neglected.",
+      "literature": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+      "defenseNote": "Use the formula, substitution, result, and literature basis as the advisor-facing explanation for this number."
+    },
+    {
+      "order": 8,
+      "step": "Suction Loss",
+      "formula": "HL = pipe major + fitting/valve minor",
+      "substitution": "0.080 + 2.535 = 2.616 m",
+      "result": 2.616,
+      "unit": "m",
+      "inputSource": "Suction-side pipe segments, fittings, valves, roughness, diameter, length, and flow.",
+      "literature": "Fluid Mechanics: Darcy-Weisbach major loss plus minor-loss coefficient K; ANSI/HI Appendix A suction head loss hf.",
+      "defenseNote": "This is often the easiest engineering lever to improve NPSHa: reduce length, fittings, K value, velocity, or roughness."
+    },
+    {
+      "order": 9,
+      "step": "Vapor Pressure Head",
+      "formula": "Hv = Pv x 100000 / (rho x g)",
+      "substitution": "1.014180 x 100000 / (958.348 x 9.810) = 10.788 m",
+      "result": 10.788,
+      "unit": "m",
+      "inputSource": "Absolute source pressure, active fluid density, and gravitational acceleration.",
+      "literature": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+      "defenseNote": "Use the formula, substitution, result, and literature basis as the advisor-facing explanation for this number."
+    },
+    {
+      "order": 10,
+      "step": "NPSHa",
+      "formula": "NPSHa = Hp + z_source + Hvel - z_pump - HL - Hv",
+      "substitution": "19.369 + 0.000 + 0.000 - -0.500 - 2.616 - 10.788 = 6.466 m",
+      "result": 6.466,
+      "unit": "m",
+      "inputSource": "Calculated suction energy at the pump NPSH datum after suction loss and vapor pressure are subtracted.",
+      "literature": "ANSI/HI 9.6.1-2024 Appendix A: NPSHA determination at the pump NPSH datum plane.",
+      "defenseNote": "NPSHa is system-derived. It can be improved by increasing source pressure/elevation or reducing suction losses/vapor pressure."
+    },
+    {
+      "order": 11,
+      "step": "NPSHr",
+      "formula": "NPSHr = pump required NPSH at operating flow",
+      "substitution": "50.000 m3/h -> 2.400 m",
+      "result": 2.4,
+      "unit": "m",
+      "inputSource": "Pump datasheet/manual NPSHr, engineering-fit curve, or manufacturer/test curve at evaluated flow.",
+      "literature": "ANSI/HI 9.6.1-2024: NPSHR is pump/manufacturer supplied for specified flow, speed, and pumped liquid.",
+      "defenseNote": "NPSHr is pump-derived. The network cannot certify it; final validation requires vendor/manufacturer/test or justified journal data."
+    },
+    {
+      "order": 12,
+      "step": "Operating Region",
+      "formula": "Flow %BEP = Q / Q_BEP x 100",
+      "substitution": "50.000 / 50.000 x 100 = 100.000 % BEP",
+      "result": 100,
+      "unit": "% BEP",
+      "inputSource": "Evaluated flow and BEP Flow with configured POR/AOR limits.",
+      "literature": "ANSI/HI operating-region guidance: POR/AOR are interpreted relative to BEP flow.",
+      "defenseNote": "Away from BEP, the application applies AOR logic and the margin basis can become stricter."
+    },
+    {
+      "order": 13,
+      "step": "Required NPSHa",
+      "formula": "Required NPSHa = max(NPSHr x margin ratio, NPSHr + absolute margin)",
+      "substitution": "max(2.400 x 1.050, 2.400 + 0.600) = 3.000 m",
+      "result": 3,
+      "unit": "m",
+      "inputSource": "Selected NPSH margin basis, margin ratio, absolute margin, NPSHa, and NPSHr.",
+      "literature": "ANSI/HI 9.6.1-2024: NPSH margin and NPSH margin ratio.",
+      "defenseNote": "The application checks both ratio and absolute margin, then uses the stricter required NPSHa."
+    },
+    {
+      "order": 14,
+      "step": "Margin and Ratio",
+      "formula": "Margin = NPSHa - NPSHr; Ratio = NPSHa / NPSHr; Excess = NPSHa - Required NPSHa",
+      "substitution": "6.466 - 2.400 = 4.065 m; 6.466 / 2.400 = 2.694; 6.466 - 3.000 = 3.465 m",
+      "result": 3.465,
+      "unit": "m",
+      "inputSource": "Selected NPSH margin basis, margin ratio, absolute margin, NPSHa, and NPSHr.",
+      "literature": "ANSI/HI 9.6.1-2024: NPSH margin and NPSH margin ratio.",
+      "defenseNote": "Safe hydraulic margin alone is not enough for thesis validation when NPSHr data confidence is weak."
+    },
+    {
+      "order": 15,
+      "step": "Data Confidence Gate",
+      "formula": "Engineering status = hydraulic status + NPSHr data confidence",
+      "substitution": "Hydraulic: Safe; Data: Manual - verify vendor data; Engineering: Safe",
+      "result": "Safe",
+      "unit": "",
+      "inputSource": "Hydraulic NPSH status, NPSHr source quality, and selected assessment mode.",
+      "literature": "ANSI/HI 9.6.1-2024 distinguishes system NPSHA from pump/manufacturer NPSHR; manufacturer/test data is preferred for final validation.",
+      "defenseNote": "This is the answer when an advisor asks why a hydraulically safe result may still show Warning in Engineering Validation."
+    }
+  ],
+  "reportComparisons": [
+    {
+      "metric": "Flow",
+      "backend": 50,
+      "report": "50 m3/h",
+      "status": "Ready"
+    },
+    {
+      "metric": "Required system head",
+      "backend": "24.00",
+      "report": "24 m",
+      "status": "Ready"
+    },
+    {
+      "metric": "NPSHa",
+      "backend": 6.4656,
+      "report": "6.4656 m",
+      "status": "Ready"
+    },
+    {
+      "metric": "NPSHr",
+      "backend": 2.4002,
+      "report": "2.4002 m",
+      "status": "Ready"
+    },
+    {
+      "metric": "Suction loss",
+      "backend": "2.62",
+      "report": "2.6155 m app recalculation",
+      "status": "Ready"
+    },
+    {
+      "metric": "Discharge loss",
+      "backend": "11.67",
+      "report": "11.6685 m app recalculation",
+      "status": "Ready"
+    },
+    {
+      "metric": "Hydraulic status",
+      "backend": "Safe",
+      "report": "Safe: NPSHa 6.4656 m > NPSHr 2.4002 m",
+      "status": "Ready"
+    }
+  ],
+  "reviewMatrix": [
+    {
+      "area": "Defense Formula",
+      "status": "Ready",
+      "evidence": "15 formula/defense rows; defense=Ready."
+    },
+    {
+      "area": "Responsive realtime frontend",
+      "status": "Ready",
+      "evidence": "7/7 frontend runtime checks pass."
+    },
+    {
+      "area": "Backend realtime recalculation",
+      "status": "Ready",
+      "evidence": "sameInput stale=false; changed stale=true."
+    },
+    {
+      "area": "Dependency Change",
+      "status": "Ready",
+      "evidence": "baseline=ac1d9af6f169ece5dbca14c8841bbbc69f067980ffa39a001b3240548914c8d9; changed=512dc03bbd488fe9a712b26ab2537945ce3518dc52edef89d8df2e3e817a6a2d."
+    },
+    {
+      "area": "Dependency Chain",
+      "status": "Ready",
+      "evidence": "6 dependency chain items from routeTrace/calculationDefenseContract."
+    },
+    {
+      "area": "Route Calculation",
+      "status": "Ready",
+      "evidence": "suction direct=true; discharge direct=false."
+    },
+    {
+      "area": "Route Trace",
+      "status": "Ready",
+      "evidence": "schema=route-trace.v2; steps=6."
+    },
+    {
+      "area": "Traceability",
+      "status": "Ready",
+      "evidence": "calculationId=c30c5892ab20d632; dependency=ac1d9af6f169ece5dbca14c8841bbbc69f067980ffa39a001b3240548914c8d9."
+    },
+    {
+      "area": "Engineering Calculation",
+      "status": "Ready",
+      "evidence": "advancedEngineeringValidation=advanced-engineering-validation.v1; status=Review Required."
+    },
+    {
+      "area": "Auditable",
+      "status": "Ready",
+      "evidence": "calculationAudit=calculation-audit.v1; source=backend."
+    },
+    {
+      "area": "Stale Calculation",
+      "status": "Ready",
+      "evidence": "Display the new calculationId and dependencyFingerprint; mark prior UI/export values stale when previousDependencyFingerprint differs."
+    },
+    {
+      "area": "Pump Performance Chart",
+      "status": "Review Required",
+      "evidence": "schema=pump-performance-chart-data.v1; freshness=Current; traceableDuty=true; defaultCurve=false; estimated=true."
+    }
+  ],
+  "concerns": [
+    "Pump curve/NPSHr basis masih engineering-fit/manual sesuai data jurnal. Ini boleh untuk validasi akademik Case 1, tetapi jangan diklaim sebagai manufacturer/test curve lengkap.",
+    "File .untirta Case 1 belum menyimpan kontrak current-system secara persisted; backend runtime menghasilkan kontrak lengkap saat recalculation. Jika ingin file portable tanpa solve ulang, lakukan upgrade .untirta seperti Case 6.",
+    "Analysis report lama mencatat data confidence: Warning: Manual - verify vendor data. Pertahankan catatan ini untuk defense karena NPSHr manual/vendor perlu verifikasi.",
+    "Go-live/final deployment tetap Blocked karena live deployment fingerprint belum sama dengan release lokal terbaru; ini bukan blocker review Analysis Report Case 1."
+  ],
+  "conclusion": "Ready with documented review notes",
+  "deploymentNote": {
+    "schemaVersion": "case-review-deployment-note.v1",
+    "localProductionReadiness": "Ready",
+    "goLiveFinalDeployment": "Blocked",
+    "deploymentFinalLock": "Blocked",
+    "finalDefensePackage": "Blocked",
+    "reason": "Go-live/final deployment tetap Blocked karena live deployment fingerprint belum sama dengan release lokal terbaru.",
+    "case1Impact": "Tidak menjadi blocker untuk review Analysis Report Simulation Case 1; Case 1 review tetap Ready with documented review notes.",
+    "evidence": {
+      "releaseRootFingerprint": "d306ef47d99729a4b9c5a0229430ab1b9294c9c848291f4248fa196a40ca573c",
+      "productionReadinessReportFingerprint": "a30ae90e92a9bdd6728aeb9d45786db21f600d379dbd2ead738f15f0635c26a1",
+      "goLiveReportFingerprint": "b7e999b5dbf37d573c5b32a70ebec2cc72ec5bdf48a543fff36525285eb37cef",
+      "finalLockReportFingerprint": "f52eb6db7dd61e41eb77f6491410547bd96847b05939f2fc3791acbfcf8cd1f2",
+      "finalDefenseReportFingerprint": "2aef038121b2754f1f0627bea329afaeac04178070e365e17fc7b56ce55a42db"
+    }
+  },
+  "formulaCalculationBasis": {
+    "schemaVersion": "formula-calculation-basis.v1",
+    "resultSummary": [
+      {
+        "item": "Flow",
+        "result": 50,
+        "unit": "m3/h",
+        "basis": "SNK-100 flow demand / journal duty flow"
+      },
+      {
+        "item": "Pump/System Head",
+        "result": 24,
+        "unit": "m",
+        "basis": "Journal operating head / backend system head closure"
+      },
+      {
+        "item": "NPSHa",
+        "result": 6.4656,
+        "unit": "m",
+        "basis": "Backend NPSHa from suction energy balance"
+      },
+      {
+        "item": "NPSHr",
+        "result": 2.4002,
+        "unit": "m",
+        "basis": "Manual/journal NPSHr input"
+      },
+      {
+        "item": "NPSH Margin",
+        "result": 4.0654,
+        "unit": "m",
+        "basis": "NPSHa - NPSHr"
+      },
+      {
+        "item": "NPSH Ratio",
+        "result": 2.6938,
+        "unit": "",
+        "basis": "NPSHa / NPSHr"
+      },
+      {
+        "item": "Required NPSHa",
+        "result": 3.0002,
+        "unit": "m",
+        "basis": "max(NPSHr x ratio, NPSHr + absolute margin)"
+      },
+      {
+        "item": "NPSH Excess",
+        "result": 3.4654,
+        "unit": "m",
+        "basis": "NPSHa - Required NPSHa"
+      }
+    ],
+    "formulaRows": [
+      {
+        "order": 1,
+        "calculationItem": "System Static Head",
+        "formula": "H_static = H_discharge boundary - H_suction boundary",
+        "substitution": "29.085 - 19.369 = 9.716 m",
+        "result": 9.716,
+        "unit": "m",
+        "basis": "Resolved suction and discharge boundary heads plus suction/discharge path losses.",
+        "literatureOrDefenseNote": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+        "resultDisplay": "9.716 m"
+      },
+      {
+        "order": 2,
+        "calculationItem": "System Curve Head",
+        "formula": "H_system(Q) = H_static + hL_suction(Q) + hL_discharge(Q)",
+        "substitution": "9.716 + 2.616 + 11.669 = 24.000 m",
+        "result": 24,
+        "unit": "m",
+        "basis": "Resolved suction and discharge boundary heads plus suction/discharge path losses.",
+        "literatureOrDefenseNote": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+        "resultDisplay": "24 m"
+      },
+      {
+        "order": 3,
+        "calculationItem": "Head Residual",
+        "formula": "Head residual = H_pump(Q) - H_system(Q)",
+        "substitution": "24.000 - 24.000 = 0.000 m",
+        "result": 0,
+        "unit": "m",
+        "basis": "Pump head curve at evaluated flow and calculated system head at the same flow.",
+        "literatureOrDefenseNote": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+        "resultDisplay": "0 m"
+      },
+      {
+        "order": 4,
+        "calculationItem": "Source Absolute Pressure",
+        "formula": "Pabs = Pabs input",
+        "substitution": "1.821 = 1.821 bar a",
+        "result": 1.821,
+        "unit": "bar a",
+        "basis": "SRC/tank/vessel boundary pressure basis; gauge pressure is converted to absolute pressure.",
+        "literatureOrDefenseNote": "Local thesis literature set: fluid mechanics, cavitation, and ANSI/HI NPSH margin references.",
+        "resultDisplay": "1.821 bar a"
+      },
+      {
+        "order": 5,
+        "calculationItem": "Pressure Head",
+        "formula": "Hp = Pabs x 100000 / (rho x g)",
+        "substitution": "1.821 x 100000 / (958.348 x 9.810) = 19.369 m",
+        "result": 19.369,
+        "unit": "m",
+        "basis": "Absolute source pressure, active fluid density, and gravitational acceleration.",
+        "literatureOrDefenseNote": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+        "resultDisplay": "19.369 m"
+      },
+      {
+        "order": 6,
+        "calculationItem": "Elevation Head",
+        "formula": "Hz = z_source - z_pump",
+        "substitution": "0.000 - -0.500 = 0.500 m",
+        "result": 0.5,
+        "unit": "m",
+        "basis": "Source liquid/boundary elevation and pump suction datum/nozzle elevation.",
+        "literatureOrDefenseNote": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+        "resultDisplay": "0.5 m"
+      },
+      {
+        "order": 7,
+        "calculationItem": "Source Velocity Head",
+        "formula": "Hvel = 0",
+        "substitution": "0.000 m",
+        "result": 0,
+        "unit": "m",
+        "basis": "External header static-pressure basis or inlet pipe velocity head; reservoir velocity is normally neglected.",
+        "literatureOrDefenseNote": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+        "resultDisplay": "0 m"
+      },
+      {
+        "order": 8,
+        "calculationItem": "Suction Loss",
+        "formula": "HL = pipe major + fitting/valve minor",
+        "substitution": "0.080 + 2.535 = 2.616 m",
+        "result": 2.616,
+        "unit": "m",
+        "basis": "Suction-side pipe segments, fittings, valves, roughness, diameter, length, and flow.",
+        "literatureOrDefenseNote": "Fluid Mechanics: Darcy-Weisbach major loss plus minor-loss coefficient K; ANSI/HI Appendix A suction head loss hf.",
+        "resultDisplay": "2.616 m"
+      },
+      {
+        "order": 9,
+        "calculationItem": "Vapor Pressure Head",
+        "formula": "Hv = Pv x 100000 / (rho x g)",
+        "substitution": "1.014180 x 100000 / (958.348 x 9.810) = 10.788 m",
+        "result": 10.788,
+        "unit": "m",
+        "basis": "Absolute source pressure, active fluid density, and gravitational acceleration.",
+        "literatureOrDefenseNote": "Fluid Mechanics: Bernoulli/mechanical energy balance and pump/system curve matching.",
+        "resultDisplay": "10.788 m"
+      },
+      {
+        "order": 10,
+        "calculationItem": "NPSHa",
+        "formula": "NPSHa = Hp + z_source + Hvel - z_pump - HL - Hv",
+        "substitution": "19.369 + 0.000 + 0.000 - -0.500 - 2.616 - 10.788 = 6.466 m",
+        "result": 6.466,
+        "unit": "m",
+        "basis": "Calculated suction energy at the pump NPSH datum after suction loss and vapor pressure are subtracted.",
+        "literatureOrDefenseNote": "ANSI/HI 9.6.1-2024 Appendix A: NPSHA determination at the pump NPSH datum plane.",
+        "resultDisplay": "6.466 m"
+      },
+      {
+        "order": 11,
+        "calculationItem": "NPSHr",
+        "formula": "NPSHr = pump required NPSH at operating flow",
+        "substitution": "50.000 m3/h -> 2.400 m",
+        "result": 2.4,
+        "unit": "m",
+        "basis": "Pump datasheet/manual NPSHr, engineering-fit curve, or manufacturer/test curve at evaluated flow.",
+        "literatureOrDefenseNote": "ANSI/HI 9.6.1-2024: NPSHR is pump/manufacturer supplied for specified flow, speed, and pumped liquid.",
+        "resultDisplay": "2.4 m"
+      },
+      {
+        "order": 12,
+        "calculationItem": "Operating Region",
+        "formula": "Flow %BEP = Q / Q_BEP x 100",
+        "substitution": "50.000 / 50.000 x 100 = 100.000 % BEP",
+        "result": 100,
+        "unit": "% BEP",
+        "basis": "Evaluated flow and BEP Flow with configured POR/AOR limits.",
+        "literatureOrDefenseNote": "ANSI/HI operating-region guidance: POR/AOR are interpreted relative to BEP flow.",
+        "resultDisplay": "100 % BEP"
+      },
+      {
+        "order": 13,
+        "calculationItem": "Required NPSHa",
+        "formula": "Required NPSHa = max(NPSHr x margin ratio, NPSHr + absolute margin)",
+        "substitution": "max(2.400 x 1.050, 2.400 + 0.600) = 3.000 m",
+        "result": 3,
+        "unit": "m",
+        "basis": "Selected NPSH margin basis, margin ratio, absolute margin, NPSHa, and NPSHr.",
+        "literatureOrDefenseNote": "ANSI/HI 9.6.1-2024: NPSH margin and NPSH margin ratio.",
+        "resultDisplay": "3 m"
+      },
+      {
+        "order": 14,
+        "calculationItem": "Margin and Ratio",
+        "formula": "Margin = NPSHa - NPSHr; Ratio = NPSHa / NPSHr; Excess = NPSHa - Required NPSHa",
+        "substitution": "6.466 - 2.400 = 4.065 m; 6.466 / 2.400 = 2.694; 6.466 - 3.000 = 3.465 m",
+        "result": 3.465,
+        "unit": "m",
+        "basis": "Selected NPSH margin basis, margin ratio, absolute margin, NPSHa, and NPSHr.",
+        "literatureOrDefenseNote": "ANSI/HI 9.6.1-2024: NPSH margin and NPSH margin ratio.",
+        "resultDisplay": "3.465 m"
+      },
+      {
+        "order": 15,
+        "calculationItem": "Data Confidence Gate",
+        "formula": "Engineering status = hydraulic status + NPSHr data confidence",
+        "substitution": "Hydraulic: Safe; Data: Manual - verify vendor data; Engineering: Safe",
+        "result": "Safe",
+        "unit": "",
+        "basis": "Hydraulic NPSH status, NPSHr source quality, and selected assessment mode.",
+        "literatureOrDefenseNote": "ANSI/HI 9.6.1-2024 distinguishes system NPSHA from pump/manufacturer NPSHR; manufacturer/test data is preferred for final validation.",
+        "resultDisplay": "Safe"
+      }
+    ]
+  },
+  "auditCompletenessChecker": {
+    "schemaVersion": "audit-completeness-checker.v1",
+    "generatedAt": "2026-06-03T17:17:31.029Z",
+    "overallStatus": "Complete for Case 1 review; deployment remains external live-fingerprint blocker",
+    "checks": [
+      {
+        "id": "input-file-checksum",
+        "area": "Input File",
+        "status": "Ready",
+        "result": "checksum verified",
+        "evidence": "npsh-frontend/journals/simulasi_1/simulasi_performansi_pompa_air_umpan_tangki_deaerator.untirta"
+      },
+      {
+        "id": "analysis-report-cross-check",
+        "area": "Analysis Report",
+        "status": "Ready",
+        "result": "7/7 metrics pass",
+        "evidence": "npsh-frontend/journals/analysis-reports/simulasi-1-analysis.json"
+      },
+      {
+        "id": "formula-calculation-basis",
+        "area": "Formula & Calculation Basis",
+        "status": "Ready",
+        "result": "15 formula rows with result numbers",
+        "evidence": "formulaCalculationBasis.formulaRows"
+      },
+      {
+        "id": "route-trace",
+        "area": "Route Trace",
+        "status": "Ready",
+        "result": "route-trace.v2",
+        "evidence": "3dc6484aa2b4dfa6cbb2f75a3c9aeb7aa8cc6097447a4e1f29c6e218a28281f7"
+      },
+      {
+        "id": "dependency-change",
+        "area": "Dependency Change",
+        "status": "Ready",
+        "result": "changedPriorResultStale=true",
+        "evidence": "PIPE-1 segment[0].length + 0.5 m"
+      },
+      {
+        "id": "dependency-chain",
+        "area": "Dependency Chain",
+        "status": "Ready",
+        "result": "6 chain items",
+        "evidence": "dependency.dependencyChain"
+      },
+      {
+        "id": "calculation-audit",
+        "area": "Auditable",
+        "status": "Ready",
+        "result": "calculation-audit.v1",
+        "evidence": "calculationAudit=calculation-audit.v1; source=backend."
+      },
+      {
+        "id": "calculation-defense-contract",
+        "area": "Defense Formula",
+        "status": "Ready",
+        "result": "Ready",
+        "evidence": "calculation-defense-contract.v1"
+      },
+      {
+        "id": "frontend-realtime",
+        "area": "Frontend Realtime",
+        "status": "Ready",
+        "result": "7/7 checks pass",
+        "evidence": "frontendRuntime.checks"
+      },
+      {
+        "id": "backend-realtime",
+        "area": "Backend Realtime",
+        "status": "Ready",
+        "result": "same=false; changed=true",
+        "evidence": "staleValidation"
+      },
+      {
+        "id": "pump-chart",
+        "area": "Pump Performance Chart",
+        "status": "Review Required",
+        "result": "schema=pump-performance-chart-data.v1; freshness=Current; traceableDuty=true; defaultCurve=false; estimated=true.",
+        "evidence": "Chart current and traceable, but engineering-fit/manual basis remains review note."
+      },
+      {
+        "id": "go-live-final-deployment",
+        "area": "Deployment",
+        "status": "External Blocked - Not Case 1 Blocker",
+        "result": "Go-live/final deployment tetap Blocked karena live deployment fingerprint belum sama dengan release lokal terbaru.",
+        "evidence": "Tidak menjadi blocker untuk review Analysis Report Simulation Case 1; Case 1 review tetap Ready with documented review notes."
+      }
+    ]
+  }
+}

@@ -16,8 +16,8 @@ Purpose:
 Summary:
 
 ```text
-Total files: 157
-Total size: 63,522,387 bytes
+Total files: 161
+Total size: 63,624,437 bytes
 ```
 
 Top-level contents:
@@ -50,7 +50,7 @@ style.min.css           minified styles
 png/                    public images and favicon
 toolbar/                public toolbar icons
 vendor/                 browser libraries for PDF/OCR/export
-journals/               public case data, analysis reports, and audit summaries
+journals/               public case data, analysis reports, audit summaries, and current-system case review evidence
 tools/validate-pump-performance-chart-audit.cjs Node validation for chart data eligibility, log-log audit contract, and cache-busted runtime load
 ```
 
