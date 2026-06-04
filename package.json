@@ -5,9 +5,12 @@
   "description": "Static frontend package for npsh.virsim.id.",
   "scripts": {
     "preview:local": "node tools/serve-local-preview.cjs",
+    "preview:api": "node tools/serve-local-api-preview.cjs",
     "validate:w3-css": "node tools/validate-w3-css-contract.cjs",
     "validate:pump-chart-audit": "node tools/validate-pump-performance-chart-audit.cjs",
     "validate:realtime-defense": "node tools/validate-realtime-calculation-defense.cjs",
-    "validate:src-canvas-parameter-lock": "node tools/validate-src-canvas-parameter-lock.cjs"
+    "validate:src-canvas-parameter-lock": "node tools/validate-src-canvas-parameter-lock.cjs",
+    "validate:decimal-display-lock": "node tools/validate-decimal-display-lock.cjs",
+    "validate:local-api-preview": "node tools/validate-local-api-preview.cjs"
   }
 }
