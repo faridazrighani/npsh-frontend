@@ -7,6 +7,7 @@
     "preview:local": "node tools/serve-local-preview.cjs",
     "validate:w3-css": "node tools/validate-w3-css-contract.cjs",
     "validate:pump-chart-audit": "node tools/validate-pump-performance-chart-audit.cjs",
-    "validate:realtime-defense": "node tools/validate-realtime-calculation-defense.cjs"
+    "validate:realtime-defense": "node tools/validate-realtime-calculation-defense.cjs",
+    "validate:src-canvas-parameter-lock": "node tools/validate-src-canvas-parameter-lock.cjs"
   }
 }
