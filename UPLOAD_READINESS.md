@@ -22,6 +22,7 @@ Checks passed:
 - The six simulation-case source PDFs were moved out of the public package to the local private reference archive.
 - Unbundled toolbar source files and Windows `desktop.ini` noise were moved out of the public package.
 - Live parameter repaint-lock validation passed and must stay part of the frontend validation set.
+- Export canvas snapshot fallback is locked to stay silent during normal XLSX/DOCX/PDF export.
 
 Important dependency:
 

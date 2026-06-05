@@ -16,8 +16,8 @@ Purpose:
 Summary:
 
 ```text
-Total files: 172
-Total size: 63,767,475 bytes
+Total files: 173
+Total size: 63,770,067 bytes
 ```
 
 Top-level contents:
@@ -57,6 +57,7 @@ tools/validate-pump-performance-chart-audit.cjs Node validation for chart data e
 tools/validate-route-trace-default-lock.cjs Node validation for default-hidden canvas route-trace overlays, pump-summary route-trace/vapor-pressure lock, SNK presentation-row lock, SNK Sink Elev./Sink Head readouts, audit/debug unlock APIs, and cache-busted runtime load
 tools/validate-canvas-context-dock.cjs Node validation for default-collapsed Fluid Basis dock behavior, sticky canvas viewport positioning, mobile compact lock, responsive Fluid Basis symbols, route trace source preference, stale freshness display, and cache-busted runtime load
 tools/validate-live-parameter-repaint-lock.cjs Node validation for locked live parameter repaint CSS, cache key, opaque backgrounds, no panel/badge shadow, and pump icon outline-only status display
+tools/validate-export-canvas-snapshot-lock.cjs Node validation for silent normal export canvas fallback, retained real-failure warning, and stable manual renderer snapshot path
 ```
 
 Protected-bundle guardrail:
@@ -75,6 +76,7 @@ Release integrity guardrail:
 ```text
 node npsh-api/tools/release-integrity-audit.cjs
 app.bundle.min.js.map sourcesContent: absent
+App bundle cache key: app.bundle.min.js?v=20260605-export-canvas-snapshot-lock1
 Route audit cache key: engineering-route-trace-audit.js?v=20260605-route-audit-contract12
 Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260603-realtime-defense1
 Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260605-canvas-context-dock7
@@ -87,6 +89,7 @@ Pump performance chart audit cache key: engineering-pump-performance-chart-audit
 Pump performance canonical chart cache key: engineering-pump-performance-canonical-chart.js?v=20260603-canonical-chart2
 Live parameter repaint lock cache key: engineering-live-parameter-repaint-lock.css?v=20260605-live-param-repaint-lock1
 Live parameter repaint lock validation: npm run validate:live-parameter-repaint-lock
+Export canvas snapshot validation: npm run validate:export-canvas-snapshot-lock
 Pages API proxy: _worker.js -> env.NPSH_API.fetch(request), static fallback -> env.ASSETS.fetch(request)
 ```
 

@@ -11,6 +11,7 @@
     "validate:realtime-defense": "node tools/validate-realtime-calculation-defense.cjs",
     "validate:route-trace-default-lock": "node tools/validate-route-trace-default-lock.cjs",
     "validate:canvas-context-dock": "node tools/validate-canvas-context-dock.cjs",
+    "validate:export-canvas-snapshot-lock": "node tools/validate-export-canvas-snapshot-lock.cjs",
     "validate:live-parameter-repaint-lock": "node tools/validate-live-parameter-repaint-lock.cjs",
     "validate:src-canvas-parameter-lock": "node tools/validate-src-canvas-parameter-lock.cjs",
     "validate:decimal-display-lock": "node tools/validate-decimal-display-lock.cjs",
