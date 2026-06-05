@@ -1,8 +1,34 @@
 (function registerEngineeringRouteTraceAudit(root) {
-  const VERSION = '2026.05-route-trace-audit-v7';
+  const VERSION = '2026.06-route-trace-audit-v16';
   const PANEL_ID = 'engineeringRouteTraceAuditPanel';
   const PANEL_BODY_ID = 'engineeringRouteTraceAuditPanelBody';
   const MENU_BUTTON_ID = 'menu-tools-route-trace-audit';
+  const CANVAS_OVERLAY_UNLOCK_KEY = 'npsh.routeTraceCanvasOverlayVisible';
+  const PUMP_SUMMARY_UNLOCK_KEY = 'npsh.routeTracePumpSummaryVisible';
+  const CANVAS_OVERLAY_HIDDEN_CLASS = 'route-trace-canvas-overlay-hidden';
+  const ROUTE_TRACE_CANVAS_TEXT_PATTERN = /\broute\s+trace\b/i;
+  const ROUTE_LOSS_TRACE_CANVAS_TEXT_PATTERN = /\broute\b[\s\S]*suction\s+loss[\s\S]*disch(?:arge)?\.?\s+loss/i;
+  const PUMP_CANVAS_HIDDEN_ROW_LABELS = new Set([
+    'Route',
+    'Suction Loss',
+    'Disch. Loss',
+    'Discharge Loss',
+    'Basis Vapor Press.',
+    'Vapor Press. Used'
+  ]);
+  const SINK_CANVAS_HIDDEN_ROW_LABELS = new Set([
+    'Discharge Loss',
+    'Vapor Press.',
+    'Vapor Margin',
+    'Pump NPSH Margin'
+  ]);
+  let canvasOverlayObserver = null;
+  let canvasOverlayPruneTimer = null;
+  let canvasOverlayPrunePending = false;
+  let canvasOverlayPruneScope = null;
+  let canvasOverlayRetryTimer = null;
+  let canvasOverlayRetryCount = 0;
+  const canvasOverlayWrappedFunctions = new Set();
 
   function model() {
     return root.globalModel || root.__npshGlobalModel || {};
@@ -15,6 +41,230 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function normalizeText(value) {
+    return String(value ?? '').replace(/\s+/g, ' ').trim();
+  }
+
+  function pruneDefaultPumpRouteTraceRows(scope) {
+    if (typeof document === 'undefined') return 0;
+    const rootNode = scope?.querySelectorAll ? scope : document;
+    let removed = 0;
+    const panels = new Set();
+    if (rootNode.matches?.('.pump-live-params')) panels.add(rootNode);
+    rootNode.closest?.('.pump-live-params') && panels.add(rootNode.closest('.pump-live-params'));
+    rootNode.querySelectorAll?.('.pump-live-params').forEach((panel) => panels.add(panel));
+    panels.forEach((panel) => {
+      panel.querySelectorAll('[data-caption-audit-route="true"], [data-caption-audit-chart-control="true"]').forEach((element) => {
+        element.remove();
+        removed += 1;
+      });
+      panel.querySelectorAll('.pump-live-param-section').forEach((section) => {
+        if (/^route\s+trace$/i.test(normalizeText(section.textContent))) {
+          section.remove();
+          removed += 1;
+        }
+      });
+      panel.querySelectorAll('.pump-live-param-row').forEach((row) => {
+        const label = normalizeText(row.querySelector('.pump-live-param-label')?.textContent);
+        if (PUMP_CANVAS_HIDDEN_ROW_LABELS.has(label)) {
+          row.remove();
+          removed += 1;
+        }
+      });
+    });
+    return removed;
+  }
+
+  function pruneDefaultSinkCanvasRows(scope) {
+    if (typeof document === 'undefined') return 0;
+    const rootNode = scope?.querySelectorAll ? scope : document;
+    let removed = 0;
+    const panels = new Set();
+    if (rootNode.matches?.('.sink-live-params')) panels.add(rootNode);
+    rootNode.closest?.('.sink-live-params') && panels.add(rootNode.closest('.sink-live-params'));
+    rootNode.querySelectorAll?.('.sink-live-params').forEach((panel) => panels.add(panel));
+    panels.forEach((panel) => {
+      panel.querySelectorAll('.sink-live-param-row').forEach((row) => {
+        const label = normalizeText(row.querySelector('.sink-live-param-label')?.textContent);
+        if (SINK_CANVAS_HIDDEN_ROW_LABELS.has(label)) {
+          row.remove();
+          removed += 1;
+        }
+      });
+    });
+    return removed;
+  }
+
+  function finiteNumber(value) {
+    const number = Number.parseFloat(value);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function firstFiniteValue(...values) {
+    for (const value of values) {
+      const number = finiteNumber(value);
+      if (number !== null) return number;
+    }
+    return null;
+  }
+
+  function formatCanvasValue(value, unit = '') {
+    const number = finiteNumber(value);
+    if (number === null) return '-';
+    return `${number.toFixed(3)}${unit ? ` ${unit}` : ''}`;
+  }
+
+  function sinkNodeForCanvasPanel(panel) {
+    const modelRef = model();
+    const candidates = [
+      panel?.dataset?.nodeId,
+      panel?.dataset?.objectId,
+      panel?.closest?.('[data-node-id]')?.dataset?.nodeId,
+      panel?.closest?.('[data-object-id]')?.dataset?.objectId,
+      panel?.closest?.('.pfd-object')?.dataset?.nodeId,
+      panel?.closest?.('.pfd-object')?.dataset?.objectId
+    ].filter(Boolean);
+    for (const id of candidates) {
+      if (modelRef[id]?.type === 'sink') return { id, node: modelRef[id] };
+    }
+    const objectText = normalizeText(panel?.closest?.('.pfd-object')?.textContent || panel?.textContent || '');
+    const matching = Object.entries(modelRef).filter(([id, node]) => {
+      if (node?.type !== 'sink') return false;
+      return objectText.includes(id) || (node.name && objectText.includes(node.name));
+    });
+    if (matching.length === 1) return { id: matching[0][0], node: matching[0][1] };
+    const allSinks = Object.entries(modelRef).filter(([, node]) => node?.type === 'sink');
+    return allSinks.length === 1 ? { id: allSinks[0][0], node: allSinks[0][1] } : null;
+  }
+
+  function createSinkCanvasRow(label, value) {
+    const row = document.createElement('div');
+    row.className = 'sink-live-param-row';
+    row.dataset.routeTraceAuditSinkReadout = 'true';
+    const labelElement = document.createElement('span');
+    labelElement.className = 'sink-live-param-label';
+    labelElement.textContent = label;
+    const valueElement = document.createElement('strong');
+    valueElement.className = 'sink-live-param-value';
+    valueElement.textContent = value;
+    row.appendChild(labelElement);
+    row.appendChild(valueElement);
+    return row;
+  }
+
+  function sinkPanelRowByLabel(panel, label) {
+    return Array.from(panel.querySelectorAll('.sink-live-param-row')).find((row) => (
+      normalizeText(row.querySelector('.sink-live-param-label')?.textContent) === label
+    )) || null;
+  }
+
+  function insertSinkCanvasRow(panel, row, anchorLabels = []) {
+    const rows = Array.from(panel.querySelectorAll('.sink-live-param-row'));
+    const anchor = anchorLabels
+      .map((label) => rows.find((item) => normalizeText(item.querySelector('.sink-live-param-label')?.textContent) === label))
+      .find(Boolean);
+    if (!anchor) {
+      panel.appendChild(row);
+      return;
+    }
+    const siblings = Array.from(panel.children || []);
+    const index = siblings.indexOf(anchor);
+    const before = index >= 0 ? siblings[index + 1] : null;
+    if (before) panel.insertBefore(row, before);
+    else panel.appendChild(row);
+  }
+
+  function upsertSinkCanvasRow(panel, label, value, anchorLabels = []) {
+    const existing = sinkPanelRowByLabel(panel, label);
+    if (existing) {
+      const valueElement = existing.querySelector('.sink-live-param-value, strong');
+      let changed = false;
+      if (valueElement && valueElement.textContent !== value) {
+        valueElement.textContent = value;
+        changed = true;
+      }
+      if (existing.dataset.routeTraceAuditSinkReadout !== 'true') {
+        existing.dataset.routeTraceAuditSinkReadout = 'true';
+        changed = true;
+      }
+      return changed;
+    }
+    const row = createSinkCanvasRow(label, value);
+    insertSinkCanvasRow(panel, row, anchorLabels);
+    return true;
+  }
+
+  function ensureDefaultSinkCanvasRows(scope) {
+    if (typeof document === 'undefined') return 0;
+    const rootNode = scope?.querySelectorAll ? scope : document;
+    let changed = 0;
+    const panels = new Set();
+    if (rootNode.matches?.('.sink-live-params')) panels.add(rootNode);
+    rootNode.closest?.('.sink-live-params') && panels.add(rootNode.closest('.sink-live-params'));
+    rootNode.querySelectorAll?.('.sink-live-params').forEach((panel) => panels.add(panel));
+    panels.forEach((panel) => {
+      const sink = sinkNodeForCanvasPanel(panel);
+      const node = sink?.node || {};
+      const elevation = firstFiniteValue(
+        node.results?.elevation,
+        node.results?.sinkElevation,
+        node.results?.calculationTrace?.inputBasis?.elevation,
+        node.results?.calculationTrace?.boundary?.elevation,
+        node.props?.elevation
+      );
+      const sinkHead = firstFiniteValue(
+        node.results?.hydraulicHead,
+        node.results?.sinkHead,
+        node.results?.boundaryHead,
+        node.results?.calculationTrace?.inputBasis?.hydraulicHead,
+        node.results?.calculationTrace?.boundary?.hydraulicHead
+      );
+      changed += upsertSinkCanvasRow(panel, 'Sink Elev.', formatCanvasValue(elevation, 'm'), ['Required Press.', 'Outlet Flow']) ? 1 : 0;
+      changed += upsertSinkCanvasRow(panel, 'Sink Head', formatCanvasValue(sinkHead, 'm'), ['Sink Elev.', 'Required Press.', 'Outlet Flow']) ? 1 : 0;
+    });
+    return changed;
+  }
+
+  function localStorageFlag(key) {
+    try {
+      return root.localStorage?.getItem(key) === 'true';
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function isRouteTraceCanvasOverlayUnlocked() {
+    return root.__routeTraceCanvasOverlayUnlocked === true || localStorageFlag(CANVAS_OVERLAY_UNLOCK_KEY);
+  }
+
+  function isRouteTracePumpSummaryUnlocked() {
+    return root.__routeTracePumpSummaryUnlocked === true
+      || root.__routeTraceCanvasOverlayUnlocked === true
+      || localStorageFlag(PUMP_SUMMARY_UNLOCK_KEY);
+  }
+
+  function setRouteTraceCanvasOverlayVisible(visible) {
+    root.__routeTraceCanvasOverlayUnlocked = visible === true;
+    try {
+      root.localStorage?.setItem(CANVAS_OVERLAY_UNLOCK_KEY, root.__routeTraceCanvasOverlayUnlocked ? 'true' : 'false');
+    } catch (error) {
+      // Ignore storage failures in locked-down browser contexts.
+    }
+    pruneDefaultCanvasRouteTraceOverlays(typeof document !== 'undefined' ? document : null);
+    return root.__routeTraceCanvasOverlayUnlocked;
+  }
+
+  function setRouteTracePumpSummaryVisible(visible) {
+    root.__routeTracePumpSummaryUnlocked = visible === true;
+    try {
+      root.localStorage?.setItem(PUMP_SUMMARY_UNLOCK_KEY, root.__routeTracePumpSummaryUnlocked ? 'true' : 'false');
+    } catch (error) {
+      // Ignore storage failures in locked-down browser contexts.
+    }
+    refreshPumpObjectWindows();
+    return root.__routeTracePumpSummaryUnlocked;
   }
 
   function shortHash(value) {
@@ -334,6 +584,233 @@
     return 'Trace context';
   }
 
+  function isProtectedCanvasRouteTraceSurface(element) {
+    return Boolean(element?.closest?.([
+      `#${PANEL_ID}`,
+      '#canvasContextDock',
+      '.canvas-context-dock',
+      '.route-trace-audit-panel',
+      '.task-window',
+      '.modal',
+      '.context-menu',
+      '.dropdown-menu',
+      '.object-properties-task-window',
+      '.persistent-object-properties-task-window'
+    ].join(',')));
+  }
+
+  function hasRouteTraceOverlayText(element) {
+    const text = normalizeText(element?.textContent);
+    return Boolean(
+      text
+      && (
+        ROUTE_TRACE_CANVAS_TEXT_PATTERN.test(text)
+        || ROUTE_LOSS_TRACE_CANVAS_TEXT_PATTERN.test(text)
+      )
+    );
+  }
+
+  function isProtectedPfdObject(element) {
+    return Boolean(
+      element?.matches?.('.pfd-object')
+      || element?.matches?.('[data-node-id]')
+      || element?.matches?.('[data-object-id]')
+    );
+  }
+
+  function isLikelyRouteTraceOverlayFrame(element, canvas) {
+    if (!element || element === canvas || isProtectedPfdObject(element)) return false;
+    const text = normalizeText(element.textContent);
+    if (!hasRouteTraceOverlayText(element)) return false;
+    const rect = element.getBoundingClientRect?.();
+    if (!rect || rect.width <= 0 || rect.height <= 0) return false;
+    if (rect.width > 760 || rect.height > 260) return false;
+    const style = root.getComputedStyle?.(element);
+    const className = String(element.className || '');
+    const hasOverlayClass = /route|trace|readout|live|param|metric|annotation|caption|overlay|tooltip|audit/i.test(className);
+    const hasFrameStyle = style && (
+      style.position === 'absolute'
+      || style.position === 'fixed'
+      || style.borderTopStyle !== 'none'
+      || style.borderRightStyle !== 'none'
+      || style.boxShadow !== 'none'
+      || style.backgroundColor !== 'rgba(0, 0, 0, 0)'
+    );
+    return hasOverlayClass || hasFrameStyle || text.length <= 420;
+  }
+
+  function routeTraceOverlayContainer(element, canvas) {
+    if (!element || !canvas || isProtectedCanvasRouteTraceSurface(element)) return null;
+    let cursor = element;
+    let candidate = isLikelyRouteTraceOverlayFrame(cursor, canvas) ? cursor : null;
+    while (cursor?.parentElement && cursor.parentElement !== canvas) {
+      const parent = cursor.parentElement;
+      if (isProtectedCanvasRouteTraceSurface(parent) || isProtectedPfdObject(parent)) break;
+      if (!hasRouteTraceOverlayText(parent)) break;
+      if (isLikelyRouteTraceOverlayFrame(parent, canvas)) candidate = parent;
+      cursor = parent;
+    }
+    return candidate;
+  }
+
+  function pruneDefaultCanvasRouteTraceOverlays(scope) {
+    const documentRef = typeof document !== 'undefined' ? document : null;
+    if (!documentRef) return [];
+    pruneDefaultPumpRouteTraceRows(scope || documentRef);
+    pruneDefaultSinkCanvasRows(scope || documentRef);
+    ensureDefaultSinkCanvasRows(scope || documentRef);
+    if (isRouteTraceCanvasOverlayUnlocked()) {
+      documentRef.querySelectorAll(`.${CANVAS_OVERLAY_HIDDEN_CLASS}`).forEach((element) => {
+        element.classList.remove(CANVAS_OVERLAY_HIDDEN_CLASS);
+        if (!element.hasAttribute || element.hasAttribute('data-route-trace-default-lock')) element.removeAttribute('data-route-trace-default-lock');
+        if (!element.hasAttribute || element.hasAttribute('aria-hidden')) element.removeAttribute('aria-hidden');
+      });
+      return [];
+    }
+
+    const rootNode = scope?.querySelectorAll ? scope : documentRef;
+    const canvas = documentRef.getElementById('canvas');
+    if (!canvas) return [];
+    documentRef.querySelectorAll(`.${CANVAS_OVERLAY_HIDDEN_CLASS}`).forEach((element) => {
+      if (!canvas.contains(element) || !hasRouteTraceOverlayText(element) || isProtectedPfdObject(element)) {
+        element.classList.remove(CANVAS_OVERLAY_HIDDEN_CLASS);
+        if (!element.hasAttribute || element.hasAttribute('data-route-trace-default-lock')) element.removeAttribute('data-route-trace-default-lock');
+        if (!element.hasAttribute || element.hasAttribute('aria-hidden')) element.removeAttribute('aria-hidden');
+      }
+    });
+    const hidden = new Set();
+    const elements = [];
+    if (rootNode.nodeType === 1) elements.push(rootNode);
+    rootNode.querySelectorAll('*').forEach((element) => elements.push(element));
+    elements.forEach((element) => {
+      if (!canvas.contains(element) || !hasRouteTraceOverlayText(element)) return;
+      const container = routeTraceOverlayContainer(element, canvas);
+      if (!container) return;
+      hidden.add(container);
+    });
+    hidden.forEach((element) => {
+      if (!element.classList.contains(CANVAS_OVERLAY_HIDDEN_CLASS)) {
+        element.classList.add(CANVAS_OVERLAY_HIDDEN_CLASS);
+      }
+      if (element.dataset.routeTraceDefaultLock !== 'hidden-default') {
+        element.dataset.routeTraceDefaultLock = 'hidden-default';
+      }
+      if (element.getAttribute('aria-hidden') !== 'true') {
+        element.setAttribute('aria-hidden', 'true');
+      }
+    });
+    return [...hidden];
+  }
+
+  function scheduleDefaultCanvasRouteTracePrune(scope, delayMs = 40) {
+    if (typeof document === 'undefined' || isRouteTraceCanvasOverlayUnlocked()) return;
+    canvasOverlayPruneScope = canvasOverlayPruneScope === document ? document : (scope || document);
+    if (canvasOverlayPrunePending) return;
+    canvasOverlayPrunePending = true;
+    canvasOverlayPruneTimer = root.setTimeout?.(() => {
+      const runScope = canvasOverlayPruneScope || document;
+      canvasOverlayPrunePending = false;
+      canvasOverlayPruneScope = null;
+      canvasOverlayPruneTimer = null;
+      pruneDefaultCanvasRouteTraceOverlays(runScope);
+    }, Math.max(0, delayMs));
+  }
+
+  function startDefaultCanvasRouteTraceRetryLoop() {
+    if (typeof document === 'undefined' || canvasOverlayRetryTimer) return false;
+    canvasOverlayRetryCount = 0;
+    canvasOverlayRetryTimer = root.setInterval?.(() => {
+      canvasOverlayRetryCount += 1;
+      pruneDefaultCanvasRouteTraceOverlays(document.getElementById('canvas') || document);
+      if (canvasOverlayRetryCount >= 24) {
+        root.clearInterval?.(canvasOverlayRetryTimer);
+        canvasOverlayRetryTimer = null;
+      }
+    }, 250);
+    return true;
+  }
+
+  function patchCanvasOverlayRenderFunction(functionName) {
+    if (canvasOverlayWrappedFunctions.has(functionName)) return false;
+    const original = root[functionName];
+    if (typeof original !== 'function' || original.__routeTraceCanvasOverlayLockPatched) return false;
+    function routeTraceCanvasOverlayLockedFunction(...args) {
+      const result = original.apply(this, args);
+      const prune = () => {
+        const canvas = document.getElementById('canvas') || document;
+        scheduleDefaultCanvasRouteTracePrune(canvas, 0);
+        scheduleDefaultCanvasRouteTracePrune(canvas, 80);
+        scheduleDefaultCanvasRouteTracePrune(canvas, 220);
+      };
+      if (result && typeof result.then === 'function') return result.finally(prune);
+      prune();
+      return result;
+    }
+    routeTraceCanvasOverlayLockedFunction.__routeTraceCanvasOverlayLockPatched = true;
+    routeTraceCanvasOverlayLockedFunction.__routeTraceCanvasOverlayLockOriginal = original;
+    root[functionName] = routeTraceCanvasOverlayLockedFunction;
+    canvasOverlayWrappedFunctions.add(functionName);
+    return true;
+  }
+
+  function patchCanvasOverlayRenderHooks() {
+    return [
+      'applySimulationState',
+      'applySimulationStateAtomic',
+      'drawConnections',
+      'notifyRealtimeTaskWindows',
+      'renderToolbarPalette',
+      'updateAllObjectOperatingStatusVisuals',
+      'updateSimulation'
+    ].filter((functionName) => patchCanvasOverlayRenderFunction(functionName));
+  }
+
+  function watchDefaultCanvasRouteTraceOverlays() {
+    if (
+      typeof document === 'undefined'
+      || typeof root.MutationObserver !== 'function'
+      || canvasOverlayObserver
+    ) {
+      return false;
+    }
+    canvasOverlayObserver = new root.MutationObserver((mutations) => {
+      if (isRouteTraceCanvasOverlayUnlocked()) return;
+      let shouldPruneCanvas = false;
+      for (const mutation of mutations) {
+        if (mutation.type === 'characterData' || mutation.type === 'attributes') {
+          shouldPruneCanvas = true;
+        }
+        for (const node of mutation.addedNodes || []) {
+          if (node?.nodeType === 1) {
+            shouldPruneCanvas = true;
+          }
+          if (node?.nodeType === 3) {
+            shouldPruneCanvas = true;
+          }
+        }
+      }
+      if (shouldPruneCanvas) scheduleDefaultCanvasRouteTracePrune(document.getElementById('canvas') || document, 0);
+    });
+    const start = () => {
+      const canvas = document.getElementById('canvas');
+      canvasOverlayObserver.observe(canvas || document.documentElement, {
+        attributes: true,
+        characterData: true,
+        childList: true,
+        subtree: true
+      });
+      pruneDefaultCanvasRouteTraceOverlays(canvas || document);
+      scheduleDefaultCanvasRouteTracePrune(canvas || document, 120);
+      startDefaultCanvasRouteTraceRetryLoop();
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', start, { once: true });
+    } else {
+      start();
+    }
+    return true;
+  }
+
   function renderRoutePanelBody() {
     const body = document.getElementById(PANEL_BODY_ID);
     if (!body) return;
@@ -480,6 +957,7 @@
     const style = document.createElement('style');
     style.id = 'engineering-route-trace-audit-style';
     style.textContent = [
+      '.route-trace-canvas-overlay-hidden{display:none!important;}',
       '.route-trace-audit-panel{left:clamp(12px,3vw,42px);right:auto;top:118px;width:min(980px,calc(100vw - 28px));height:min(680px,calc(100dvh - 140px));}',
       '.route-trace-audit-panel.task-window-minimized{height:42px!important;min-height:42px;}',
       '.route-trace-audit-panel.task-window-minimized .route-audit-body{display:none;}',
@@ -513,6 +991,12 @@
 
   function renderPumpSummaryInto(body) {
     if (!body || typeof document === 'undefined') return;
+    if (!isRouteTracePumpSummaryUnlocked()) {
+      body.querySelector('[data-route-audit-pump-summary="true"]')?.remove();
+      body.dataset.routeTracePumpSummaryDefaultLock = 'hidden-default';
+      return;
+    }
+    delete body.dataset.routeTracePumpSummaryDefaultLock;
     const payload = activeAuditPayload();
     const routeTrace = payload.routeTrace;
     const dependencyManifest = payload.dependencyManifest;
@@ -557,6 +1041,7 @@
     if (typeof document === 'undefined') return;
     if (!document.getElementById(PANEL_ID)?.hidden) renderRoutePanelBody();
     refreshPumpObjectWindows();
+    pruneDefaultCanvasRouteTraceOverlays(typeof document !== 'undefined' ? document : null);
   }
 
   function patchPayloadBuilder() {
@@ -644,12 +1129,18 @@
     ensureStyles();
     ensureRoutePanel();
     ensureMenuButton();
+    watchDefaultCanvasRouteTraceOverlays();
+    const patchedCanvasOverlayHooks = patchCanvasOverlayRenderHooks();
+    pruneDefaultCanvasRouteTraceOverlays(typeof document !== 'undefined' ? document : null);
     const installed = {
       payloadBuilder: patchPayloadBuilder(),
       fetchSimulation: patchSimulationFetch(),
       primaryResultApplier: patchPrimaryResultApplier(),
+      canvasOverlayRenderHooks: patchedCanvasOverlayHooks,
       routePanel: typeof document !== 'undefined' && !!document.getElementById(PANEL_ID),
-      menuButton: typeof document !== 'undefined' && !!document.getElementById(MENU_BUTTON_ID)
+      menuButton: typeof document !== 'undefined' && !!document.getElementById(MENU_BUTTON_ID),
+      routeTraceCanvasOverlayDefaultHidden: !isRouteTraceCanvasOverlayUnlocked(),
+      routeTracePumpSummaryDefaultHidden: !isRouteTracePumpSummaryUnlocked()
     };
     root.__npshRouteTraceAuditInstalled = installed;
     refreshVisibleAuditSurfaces();
@@ -679,7 +1170,15 @@
     routeAuditCsv,
     downloadRouteAuditCsv,
     downloadRouteAuditJson,
-    refreshVisibleAuditSurfaces
+    refreshVisibleAuditSurfaces,
+    pruneDefaultPumpRouteTraceRows,
+    pruneDefaultSinkCanvasRows,
+    ensureDefaultSinkCanvasRows,
+    pruneDefaultCanvasRouteTraceOverlays,
+    setRouteTraceCanvasOverlayVisible,
+    setRouteTracePumpSummaryVisible,
+    isRouteTraceCanvasOverlayUnlocked,
+    isRouteTracePumpSummaryUnlocked
   };
 
   root.EngineeringRouteTraceAudit = api;
@@ -696,13 +1195,15 @@
     document.addEventListener('click', (event) => {
       if (event.target?.closest?.(`#${MENU_BUTTON_ID}`)) openRouteAuditPanel();
     });
-    const observer = new MutationObserver(() => root.setTimeout(refreshPumpObjectWindows, 40));
-    root.addEventListener?.('load', () => {
-      try {
-        observer.observe(document.documentElement, { childList: true, subtree: true });
-      } catch (error) {
-        root.__npshRouteTraceAuditObserverError = error;
-      }
-    }, { once: true });
+    if (typeof root.MutationObserver === 'function') {
+      const observer = new root.MutationObserver(() => root.setTimeout(refreshVisibleAuditSurfaces, 40));
+      root.addEventListener?.('load', () => {
+        try {
+          observer.observe(document.documentElement, { childList: true, subtree: true });
+        } catch (error) {
+          root.__npshRouteTraceAuditObserverError = error;
+        }
+      }, { once: true });
+    }
   }
 })((typeof window !== 'undefined') ? window : globalThis);

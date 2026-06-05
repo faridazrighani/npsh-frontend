@@ -1,6 +1,6 @@
 # Frontend File Manifest
 
-Date: 2026-06-03
+Date: 2026-06-05
 
 Folder:
 
@@ -16,8 +16,8 @@ Purpose:
 Summary:
 
 ```text
-Total files: 161
-Total size: 63,624,437 bytes
+Total files: 172
+Total size: 63,767,475 bytes
 ```
 
 Top-level contents:
@@ -40,18 +40,23 @@ engineering-npsh-margin-runtime.js public-safe ANSI/HI NPSH margin preset bridge
 engineering-pump-readiness-visibility-runtime.js public-safe final-defense guard that hides developer Pump Action Readiness diagnostics unless debug flag is enabled
 engineering-bilingual-improvements.js bilingual engineering terminology, trace-key registry, runtime UI workflow localization, and diagnostics overlay
 engineering-library-governance.js public-safe library manifest, trace schema, unit/fluid/equipment/literature governance, OCR terminology, formula-literature map, and quality gates
-engineering-route-trace-audit.js public-safe backend route-trace audit bridge, dependency fingerprint handoff, stale-result metadata capture, calculation defense contract handoff, advanced engineering validation display, defense export context capture, backend schema mismatch warning, and software dependency-change gate display
+engineering-route-trace-audit.js public-safe backend route-trace audit bridge, dependency fingerprint handoff, stale-result metadata capture, default-hidden canvas route-trace plus pump/SNK presentation-row display lock, SNK Sink Elev./Sink Head canvas readouts plus idempotent canvas observer pruning, calculation defense contract handoff, advanced engineering validation display, defense export context capture, backend schema mismatch warning, and software dependency-change gate display
 engineering-realtime-calculation-defense.js public-safe realtime stale/freshness bridge that marks calculation results stale immediately when object-property inputs change before backend refresh
+engineering-canvas-context-dock.js public-safe responsive Fluid Basis and Route Trace dock for the PFD canvas, including default-collapsed audit details, sticky canvas viewport positioning, mobile compact lock, mobile symbol mode, stale/current freshness display, route breadcrumb focus, and audit metadata handoff
 engineering-defense-export-package.js public-safe one-click defense report exporter, calculation defense contract evidence, UI evidence registry, task-window evidence badges, redacted audit event handoff, and print/save PDF workflow
 engineering-pump-formula-defense-live-audit.js public-safe live Pump Formula Defense badges, trace-row source/literature notes, and protected backend refresh bridge for advisor-facing pump NPSH evidence
 engineering-pump-performance-chart-audit.js public-safe pump performance chart audit guard that suppresses fallback/duty-point fit curves, keeps no-data charts visually clean, requires sourced curve data, and redraws eligible curves on log-log axes
 engineering-pump-performance-canonical-chart.js public-safe operational chart renderer that uses solver-owned performanceChartData before legacy chart arrays or pump props
+engineering-live-parameter-repaint-lock.css public-safe live canvas parameter paint-lock override that removes transient Solve repaint shadows from parameter cards, pump status badge, and pump status icon glow
 style.min.css           minified styles
 png/                    public images and favicon
 toolbar/                public toolbar icons
 vendor/                 browser libraries for PDF/OCR/export
 journals/               public case data, analysis reports, audit summaries, and current-system case review evidence
 tools/validate-pump-performance-chart-audit.cjs Node validation for chart data eligibility, log-log audit contract, and cache-busted runtime load
+tools/validate-route-trace-default-lock.cjs Node validation for default-hidden canvas route-trace overlays, pump-summary route-trace/vapor-pressure lock, SNK presentation-row lock, SNK Sink Elev./Sink Head readouts, audit/debug unlock APIs, and cache-busted runtime load
+tools/validate-canvas-context-dock.cjs Node validation for default-collapsed Fluid Basis dock behavior, sticky canvas viewport positioning, mobile compact lock, responsive Fluid Basis symbols, route trace source preference, stale freshness display, and cache-busted runtime load
+tools/validate-live-parameter-repaint-lock.cjs Node validation for locked live parameter repaint CSS, cache key, opaque backgrounds, no panel/badge shadow, and pump icon outline-only status display
 ```
 
 Protected-bundle guardrail:
@@ -70,8 +75,9 @@ Release integrity guardrail:
 ```text
 node npsh-api/tools/release-integrity-audit.cjs
 app.bundle.min.js.map sourcesContent: absent
-Route audit cache key: engineering-route-trace-audit.js?v=20260603-route-audit-contract2
+Route audit cache key: engineering-route-trace-audit.js?v=20260605-route-audit-contract12
 Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260603-realtime-defense1
+Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260605-canvas-context-dock7
 Defense export cache key: engineering-defense-export-package.js?v=20260603-defensev3
 Runtime API config: same-origin /api/simulate
 NPSH margin runtime cache key: engineering-npsh-margin-runtime.js?v=20260602-npsh-margin1
@@ -79,6 +85,8 @@ Pump readiness visibility cache key: engineering-pump-readiness-visibility-runti
 Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260602-pump-defense-live11
 Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260603-pump-chart-audit9
 Pump performance canonical chart cache key: engineering-pump-performance-canonical-chart.js?v=20260603-canonical-chart2
+Live parameter repaint lock cache key: engineering-live-parameter-repaint-lock.css?v=20260605-live-param-repaint-lock1
+Live parameter repaint lock validation: npm run validate:live-parameter-repaint-lock
 Pages API proxy: _worker.js -> env.NPSH_API.fetch(request), static fallback -> env.ASSETS.fetch(request)
 ```
 

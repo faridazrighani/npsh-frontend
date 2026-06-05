@@ -7,6 +7,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const files = {
   css: path.join(root, "style.min.css"),
+  liveParameterRepaintLockCss: path.join(root, "engineering-live-parameter-repaint-lock.css"),
   html: path.join(root, "index.html"),
 };
 
@@ -63,7 +64,7 @@ function hasUnspacedMathOperator(value) {
   return false;
 }
 
-const css = read(files.css);
+const css = [files.css, files.liveParameterRepaintLockCss].map(read).join("\n");
 const html = read(files.html);
 const combined = `${css}\n${html}`;
 const failures = [];
@@ -77,7 +78,7 @@ const cssOnlyChecks = [
   {
     id: "no-css-vector-effect-property",
     count: count(css, /\bvector-effect\s*:/g),
-    message: "Use vector-effect as an SVG attribute, not as a CSS property in style.min.css.",
+    message: "Use vector-effect as an SVG attribute, not as a CSS property in frontend CSS.",
   },
 ];
 

@@ -11,7 +11,7 @@ Checks passed:
 - No `.env`, source-content `.map`, `.pem`, `.key`, `.log`, or similar sensitive artifact was found.
 - Public metadata points to `https://npsh.virsim.id/`.
 - Runtime API config uses same-origin `/api/simulate` in backend-primary protected mode.
-- Required public assets are present: `index.html`, `app.bundle.min.js`, `engineering-npsh-margin-runtime.js`, `engineering-pump-readiness-visibility-runtime.js`, `style.min.css`, `png/favicon.ico`, `vendor/`, `journals/`, and `toolbar/`.
+- Required public assets are present: `index.html`, `app.bundle.min.js`, `engineering-npsh-margin-runtime.js`, `engineering-pump-readiness-visibility-runtime.js`, `engineering-live-parameter-repaint-lock.css`, `style.min.css`, `png/favicon.ico`, `vendor/`, `journals/`, and `toolbar/`.
 - Custom-domain file is present: `CNAME` -> `npsh.virsim.id`.
 - Deployment runbook is present: `DEPLOYMENT.md`.
 - Pages advanced-mode proxy is present: `_worker.js` forwards `/api/*` to the `NPSH_API` Service Binding and serves static assets through `env.ASSETS`.
@@ -21,6 +21,7 @@ Checks passed:
 - Public PDF content is reduced to zero files.
 - The six simulation-case source PDFs were moved out of the public package to the local private reference archive.
 - Unbundled toolbar source files and Windows `desktop.ini` noise were moved out of the public package.
+- Live parameter repaint-lock validation passed and must stay part of the frontend validation set.
 
 Important dependency:
 

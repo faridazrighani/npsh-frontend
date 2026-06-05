@@ -1,0 +1,81 @@
+/* Locks live canvas parameter cards against transient repaint shadows during Solve. */
+.pump-live-params,
+.tank-live-params,
+.source-live-params,
+.sink-live-params {
+  box-shadow: none !important;
+  filter: none !important;
+  overflow: hidden !important;
+  contain: layout paint !important;
+  isolation: isolate !important;
+  backface-visibility: hidden;
+  clip-path: inset(0 round 6px);
+  background: #ffffff !important;
+}
+
+.pump-live-params {
+  min-height: 173px !important;
+  transition: none !important;
+  transform: translate3d(-50%, 0, 0) !important;
+}
+
+.pump-live-params-safe,
+.tank-live-params-safe,
+.source-live-params-safe,
+.sink-live-params-safe {
+  background: #f0fdf4 !important;
+}
+
+.pump-live-params-warning,
+.tank-live-params-warning,
+.source-live-params-warning,
+.sink-live-params-warning {
+  background: #fff7ed !important;
+}
+
+.pump-live-params-risk,
+.tank-live-params-risk,
+.source-live-params-risk,
+.sink-live-params-risk {
+  background: #fef2f2 !important;
+}
+
+.pump-live-params-incomplete,
+.tank-live-params-incomplete,
+.source-live-params-incomplete,
+.sink-live-params-incomplete {
+  background: #f8fafc !important;
+}
+
+.tank-live-params-advisory {
+  background: #fffbeb !important;
+}
+
+.pump-status-badge {
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+.object-type-pump.pump-status-safe .object-icon {
+  background: #f0fdf4 !important;
+  box-shadow: 0 0 0 2px #16a34a !important;
+}
+
+.object-type-pump.pump-status-warning .object-icon {
+  background: #fff7ed !important;
+  box-shadow: 0 0 0 2px #f97316 !important;
+}
+
+.object-type-pump.pump-status-risk .object-icon {
+  background: #fef2f2 !important;
+  box-shadow: 0 0 0 2px #dc2626 !important;
+}
+
+.object-type-pump.pump-status-incomplete .object-icon {
+  background: #f8fafc !important;
+  box-shadow: 0 0 0 2px #94a3b8 !important;
+}
+
+.pfd-object.object-type-pump.selected .object-icon {
+  filter: none !important;
+}

@@ -1,0 +1,245 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const rootDir = path.resolve(__dirname, '..');
+const runtimePath = path.join(rootDir, 'engineering-canvas-context-dock.js');
+const indexPath = path.join(rootDir, 'index.html');
+const manifestPath = path.join(rootDir, 'FILE_MANIFEST.md');
+
+const runtime = require(runtimePath);
+
+assert.equal(runtime.version, 'engineering-canvas-context-dock.v2', 'Canvas context dock runtime should expose v2.');
+assert.equal(runtime.cacheKey, '20260605-canvas-context-dock7', 'Canvas context dock cache key should stay locked.');
+assert.equal(typeof runtime.buildDockState, 'function', 'Canvas context dock should expose buildDockState for audit tests.');
+assert.equal(typeof runtime.resolveRouteNodes, 'function', 'Canvas context dock should expose route resolution for audit tests.');
+assert.equal(typeof runtime.rectsOverlapOrTooClose, 'function', 'Canvas context dock should expose legend collision geometry for audit tests.');
+assert.equal(typeof runtime.syncCanvasStatusLegendVisibility, 'function', 'Canvas context dock should expose Pump Status visibility sync for audit tests.');
+assert.equal(typeof runtime.getStoredExpandedState, 'function', 'Canvas context dock should expose stored expanded state for audit tests.');
+assert.equal(typeof runtime.getEffectiveExpandedState, 'function', 'Canvas context dock should expose effective expanded state for audit tests.');
+assert.equal(typeof runtime.setExpanded, 'function', 'Canvas context dock should expose expand/collapse setter for audit tests.');
+assert.equal(typeof runtime.isMobileViewport, 'function', 'Canvas context dock should expose mobile viewport detection for audit tests.');
+
+const simulationCase1Like = {
+  __npshGlobalModel: {
+    FLUID: {
+      type: 'fluid',
+      name: 'Fluid Basis',
+      props: {
+        fluidName: 'Methanol',
+        temp: 40,
+        density: 774,
+        viscosity: 0.607,
+        dynViscosity: 0.47,
+        vaporPressure: 0.354303
+      }
+    },
+    'SRC-100': { type: 'source', props: {} },
+    'PIPE-1': { type: 'pipe', props: {} },
+    'PUMP-100': {
+      type: 'pump',
+      props: {},
+      results: {
+        calculationFreshness: 'Current',
+        actionReadinessBackend: { status: 'Ready', stale: false },
+        calculationAudit: { calculationId: 'case-1-calc' },
+        dependencyManifest: { dependencyFingerprint: 'case-1-dep' }
+      }
+    },
+    'PIPE-2': { type: 'pipe', props: {} },
+    'SNK-100': { type: 'sink', props: {} }
+  },
+  __npshConnections: [
+    { from: 'SRC-100', to: 'PUMP-100', pipeId: 'PIPE-1', connectionType: 'hydraulic' },
+    { from: 'PUMP-100', to: 'SNK-100', pipeId: 'PIPE-2', connectionType: 'hydraulic' }
+  ],
+  activeChartPumpId: 'PUMP-100'
+};
+
+let state = runtime.buildDockState(simulationCase1Like);
+assert.equal(state.status, 'Current', 'Current backend result should render as Current.');
+assert.equal(state.statusTone, 'current', 'Current backend result should use the current tone.');
+assert.deepEqual(
+  state.routeNodes,
+  ['Fluid Basis', 'SRC-100', 'PIPE-1', 'PUMP-100', 'PIPE-2', 'SNK-100'],
+  'Canvas connection route should include Fluid Basis, source, pipe, pump, discharge pipe, and sink.'
+);
+assert.equal(state.routeSource, 'canvas connections', 'Connection-built route should document its source.');
+assert.equal(state.audit.calculationId, 'case-1-calc', 'Calculation id should be surfaced in the dock audit strip.');
+assert.equal(state.audit.dependencyFingerprint, 'case-1-dep', 'Dependency fingerprint should be surfaced in the dock audit strip.');
+
+const density = state.fluidCells.find((cell) => cell.id === 'density');
+const kinematicViscosity = state.fluidCells.find((cell) => cell.id === 'kinematicViscosity');
+const dynamicViscosity = state.fluidCells.find((cell) => cell.id === 'dynamicViscosity');
+const vaporPressureHead = state.fluidCells.find((cell) => cell.id === 'vaporPressureHead');
+const specificWeight = state.fluidCells.find((cell) => cell.id === 'specificWeight');
+assert.equal(density.value, '774.000 kg/m3', 'Density should be rendered with engineering precision.');
+assert.equal(kinematicViscosity.value, '0.607 cSt', 'Legacy viscosity should render as kinematic viscosity.');
+assert.equal(dynamicViscosity.value, '0.470 cP', 'Legacy dynViscosity should render as dynamic viscosity.');
+assert.equal(specificWeight.value, '7592.940 N/m3', 'Specific weight should be computed from density when not stored.');
+assert.equal(vaporPressureHead.value, '4.666 m', 'Vapor pressure head should be computed from vapor pressure and density.');
+
+const derivedViscosityState = runtime.buildDockState({
+  __npshGlobalModel: {
+    FLUID: {
+      type: 'fluid',
+      props: {
+        fluidName: 'Water',
+        temp: 100,
+        density: 958.348,
+        viscosity: 0.294,
+        vaporPressure: 1.01418
+      }
+    }
+  }
+});
+assert.equal(
+  derivedViscosityState.fluidCells.find((cell) => cell.id === 'dynamicViscosity').value,
+  '0.282 cP',
+  'Dynamic viscosity should be derived from kinematic viscosity and density when dynViscosity is absent.'
+);
+
+assert.equal(
+  runtime.rectsOverlapOrTooClose(
+    { left: 0, top: 0, right: 100, bottom: 60 },
+    { left: 111, top: 12, right: 210, bottom: 80 },
+    12
+  ),
+  true,
+  'Pump Status should hide when it is inside the protected Fluid Basis collision margin.'
+);
+assert.equal(
+  runtime.rectsOverlapOrTooClose(
+    { left: 0, top: 0, right: 100, bottom: 60 },
+    { left: 113, top: 12, right: 210, bottom: 80 },
+    12
+  ),
+  false,
+  'Pump Status may remain visible when it is outside the protected Fluid Basis collision margin.'
+);
+assert.equal(
+  runtime.rectsOverlapOrTooClose(
+    { left: 0, top: 0, right: 100, bottom: 60 },
+    { left: 20, top: 90, right: 120, bottom: 140 },
+    12
+  ),
+  false,
+  'Pump Status should not hide when horizontal ranges overlap but vertical ranges are safely separated.'
+);
+
+const simulationCase4Like = {
+  ...simulationCase1Like,
+  __engineeringCalculationDefenseRealtimeState: {
+    status: 'Stale',
+    calculationId: 'old-calc',
+    dependencyFingerprint: 'old-dep',
+    calculationDefenseStatus: 'Blocked'
+  },
+  __npshGlobalModel: {
+    ...simulationCase1Like.__npshGlobalModel,
+    'PUMP-100': {
+      ...simulationCase1Like.__npshGlobalModel['PUMP-100'],
+      results: {
+        ...simulationCase1Like.__npshGlobalModel['PUMP-100'].results,
+        routeTrace: {
+          text: 'Fluid Basis -> SRC-100 -> PIPE-1 -> PUMP-100 -> PIPE-2 -> SNK-100'
+        },
+        performanceChartData: { freshness: 'Stale' }
+      }
+    }
+  }
+};
+
+state = runtime.buildDockState(simulationCase4Like);
+assert.equal(state.status, 'Stale', 'Realtime stale state should override old current results.');
+assert.equal(state.statusTone, 'stale', 'Stale result should use the stale tone.');
+assert.equal(state.statusNote, 'Input changed before backend refresh.', 'Stale note should explain pending backend refresh.');
+assert.equal(state.routeSource, 'backend route trace', 'Backend route trace should be preferred over reconstructed canvas route.');
+assert.deepEqual(
+  state.routeNodes,
+  ['Fluid Basis', 'SRC-100', 'PIPE-1', 'PUMP-100', 'PIPE-2', 'SNK-100'],
+  'Backend route trace should be normalized without changing route order.'
+);
+
+const symbols = Object.fromEntries(state.fluidCells.map((cell) => [cell.id, cell.mobileSymbol]));
+assert.equal(symbols.density, 'ρ', 'Mobile density symbol should be available.');
+assert.equal(symbols.kinematicViscosity, 'ν', 'Mobile kinematic viscosity symbol should be available.');
+assert.equal(symbols.dynamicViscosity, 'μ', 'Mobile dynamic viscosity symbol should be available.');
+assert.equal(symbols.specificWeight, 'γ', 'Mobile specific-weight symbol should be available.');
+
+const savedMatchMedia = global.matchMedia;
+const savedLocalStorage = global.localStorage;
+const storedValues = new Map();
+try {
+  global.localStorage = {
+    getItem: (key) => storedValues.has(key) ? storedValues.get(key) : null,
+    setItem: (key, value) => storedValues.set(key, String(value))
+  };
+  global.matchMedia = () => ({ matches: false });
+  assert.equal(runtime.getEffectiveExpandedState(), false, 'First desktop/tablet load should default to collapsed.');
+  assert.equal(runtime.setExpanded(true), true, 'Desktop/tablet toggle should allow expanded state.');
+  assert.equal(storedValues.get('npsh.canvasContextDock.expanded'), 'true', 'Desktop/tablet expanded preference should be persisted.');
+  assert.equal(runtime.getEffectiveExpandedState(), true, 'Desktop/tablet should honor the stored expanded preference.');
+
+  global.matchMedia = (query) => ({ matches: query === '(max-width: 639px)' });
+  assert.equal(runtime.isMobileViewport(), true, 'Cellular viewport should be detected by the runtime.');
+  assert.equal(runtime.getEffectiveExpandedState(), false, 'Cellular viewport should force compact/collapsed display.');
+  assert.equal(runtime.setExpanded(false), false, 'Cellular toggle should not change expanded state.');
+  assert.equal(storedValues.get('npsh.canvasContextDock.expanded'), 'true', 'Cellular toggle should not overwrite the desktop/tablet preference.');
+
+  global.matchMedia = () => ({ matches: false });
+  assert.equal(runtime.getEffectiveExpandedState(), true, 'Returning to desktop/tablet should restore the saved expanded preference.');
+  assert.equal(runtime.setExpanded(false), false, 'Desktop/tablet collapse should be allowed.');
+  assert.equal(storedValues.get('npsh.canvasContextDock.expanded'), 'false', 'Desktop/tablet collapsed preference should be persisted.');
+} finally {
+  global.matchMedia = savedMatchMedia;
+  global.localStorage = savedLocalStorage;
+}
+
+const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
+assert(runtimeSource.includes('@media (max-width: 639px)'), 'Runtime CSS must include a cellular breakpoint.');
+assert(runtimeSource.includes('position: sticky'), 'Fluid Basis dock should stay pinned to the canvas viewport while the canvas is panned.');
+assert(runtimeSource.includes('width: min(940px, calc(100% - 182px));'), 'Desktop dock width should preserve the existing left/right visual footprint.');
+assert(runtimeSource.includes('return false;\n  }\n\n  function getEffectiveExpandedState()'), 'Dock should default to collapsed on first load when no user preference is stored.');
+assert(runtimeSource.includes('if (isMobileViewport()) return false;'), 'Mobile viewports should force the dock into compact/collapsed mode.');
+assert(runtimeSource.includes('if (isMobileViewport()) {\n      scheduleRender(\'mobile-locked-toggle\');\n      return false;'), 'Mobile toggle should not change or persist expanded state.');
+assert(runtimeSource.includes("toggle.setAttribute('aria-disabled', String(mobileLocked));"), 'Mobile toggle should advertise that expand/collapse is disabled.');
+assert(runtimeSource.includes('dock.dataset.mobileLocked = mobileLocked ? \'true\' : \'false\';'), 'Dock should expose mobile lock state in the DOM for QA.');
+assert(runtimeSource.includes('.canvas-context-dock[data-mobile-locked="true"] .context-dock-expanded { display: none; }'), 'Mobile dock should hide expanded audit content even if a stale expanded class appears.');
+assert(!runtimeSource.includes('.canvas-context-dock.is-expanded {\n    position: fixed;'), 'Mobile dock must not become a bottom sheet because expand is disabled on cellular screens.');
+assert(runtimeSource.includes('.context-dock-cell[data-cell-id="fluid"] .context-dock-value'), 'Only the active fluid value should keep bold value emphasis.');
+assert(runtimeSource.includes('item.dataset.cellId = cell.id'), 'Summary cells should expose data-cell-id for typography lock.');
+assert(runtimeSource.includes("const LEGEND_SELECTOR = '.canvas-status-legend'"), 'Pump Status collision lock should target the canvas status legend.');
+assert(runtimeSource.includes("const LEGEND_HIDDEN_CLASS = 'canvas-status-legend-hidden'"), 'Pump Status collision lock should use a stable hidden class.');
+assert(runtimeSource.includes('const LEGEND_COLLISION_MARGIN_PX = 12'), 'Pump Status collision lock should keep the protected 12px margin explicit.');
+assert(runtimeSource.includes('.canvas-status-legend.canvas-status-legend-hidden'), 'Pump Status hidden class should be styled by the dock runtime.');
+assert(runtimeSource.includes('visibility: hidden !important'), 'Pump Status should hide visually without losing its measurable layout rectangle.');
+assert(runtimeSource.includes('legend.classList.toggle(LEGEND_HIDDEN_CLASS, shouldHide)'), 'Pump Status visibility should be driven by collision detection.');
+assert(runtimeSource.includes("legend.setAttribute('aria-hidden', shouldHide ? 'true' : 'false')"), 'Hidden Pump Status should also update aria-hidden.');
+assert(runtimeSource.includes('syncCanvasStatusLegendVisibility();\n    scheduleLegendVisibilitySync();'), 'Pump Status collision lock should run immediate and scheduled sync after dock render.');
+assert(runtimeSource.includes('function observeLegendVisibilityLayout()'), 'Pump Status collision lock should observe dock and legend layout changes.');
+assert(runtimeSource.includes("typeof root.ResizeObserver !== 'function'"), 'Pump Status collision lock should use ResizeObserver when available.');
+assert(runtimeSource.includes('legendVisibilityObserver.observe(dock)'), 'Pump Status collision lock should observe the Fluid Basis dock rectangle.');
+assert(runtimeSource.includes('legendVisibilityObserver.observe(legend)'), 'Pump Status collision lock should observe the Pump Status rectangle.');
+assert(runtimeSource.includes('function scheduleSettledLegendVisibilitySync'), 'Pump Status collision lock should retry after viewport/layout settling.');
+assert(/\.context-dock-title\s*\{[\s\S]*?font-weight:\s*800;/.test(runtimeSource), 'Typography lock: Fluid Basis title must stay bold.');
+assert(/\.context-dock-route-label\s*\{[\s\S]*?font-weight:\s*800;/.test(runtimeSource), 'Typography lock: Route label must stay bold.');
+assert(/\.context-dock-cell\[data-cell-id="fluid"\]\s+\.context-dock-value\s*\{[\s\S]*?font-weight:\s*800;/.test(runtimeSource), 'Typography lock: active fluid value must stay bold.');
+assert(/\.context-dock-value\s*\{[\s\S]*?font-weight:\s*400;/.test(runtimeSource), 'Typography lock: property values other than active fluid must stay normal weight.');
+assert(/\.context-dock-route-button\s*\{[\s\S]*?font-weight:\s*400;/.test(runtimeSource), 'Typography lock: route node chips must stay normal weight.');
+assert(/\.context-dock-pill\s*\{[\s\S]*?font-weight:\s*400;/.test(runtimeSource), 'Typography lock: freshness pill must stay normal weight.');
+assert(/\.context-dock-audit-value\s*\{[\s\S]*?font-weight:\s*400;/.test(runtimeSource), 'Typography lock: expanded audit values must stay normal weight.');
+assert(!runtimeSource.includes('innerHTML ='), 'Runtime should not render model-derived data with innerHTML.');
+
+const index = fs.readFileSync(indexPath, 'utf8');
+const manifest = fs.readFileSync(manifestPath, 'utf8');
+assert(
+  index.includes('engineering-canvas-context-dock.js?v=20260605-canvas-context-dock7'),
+  'Index must load the canvas context dock runtime with cache key.'
+);
+assert(
+  manifest.includes('Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260605-canvas-context-dock7'),
+  'Manifest must document the canvas context dock cache key.'
+);
+
+console.log('Canvas context dock validation passed.');
