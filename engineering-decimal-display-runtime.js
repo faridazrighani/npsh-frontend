@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const LOCK_VERSION = "2026.06-pump-npsh-global-display-lock1";
+  const LOCK_VERSION = "2026.06-pump-npsh-source-sink-display-lock2";
   const ENGINEERING_DISPLAY_DECIMALS = 3;
   const PUMP_NPSH_DISPLAY_DECIMALS = 4;
   const NUMERIC_TOKEN_PATTERN = /[-+]?(?:\d+(?:[.,]\d*)?|[.,]\d+)(?:e[-+]?\d+)?/gi;
@@ -78,11 +78,15 @@
     "SNK Flow",
     "Source Elev.",
     "Source Head",
+    "Source P abs",
     "Source Press.",
     "Stagnation Press.",
     "Static Press.",
     "Suction Loss",
     "Suction Press.",
+    "Sink P abs",
+    "Sink Elev.",
+    "Sink Head",
     "Target",
     "Target Net",
     "Temperature",

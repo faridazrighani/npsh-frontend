@@ -17,7 +17,7 @@ Summary:
 
 ```text
 Total files: 173
-Total size: 63,776,884 bytes
+Total size: 63,798,459 bytes
 ```
 
 Top-level contents:
@@ -40,7 +40,7 @@ engineering-npsh-margin-runtime.js public-safe ANSI/HI NPSH margin preset bridge
 engineering-pump-readiness-visibility-runtime.js public-safe final-defense guard that hides developer Pump Action Readiness diagnostics unless debug flag is enabled
 engineering-bilingual-improvements.js bilingual engineering terminology, trace-key registry, runtime UI workflow localization, and diagnostics overlay
 engineering-library-governance.js public-safe library manifest, trace schema, unit/fluid/equipment/literature governance, OCR terminology, formula-literature map, and quality gates
-engineering-route-trace-audit.js public-safe backend route-trace audit bridge, dependency fingerprint handoff, stale-result metadata capture, default-hidden canvas route-trace plus pump/SNK presentation-row display lock, SNK Sink Elev./Sink Head canvas readouts plus idempotent canvas observer pruning, calculation defense contract handoff, advanced engineering validation display, defense export context capture, backend schema mismatch warning, and software dependency-change gate display
+engineering-route-trace-audit.js public-safe backend route-trace audit bridge, dependency fingerprint handoff, stale-result metadata capture, default-hidden canvas route-trace plus pump/SNK presentation-row display lock, SNK Sink P abs/Sink Elev./Sink Head canvas readouts plus idempotent canvas observer pruning, calculation defense contract handoff, advanced engineering validation display, defense export context capture, backend schema mismatch warning, and software dependency-change gate display
 engineering-realtime-calculation-defense.js public-safe realtime stale/freshness bridge that marks calculation results stale immediately when object-property inputs change before backend refresh
 engineering-canvas-context-dock.js public-safe responsive Fluid Basis and Route Trace dock for the PFD canvas, including default-collapsed audit details, sticky canvas viewport positioning, mobile compact lock, mobile symbol mode, stale/current freshness display, route breadcrumb focus, and audit metadata handoff
 engineering-defense-export-package.js public-safe one-click defense report exporter, calculation defense contract evidence, UI evidence registry, task-window evidence badges, redacted audit event handoff, and print/save PDF workflow
@@ -77,8 +77,10 @@ Release integrity guardrail:
 node npsh-api/tools/release-integrity-audit.cjs
 app.bundle.min.js.map sourcesContent: absent
 App bundle cache key: app.bundle.min.js?v=20260606-pump-canvas-npsh-hover-lock1
-Decimal display runtime cache key: engineering-decimal-display-runtime.js?v=20260606-pump-npsh-global-display-lock1
-Route audit cache key: engineering-route-trace-audit.js?v=20260605-route-audit-contract12
+Bilingual terminology runtime cache key: engineering-bilingual-improvements.js?v=20260606-source-sink-terminology1
+Source canvas parameter runtime cache key: engineering-src-canvas-parameter-runtime.js?v=20260606-source-sink-terminology3
+Decimal display runtime cache key: engineering-decimal-display-runtime.js?v=20260606-pump-npsh-source-sink-display-lock2
+Route audit cache key: engineering-route-trace-audit.js?v=20260606-source-sink-route-audit2
 Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260603-realtime-defense1
 Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260605-canvas-context-dock7
 Defense export cache key: engineering-defense-export-package.js?v=20260603-defensev3

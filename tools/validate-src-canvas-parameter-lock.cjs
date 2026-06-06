@@ -8,9 +8,14 @@ const INDEX_FILE = path.join(FRONTEND_ROOT, "index.html");
 const JOURNALS_DIR = path.join(FRONTEND_ROOT, "journals");
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
-const DEFAULT_ROW_LABELS = ["Mode", "Outlet Flow", "Contribution", "Source Press.", "Source Elev.", "Source Head"];
+const RUNTIME_CACHE_KEY = "engineering-src-canvas-parameter-runtime.js?v=20260606-source-sink-terminology3";
+const DEFAULT_ROW_LABELS = ["Mode", "Outlet Flow", "Contribution", "Source P abs", "Source Elev.", "Source Head"];
 const ALWAYS_HIDDEN_ROWS = new Set(["Suction Loss", "NPSH at Pump", "Pump NPSHa"]);
 const DYNAMIC_ROWS = new Set(["Dyn Mode", "Target", "Dyn Feed", "Target Net", "Dyn Net", "Target Trend", "Dyn Trend"]);
+const ROW_LABEL_RENAMES = new Map([
+  ["Source Press.", "Source P abs"],
+  ["Source Pressure", "Source P abs"]
+]);
 const SOURCE_ROW_LABELS = [
   "Mode",
   "Dyn Mode",
@@ -39,11 +44,21 @@ function normalizeRowLabel(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
 
+function normalizeSourceLabel(value) {
+  const label = normalizeRowLabel(value);
+  return ROW_LABEL_RENAMES.get(label) || label;
+}
+
 function filterRows(labels, unlocked) {
-  return labels.filter((label) => {
+  return labels.map(normalizeSourceLabel).filter((label) => {
     const normalized = normalizeRowLabel(label);
     return !ALWAYS_HIDDEN_ROWS.has(normalized) && (unlocked || !DYNAMIC_ROWS.has(normalized));
   });
+}
+
+function formatDisplayValue(value, digits = 3) {
+  const numeric = Number.parseFloat(value);
+  return Number.isFinite(numeric) ? numeric.toFixed(digits) : null;
 }
 
 function readUntirtaProject(filePath) {
@@ -79,10 +94,16 @@ function listSimulationUntirtaFiles() {
 }
 
 const runtime = fs.readFileSync(RUNTIME_FILE, "utf8");
+assert(runtime.includes('2026.06-src-canvas-source-sink-terminology-lock1'), "Runtime must keep the source/sink terminology lock version.");
 assert(runtime.includes("isSourceLiveDynamicDisplayActive = isRealtimeDynamicUnlocked"), "Runtime must override the SRC dynamic display gate.");
 assert(runtime.includes("setRealtimeDynamicUnlocked(true)"), "Runtime must unlock SRC dynamic rows when realtime dynamic starts.");
 assert(runtime.includes("setRealtimeDynamicUnlocked(false)"), "Runtime must lock SRC dynamic rows when realtime dynamic stops.");
 assert(runtime.includes("dataset.srcCanvasParameterDefaultLock"), "Runtime must expose its SRC canvas parameter lock version in the DOM for QA.");
+assert(runtime.includes("canonicalSourceValueForLabel"), "Runtime must recover exact source pressure/elevation/head values before display rounding.");
+assert(runtime.includes('"Source P abs"'), "Runtime must normalize source pressure labels to Source P abs.");
+assert(runtime.includes("normalizeBoundaryTerminology"), "Runtime must normalize pump property boundary cards to Source/Sink terminology.");
+assert(runtime.includes('"Flow Demand Sink"'), "Runtime must normalize visible SNK type subtitles away from generic Boundary wording.");
+assert(runtime.includes("formatTooltipParsedNumber"), "Runtime must format SRC hover flow metrics to the global 3-decimal display lock.");
 for (const label of DYNAMIC_ROWS) {
   assert(runtime.includes(`"${label}"`), `Runtime must recognize dynamic SRC row "${label}".`);
 }
@@ -90,7 +111,7 @@ assert(!DYNAMIC_ROWS.has("Contribution"), "Contribution must remain visible in t
 
 const indexHtml = fs.readFileSync(INDEX_FILE, "utf8");
 assert(
-  indexHtml.includes("engineering-src-canvas-parameter-runtime.js?v=20260604-src-param-default-lock5"),
+  indexHtml.includes(RUNTIME_CACHE_KEY),
   "index.html must load the SRC canvas parameter lock runtime."
 );
 
@@ -121,6 +142,20 @@ for (const filePath of simulationFiles) {
     JSON.stringify(filterRows(SOURCE_ROW_LABELS, false)) === JSON.stringify(DEFAULT_ROW_LABELS),
     `${path.basename(filePath)} must use the default SRC canvas row contract until realtime dynamic is started.`
   );
+  for (const sourceId of sourceIds) {
+    const source = projectFile.model[sourceId] || {};
+    const trace = source.results?.calculationTrace?.boundary || {};
+    const sourceHead = formatDisplayValue(trace.totalSourceHead);
+    if (sourceHead) {
+      assert(
+        sourceHead !== "19.400",
+        `${path.basename(filePath)} ${sourceId} must not preserve stale 1-decimal source head 19.400.`
+      );
+    }
+    if (path.basename(filePath) === "simulasi_performansi_pompa_air_umpan_tangki_deaerator.untirta") {
+      assert(sourceHead === "19.369", "Simulasi 1 SRC-100 Source Head must render from exact trace as 19.369 m.");
+    }
+  }
 }
 
 console.log(`SRC canvas parameter lock validation passed for default state and ${simulationFiles.length} UNTIRTA simulations.`);

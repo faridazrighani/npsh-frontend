@@ -10,8 +10,8 @@ const APP_BUNDLE_FILE = path.join(FRONTEND_ROOT, "app.bundle.min.js");
 const INDEX_FILE = path.join(FRONTEND_ROOT, "index.html");
 const JOURNALS_DIR = path.join(FRONTEND_ROOT, "journals");
 const API_ROOT = path.resolve(process.env.NPSH_API_ROOT || path.join(WORKSPACE_ROOT, "npsh-api"));
-const LOCK_VERSION = "2026.06-pump-npsh-global-display-lock1";
-const RUNTIME_CACHE_KEY = "engineering-decimal-display-runtime.js?v=20260606-pump-npsh-global-display-lock1";
+const LOCK_VERSION = "2026.06-pump-npsh-source-sink-display-lock2";
+const RUNTIME_CACHE_KEY = "engineering-decimal-display-runtime.js?v=20260606-pump-npsh-source-sink-display-lock2";
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
 function assert(condition, message) {
@@ -114,6 +114,10 @@ assert(documentElement.dataset.engineeringDecimalDisplayLock === api.version, "R
 const formatCases = [
   ["Flow", "50.0", "m3/h", "50.000"],
   ["Suction Press.", "1.622", "bar a", "1.622"],
+  ["Source P abs", "1.8209", "bar a", "1.821"],
+  ["Source Head", "19.3687", "m", "19.369"],
+  ["Sink P abs", "1.743707129", "bar a", "1.744"],
+  ["Sink Head", "29.085", "m", "29.085"],
   ["NPSH Available", "6.4656", "m", "6.4656"],
   ["NPSH Required", "2.4002", "m", "2.4002"],
   ["NPSH Margin", "+4.0654", "m", "+4.0654"],

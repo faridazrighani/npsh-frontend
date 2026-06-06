@@ -288,8 +288,8 @@
     designFlow: { i18nKey: 'trace.pump.designFlow', en: 'Design Flow', id: 'Flow Desain' },
     designHead: { i18nKey: 'trace.pump.designHead', en: 'Design Head', id: 'Head Desain' },
     designNpshr: { i18nKey: 'trace.pump.designNpshr', en: 'Design NPSHr', id: 'NPSHr Desain' },
-    'sink-boundary-pressure': { i18nKey: 'trace.sink.boundaryPressure', en: 'Boundary Abs. Pressure', id: 'Tekanan Absolut Boundary' },
-    'sink-calculated-pressure': { i18nKey: 'trace.sink.calculatedPressure', en: 'Required Boundary Pressure', id: 'Tekanan Boundary yang Dibutuhkan' },
+    'sink-boundary-pressure': { i18nKey: 'trace.sink.boundaryPressure', en: 'Sink P abs', id: 'Tekanan Absolut Sink' },
+    'sink-calculated-pressure': { i18nKey: 'trace.sink.calculatedPressure', en: 'Required Sink P abs', id: 'Tekanan Absolut Sink yang Dibutuhkan' },
     'sink-flow': { i18nKey: 'trace.sink.flow', en: 'Flow Rate', id: 'Laju Alir' },
     'sink-fluid-density': { i18nKey: 'trace.sink.fluidDensity', en: 'Density Used', id: 'Densitas Digunakan' },
     'sink-fluid-vapor-pressure': { i18nKey: 'trace.sink.fluidVaporPressure', en: 'Vapor Pressure', id: 'Tekanan Uap' },
@@ -303,10 +303,10 @@
     'sink-stagnation-pressure': { i18nKey: 'trace.sink.stagnationPressure', en: 'Pipe Endpoint Stagnation Pressure', id: 'Tekanan Stagnasi Endpoint Pipa' },
     'sink-static-pressure': { i18nKey: 'trace.sink.staticPressure', en: 'Pipe Endpoint Static Pressure', id: 'Tekanan Statik Endpoint Pipa' },
     'sink-temperature': { i18nKey: 'trace.sink.temperature', en: 'Temperature', id: 'Temperatur' },
-    'sink-trace-boundary-mode': { i18nKey: 'trace.sink.boundaryMode', en: 'Boundary Mode', id: 'Mode Boundary' },
+    'sink-trace-boundary-mode': { i18nKey: 'trace.sink.boundaryMode', en: 'Sink Mode', id: 'Mode Sink' },
     'sink-trace-elevation': { i18nKey: 'trace.sink.elevation', en: 'SNK Elevation', id: 'Elevasi SNK' },
     'sink-trace-pressure-head': { i18nKey: 'trace.sink.pressureHead', en: 'Pressure Head', id: 'Head Tekanan' },
-    'sink-trace-pressure-input': { i18nKey: 'trace.sink.pressureInput', en: 'Boundary Pressure Input', id: 'Input Tekanan Boundary' },
+    'sink-trace-pressure-input': { i18nKey: 'trace.sink.pressureInput', en: 'Sink Pressure Input', id: 'Input Tekanan Sink' },
     'sink-trace-velocity-head': { i18nKey: 'trace.sink.velocityHead', en: 'Terminal Velocity Head', id: 'Head Kecepatan Terminal' },
     'source-absolute-pressure': { i18nKey: 'trace.source.absolutePressure', en: 'Calculated Abs. Pressure', id: 'Tekanan Absolut Terhitung' },
     'source-effective-elevation': { i18nKey: 'trace.source.effectiveElevation', en: 'Source Elevation', id: 'Elevasi Source' },
@@ -321,7 +321,7 @@
     'source-temperature': { i18nKey: 'trace.source.temperature', en: 'Temperature', id: 'Temperatur' },
     'source-trace-hydraulic-head': { i18nKey: 'trace.source.hydraulicHead', en: 'Source Hydraulic Head', id: 'Head Hidrolik Source' },
     'source-trace-pressure-head': { i18nKey: 'trace.source.pressureHead', en: 'Pressure Head', id: 'Head Tekanan' },
-    'source-trace-pressure-input': { i18nKey: 'trace.source.pressureInput', en: 'Boundary Pressure Input', id: 'Input Tekanan Boundary' },
+    'source-trace-pressure-input': { i18nKey: 'trace.source.pressureInput', en: 'Source Pressure Input', id: 'Input Tekanan Source' },
     'source-trace-velocity-head': { i18nKey: 'trace.source.velocityHead', en: 'Velocity Head', id: 'Head Kecepatan' },
     'valve-bore-diameter': { i18nKey: 'trace.valve.boreDiameter', en: 'Nominal Bore', id: 'Bore Nominal' },
     'valve-cracking-head': { i18nKey: 'trace.valve.crackingHead', en: 'Cracking Head', id: 'Head Bukaan Awal' },
@@ -538,10 +538,10 @@
     ['task.source.solverEffect', 'What Changes in Solver', 'Yang Berubah di Solver'],
     ['task.source.sourceType', 'Source Type', 'Tipe Source'],
     ['task.source.sourceTypeMeaning', 'Type Meaning', 'Makna Tipe'],
-    ['task.source.boundaryDataSource', 'Boundary Data Source', 'Sumber Data Boundary'],
-    ['task.source.boundaryDataNote', 'Boundary Data Note', 'Catatan Data Boundary'],
+    ['task.source.boundaryDataSource', 'Source Data Origin', 'Asal Data Source'],
+    ['task.source.boundaryDataNote', 'Source Data Note', 'Catatan Data Source'],
     ['task.source.pressureBasis', 'Pressure Basis', 'Basis Tekanan'],
-    ['task.source.boundaryPressure', 'Boundary Pressure', 'Tekanan Boundary'],
+    ['task.source.boundaryPressure', 'Source P abs', 'Tekanan Absolut Source'],
     ['task.source.sourceElevation', 'Source Elevation', 'Elevasi Source'],
     ['task.source.pressureEnergyBasis', 'Pressure Energy Basis', 'Basis Energi Tekanan'],
     ['task.source.temperatureMode', 'Temperature Mode', 'Mode Temperatur'],
@@ -2171,7 +2171,7 @@
       )
     ]));
 
-    appendSourceDefenseCard(layout, getSourceDefenseText('Current SRC Boundary Data', 'Data Boundary SRC Saat Ini'), () => createSourceDefenseTable(
+    appendSourceDefenseCard(layout, getSourceDefenseText('Current SRC Source Data', 'Data Source SRC Saat Ini'), () => createSourceDefenseTable(
       [
         getSourceDefenseText('Item', 'Item'),
         getSourceDefenseText('Current Value', 'Nilai Saat Ini'),
@@ -2194,7 +2194,7 @@
           getSourceDefenseText('Defines whether the source behaves as a fixed-flow, pressure, tank, vessel, or external boundary.', 'Mendefinisikan apakah source berperan sebagai fixed-flow, pressure, tank, vessel, atau boundary eksternal.')
         ],
         [
-          getSourceDefenseText('Boundary Data Source', 'Sumber Data Boundary'),
+          getSourceDefenseText('Source Data Origin', 'Asal Data Source'),
           props.boundaryDataSource || props.dataSource || getSourceDefenseText('Manual / User Input', 'Manual / Input User'),
           getSourceDefenseText('Documents whether the SRC number comes from user input, journal data, vendor data, or an engineering boundary note.', 'Mendokumentasikan apakah angka SRC berasal dari input user, data jurnal, data vendor, atau catatan boundary engineering.')
         ],
@@ -2291,7 +2291,7 @@
           getSourceDefenseText('Pressure head, NPSHa', 'Head tekanan, NPSHa')
         ],
         [
-          getSourceDefenseText('Boundary Pressure', 'Tekanan Boundary'),
+          getSourceDefenseText('Source P abs', 'Tekanan Absolut Source'),
           getSourceDefenseText('Which formula uses this pressure?', 'Tekanan ini masuk ke rumus mana?'),
           getSourceDefenseText('Boundary pressure becomes pressure head using H_p = P_abs / (rho x g).', 'Tekanan boundary menjadi head tekanan dengan H_p = P_abs / (rho x g).'),
           getSourceDefenseText('Source hydraulic head', 'Head hidrolik source')

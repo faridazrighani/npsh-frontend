@@ -1,5 +1,5 @@
 (function registerEngineeringRouteTraceAudit(root) {
-  const VERSION = '2026.06-route-trace-audit-v16';
+  const VERSION = '2026.06-route-trace-audit-v17';
   const PANEL_ID = 'engineeringRouteTraceAuditPanel';
   const PANEL_BODY_ID = 'engineeringRouteTraceAuditPanelBody';
   const MENU_BUTTON_ID = 'menu-tools-route-trace-audit';
@@ -86,6 +86,7 @@
     rootNode.closest?.('.sink-live-params') && panels.add(rootNode.closest('.sink-live-params'));
     rootNode.querySelectorAll?.('.sink-live-params').forEach((panel) => panels.add(panel));
     panels.forEach((panel) => {
+      normalizeDefaultSinkCanvasRows(panel);
       panel.querySelectorAll('.sink-live-param-row').forEach((row) => {
         const label = normalizeText(row.querySelector('.sink-live-param-label')?.textContent);
         if (SINK_CANVAS_HIDDEN_ROW_LABELS.has(label)) {
@@ -108,6 +109,43 @@
       if (number !== null) return number;
     }
     return null;
+  }
+
+  function sinkCanonicalValues(node = {}) {
+    const results = node.results || {};
+    const traceBoundary = results.calculationTrace?.boundary || {};
+    const traceInput = results.calculationTrace?.inputBasis || {};
+    const props = node.props || {};
+    return {
+      pressureAbsBar: firstFiniteValue(
+        results.calculatedPressure,
+        results.requiredBoundaryPressure,
+        results.boundaryPressure,
+        results.staticPressure,
+        results.stagnationPressure,
+        traceBoundary.pressureAbsBar,
+        traceBoundary.absolutePressureBar,
+        traceInput.pressureAbsBar,
+        props.pressure,
+        props.pressureAbsBar,
+        props.absolutePressureBar
+      ),
+      elevation: firstFiniteValue(
+        results.elevation,
+        results.sinkElevation,
+        traceBoundary.elevation,
+        traceInput.elevation,
+        props.elevation
+      ),
+      sinkHead: firstFiniteValue(
+        results.requiredBoundaryHead,
+        results.hydraulicHead,
+        results.sinkHead,
+        results.boundaryHead,
+        traceBoundary.hydraulicHead,
+        traceInput.hydraulicHead
+      )
+    };
   }
 
   function formatCanvasValue(value, unit = '') {
@@ -176,13 +214,62 @@
     else panel.appendChild(row);
   }
 
+  function valueForExistingSinkRow(row, value) {
+    const unitText = normalizeText(row?.querySelector?.('.sink-live-param-unit')?.textContent);
+    const text = String(value ?? '');
+    if (unitText && text.endsWith(` ${unitText}`)) return text.slice(0, -unitText.length - 1);
+    return text;
+  }
+
+  function setTextIfChanged(element, value) {
+    if (!element || value === null || value === undefined) return false;
+    const text = String(value);
+    if (element.textContent === text) return false;
+    element.textContent = text;
+    return true;
+  }
+
+  function normalizeDefaultSinkCanvasRows(scope) {
+    if (typeof document === 'undefined') return 0;
+    const rootNode = scope?.querySelectorAll ? scope : document;
+    let changed = 0;
+    const panels = new Set();
+    if (rootNode.matches?.('.sink-live-params')) panels.add(rootNode);
+    rootNode.closest?.('.sink-live-params') && panels.add(rootNode.closest('.sink-live-params'));
+    rootNode.querySelectorAll?.('.sink-live-params').forEach((panel) => panels.add(panel));
+    panels.forEach((panel) => {
+      const sink = sinkNodeForCanvasPanel(panel);
+      const canonical = sinkCanonicalValues(sink?.node || {});
+      panel.querySelectorAll('.sink-live-param-row').forEach((row) => {
+        const labelElement = row.querySelector('.sink-live-param-label');
+        const valueElement = row.querySelector('.sink-live-param-value, strong');
+        const label = normalizeText(labelElement?.textContent);
+        if (label === 'Required Press.' || label === 'Outlet Press.') {
+          changed += setTextIfChanged(labelElement, 'Sink P abs') ? 1 : 0;
+          changed += setTextIfChanged(valueElement, valueForExistingSinkRow(row, formatCanvasValue(canonical.pressureAbsBar, 'bar a'))) ? 1 : 0;
+          row.title = 'Absolute sink pressure used for discharge closure';
+          row.dataset.routeTraceSinkTerminologyLock = VERSION;
+        } else if (label === 'Sink Elev.') {
+          changed += setTextIfChanged(valueElement, valueForExistingSinkRow(row, formatCanvasValue(canonical.elevation, 'm'))) ? 1 : 0;
+          row.dataset.routeTraceSinkTerminologyLock = VERSION;
+        } else if (label === 'Sink Head') {
+          changed += setTextIfChanged(valueElement, valueForExistingSinkRow(row, formatCanvasValue(canonical.sinkHead, 'm'))) ? 1 : 0;
+          row.title = 'Total sink hydraulic head at the discharge closure';
+          row.dataset.routeTraceSinkTerminologyLock = VERSION;
+        }
+      });
+    });
+    return changed;
+  }
+
   function upsertSinkCanvasRow(panel, label, value, anchorLabels = []) {
     const existing = sinkPanelRowByLabel(panel, label);
     if (existing) {
       const valueElement = existing.querySelector('.sink-live-param-value, strong');
       let changed = false;
-      if (valueElement && valueElement.textContent !== value) {
-        valueElement.textContent = value;
+      const existingValue = valueForExistingSinkRow(existing, value);
+      if (valueElement && valueElement.textContent !== existingValue) {
+        valueElement.textContent = existingValue;
         changed = true;
       }
       if (existing.dataset.routeTraceAuditSinkReadout !== 'true') {
@@ -207,7 +294,9 @@
     panels.forEach((panel) => {
       const sink = sinkNodeForCanvasPanel(panel);
       const node = sink?.node || {};
+      const canonical = sinkCanonicalValues(node);
       const elevation = firstFiniteValue(
+        canonical.elevation,
         node.results?.elevation,
         node.results?.sinkElevation,
         node.results?.calculationTrace?.inputBasis?.elevation,
@@ -215,14 +304,17 @@
         node.props?.elevation
       );
       const sinkHead = firstFiniteValue(
+        canonical.sinkHead,
         node.results?.hydraulicHead,
         node.results?.sinkHead,
         node.results?.boundaryHead,
         node.results?.calculationTrace?.inputBasis?.hydraulicHead,
         node.results?.calculationTrace?.boundary?.hydraulicHead
       );
-      changed += upsertSinkCanvasRow(panel, 'Sink Elev.', formatCanvasValue(elevation, 'm'), ['Required Press.', 'Outlet Flow']) ? 1 : 0;
-      changed += upsertSinkCanvasRow(panel, 'Sink Head', formatCanvasValue(sinkHead, 'm'), ['Sink Elev.', 'Required Press.', 'Outlet Flow']) ? 1 : 0;
+      changed += normalizeDefaultSinkCanvasRows(panel);
+      changed += upsertSinkCanvasRow(panel, 'Sink P abs', formatCanvasValue(canonical.pressureAbsBar, 'bar a'), ['Flow Demand', 'Outlet Flow', 'Mode']) ? 1 : 0;
+      changed += upsertSinkCanvasRow(panel, 'Sink Elev.', formatCanvasValue(elevation, 'm'), ['Sink P abs', 'Outlet Flow']) ? 1 : 0;
+      changed += upsertSinkCanvasRow(panel, 'Sink Head', formatCanvasValue(sinkHead, 'm'), ['Sink Elev.', 'Sink P abs', 'Outlet Flow']) ? 1 : 0;
     });
     return changed;
   }
@@ -233,6 +325,54 @@
     } catch (error) {
       return false;
     }
+  }
+
+  function formatTooltipMetricLine(line, metricRules) {
+    const match = String(line || '').match(/^([^:]+):\s*([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[-+]?\d+)?)(?:\s+.*)?$/i);
+    if (!match) return line;
+    const label = normalizeText(match[1]);
+    const rule = metricRules[label];
+    if (!rule) return line;
+    const number = finiteNumber(match[2]);
+    if (number === null) return line;
+    const value = `${rule.showSign && number > 0 ? '+' : ''}${number.toFixed(rule.digits ?? 3)}`;
+    return `${rule.label || label}: ${value}${rule.unit ? ` ${rule.unit}` : ''}`;
+  }
+
+  function patchSinkStatusTooltip() {
+    if (
+      typeof root.getSinkOperatingStatusTooltip !== 'function'
+      || root.getSinkOperatingStatusTooltip.__routeTraceSinkTerminologyLock === VERSION
+    ) {
+      return false;
+    }
+    const originalSinkTooltip = root.getSinkOperatingStatusTooltip;
+    const metricRules = {
+      'Required outlet pressure': { label: 'Sink P abs', unit: 'bar a', digits: 3 },
+      'Outlet pressure': { label: 'Sink P abs', unit: 'bar a', digits: 3 },
+      'Outlet flow': { unit: 'm3/h', digits: 3 },
+      'SNK hydraulic head': { label: 'Sink Head', unit: 'm', digits: 3 },
+      'Discharge loss': { unit: 'm', digits: 3 },
+      'Vapor pressure': { unit: 'bar a', digits: 3 },
+      'Outlet pressure minus vapor pressure': { unit: 'bar', digits: 3, showSign: true },
+      'Pump NPSH margin': { unit: 'm', digits: 4, showSign: true }
+    };
+    root.getSinkOperatingStatusTooltip = function getSinkOperatingStatusTooltipLocked(...args) {
+      const text = String(originalSinkTooltip.apply(this, args) || '');
+      const node = args[1] || {};
+      const canonical = sinkCanonicalValues(node);
+      return text.split('\n').map((line) => {
+        if (/^(Required outlet pressure|Outlet pressure):/i.test(line)) {
+          return `Sink P abs: ${formatCanvasValue(canonical.pressureAbsBar, 'bar a')}`;
+        }
+        if (/^SNK hydraulic head:/i.test(line)) {
+          return `Sink Head: ${formatCanvasValue(canonical.sinkHead, 'm')}`;
+        }
+        return formatTooltipMetricLine(line, metricRules);
+      }).join('\n');
+    };
+    root.getSinkOperatingStatusTooltip.__routeTraceSinkTerminologyLock = VERSION;
+    return true;
   }
 
   function isRouteTraceCanvasOverlayUnlocked() {
@@ -1136,6 +1276,7 @@
       payloadBuilder: patchPayloadBuilder(),
       fetchSimulation: patchSimulationFetch(),
       primaryResultApplier: patchPrimaryResultApplier(),
+      sinkStatusTooltip: patchSinkStatusTooltip(),
       canvasOverlayRenderHooks: patchedCanvasOverlayHooks,
       routePanel: typeof document !== 'undefined' && !!document.getElementById(PANEL_ID),
       menuButton: typeof document !== 'undefined' && !!document.getElementById(MENU_BUTTON_ID),
@@ -1173,6 +1314,7 @@
     refreshVisibleAuditSurfaces,
     pruneDefaultPumpRouteTraceRows,
     pruneDefaultSinkCanvasRows,
+    normalizeDefaultSinkCanvasRows,
     ensureDefaultSinkCanvasRows,
     pruneDefaultCanvasRouteTraceOverlays,
     setRouteTraceCanvasOverlayVisible,
