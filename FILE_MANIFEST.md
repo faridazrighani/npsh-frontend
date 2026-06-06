@@ -76,7 +76,7 @@ Release integrity guardrail:
 ```text
 node npsh-api/tools/release-integrity-audit.cjs
 app.bundle.min.js.map sourcesContent: absent
-App bundle cache key: app.bundle.min.js?v=20260606-pump-canvas-npsh-eval-lock1
+App bundle cache key: app.bundle.min.js?v=20260606-pump-canvas-npsh-hover-lock1
 Route audit cache key: engineering-route-trace-audit.js?v=20260605-route-audit-contract12
 Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260603-realtime-defense1
 Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260605-canvas-context-dock7

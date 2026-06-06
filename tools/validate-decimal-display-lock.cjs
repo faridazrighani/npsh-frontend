@@ -161,7 +161,12 @@ const protectedBundlePatterns = [
   'value:u("npsha","head",4)',
   'value:u("npshr","head",4)',
   'value:u("npshMargin","head",4,{showSign:!0})',
-  'formatPumpLiveNumber(m("npshRatio"),4)'
+  'formatPumpLiveNumber(m("npshRatio"),4)',
+  'function formatPumpStatusNpshMetric',
+  'r=a.npshEvaluation||{}',
+  'formatPumpStatusNpshMetric(o("npsha"))',
+  'formatPumpStatusNpshMetric(o("npshMargin"),{showSign:!0})',
+  'formatPumpStatusNpshMetric(o("npshRatio"))'
 ];
 for (const pattern of protectedBundlePatterns) {
   assert(appBundle.includes(pattern), `app.bundle.min.js must preserve pump canvas NPSH precision: ${pattern}`);
@@ -174,7 +179,11 @@ const staleBundlePatterns = [
   'value:u("npsha","head",1)',
   'value:u("npshr","head",1)',
   'value:u("npshMargin","head",1,{showSign:!0})',
-  'formatPumpLiveNumber(a.npshRatio,2)'
+  'formatPumpLiveNumber(a.npshRatio,2)',
+  'addPumpStatusMetric(i,"NPSHa",a.npsha,"m")',
+  'addPumpStatusMetric(i,"NPSHr",a.npshr,"m")',
+  'addPumpStatusMetric(i,"NPSH margin",a.npshMargin,"m")',
+  'addPumpStatusMetric(i,"NPSH ratio",a.npshRatio)'
 ];
 for (const pattern of staleBundlePatterns) {
   assert(!appBundle.includes(pattern), `app.bundle.min.js still contains stale pump canvas NPSH rounding: ${pattern}`);
