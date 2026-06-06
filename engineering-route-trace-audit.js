@@ -1,5 +1,5 @@
 (function registerEngineeringRouteTraceAudit(root) {
-  const VERSION = '2026.06-route-trace-audit-v17';
+  const VERSION = '2026.06-route-trace-audit-v20';
   const PANEL_ID = 'engineeringRouteTraceAuditPanel';
   const PANEL_BODY_ID = 'engineeringRouteTraceAuditPanelBody';
   const MENU_BUTTON_ID = 'menu-tools-route-trace-audit';
@@ -17,6 +17,8 @@
     'Vapor Press. Used'
   ]);
   const SINK_CANVAS_HIDDEN_ROW_LABELS = new Set([
+    'Flow Demand',
+    'Outlet Flow',
     'Discharge Loss',
     'Vapor Press.',
     'Vapor Margin',
@@ -29,6 +31,10 @@
   let canvasOverlayRetryTimer = null;
   let canvasOverlayRetryCount = 0;
   const canvasOverlayWrappedFunctions = new Set();
+  let routeObjectTooltipSyncTimer = null;
+  let routeSurfaceRefreshPending = false;
+  let sinkPropertyChangeRefreshInstalled = false;
+  const ATM_PRESSURE_BAR_A = 1.01325;
 
   function model() {
     return root.globalModel || root.__npshGlobalModel || {};
@@ -73,6 +79,7 @@
           removed += 1;
         }
       });
+      removed += syncPumpObjectTooltip(panel);
     });
     return removed;
   }
@@ -111,39 +118,242 @@
     return null;
   }
 
+  function connectionList(modelRef = model()) {
+    const candidates = [
+      root.__npshConnections,
+      root.connections,
+      modelRef?.connections,
+      modelRef?.__connections
+    ];
+    for (const candidate of candidates) {
+      if (Array.isArray(candidate)) return candidate;
+    }
+    return [];
+  }
+
+  function connectionPipeId(connection = {}) {
+    return connection.pipeId || connection.pipe || connection.via || connection.edgeId || '';
+  }
+
+  function connectionFrom(connection = {}) {
+    return connection.from || connection.source || connection.fromNode || '';
+  }
+
+  function connectionTo(connection = {}) {
+    return connection.to || connection.target || connection.toNode || '';
+  }
+
+  function isHydraulicConnection(connection = {}) {
+    return !connection.connectionType || String(connection.connectionType).toLowerCase() === 'hydraulic';
+  }
+
+  function connectedPipeForSink(sinkId, modelRef = model()) {
+    if (!sinkId) return null;
+    const connection = connectionList(modelRef).find((candidate) => (
+      isHydraulicConnection(candidate)
+      && (connectionFrom(candidate) === sinkId || connectionTo(candidate) === sinkId)
+      && modelRef[connectionPipeId(candidate)]?.type === 'pipe'
+    ));
+    return connection ? modelRef[connectionPipeId(connection)] : null;
+  }
+
+  function sourceIdForSinkNode(source, node = source?.node || source || {}, modelRef = model()) {
+    if (source?.id) return source.id;
+    return Object.entries(modelRef).find(([, candidate]) => candidate === node)?.[0] || '';
+  }
+
+  function sinkBoundaryModeRaw(node = {}) {
+    const props = node.props || {};
+    const results = node.results || {};
+    const traceBoundary = results.calculationTrace?.boundary || {};
+    const traceInput = results.calculationTrace?.inputBasis || {};
+    return normalizeText(
+      props.boundaryMode
+      || props.mode
+      || props.sinkBoundaryMode
+      || traceInput.boundaryMode
+      || traceInput.mode
+      || traceBoundary.boundaryMode
+      || traceBoundary.mode
+      || results.boundaryMode
+      || results.mode
+      || ''
+    );
+  }
+
+  function sinkBoundaryModeKind(mode = '') {
+    const text = normalizeText(mode).toLowerCase();
+    if (/free|atmos/.test(text)) return 'free-outlet';
+    if (/flow\s*demand|demand\s*flow/.test(text)) return 'flow-demand';
+    if (/outlet\s*pressure|pressure\s*boundary|specified\s*pressure/.test(text)) return 'outlet-pressure';
+    return '';
+  }
+
+  function sinkBoundaryModeDisplay(mode = '') {
+    const kind = sinkBoundaryModeKind(mode);
+    if (kind === 'free-outlet') return 'Free Outlet';
+    if (kind === 'flow-demand') return 'Flow Demand';
+    if (kind === 'outlet-pressure') return 'Outlet Pressure';
+    return normalizeText(mode).replace(/\s*Boundary$/i, '') || '-';
+  }
+
+  function pressureBasisIsGauge(value = '') {
+    return /^gauge$/i.test(normalizeText(value)) || /^bar\s*g$/i.test(normalizeText(value));
+  }
+
+  function absolutePressureFromInput(value, basis = '') {
+    const pressure = finiteNumber(value);
+    if (pressure === null) return null;
+    return pressureBasisIsGauge(basis) ? pressure + ATM_PRESSURE_BAR_A : pressure;
+  }
+
+  function fluidDensity() {
+    return firstFiniteValue(model().FLUID?.props?.density, root.__npshFluidBasis?.density, 1000);
+  }
+
+  function pressureHeadFromBarA(pressureAbsBar) {
+    const pressure = finiteNumber(pressureAbsBar);
+    const density = fluidDensity();
+    if (pressure === null || density === null || density <= 0) return null;
+    return (pressure * 100000) / (density * 9.81);
+  }
+
+  function connectedSinkVelocityHead(sinkId, node = {}, modelRef = model()) {
+    const pipe = connectedPipeForSink(sinkId, modelRef);
+    return firstFiniteValue(
+      node.results?.terminalVelocityHead,
+      node.results?.velocityHead,
+      node.results?.pipeEndpointVelocityHead,
+      node.results?.calculationTrace?.boundary?.terminalVelocityHead,
+      node.results?.calculationTrace?.boundary?.velocityHead,
+      pipe?.results?.terminalVelocityHead,
+      pipe?.results?.outletVelocityHead,
+      pipe?.results?.velocityHead,
+      pipe?.results?.calculationTrace?.boundary?.terminalVelocityHead,
+      pipe?.results?.calculationTrace?.boundary?.velocityHead,
+      0
+    );
+  }
+
+  function pressureAbsForSelectedSinkMode(node, mode) {
+    const results = node.results || {};
+    const props = node.props || {};
+    const traceBoundary = results.calculationTrace?.boundary || {};
+    const traceInput = results.calculationTrace?.inputBasis || {};
+    const kind = sinkBoundaryModeKind(mode);
+    const propPressureAbs = absolutePressureFromInput(
+      firstFiniteValue(props.pressure, props.referencePressure, props.boundaryPressure, props.outletPressure),
+      props.pressureInputBasis || props.pressureBasis || results.pressureInputBasis || results.pressureBasis
+    );
+    const tracePressureAbs = firstFiniteValue(
+      traceBoundary.pressureAbsBar,
+      traceBoundary.absolutePressureBar,
+      traceBoundary.boundaryPressureAbsBar,
+      traceInput.pressureAbsBar,
+      traceInput.absolutePressureBar,
+      traceInput.boundaryPressureAbsBar
+    );
+    const inputPressureAbs = firstFiniteValue(
+      tracePressureAbs,
+      propPressureAbs
+    );
+    if (kind === 'free-outlet') return firstFiniteValue(tracePressureAbs, ATM_PRESSURE_BAR_A);
+    if (kind === 'outlet-pressure') {
+      return firstFiniteValue(
+        inputPressureAbs,
+        results.boundaryPressure,
+        results.calculatedPressure,
+        results.staticPressure,
+        results.stagnationPressure
+      );
+    }
+    return firstFiniteValue(
+      results.calculatedPressure,
+      results.requiredBoundaryPressure,
+      results.boundaryPressure,
+      results.staticPressure,
+      results.stagnationPressure,
+      inputPressureAbs
+    );
+  }
+
+  function sinkHeadForSelectedSinkMode(node, mode, pressureAbsBar, elevation) {
+    const results = node.results || {};
+    const traceBoundary = results.calculationTrace?.boundary || {};
+    const traceInput = results.calculationTrace?.inputBasis || {};
+    const props = node.props || {};
+    const kind = sinkBoundaryModeKind(mode);
+    const modelRef = model();
+    const sinkId = sourceIdForSinkNode(null, node, modelRef);
+    const computedHead = (() => {
+      const pressureHead = firstFiniteValue(
+        traceBoundary.pressureHead,
+        traceInput.pressureHead,
+        pressureHeadFromBarA(pressureAbsBar)
+      );
+      const velocityHead = connectedSinkVelocityHead(sinkId, node, modelRef);
+      const z = firstFiniteValue(elevation, props.elevation);
+      if (pressureHead === null || z === null) return null;
+      return pressureHead + z + (velocityHead || 0);
+    })();
+    if (kind === 'free-outlet' || kind === 'outlet-pressure') {
+      return firstFiniteValue(
+        traceBoundary.hydraulicHead,
+        traceBoundary.totalSinkHead,
+        traceInput.hydraulicHead,
+        traceInput.totalSinkHead,
+        computedHead,
+        results.hydraulicHead,
+        results.sinkHead,
+        results.boundaryHead
+      );
+    }
+    return firstFiniteValue(
+      results.requiredBoundaryHead,
+      results.hydraulicHead,
+      results.sinkHead,
+      results.boundaryHead,
+      traceBoundary.hydraulicHead,
+      traceInput.hydraulicHead,
+      computedHead
+    );
+  }
+
   function sinkCanonicalValues(node = {}) {
     const results = node.results || {};
     const traceBoundary = results.calculationTrace?.boundary || {};
     const traceInput = results.calculationTrace?.inputBasis || {};
     const props = node.props || {};
+    const mode = sinkBoundaryModeRaw(node);
+    const pressureAbsBar = pressureAbsForSelectedSinkMode(node, mode);
+    const elevation = firstFiniteValue(
+      results.elevation,
+      results.sinkElevation,
+      traceBoundary.elevation,
+      traceInput.elevation,
+      props.elevation
+    );
+    const sinkHead = sinkHeadForSelectedSinkMode(node, mode, pressureAbsBar, elevation);
     return {
-      pressureAbsBar: firstFiniteValue(
-        results.calculatedPressure,
-        results.requiredBoundaryPressure,
-        results.boundaryPressure,
-        results.staticPressure,
-        results.stagnationPressure,
-        traceBoundary.pressureAbsBar,
-        traceBoundary.absolutePressureBar,
-        traceInput.pressureAbsBar,
-        props.pressure,
-        props.pressureAbsBar,
-        props.absolutePressureBar
-      ),
-      elevation: firstFiniteValue(
-        results.elevation,
-        results.sinkElevation,
-        traceBoundary.elevation,
-        traceInput.elevation,
-        props.elevation
-      ),
-      sinkHead: firstFiniteValue(
-        results.requiredBoundaryHead,
-        results.hydraulicHead,
-        results.sinkHead,
-        results.boundaryHead,
-        traceBoundary.hydraulicHead,
-        traceInput.hydraulicHead
+      mode,
+      pressureAbsBar,
+      elevation,
+      sinkHead,
+      sinkFlow: firstFiniteValue(
+        results.flow,
+        results.outletFlow,
+        results.sinkFlow,
+        results.flowDemand,
+        traceBoundary.flow,
+        traceBoundary.outletFlow,
+        traceBoundary.demandFlow,
+        traceInput.flow,
+        traceInput.outletFlow,
+        traceInput.demandFlow,
+        props.demandFlow,
+        props.flow,
+        props.flowDemand,
+        props.outletFlow
       )
     };
   }
@@ -193,12 +403,32 @@
   }
 
   function sinkPanelRowByLabel(panel, label) {
+    if (!panel?.querySelectorAll) return null;
     return Array.from(panel.querySelectorAll('.sink-live-param-row')).find((row) => (
       normalizeText(row.querySelector('.sink-live-param-label')?.textContent) === label
     )) || null;
   }
 
+  function sinkPanelNumericValue(panel, labels = []) {
+    for (const label of labels) {
+      const value = finiteNumber(sinkPanelRowByLabel(panel, label)?.querySelector('.sink-live-param-value, strong')?.textContent);
+      if (value !== null) return value;
+    }
+    return null;
+  }
+
+  function sinkModeDisplayValue(node = {}, panel = null) {
+    const mode = sinkBoundaryModeRaw(node);
+    const modeDisplay = sinkBoundaryModeDisplay(mode);
+    if (modeDisplay !== '-') return modeDisplay;
+    if (sinkPanelRowByLabel(panel, 'Flow Demand')) return 'Flow Demand';
+    const currentMode = normalizeText(sinkPanelRowByLabel(panel, 'Mode')?.querySelector('.sink-live-param-value, strong')?.textContent);
+    if (/^flow$/i.test(currentMode) && sinkPanelRowByLabel(panel, 'Outlet Flow')) return 'Flow Demand';
+    return currentMode || '-';
+  }
+
   function insertSinkCanvasRow(panel, row, anchorLabels = []) {
+    if (!panel?.querySelectorAll || !row) return;
     const rows = Array.from(panel.querySelectorAll('.sink-live-param-row'));
     const anchor = anchorLabels
       .map((label) => rows.find((item) => normalizeText(item.querySelector('.sink-live-param-label')?.textContent) === label))
@@ -229,6 +459,144 @@
     return true;
   }
 
+  function sinkNodeForPropertyWindow(windowNode) {
+    const modelRef = model();
+    const candidates = [
+      windowNode?.dataset?.nodeId,
+      windowNode?.dataset?.objectNode,
+      windowNode?.querySelector?.('[data-node-id]')?.dataset?.nodeId,
+      windowNode?.querySelector?.('[data-object-node]')?.dataset?.objectNode,
+      windowNode?.querySelector?.('[data-node]')?.dataset?.node
+    ].filter(Boolean);
+    for (const id of candidates) {
+      if (modelRef[id]?.type === 'sink') return { id, node: modelRef[id] };
+    }
+    const windowText = normalizeText(windowNode?.textContent || '');
+    const matching = Object.entries(modelRef).filter(([id, node]) => (
+      node?.type === 'sink' && (windowText.includes(id) || (node.name && windowText.includes(node.name)))
+    ));
+    return matching.length === 1 ? { id: matching[0][0], node: matching[0][1] } : null;
+  }
+
+  function sinkPropertyRowByLabel(windowNode, label) {
+    if (!windowNode?.querySelectorAll) return null;
+    return Array.from(windowNode.querySelectorAll('tr')).find((row) => {
+      const firstCell = Array.from(row.children || []).find((child) => /^(TD|TH)$/i.test(child.tagName || ''));
+      return normalizeText(firstCell?.textContent) === label;
+    }) || null;
+  }
+
+  function syncSinkPropertyWindowCanonicalReadouts(scope) {
+    if (typeof document === 'undefined') return 0;
+    const rootNode = scope?.querySelectorAll ? scope : document;
+    const windows = new Set();
+    if (rootNode.matches?.('.persistent-object-properties-task-window, #taskWindow, .task-window')) windows.add(rootNode);
+    rootNode.closest?.('.persistent-object-properties-task-window, #taskWindow, .task-window')
+      && windows.add(rootNode.closest('.persistent-object-properties-task-window, #taskWindow, .task-window'));
+    rootNode.querySelectorAll?.('.persistent-object-properties-task-window, #taskWindow, .task-window').forEach((item) => windows.add(item));
+    let changed = 0;
+    windows.forEach((windowNode) => {
+      const sink = sinkNodeForPropertyWindow(windowNode);
+      if (!sink) return;
+      const canonical = sinkCanonicalValues(sink.node);
+      const pressureRow = sinkPropertyRowByLabel(windowNode, 'Calculated Abs. Pressure');
+      const pressureValueCell = Array.from(pressureRow?.children || [])[1] || null;
+      if (setTextIfChanged(pressureValueCell, formatCanvasValue(canonical.pressureAbsBar, 'bar a'))) {
+        pressureRow.dataset.routeTraceSinkBoundaryModeLock = VERSION;
+        changed += 1;
+      }
+    });
+    return changed;
+  }
+
+  function valueWithUnitFromRow(row, valueSelector, unitSelector) {
+    const value = normalizeText(row?.querySelector?.(valueSelector)?.textContent);
+    const unit = normalizeText(row?.querySelector?.(unitSelector)?.textContent);
+    if (!value) return '';
+    if (!unit || value.endsWith(unit)) return value;
+    return `${value} ${unit}`;
+  }
+
+  function syncObjectTooltip(object, title, datasetKey) {
+    if (!object || !title) return 0;
+    const storedTitle = object.getAttribute('data-engineering-runtime-originaltitle') || '';
+    if (object.title === title && storedTitle === title) return 0;
+    object.title = title;
+    object.setAttribute('data-engineering-runtime-originaltitle', title);
+    if (datasetKey) object.dataset[datasetKey] = VERSION;
+    return 1;
+  }
+
+  function syncPumpObjectTooltip(panel) {
+    const object = panel?.closest?.('.pfd-object');
+    if (!object) return 0;
+    const lines = [];
+    panel.querySelectorAll('.pump-live-param-row').forEach((row) => {
+      const label = normalizeText(row.querySelector('.pump-live-param-label')?.textContent);
+      const value = valueWithUnitFromRow(row, '.pump-live-param-value, strong', '.pump-live-param-unit');
+      if (label && value) lines.push(`${label}: ${value}`);
+    });
+    return syncObjectTooltip(object, lines.join('\n'), 'routeTracePumpObjectTooltipLock');
+  }
+
+  function sinkObjectTooltip(node = {}, panel = null, canonical = sinkCanonicalValues(node)) {
+    const sinkFlow = sinkPanelDisplayValue(panel, 'Sink Flow') || formatCanvasValue(canonical.sinkFlow, 'm3/h');
+    const pressureAbsBar = sinkPanelDisplayValue(panel, 'Sink P abs') || formatCanvasValue(canonical.pressureAbsBar, 'bar a');
+    const elevation = sinkPanelDisplayValue(panel, 'Sink Elev.') || formatCanvasValue(canonical.elevation, 'm');
+    const sinkHead = sinkPanelDisplayValue(panel, 'Sink Head') || formatCanvasValue(canonical.sinkHead, 'm');
+    return [
+      'SNK status: OK',
+      `Mode: ${sinkModeDisplayValue(node, panel)}`,
+      `Sink Flow: ${sinkFlow}`,
+      `Sink P abs: ${pressureAbsBar}`,
+      `Sink Elev.: ${elevation}`,
+      `Sink Head: ${sinkHead}`
+    ].join('\n');
+  }
+
+  function syncSinkObjectTooltip(panel, node = {}, canonical = sinkCanonicalValues(node)) {
+    return syncObjectTooltip(
+      panel?.closest?.('.pfd-object'),
+      sinkObjectTooltip(node, panel, canonical),
+      'routeTraceSinkObjectTooltipLock'
+    );
+  }
+
+  function sinkPanelDisplayValue(panel, label) {
+    if (!panel?.querySelectorAll) return '';
+    const row = sinkPanelRowByLabel(panel, label);
+    return valueWithUnitFromRow(row, '.sink-live-param-value, strong', '.sink-live-param-unit');
+  }
+
+  function syncRouteObjectTooltips(scope) {
+    if (typeof document === 'undefined') return 0;
+    const rootNode = scope?.querySelectorAll ? scope : document;
+    let changed = 0;
+    const pumpPanels = new Set();
+    if (rootNode.matches?.('.pump-live-params')) pumpPanels.add(rootNode);
+    rootNode.closest?.('.pump-live-params') && pumpPanels.add(rootNode.closest('.pump-live-params'));
+    rootNode.querySelectorAll?.('.pump-live-params').forEach((panel) => pumpPanels.add(panel));
+    pumpPanels.forEach((panel) => {
+      changed += syncPumpObjectTooltip(panel);
+    });
+
+    const sinkPanels = new Set();
+    if (rootNode.matches?.('.sink-live-params')) sinkPanels.add(rootNode);
+    rootNode.closest?.('.sink-live-params') && sinkPanels.add(rootNode.closest('.sink-live-params'));
+    rootNode.querySelectorAll?.('.sink-live-params').forEach((panel) => sinkPanels.add(panel));
+    sinkPanels.forEach((panel) => {
+      const sink = sinkNodeForCanvasPanel(panel);
+      changed += syncSinkObjectTooltip(panel, sink?.node || {}, sinkCanonicalValues(sink?.node || {}));
+    });
+    return changed;
+  }
+
+  function scheduleRouteObjectTooltipSync(scope, delayMs = 60) {
+    if (typeof document === 'undefined') return;
+    root.clearTimeout?.(routeObjectTooltipSyncTimer);
+    routeObjectTooltipSyncTimer = root.setTimeout(() => syncRouteObjectTooltips(scope || document), delayMs);
+  }
+
   function normalizeDefaultSinkCanvasRows(scope) {
     if (typeof document === 'undefined') return 0;
     const rootNode = scope?.querySelectorAll ? scope : document;
@@ -240,11 +608,29 @@
     panels.forEach((panel) => {
       const sink = sinkNodeForCanvasPanel(panel);
       const canonical = sinkCanonicalValues(sink?.node || {});
+      const sinkFlow = firstFiniteValue(canonical.sinkFlow, sinkPanelNumericValue(panel, ['Sink Flow', 'Flow Demand', 'Outlet Flow']));
+      let sinkFlowInstalled = false;
       panel.querySelectorAll('.sink-live-param-row').forEach((row) => {
         const labelElement = row.querySelector('.sink-live-param-label');
         const valueElement = row.querySelector('.sink-live-param-value, strong');
         const label = normalizeText(labelElement?.textContent);
-        if (label === 'Required Press.' || label === 'Outlet Press.') {
+        if (label === 'Mode') {
+          changed += setTextIfChanged(valueElement, sinkModeDisplayValue(sink?.node || {}, panel)) ? 1 : 0;
+          row.dataset.routeTraceSinkTerminologyLock = VERSION;
+        } else if (label === 'Flow Demand' || label === 'Outlet Flow') {
+          if (!sinkFlowInstalled && (label === 'Flow Demand' || !sinkPanelRowByLabel(panel, 'Flow Demand'))) {
+            changed += setTextIfChanged(labelElement, 'Sink Flow') ? 1 : 0;
+            changed += setTextIfChanged(valueElement, valueForExistingSinkRow(row, formatCanvasValue(sinkFlow, 'm3/h'))) ? 1 : 0;
+            row.title = 'Flow accepted by SNK at the discharge boundary';
+            row.dataset.routeTraceSinkTerminologyLock = VERSION;
+            sinkFlowInstalled = true;
+          }
+        } else if (label === 'Sink Flow') {
+          changed += setTextIfChanged(valueElement, valueForExistingSinkRow(row, formatCanvasValue(sinkFlow, 'm3/h'))) ? 1 : 0;
+          row.title = 'Flow accepted by SNK at the discharge boundary';
+          row.dataset.routeTraceSinkTerminologyLock = VERSION;
+          sinkFlowInstalled = true;
+        } else if (label === 'Required Press.' || label === 'Outlet Press.') {
           changed += setTextIfChanged(labelElement, 'Sink P abs') ? 1 : 0;
           changed += setTextIfChanged(valueElement, valueForExistingSinkRow(row, formatCanvasValue(canonical.pressureAbsBar, 'bar a'))) ? 1 : 0;
           row.title = 'Absolute sink pressure used for discharge closure';
@@ -258,6 +644,7 @@
           row.dataset.routeTraceSinkTerminologyLock = VERSION;
         }
       });
+      changed += syncSinkObjectTooltip(panel, sink?.node || {}, canonical);
     });
     return changed;
   }
@@ -311,10 +698,16 @@
         node.results?.calculationTrace?.inputBasis?.hydraulicHead,
         node.results?.calculationTrace?.boundary?.hydraulicHead
       );
+      const sinkFlow = firstFiniteValue(
+        canonical.sinkFlow,
+        sinkPanelNumericValue(panel, ['Sink Flow', 'Flow Demand', 'Outlet Flow'])
+      );
       changed += normalizeDefaultSinkCanvasRows(panel);
-      changed += upsertSinkCanvasRow(panel, 'Sink P abs', formatCanvasValue(canonical.pressureAbsBar, 'bar a'), ['Flow Demand', 'Outlet Flow', 'Mode']) ? 1 : 0;
-      changed += upsertSinkCanvasRow(panel, 'Sink Elev.', formatCanvasValue(elevation, 'm'), ['Sink P abs', 'Outlet Flow']) ? 1 : 0;
-      changed += upsertSinkCanvasRow(panel, 'Sink Head', formatCanvasValue(sinkHead, 'm'), ['Sink Elev.', 'Sink P abs', 'Outlet Flow']) ? 1 : 0;
+      changed += upsertSinkCanvasRow(panel, 'Sink Flow', formatCanvasValue(sinkFlow, 'm3/h'), ['Mode']) ? 1 : 0;
+      changed += upsertSinkCanvasRow(panel, 'Sink P abs', formatCanvasValue(canonical.pressureAbsBar, 'bar a'), ['Sink Flow', 'Mode']) ? 1 : 0;
+      changed += upsertSinkCanvasRow(panel, 'Sink Elev.', formatCanvasValue(elevation, 'm'), ['Sink P abs', 'Sink Flow']) ? 1 : 0;
+      changed += upsertSinkCanvasRow(panel, 'Sink Head', formatCanvasValue(sinkHead, 'm'), ['Sink Elev.', 'Sink P abs', 'Sink Flow']) ? 1 : 0;
+      changed += syncSinkObjectTooltip(panel, node, canonical);
     });
     return changed;
   }
@@ -350,7 +743,8 @@
     const metricRules = {
       'Required outlet pressure': { label: 'Sink P abs', unit: 'bar a', digits: 3 },
       'Outlet pressure': { label: 'Sink P abs', unit: 'bar a', digits: 3 },
-      'Outlet flow': { unit: 'm3/h', digits: 3 },
+      'Outlet flow': { label: 'Sink Flow', unit: 'm3/h', digits: 3 },
+      'Flow demand': { label: 'Sink Flow', unit: 'm3/h', digits: 3 },
       'SNK hydraulic head': { label: 'Sink Head', unit: 'm', digits: 3 },
       'Discharge loss': { unit: 'm', digits: 3 },
       'Vapor pressure': { unit: 'bar a', digits: 3 },
@@ -361,7 +755,17 @@
       const text = String(originalSinkTooltip.apply(this, args) || '');
       const node = args[1] || {};
       const canonical = sinkCanonicalValues(node);
-      return text.split('\n').map((line) => {
+      let sinkFlowLineSeen = false;
+      const lines = text.split('\n').map((line) => {
+        if (/^Mode:/i.test(line)) {
+          const mode = sinkModeDisplayValue(node, null);
+          return `Mode: ${mode === '-' ? normalizeText(line).replace(/^Mode:\s*/i, '') || '-' : mode}`;
+        }
+        if (/^(Outlet flow|Flow demand):/i.test(line)) {
+          if (sinkFlowLineSeen) return '';
+          sinkFlowLineSeen = true;
+          return `Sink Flow: ${formatCanvasValue(canonical.sinkFlow, 'm3/h')}`;
+        }
         if (/^(Required outlet pressure|Outlet pressure):/i.test(line)) {
           return `Sink P abs: ${formatCanvasValue(canonical.pressureAbsBar, 'bar a')}`;
         }
@@ -369,7 +773,22 @@
           return `Sink Head: ${formatCanvasValue(canonical.sinkHead, 'm')}`;
         }
         return formatTooltipMetricLine(line, metricRules);
-      }).join('\n');
+      }).filter(Boolean);
+      if (!lines.some((line) => /^Sink Elev\.:/i.test(line))) {
+        const pressureIndex = lines.findIndex((line) => /^Sink P abs:/i.test(line));
+        const elevationLine = `Sink Elev.: ${formatCanvasValue(canonical.elevation, 'm')}`;
+        lines.splice(pressureIndex >= 0 ? pressureIndex + 1 : Math.min(2, lines.length), 0, elevationLine);
+      }
+      const corePatterns = [/^Mode:/i, /^Sink Flow:/i, /^Sink P abs:/i, /^Sink Elev\.:/i, /^Sink Head:/i];
+      const statusLines = lines.filter((line) => /^SNK status:/i.test(line));
+      const coreLines = corePatterns
+        .map((pattern) => lines.find((line) => pattern.test(line)))
+        .filter(Boolean);
+      const detailLines = lines.filter((line) => (
+        !/^SNK status:/i.test(line)
+        && !corePatterns.some((pattern) => pattern.test(line))
+      ));
+      return [...statusLines, ...coreLines, ...detailLines].join('\n');
     };
     root.getSinkOperatingStatusTooltip.__routeTraceSinkTerminologyLock = VERSION;
     return true;
@@ -799,6 +1218,7 @@
     pruneDefaultPumpRouteTraceRows(scope || documentRef);
     pruneDefaultSinkCanvasRows(scope || documentRef);
     ensureDefaultSinkCanvasRows(scope || documentRef);
+    syncRouteObjectTooltips(scope || documentRef);
     if (isRouteTraceCanvasOverlayUnlocked()) {
       documentRef.querySelectorAll(`.${CANVAS_OVERLAY_HIDDEN_CLASS}`).forEach((element) => {
         element.classList.remove(CANVAS_OVERLAY_HIDDEN_CLASS);
@@ -843,7 +1263,7 @@
   }
 
   function scheduleDefaultCanvasRouteTracePrune(scope, delayMs = 40) {
-    if (typeof document === 'undefined' || isRouteTraceCanvasOverlayUnlocked()) return;
+    if (typeof document === 'undefined') return;
     canvasOverlayPruneScope = canvasOverlayPruneScope === document ? document : (scope || document);
     if (canvasOverlayPrunePending) return;
     canvasOverlayPrunePending = true;
@@ -881,6 +1301,8 @@
         scheduleDefaultCanvasRouteTracePrune(canvas, 0);
         scheduleDefaultCanvasRouteTracePrune(canvas, 80);
         scheduleDefaultCanvasRouteTracePrune(canvas, 220);
+        scheduleRouteObjectTooltipSync(canvas, 320);
+        scheduleRouteObjectTooltipSync(canvas, 900);
       };
       if (result && typeof result.then === 'function') return result.finally(prune);
       prune();
@@ -914,21 +1336,26 @@
       return false;
     }
     canvasOverlayObserver = new root.MutationObserver((mutations) => {
-      if (isRouteTraceCanvasOverlayUnlocked()) return;
+      let shouldSyncTooltips = false;
+      const overlayUnlocked = isRouteTraceCanvasOverlayUnlocked();
       let shouldPruneCanvas = false;
       for (const mutation of mutations) {
         if (mutation.type === 'characterData' || mutation.type === 'attributes') {
-          shouldPruneCanvas = true;
+          shouldPruneCanvas = !overlayUnlocked;
+          shouldSyncTooltips = true;
         }
         for (const node of mutation.addedNodes || []) {
           if (node?.nodeType === 1) {
-            shouldPruneCanvas = true;
+            shouldPruneCanvas = !overlayUnlocked;
+            shouldSyncTooltips = true;
           }
           if (node?.nodeType === 3) {
-            shouldPruneCanvas = true;
+            shouldPruneCanvas = !overlayUnlocked;
+            shouldSyncTooltips = true;
           }
         }
       }
+      if (shouldSyncTooltips) scheduleRouteObjectTooltipSync(document.getElementById('canvas') || document, 60);
       if (shouldPruneCanvas) scheduleDefaultCanvasRouteTracePrune(document.getElementById('canvas') || document, 0);
     });
     const start = () => {
@@ -1181,7 +1608,24 @@
     if (typeof document === 'undefined') return;
     if (!document.getElementById(PANEL_ID)?.hidden) renderRoutePanelBody();
     refreshPumpObjectWindows();
+    syncSinkPropertyWindowCanonicalReadouts(document);
     pruneDefaultCanvasRouteTraceOverlays(typeof document !== 'undefined' ? document : null);
+  }
+
+  function installSinkPropertyChangeRefresh() {
+    if (typeof document === 'undefined' || sinkPropertyChangeRefreshInstalled) return false;
+    sinkPropertyChangeRefreshInstalled = true;
+    const schedule = () => [0, 80, 240, 640].forEach((delayMs) => root.setTimeout?.(refreshVisibleAuditSurfaces, delayMs));
+    const onChange = (event) => {
+      const target = event.target;
+      const key = normalizeText(target?.dataset?.key || target?.name || target?.id || '');
+      if (!/boundary|pressure|elevation|flow|demand/i.test(key)) return;
+      if (!target?.closest?.('.persistent-object-properties-task-window, #taskWindow, [data-task-prop-body="true"]')) return;
+      schedule();
+    };
+    document.addEventListener('input', onChange, true);
+    document.addEventListener('change', onChange, true);
+    return true;
   }
 
   function patchPayloadBuilder() {
@@ -1258,6 +1702,7 @@
     function applyBackendSimulationPrimaryResultsWithAudit(pumpNode, backendResult, response, ...rest) {
       const output = original.call(this, pumpNode, backendResult, response, ...rest);
       attachAuditToPumpNode(pumpNode, response, backendResult);
+      [0, 120, 420, 1000].forEach((delayMs) => root.setTimeout?.(refreshVisibleAuditSurfaces, delayMs));
       return output;
     }
     applyBackendSimulationPrimaryResultsWithAudit.__routeTraceAuditPatched = true;
@@ -1277,6 +1722,7 @@
       fetchSimulation: patchSimulationFetch(),
       primaryResultApplier: patchPrimaryResultApplier(),
       sinkStatusTooltip: patchSinkStatusTooltip(),
+      sinkPropertyChangeRefresh: installSinkPropertyChangeRefresh(),
       canvasOverlayRenderHooks: patchedCanvasOverlayHooks,
       routePanel: typeof document !== 'undefined' && !!document.getElementById(PANEL_ID),
       menuButton: typeof document !== 'undefined' && !!document.getElementById(MENU_BUTTON_ID),
@@ -1312,6 +1758,9 @@
     downloadRouteAuditCsv,
     downloadRouteAuditJson,
     refreshVisibleAuditSurfaces,
+    sinkCanonicalValues,
+    sinkModeDisplayValue,
+    syncSinkPropertyWindowCanonicalReadouts,
     pruneDefaultPumpRouteTraceRows,
     pruneDefaultSinkCanvasRows,
     normalizeDefaultSinkCanvasRows,
@@ -1338,14 +1787,27 @@
       if (event.target?.closest?.(`#${MENU_BUTTON_ID}`)) openRouteAuditPanel();
     });
     if (typeof root.MutationObserver === 'function') {
-      const observer = new root.MutationObserver(() => root.setTimeout(refreshVisibleAuditSurfaces, 40));
-      root.addEventListener?.('load', () => {
+      const observer = new root.MutationObserver(() => {
+        if (routeSurfaceRefreshPending) return;
+        routeSurfaceRefreshPending = true;
+        root.setTimeout(() => {
+          routeSurfaceRefreshPending = false;
+          refreshVisibleAuditSurfaces();
+        }, 160);
+      });
+      const startRouteSurfaceObserver = () => {
         try {
-          observer.observe(document.documentElement, { childList: true, subtree: true });
+          observer.observe(document.getElementById('canvas') || document.body || document.documentElement, { childList: true, subtree: true });
+          refreshVisibleAuditSurfaces();
         } catch (error) {
           root.__npshRouteTraceAuditObserverError = error;
         }
-      }, { once: true });
+      };
+      if (document.readyState === 'loading') {
+        root.addEventListener?.('load', startRouteSurfaceObserver, { once: true });
+      } else {
+        startRouteSurfaceObserver();
+      }
     }
   }
 })((typeof window !== 'undefined') ? window : globalThis);

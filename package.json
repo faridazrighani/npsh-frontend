@@ -15,6 +15,10 @@
     "validate:live-parameter-repaint-lock": "node tools/validate-live-parameter-repaint-lock.cjs",
     "validate:src-canvas-parameter-lock": "node tools/validate-src-canvas-parameter-lock.cjs",
     "validate:decimal-display-lock": "node tools/validate-decimal-display-lock.cjs",
+    "validate:literature-pdf-viewer": "node tools/validate-literature-pdf-viewer.cjs",
+    "validate:global-live-indicator-engine-link": "node tools/validate-global-live-indicator-engine-link.cjs",
+    "validate:sink-boundary-mode-canvas-lock": "node tools/validate-sink-boundary-mode-canvas-lock.cjs",
+    "validate:pump-readiness-visibility-lock": "node tools/validate-pump-readiness-visibility-lock.cjs",
     "validate:local-api-preview": "node tools/validate-local-api-preview.cjs"
   }
 }

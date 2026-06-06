@@ -12,10 +12,13 @@ function jsonResponse(body, status = 200) {
   });
 }
 
-function withProxyHeaders(request) {
+function withProxyHeaders(request, env) {
   const headers = new Headers(request.headers);
   headers.set('X-NPSH-Pages-Proxy', 'npsh-frontend');
   headers.set('X-Forwarded-Host', new URL(request.url).host);
+  if (env.NPSH_API_PROXY_SECRET) {
+    headers.set('X-NPSH-API-Proxy-Secret', env.NPSH_API_PROXY_SECRET);
+  }
   return headers;
 }
 
@@ -35,7 +38,7 @@ export default {
       }
 
       const proxiedRequest = new Request(request, {
-        headers: withProxyHeaders(request)
+        headers: withProxyHeaders(request, env)
       });
       return api.fetch(proxiedRequest);
     }

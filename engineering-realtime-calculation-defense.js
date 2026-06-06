@@ -64,11 +64,22 @@
     return true;
   }
 
+  function calculationAffectedNodeIds(model, nodeId = '') {
+    const ids = new Set();
+    if (nodeId && model[nodeId]) ids.add(nodeId);
+    const pumpIds = Object.keys(model || {}).filter((id) => model[id]?.type === 'pump');
+    if (!nodeId || !model[nodeId]) {
+      pumpIds.forEach((id) => ids.add(id));
+      return [...ids];
+    }
+    if (model[nodeId]?.type === 'pump') return [...ids];
+    pumpIds.forEach((id) => ids.add(id));
+    return [...ids];
+  }
+
   function markStale(nodeId = '', reason = 'Input changed; waiting for backend recalculation.') {
     const model = runtimeModel();
-    const ids = nodeId && model[nodeId]
-      ? [nodeId]
-      : Object.keys(model || {}).filter((id) => model[id]?.type === 'pump');
+    const ids = calculationAffectedNodeIds(model, nodeId);
     let touched = 0;
     ids.forEach((id) => {
       const node = model[id];

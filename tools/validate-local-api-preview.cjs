@@ -39,6 +39,11 @@ assert(indexHtml.includes('"backendPrimaryEnabled":true'), "Runtime config must 
 const staticPreview = read(STATIC_PREVIEW_FILE);
 assert(staticPreview.includes("!['GET', 'HEAD'].includes"), "Static preview must remain explicitly GET/HEAD only.");
 assert(staticPreview.includes("405, 'Method Not Allowed'"), "Static preview must make POST misuse visible as 405.");
+assert(staticPreview.includes("handleLocalLiteratureRequest"), "Static preview must serve the local /api/literature fallback.");
+assert(staticPreview.includes("sourceLinksExposed: false"), "Static preview literature fallback must not expose source links.");
+assert(staticPreview.includes("parseByteRange"), "Static preview literature fallback must support PDF byte ranges.");
+assert(staticPreview.includes("'Accept-Ranges': 'bytes'"), "Static preview literature fallback must expose byte-range support.");
+assert(staticPreview.includes("workspaceRoot, 'book_pdf'"), "Static preview literature fallback must read from the local book_pdf folder.");
 
 const apiPreview = read(API_PREVIEW_FILE);
 assert(apiPreview.includes("server.mjs"), "API preview wrapper must start the backend server.mjs.");
@@ -53,4 +58,4 @@ assert(apiServer.includes("handleApiRequest"), "Backend server must route API re
 assert(apiServer.includes("NPSH_STATIC_ROOT"), "Backend server must support serving the frontend through NPSH_STATIC_ROOT.");
 assert(apiServer.includes("handleApiRequest(req, res, requestUrl)"), "Backend server must delegate /api/simulate to API handlers.");
 
-console.log("Local API preview validation passed: preview:api serves frontend files and /api/simulate from the backend server.");
+console.log("Local API preview validation passed: preview:api serves frontend files and /api/simulate from the backend server; static preview serves local /api/literature PDFs.");

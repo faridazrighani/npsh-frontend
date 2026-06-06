@@ -29,6 +29,19 @@ globalThis.__npshGlobalModel = {
         calculationFreshness: 'Current'
       }
     }
+  },
+  'SNK-100': {
+    type: 'sink',
+    props: {
+      boundaryMode: 'Flow Demand Boundary',
+      elevation: 10
+    },
+    results: {
+      calculationFreshness: 'Current',
+      routeTrace: {
+        lossFreshness: 'Current from backend route trace'
+      }
+    }
   }
 };
 
@@ -59,6 +72,14 @@ assert.equal(results.routeTrace.lossFreshness, 'Stale - input changed before bac
 assert.equal(results.actionReadinessBackend.stale, true, 'Action readiness should be marked stale.');
 assert.equal(results.npshEvaluation.calculationFreshness, 'Stale', 'NPSH evaluation should be marked stale.');
 assert.equal(pumpChartRefreshes, 1, 'Chart refresh should be requested after stale marking.');
+
+const sinkState = runtime.markStale('SNK-100', 'Sink boundary mode changed.');
+const sinkResults = globalThis.__npshGlobalModel['SNK-100'].results;
+assert.deepEqual(new Set(sinkState.nodeIds), new Set(['SNK-100', 'P-100']), 'A changed SNK boundary should mark both the SNK and dependent pump calculation stale.');
+assert.equal(sinkResults.calculationFreshness, 'Stale', 'Sink results should be marked stale immediately after boundary mode change.');
+assert.equal(results.calculationFreshness, 'Stale', 'Dependent pump calculation should remain stale after SNK boundary mode change.');
+assert.equal(results.actionReadinessBackend.stale, true, 'Pump action readiness should not remain Current after SNK boundary mode change.');
+assert.equal(pumpChartRefreshes, 2, 'Chart refresh should also be requested after dependent SNK stale marking.');
 
 const current = runtime.markCurrentFromBackend({
   calculationId: 'calc-1',

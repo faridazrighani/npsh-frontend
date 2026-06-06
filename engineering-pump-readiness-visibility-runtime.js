@@ -3,6 +3,7 @@
 
   const panelSelector = '[data-caption-audit-pump-action-readiness="true"], .caption-audit-pump-action-readiness';
   const debugParams = ["debugPumpReadiness", "showPumpActionReadiness"];
+  let readinessObserver = null;
 
   function readRuntimeConfig() {
     const existing = global.NPSH_RUNTIME_CONFIG && typeof global.NPSH_RUNTIME_CONFIG === "object"
@@ -38,25 +39,21 @@
     if (root && root.matches && root.matches(panelSelector)) root.remove();
   }
 
+  function addedPumpReadinessPanel(mutations) {
+    return Array.from(mutations || []).some((mutation) => (
+      Array.from(mutation.addedNodes || []).some((node) => (
+        node?.nodeType === 1
+        && (node.matches?.(panelSelector) || node.querySelector?.(panelSelector))
+      ))
+    ));
+  }
+
   function installHiddenStyle() {
     if (typeof document === "undefined" || document.getElementById("pump-readiness-visibility-style")) return;
     const style = document.createElement("style");
     style.id = "pump-readiness-visibility-style";
     style.textContent = `${panelSelector}{display:none!important;visibility:hidden!important;}`;
     document.head.appendChild(style);
-  }
-
-  function installGuard() {
-    if (typeof document === "undefined") return false;
-    if (shouldShowPumpActionReadinessPanel()) {
-      document.documentElement.dataset.showPumpActionReadinessPanel = "true";
-      return true;
-    }
-
-    delete document.documentElement.dataset.showPumpActionReadinessPanel;
-    installHiddenStyle();
-    removePumpActionReadinessPanels(document);
-    return false;
   }
 
   function scheduleGuardRefresh() {
@@ -66,6 +63,33 @@
       installHiddenStyle();
       removePumpActionReadinessPanels(document);
     }, 80);
+  }
+
+  function installMutationGuard() {
+    if (typeof document === "undefined" || typeof MutationObserver === "undefined" || readinessObserver) return;
+    const target = document.body || document.documentElement;
+    if (!target) return;
+    readinessObserver = new MutationObserver((mutations) => {
+      if (shouldShowPumpActionReadinessPanel()) return;
+      if (addedPumpReadinessPanel(mutations)) scheduleGuardRefresh();
+    });
+    readinessObserver.observe(target, { childList: true, subtree: true });
+  }
+
+  function installGuard() {
+    if (typeof document === "undefined") return false;
+    if (shouldShowPumpActionReadinessPanel()) {
+      document.documentElement.dataset.showPumpActionReadinessPanel = "true";
+      readinessObserver?.disconnect?.();
+      readinessObserver = null;
+      return true;
+    }
+
+    delete document.documentElement.dataset.showPumpActionReadinessPanel;
+    installHiddenStyle();
+    removePumpActionReadinessPanels(document);
+    installMutationGuard();
+    return false;
   }
 
   global.shouldShowPumpActionReadinessPanel = shouldShowPumpActionReadinessPanel;

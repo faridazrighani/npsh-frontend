@@ -10,8 +10,8 @@ const APP_BUNDLE_FILE = path.join(FRONTEND_ROOT, "app.bundle.min.js");
 const INDEX_FILE = path.join(FRONTEND_ROOT, "index.html");
 const JOURNALS_DIR = path.join(FRONTEND_ROOT, "journals");
 const API_ROOT = path.resolve(process.env.NPSH_API_ROOT || path.join(WORKSPACE_ROOT, "npsh-api"));
-const LOCK_VERSION = "2026.06-pump-npsh-source-sink-display-lock2";
-const RUNTIME_CACHE_KEY = "engineering-decimal-display-runtime.js?v=20260606-pump-npsh-source-sink-display-lock2";
+const LOCK_VERSION = "2026.06-pump-npsh-source-sink-display-lock4";
+const RUNTIME_CACHE_KEY = "engineering-decimal-display-runtime.js?v=20260607-pump-npsh-source-sink-display-lock4";
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
 function assert(condition, message) {
@@ -95,10 +95,15 @@ assert(runtime.includes("const PUMP_NPSH_DISPLAY_DECIMALS = 4"), "Runtime must d
 assert(runtime.includes("MutationObserver"), "Runtime must watch DOM mutations for realtime recalculation displays.");
 assert(runtime.includes('"input"'), "Runtime must react to input changes.");
 assert(runtime.includes('"change"'), "Runtime must react to committed input changes.");
+assert(runtime.includes("attempts >= 32"), "Runtime install retry loop must stay short for performance.");
 assert(runtime.includes("dataset.engineeringDecimalDisplayLock"), "Runtime must expose a QA/audit DOM lock marker.");
 assert(runtime.includes("shouldFormatValue"), "Runtime must expose numeric label gating for audit validation.");
 assert(runtime.includes("getDisplayDecimals"), "Runtime must expose label-specific decimal precision for audit validation.");
 assert(runtime.includes('"Dyn Feed"') && runtime.includes('"Dyn Net"'), "Runtime must include dynamic SRC labels after realtime start.");
+assert(runtime.includes('"SRC Input Flow"'), "Runtime must include canonical SRC Input Flow label.");
+assert(runtime.includes('"Evaluated Flow"'), "Runtime must include evaluated flow label for source/demand mismatch display.");
+assert(runtime.includes('"Source Flow"'), "Runtime must retain legacy SRC Source Flow formatting.");
+assert(runtime.includes('"Sink Flow"'), "Runtime must include canonical SNK Sink Flow label.");
 
 const indexHtml = readFile(INDEX_FILE);
 assert(
@@ -113,6 +118,10 @@ assert(documentElement.dataset.engineeringDecimalDisplayLock === api.version, "R
 
 const formatCases = [
   ["Flow", "50.0", "m3/h", "50.000"],
+  ["SRC Input Flow", "43", "m3/h", "43.000"],
+  ["Evaluated Flow", "50.0", "m3/h", "50.000"],
+  ["Source Flow", "50.0", "m3/h", "50.000"],
+  ["Sink Flow", "50.0", "m3/h", "50.000"],
   ["Suction Press.", "1.622", "bar a", "1.622"],
   ["Source P abs", "1.8209", "bar a", "1.821"],
   ["Source Head", "19.3687", "m", "19.369"],

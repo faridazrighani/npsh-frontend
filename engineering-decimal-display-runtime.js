@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const LOCK_VERSION = "2026.06-pump-npsh-source-sink-display-lock2";
+  const LOCK_VERSION = "2026.06-pump-npsh-source-sink-display-lock4";
   const ENGINEERING_DISPLAY_DECIMALS = 3;
   const PUMP_NPSH_DISPLAY_DECIMALS = 4;
   const NUMERIC_TOKEN_PATTERN = /[-+]?(?:\d+(?:[.,]\d*)?|[.,]\d+)(?:e[-+]?\d+)?/gi;
@@ -76,6 +76,9 @@
     "Required Press.",
     "Required System Head",
     "SNK Flow",
+    "SRC Input Flow",
+    "Evaluated Flow",
+    "Source Flow",
     "Source Elev.",
     "Source Head",
     "Source P abs",
@@ -86,6 +89,7 @@
     "Suction Press.",
     "Sink P abs",
     "Sink Elev.",
+    "Sink Flow",
     "Sink Head",
     "Target",
     "Target Net",
@@ -298,7 +302,7 @@
     const installTimer = root.setInterval(() => {
       attempts += 1;
       install();
-      if (attempts >= 240) root.clearInterval(installTimer);
+      if (attempts >= 32) root.clearInterval(installTimer);
     }, 250);
 
     ["DOMContentLoaded", "load", "input", "change", "click", "keyup", "pointerup"].forEach((eventName) => {

@@ -1,17 +1,24 @@
 !function(root) {
   "use strict";
 
-  const LOCK_VERSION = "2026.06-src-canvas-source-sink-terminology-lock1";
-  const ALWAYS_HIDDEN_ROWS = new Set(["Suction Loss", "NPSH at Pump", "Pump NPSHa"]);
+  const LOCK_VERSION = "2026.06-src-canvas-flow-basis-lock2";
+  const ALWAYS_HIDDEN_ROWS = new Set(["Contribution", "Suction Loss", "NPSH at Pump", "Pump NPSHa"]);
   const DYNAMIC_ROWS = new Set(["Dyn Mode", "Target", "Dyn Feed", "Target Net", "Dyn Net", "Target Trend", "Dyn Trend"]);
+  const SOURCE_TOOLTIP_HIDDEN_ROWS = new Set(["Contribution to tank", "Dynamic contribution"]);
+  const SOURCE_TOOLTIP_DYNAMIC_ROWS = new Set(["Target net flow", "Target dynamic net flow"]);
   const SOURCE_ROW_LABEL_RENAMES = new Map([
+    ["Outlet Flow", "SRC Input Flow"],
+    ["Source Flow", "SRC Input Flow"],
     ["Source Press.", "Source P abs"],
     ["Source Pressure", "Source P abs"]
   ]);
-  const EXACT_SOURCE_VALUE_LABELS = new Set(["Source P abs", "Source Elev.", "Source Head"]);
+  const EXACT_SOURCE_VALUE_LABELS = new Set(["SRC Input Flow", "Evaluated Flow", "Source P abs", "Source Elev.", "Source Head"]);
+  const FLOW_MISMATCH_TOLERANCE_M3H = 0.001;
   let realtimeMenuClickUnlocked = root.__srcDynamicInventoryDisplayUnlocked === true;
   let lastRealtimeMenuPointerAt = 0;
   let pendingRealtimeMenuUnlocked = null;
+  let sourceObserverNormalizePending = false;
+  const SOURCE_RENDER_HOOKS = new Set();
 
   function normalizeRowLabel(value) {
     return String(value || "").replace(/\s+/g, " ").trim();
@@ -49,6 +56,123 @@
     return root.globalModel || root.__npshGlobalModel || {};
   }
 
+  function sourceIdForNode(source, node, modelRef) {
+    if (source?.id) return String(source.id);
+    const entries = Object.entries(modelRef || {}).filter(([, candidate]) => candidate === node);
+    if (entries.length === 1) return entries[0][0];
+    const sources = Object.entries(modelRef || {}).filter(([, candidate]) => candidate?.type === "source");
+    return sources.length === 1 ? sources[0][0] : "";
+  }
+
+  function connectionList(modelRef) {
+    const candidates = [
+      root.__npshConnections,
+      root.connections,
+      modelRef?.connections,
+      modelRef?.__connections
+    ];
+    for (const candidate of candidates) {
+      if (Array.isArray(candidate)) return candidate;
+    }
+    return [];
+  }
+
+  function isHydraulicConnection(connection) {
+    const type = normalizeRowLabel(connection?.connectionType || connection?.type);
+    return !type || /hydraulic|process|pipe|flow/i.test(type) || Boolean(connection?.pipeId || connection?.via || connection?.linkId);
+  }
+
+  function connectionFrom(connection) {
+    return normalizeRowLabel(connection?.from || connection?.rawFrom || connection?.source || connection?.start || connection?.sourceId);
+  }
+
+  function connectionTo(connection) {
+    return normalizeRowLabel(connection?.to || connection?.rawTo || connection?.target || connection?.end || connection?.targetId);
+  }
+
+  function connectionPipeId(connection) {
+    return normalizeRowLabel(connection?.pipeId || connection?.via || connection?.linkId || connection?.pipe);
+  }
+
+  function nodeSolvedFlow(node) {
+    const results = node?.results || {};
+    return firstFiniteValue(
+      results.flow,
+      results.outletFlow,
+      results.inletFlow,
+      results.sourceFlow,
+      results.sinkFlow,
+      results.flowDemand,
+      results.calculationTrace?.basis?.flowM3H,
+      results.calculationTrace?.boundary?.flow,
+      results.calculationTrace?.boundary?.sourceFlow,
+      results.calculationTrace?.boundary?.outletFlow,
+      results.calculationTrace?.inputBasis?.flow,
+      results.npshEvaluation?.flow,
+      results.npshEvaluation?.calculationTrace?.basis?.flowM3H,
+      results.npshEvaluation?.calculationTrace?.boundary?.flow,
+      results.npshEvaluation?.calculationTrace?.boundary?.sourceFlow
+    );
+  }
+
+  function connectedRouteFlowForSource(sourceId, modelRef) {
+    if (!sourceId) return null;
+    const hydraulicConnections = connectionList(modelRef).filter(isHydraulicConnection);
+    for (const connection of hydraulicConnections) {
+      const from = connectionFrom(connection);
+      const to = connectionTo(connection);
+      if (from !== sourceId && to !== sourceId) continue;
+      const pipeFlow = nodeSolvedFlow(modelRef[connectionPipeId(connection)]);
+      if (pipeFlow !== null) return pipeFlow;
+      const neighborId = from === sourceId ? to : from;
+      const neighborFlow = nodeSolvedFlow(modelRef[neighborId]);
+      if (neighborFlow !== null) return neighborFlow;
+    }
+    return null;
+  }
+
+  function singleRouteSolvedFlowForSource(sourceId, modelRef) {
+    const sources = Object.entries(modelRef || {}).filter(([, candidate]) => candidate?.type === "source");
+    if (sources.length !== 1 || (sourceId && sourceId !== sources[0][0])) return null;
+    const flows = Object.values(modelRef || {})
+      .filter((candidate) => candidate?.type === "pump" || candidate?.type === "sink")
+      .map(nodeSolvedFlow)
+      .filter((flow) => flow !== null);
+    if (!flows.length) return null;
+    const unique = new Set(flows.map((flow) => Number(flow).toFixed(9)));
+    return unique.size === 1 ? flows[0] : null;
+  }
+
+  function solvedOperatingFlowForSource(sourceId, modelRef) {
+    return firstFiniteValue(
+      connectedRouteFlowForSource(sourceId, modelRef),
+      singleRouteSolvedFlowForSource(sourceId, modelRef)
+    );
+  }
+
+  function activeDensity(modelRef) {
+    return firstFiniteValue(modelRef?.FLUID?.props?.density, root.globalModel?.FLUID?.props?.density, 1000) || 1000;
+  }
+
+  function sourceInputFlowForNode(node, modelRef) {
+    const props = node?.props || {};
+    const flowMode = normalizeRowLabel(props.flowInputMode || "Mass Flow");
+    if (/solve\s+from\s+network/i.test(flowMode)) return null;
+    if (/mass\s+flow/i.test(flowMode)) {
+      const massFlow = finiteNumber(props.massFlow);
+      const density = activeDensity(modelRef);
+      return massFlow !== null && density > 0 ? massFlow / density : null;
+    }
+    return firstFiniteValue(props.flow, props.flowM3h, props.volumetricFlow);
+  }
+
+  function flowsDiffer(a, b) {
+    const left = finiteNumber(a);
+    const right = finiteNumber(b);
+    if (left === null || right === null) return false;
+    return Math.abs(left - right) > FLOW_MISMATCH_TOLERANCE_M3H;
+  }
+
   function sourceNodeFromArgs(args) {
     const [sourceId, sourceNode] = args || [];
     if (sourceNode && sourceNode.type === "source") return { id: sourceId, node: sourceNode };
@@ -83,11 +207,21 @@
 
   function sourceCanonicalValues(source) {
     const node = source?.node || source || {};
+    const modelRef = model();
+    const sourceId = sourceIdForNode(source, node, modelRef);
     const results = node.results || {};
     const traceBoundary = results.calculationTrace?.boundary || {};
     const traceInput = results.calculationTrace?.inputBasis || {};
     const pumpTraceBoundary = results.npshEvaluation?.calculationTrace?.boundary || {};
     const props = node.props || {};
+    const solvedFlow = solvedOperatingFlowForSource(sourceId, modelRef);
+    const sourceInputFlow = firstFiniteValue(
+      sourceInputFlowForNode(node, modelRef),
+      traceInput.flow,
+      traceInput.sourceFlow,
+      traceBoundary.sourceInputFlow,
+      results.sourceInputFlow
+    );
     return {
       pressureAbsBar: firstFiniteValue(
         traceBoundary.pressureAbsBar,
@@ -120,22 +254,108 @@
         results.hydraulicHead,
         results.sourceHead,
         results.boundaryHead
-      )
+      ),
+      sourceInputFlow,
+      evaluatedFlow: firstFiniteValue(
+        solvedFlow,
+        results.evaluatedFlow,
+        results.flow,
+        results.outletFlow,
+        results.sourceFlow,
+        traceBoundary.flow,
+        traceBoundary.outletFlow,
+        pumpTraceBoundary.flow,
+        pumpTraceBoundary.sourceFlow
+      ),
+      sourceFlow: sourceInputFlow,
+      flowMismatch: flowsDiffer(sourceInputFlow, solvedFlow)
     };
   }
 
   function canonicalSourceValueForLabel(label, canonical) {
-    if (label === "Source P abs") return formatDisplayValue(canonical.pressureAbsBar, "pressureAbs", 3);
-    if (label === "Source Elev.") return formatDisplayValue(canonical.elevation, "head", 3);
-    if (label === "Source Head") return formatDisplayValue(canonical.sourceHead, "head", 3);
+    if (label === "SRC Input Flow" && finiteNumber(canonical.sourceInputFlow) !== null) return formatDisplayValue(canonical.sourceInputFlow, "flow", 3);
+    if (label === "Evaluated Flow" && finiteNumber(canonical.evaluatedFlow) !== null) return formatDisplayValue(canonical.evaluatedFlow, "flow", 3);
+    if (label === "Source P abs" && finiteNumber(canonical.pressureAbsBar) !== null) return formatDisplayValue(canonical.pressureAbsBar, "pressureAbs", 3);
+    if (label === "Source Elev." && finiteNumber(canonical.elevation) !== null) return formatDisplayValue(canonical.elevation, "head", 3);
+    if (label === "Source Head" && finiteNumber(canonical.sourceHead) !== null) return formatDisplayValue(canonical.sourceHead, "head", 3);
     return null;
   }
 
   function canonicalSourceTitleForLabel(label) {
+    if (label === "SRC Input Flow") return "Fixed SRC flow input; this remains the source-side boundary value even when downstream demand differs";
+    if (label === "Evaluated Flow") return "Solved/evaluated route flow used by the current hydraulic or NPSH result";
     if (label === "Source P abs") return "Absolute source pressure used for suction-head calculation";
     if (label === "Source Elev.") return "Effective source elevation or inherited liquid surface elevation";
     if (label === "Source Head") return "Total source hydraulic head before suction losses";
     return "";
+  }
+
+  function sourcePanelRowValue(panel, label) {
+    const target = normalizeRowLabel(label);
+    const row = Array.from(panel?.querySelectorAll?.(".source-live-param-row") || []).find((candidate) => (
+      normalizeRowLabel(candidate.querySelector(".source-live-param-label")?.textContent) === target
+    ));
+    return normalizeRowLabel(row?.querySelector?.(".source-live-param-value, strong")?.textContent);
+  }
+
+  function sourceModeDisplayValue(node = {}, panel = null) {
+    const panelMode = sourcePanelRowValue(panel, "Mode");
+    if (panelMode) return panelMode;
+    const rawMode = normalizeRowLabel(node.results?.boundaryMode || node.props?.sourceType || node.props?.mode || node.props?.boundaryMode);
+    if (/fixed/i.test(rawMode)) return "Fixed";
+    if (/dynamic/i.test(rawMode)) return "Dynamic";
+    if (/manual/i.test(rawMode)) return "Manual";
+    return rawMode.replace(/\s*Source$/i, "").replace(/\s*Boundary$/i, "") || "-";
+  }
+
+  function sourceStatusDisplayValue(node = {}, canonical = {}) {
+    const rawStatus = normalizeRowLabel(
+      node.results?.sourceStatus
+      || node.results?.status
+      || node.results?.hydraulicStatus
+      || node.results?.operatingStatus
+    );
+    if (rawStatus && !/no solved pump suction path/i.test(rawStatus)) return rawStatus;
+    if (
+      finiteNumber(canonical.sourceFlow) !== null
+      && finiteNumber(canonical.pressureAbsBar) !== null
+      && finiteNumber(canonical.sourceHead) !== null
+    ) {
+      return "OK";
+    }
+    return rawStatus || "No solved source route";
+  }
+
+  function sourceObjectTooltip(source, panel = null) {
+    const node = source?.node || source || {};
+    const canonical = sourceCanonicalValues(source);
+    const sourceFlow = sourcePanelRowValue(panel, "SRC Input Flow") || formatDisplayValue(canonical.sourceInputFlow, "flow", 3);
+    const evaluatedFlow = sourcePanelRowValue(panel, "Evaluated Flow") || formatDisplayValue(canonical.evaluatedFlow, "flow", 3);
+    const pressureAbsBar = sourcePanelRowValue(panel, "Source P abs") || formatDisplayValue(canonical.pressureAbsBar, "pressureAbs", 3);
+    const elevation = sourcePanelRowValue(panel, "Source Elev.") || formatDisplayValue(canonical.elevation, "head", 3);
+    const sourceHead = sourcePanelRowValue(panel, "Source Head") || formatDisplayValue(canonical.sourceHead, "head", 3);
+    const lines = [
+      `SRC status: ${sourceStatusDisplayValue(node, canonical)}`,
+      `Mode: ${sourceModeDisplayValue(node, panel)}`,
+      `SRC Input Flow: ${sourceFlow} m3/h`,
+      `Source P abs: ${pressureAbsBar} bar a`,
+      `Source Elev.: ${elevation} m`,
+      `Source Head: ${sourceHead} m`
+    ];
+    if (canonical.flowMismatch) lines.splice(3, 0, `Evaluated Flow: ${evaluatedFlow} m3/h`);
+    return lines.join("\n");
+  }
+
+  function syncSourceObjectTooltip(panel, source) {
+    const object = panel?.closest?.(".pfd-object");
+    if (!object) return 0;
+    const title = sourceObjectTooltip(source, panel);
+    const storedTitle = object.getAttribute("data-engineering-runtime-originaltitle") || "";
+    if (object.title === title && storedTitle === title) return 0;
+    object.title = title;
+    object.setAttribute("data-engineering-runtime-originaltitle", title);
+    object.dataset.sourceObjectTooltipLock = LOCK_VERSION;
+    return 1;
   }
 
   function formatTooltipParsedNumber(line, metricLabels, unit, digits = 3) {
@@ -148,11 +368,27 @@
     return `${label}: ${number.toFixed(digits)}${unit ? ` ${unit}` : ""}`;
   }
 
+  function normalizeSourceFlowTooltipLine(line, canonical) {
+    const exactValue = canonicalSourceValueForLabel("SRC Input Flow", canonical);
+    if (exactValue !== null) return `SRC Input Flow: ${exactValue} m3/h`;
+    return formatTooltipParsedNumber(line, new Set(["Flow to suction network"]), "m3/h", 3)
+      .replace(/^Flow to suction network:/i, "SRC Input Flow:");
+  }
+
+  function shouldShowEvaluatedFlow(canonical) {
+    return finiteNumber(canonical.evaluatedFlow) !== null && flowsDiffer(canonical.sourceInputFlow, canonical.evaluatedFlow);
+  }
+
+  function shouldHideSourceTooltipLine(line) {
+    const label = normalizeRowLabel(String(line || "").split(":")[0]);
+    return SOURCE_TOOLTIP_HIDDEN_ROWS.has(label) || (!isRealtimeDynamicUnlocked() && SOURCE_TOOLTIP_DYNAMIC_ROWS.has(label));
+  }
+
   function normalizeSourceRows(rows, sourceId, sourceNode) {
     if (!Array.isArray(rows)) return rows;
     const source = sourceNodeFromArgs([sourceId, sourceNode]);
     const canonical = sourceCanonicalValues(source);
-    return rows.map((row) => {
+    const normalizedRows = rows.map((row) => {
       if (!row || typeof row !== "object") return row;
       const oldLabel = normalizeRowLabel(row.label);
       const label = SOURCE_ROW_LABEL_RENAMES.get(oldLabel) || oldLabel;
@@ -165,6 +401,17 @@
         value: exactValue === null ? row.value : exactValue
       };
     });
+    if (shouldShowEvaluatedFlow(canonical) && !normalizedRows.some((row) => normalizeRowLabel(row?.label) === "Evaluated Flow")) {
+      const sourceIndex = normalizedRows.findIndex((row) => normalizeRowLabel(row?.label) === "SRC Input Flow");
+      const evaluatedRow = {
+        label: "Evaluated Flow",
+        value: canonicalSourceValueForLabel("Evaluated Flow", canonical),
+        unit: "m3/h",
+        title: canonicalSourceTitleForLabel("Evaluated Flow")
+      };
+      normalizedRows.splice(sourceIndex >= 0 ? sourceIndex + 1 : 1, 0, evaluatedRow);
+    }
+    return normalizedRows;
   }
 
   function isRealtimeDynamicUnlocked() {
@@ -196,6 +443,56 @@
     return true;
   }
 
+  function sourceRowByLabel(panel, label) {
+    const target = normalizeRowLabel(label);
+    return Array.from(panel?.querySelectorAll?.(".source-live-param-row") || []).find((candidate) => (
+      normalizeRowLabel(candidate.querySelector(".source-live-param-label")?.textContent) === target
+    ));
+  }
+
+  function createSourceCanvasRow(label, value, title = "") {
+    const row = document.createElement("div");
+    row.className = "source-live-param-row";
+    const labelElement = document.createElement("span");
+    labelElement.className = "source-live-param-label";
+    const valueElement = document.createElement("strong");
+    valueElement.className = "source-live-param-value";
+    labelElement.textContent = label;
+    valueElement.textContent = value;
+    if (title) row.title = title;
+    row.dataset.sourceSinkTerminologyLock = LOCK_VERSION;
+    row.append(labelElement, valueElement);
+    return row;
+  }
+
+  function upsertSourceCanvasRow(panel, label, value, anchorLabels = []) {
+    const existing = sourceRowByLabel(panel, label);
+    if (existing) {
+      const valueElement = existing.querySelector(".source-live-param-value, strong");
+      const title = canonicalSourceTitleForLabel(label);
+      let changed = setTextIfChanged(valueElement, value) ? 1 : 0;
+      if (title && existing.title !== title) {
+        existing.title = title;
+        changed += 1;
+      }
+      existing.dataset.sourceSinkTerminologyLock = LOCK_VERSION;
+      return changed;
+    }
+    const row = createSourceCanvasRow(label, value, canonicalSourceTitleForLabel(label));
+    const rows = Array.from(panel?.querySelectorAll?.(".source-live-param-row") || []);
+    const anchor = anchorLabels
+      .map((candidate) => sourceRowByLabel(panel, candidate))
+      .find(Boolean);
+    if (anchor && anchor.parentNode === panel) {
+      panel.insertBefore(row, anchor.nextSibling);
+    } else if (rows.length) {
+      rows[0].parentNode.insertBefore(row, rows[0].nextSibling);
+    } else {
+      panel.appendChild(row);
+    }
+    return 1;
+  }
+
   function normalizeRenderedSourceRows(scope) {
     if (typeof document === "undefined") return 0;
     const rootNode = scope && scope.querySelectorAll ? scope : document;
@@ -224,6 +521,15 @@
           row.dataset.sourceSinkTerminologyLock = LOCK_VERSION;
         }
       });
+      if (shouldShowEvaluatedFlow(canonical)) {
+        changed += upsertSourceCanvasRow(
+          panel,
+          "Evaluated Flow",
+          canonicalSourceValueForLabel("Evaluated Flow", canonical),
+          ["SRC Input Flow", "Mode"]
+        );
+      }
+      changed += syncSourceObjectTooltip(panel, source);
     });
     return changed;
   }
@@ -289,6 +595,31 @@
     root.setTimeout(() => pruneRenderedSourceRows(document), 0);
   }
 
+  function scheduleSourcePresentationRefresh() {
+    if (typeof document === "undefined") return;
+    [0, 80, 240, 700, 1400].forEach((delayMs) => {
+      root.setTimeout(() => normalizeRenderedTerminology(document), delayMs);
+    });
+  }
+
+  function patchSourceRenderFunction(functionName) {
+    if (SOURCE_RENDER_HOOKS.has(functionName)) return false;
+    const original = root[functionName];
+    if (typeof original !== "function" || original.__srcCanvasParameterPresentationLock) return false;
+    function sourceCanvasParameterPresentationLockedFunction(...args) {
+      const result = original.apply(this, args);
+      const refresh = () => scheduleSourcePresentationRefresh();
+      if (result && typeof result.then === "function") return result.finally(refresh);
+      refresh();
+      return result;
+    }
+    sourceCanvasParameterPresentationLockedFunction.__srcCanvasParameterPresentationLock = LOCK_VERSION;
+    sourceCanvasParameterPresentationLockedFunction.__srcOriginalPresentationFunction = original;
+    root[functionName] = sourceCanvasParameterPresentationLockedFunction;
+    SOURCE_RENDER_HOOKS.add(functionName);
+    return true;
+  }
+
   function installFunctionLocks() {
     root.__srcCanvasParameterDefaultLock = LOCK_VERSION;
     if (typeof document !== "undefined" && document.documentElement) {
@@ -296,6 +627,12 @@
     }
     root.isSourceLiveDynamicDisplayActive = isRealtimeDynamicUnlocked;
     root.filterSourceLiveParameterRows = filterSourceRows;
+    [
+      "updateSimulation",
+      "applyBackendSimulationPrimaryResults",
+      "updateAllObjectOperatingStatusVisuals",
+      "drawConnections"
+    ].forEach((functionName) => patchSourceRenderFunction(functionName));
 
     if (
       typeof root.buildSourceLiveParameterRows === "function"
@@ -321,16 +658,17 @@
         const canonical = sourceCanonicalValues(source);
         const flowLabels = new Set(["Flow to suction network", "Contribution to tank", "Dynamic contribution", "Target net flow", "Target dynamic net flow"]);
         const replacements = [
+          [/^Flow to suction network:.*$/i, null],
           [/^Source pressure:.*$/i, `Source P abs: ${formatDisplayValue(canonical.pressureAbsBar, "pressureAbs", 3)} bar a`],
           [/^Source elevation:.*$/i, `Source Elev.: ${formatDisplayValue(canonical.elevation, "head", 3)} m`],
           [/^Source head:.*$/i, `Source Head: ${formatDisplayValue(canonical.sourceHead, "head", 3)} m`]
         ];
         return text.split("\n").map((line) => {
           for (const [pattern, replacement] of replacements) {
-            if (pattern.test(line)) return replacement;
+            if (pattern.test(line)) return replacement === null ? normalizeSourceFlowTooltipLine(line, canonical) : replacement;
           }
           return formatTooltipParsedNumber(line, flowLabels, "m3/h", 3);
-        }).join("\n");
+        }).filter((line) => !shouldHideSourceTooltipLine(line)).join("\n");
       };
       lockedSourceTooltip.__srcCanvasParameterDefaultLock = LOCK_VERSION;
       root.getSourceOperatingStatusTooltip = lockedSourceTooltip;
@@ -416,16 +754,26 @@
     if (typeof MutationObserver === "undefined" || typeof document === "undefined" || !document.body) return;
     if (root.__srcCanvasParameterDefaultLockObserver) return;
     root.__srcCanvasParameterDefaultLockObserver = new MutationObserver((mutations) => {
+      let shouldRefreshAll = false;
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes || []) {
           if (node && node.nodeType === 1) pruneRenderedSourceRows(node);
+          if (node && (node.nodeType === 1 || node.nodeType === 3)) shouldRefreshAll = true;
         }
         if (mutation.type === "characterData" && mutation.target?.parentElement) {
           pruneRenderedSourceRows(mutation.target.parentElement);
+          shouldRefreshAll = true;
         }
       }
+      if (shouldRefreshAll && !sourceObserverNormalizePending) {
+        sourceObserverNormalizePending = true;
+        root.setTimeout(() => {
+          sourceObserverNormalizePending = false;
+          normalizeRenderedSourceRows(document.getElementById("canvas") || document);
+        }, 120);
+      }
     });
-    root.__srcCanvasParameterDefaultLockObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
+    root.__srcCanvasParameterDefaultLockObserver.observe(document.getElementById("canvas") || document.body, { childList: true, subtree: true, characterData: true });
   }
 
   function install() {
@@ -441,7 +789,7 @@
   const installTimer = root.setInterval(() => {
     attempts += 1;
     install();
-    if (attempts >= 240) root.clearInterval(installTimer);
+    if (attempts >= 32) root.clearInterval(installTimer);
   }, 250);
 
   ["DOMContentLoaded", "load", "pointerdown", "keydown"].forEach((eventName) => {
