@@ -9,7 +9,9 @@ const RUNTIME_FILE = path.join(FRONTEND_ROOT, "engineering-decimal-display-runti
 const APP_BUNDLE_FILE = path.join(FRONTEND_ROOT, "app.bundle.min.js");
 const INDEX_FILE = path.join(FRONTEND_ROOT, "index.html");
 const JOURNALS_DIR = path.join(FRONTEND_ROOT, "journals");
-const API_ROOT = path.join(WORKSPACE_ROOT, "npsh-api");
+const API_ROOT = path.resolve(process.env.NPSH_API_ROOT || path.join(WORKSPACE_ROOT, "npsh-api"));
+const LOCK_VERSION = "2026.06-pump-npsh-global-display-lock1";
+const RUNTIME_CACHE_KEY = "engineering-decimal-display-runtime.js?v=20260606-pump-npsh-global-display-lock1";
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
 function assert(condition, message) {
@@ -87,6 +89,7 @@ function loadRuntimeApi(runtimeSource) {
 }
 
 const runtime = readFile(RUNTIME_FILE);
+assert(runtime.includes(`const LOCK_VERSION = "${LOCK_VERSION}"`), "Runtime must keep the global pump NPSH display lock version.");
 assert(runtime.includes("const ENGINEERING_DISPLAY_DECIMALS = 3"), "Runtime must define 3 display decimals.");
 assert(runtime.includes("const PUMP_NPSH_DISPLAY_DECIMALS = 4"), "Runtime must define 4 display decimals for pump NPSH values.");
 assert(runtime.includes("MutationObserver"), "Runtime must watch DOM mutations for realtime recalculation displays.");
@@ -99,7 +102,7 @@ assert(runtime.includes('"Dyn Feed"') && runtime.includes('"Dyn Net"'), "Runtime
 
 const indexHtml = readFile(INDEX_FILE);
 assert(
-  indexHtml.includes("engineering-decimal-display-runtime.js?v=20260606-pump-npsh-global-display-lock1"),
+  indexHtml.includes(RUNTIME_CACHE_KEY),
   "index.html must load the engineering decimal display runtime."
 );
 
@@ -115,6 +118,8 @@ const formatCases = [
   ["NPSH Required", "2.4002", "m", "2.4002"],
   ["NPSH Margin", "+4.0654", "m", "+4.0654"],
   ["NPSH Ratio", "2.6938", "", "2.6938"],
+  ["Required NPSHa", "3.0002", "m", "3.0002"],
+  ["NPSH excess", "+3.4654", "m", "+3.4654"],
   ["Basis Vapor Press.", "1.014", "bar a", "1.014"],
   ["Vapor Press. Used", "1.014", "bar a", "1.014"],
   ["Pump Head", "24.0", "m", "24.000"],

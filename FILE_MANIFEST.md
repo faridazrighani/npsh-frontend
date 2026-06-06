@@ -17,7 +17,7 @@ Summary:
 
 ```text
 Total files: 173
-Total size: 63,776,508 bytes
+Total size: 63,776,884 bytes
 ```
 
 Top-level contents:
