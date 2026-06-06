@@ -6,6 +6,7 @@ const zlib = require("zlib");
 const FRONTEND_ROOT = path.resolve(__dirname, "..");
 const WORKSPACE_ROOT = path.resolve(FRONTEND_ROOT, "..");
 const RUNTIME_FILE = path.join(FRONTEND_ROOT, "engineering-decimal-display-runtime.js");
+const APP_BUNDLE_FILE = path.join(FRONTEND_ROOT, "app.bundle.min.js");
 const INDEX_FILE = path.join(FRONTEND_ROOT, "index.html");
 const JOURNALS_DIR = path.join(FRONTEND_ROOT, "journals");
 const API_ROOT = path.join(WORKSPACE_ROOT, "npsh-api");
@@ -87,30 +88,33 @@ function loadRuntimeApi(runtimeSource) {
 
 const runtime = readFile(RUNTIME_FILE);
 assert(runtime.includes("const ENGINEERING_DISPLAY_DECIMALS = 3"), "Runtime must define 3 display decimals.");
+assert(runtime.includes("const PUMP_NPSH_DISPLAY_DECIMALS = 4"), "Runtime must define 4 display decimals for pump NPSH values.");
 assert(runtime.includes("MutationObserver"), "Runtime must watch DOM mutations for realtime recalculation displays.");
 assert(runtime.includes('"input"'), "Runtime must react to input changes.");
 assert(runtime.includes('"change"'), "Runtime must react to committed input changes.");
 assert(runtime.includes("dataset.engineeringDecimalDisplayLock"), "Runtime must expose a QA/audit DOM lock marker.");
 assert(runtime.includes("shouldFormatValue"), "Runtime must expose numeric label gating for audit validation.");
+assert(runtime.includes("getDisplayDecimals"), "Runtime must expose label-specific decimal precision for audit validation.");
 assert(runtime.includes('"Dyn Feed"') && runtime.includes('"Dyn Net"'), "Runtime must include dynamic SRC labels after realtime start.");
 
 const indexHtml = readFile(INDEX_FILE);
 assert(
-  indexHtml.includes("engineering-decimal-display-runtime.js?v=20260604-decimal-display-lock1"),
+  indexHtml.includes("engineering-decimal-display-runtime.js?v=20260606-pump-canvas-npsh-eval-lock1"),
   "index.html must load the engineering decimal display runtime."
 );
 
 const { api, documentElement } = loadRuntimeApi(runtime);
 assert(api && api.decimals === 3, "Runtime API must report 3 display decimals.");
+assert(api && api.pumpNpshDecimals === 4, "Runtime API must report 4 pump NPSH decimals.");
 assert(documentElement.dataset.engineeringDecimalDisplayLock === api.version, "Runtime must stamp its lock version into the document element.");
 
 const formatCases = [
   ["Flow", "50.0", "m3/h", "50.000"],
   ["Suction Press.", "1.622", "bar a", "1.622"],
-  ["NPSH Available", "6.5", "m", "6.500"],
-  ["NPSH Required", "2.4", "m", "2.400"],
-  ["NPSH Margin", "+4.1", "m", "+4.100"],
-  ["NPSH Ratio", "2.69", "", "2.690"],
+  ["NPSH Available", "6.4656", "m", "6.4656"],
+  ["NPSH Required", "2.4002", "m", "2.4002"],
+  ["NPSH Margin", "+4.0654", "m", "+4.0654"],
+  ["NPSH Ratio", "2.6938", "", "2.6938"],
   ["Basis Vapor Press.", "1.014", "bar a", "1.014"],
   ["Vapor Press. Used", "1.014", "bar a", "1.014"],
   ["Pump Head", "24.0", "m", "24.000"],
@@ -121,7 +125,7 @@ const formatCases = [
 
 for (const [label, value, unit, expected] of formatCases) {
   assert(api.shouldFormatValue(label, value, unit), `${label} must be a protected numeric engineering display.`);
-  assert(api.formatNumericExpression(value) === expected, `${label} must format ${value} as ${expected}.`);
+  assert(api.formatValueForLabel(label, value, unit) === expected, `${label} must format ${value} as ${expected}.`);
 }
 
 const skipCases = [
@@ -142,6 +146,38 @@ for (const filePath of simulationFiles) {
   const nodes = Object.entries(projectFile.model || {});
   assert(nodes.some(([, node]) => node && node.type === "source"), `${filePath} must include at least one SRC/source object.`);
   assert(nodes.some(([, node]) => node && node.type === "pump"), `${filePath} must include at least one pump object.`);
+}
+
+const appBundle = readFile(APP_BUNDLE_FILE);
+const protectedBundlePatterns = [
+  'e.results.npsha=backendSimulationFixed(t.npsha,4)',
+  'e.results.npshr=backendSimulationFixed(t.npshr,4)',
+  'e.results.npshMargin=backendSimulationFixed(t.npshMargin,4)',
+  'e.results.npshRatio=backendSimulationFixed(t.npshRatio,4)',
+  'e.results.requiredNpsha=backendSimulationFixed(t.requiredNpsha,4)',
+  'e.results.npshExcess=backendSimulationFixed(t.npshExcess,4)',
+  'p=a.npshEvaluation||{}',
+  'm=(e=>{const t=parseFloat(p[e]);return Number.isFinite(t)?t:a[e]})',
+  'value:u("npsha","head",4)',
+  'value:u("npshr","head",4)',
+  'value:u("npshMargin","head",4,{showSign:!0})',
+  'formatPumpLiveNumber(m("npshRatio"),4)'
+];
+for (const pattern of protectedBundlePatterns) {
+  assert(appBundle.includes(pattern), `app.bundle.min.js must preserve pump canvas NPSH precision: ${pattern}`);
+}
+const staleBundlePatterns = [
+  'e.results.npsha=backendSimulationFixed(t.npsha,2)',
+  'e.results.npshr=backendSimulationFixed(t.npshr,2)',
+  'e.results.npshMargin=backendSimulationFixed(t.npshMargin,2)',
+  'e.results.npshRatio=backendSimulationFixed(t.npshRatio,2)',
+  'value:u("npsha","head",1)',
+  'value:u("npshr","head",1)',
+  'value:u("npshMargin","head",1,{showSign:!0})',
+  'formatPumpLiveNumber(a.npshRatio,2)'
+];
+for (const pattern of staleBundlePatterns) {
+  assert(!appBundle.includes(pattern), `app.bundle.min.js still contains stale pump canvas NPSH rounding: ${pattern}`);
 }
 
 const backendFiles = [
@@ -166,10 +202,12 @@ for (const filePath of backendFiles) {
   }
   if (filePath.endsWith("simulation-engine.js")) {
     assert(source.includes("const ENGINEERING_DISPLAY_DECIMALS = 3"), "Core engine must define the shared engineering display decimal lock.");
+    assert(source.includes("const PUMP_NPSH_DISPLAY_DECIMALS = 4"), "Core engine must define the shared pump NPSH display decimal lock.");
     assert(source.includes("function formatEngineeringDisplayNumber"), "Core engine must use an auditable display formatter.");
     assert(source.includes("function formatCanvasReadoutValue(value, digits = ENGINEERING_DISPLAY_DECIMALS)"), "Core canvas readout must default to the shared 3-decimal lock.");
   }
   assert(source.includes("const ENGINEERING_DISPLAY_DECIMALS = 3"), `${path.basename(filePath)} must define the shared engineering display decimal lock.`);
+  assert(source.includes("const PUMP_NPSH_DISPLAY_DECIMALS = 4"), `${path.basename(filePath)} must define the shared pump NPSH display decimal lock.`);
   assert(source.includes("function formatEngineeringDisplayNumber"), `${path.basename(filePath)} must use an auditable display formatter.`);
   assert(
     source.includes("function formatCanvasReadoutValue(value, digits = ENGINEERING_DISPLAY_DECIMALS)"),
