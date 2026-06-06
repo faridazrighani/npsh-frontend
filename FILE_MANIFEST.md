@@ -1,6 +1,6 @@
 # Frontend File Manifest
 
-Date: 2026-06-05
+Date: 2026-06-06
 
 Folder:
 
@@ -17,7 +17,7 @@ Summary:
 
 ```text
 Total files: 173
-Total size: 63,770,067 bytes
+Total size: 63,776,508 bytes
 ```
 
 Top-level contents:
@@ -77,6 +77,7 @@ Release integrity guardrail:
 node npsh-api/tools/release-integrity-audit.cjs
 app.bundle.min.js.map sourcesContent: absent
 App bundle cache key: app.bundle.min.js?v=20260606-pump-canvas-npsh-hover-lock1
+Decimal display runtime cache key: engineering-decimal-display-runtime.js?v=20260606-pump-npsh-global-display-lock1
 Route audit cache key: engineering-route-trace-audit.js?v=20260605-route-audit-contract12
 Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260603-realtime-defense1
 Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260605-canvas-context-dock7

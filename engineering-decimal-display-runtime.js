@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const LOCK_VERSION = "2026.06-pump-canvas-npsh-eval-lock1";
+  const LOCK_VERSION = "2026.06-pump-npsh-global-display-lock1";
   const ENGINEERING_DISPLAY_DECIMALS = 3;
   const PUMP_NPSH_DISPLAY_DECIMALS = 4;
   const NUMERIC_TOKEN_PATTERN = /[-+]?(?:\d+(?:[.,]\d*)?|[.,]\d+)(?:e[-+]?\d+)?/gi;
@@ -61,6 +61,7 @@
     "NPSH Margin",
     "NPSH Ratio",
     "NPSH Required",
+    "NPSH excess",
     "Outlet Flow",
     "POR Max",
     "POR Min",
@@ -70,6 +71,7 @@
     "Pressure Residual",
     "Pump Head",
     "Pump NPSH Margin",
+    "Required NPSHa",
     "Required Head",
     "Required Press.",
     "Required System Head",
@@ -110,6 +112,9 @@
     ["NPSH Required", PUMP_NPSH_DISPLAY_DECIMALS],
     ["NPSH Margin", PUMP_NPSH_DISPLAY_DECIMALS],
     ["NPSH Ratio", PUMP_NPSH_DISPLAY_DECIMALS],
+    ["Required NPSHa", PUMP_NPSH_DISPLAY_DECIMALS],
+    ["NPSH excess", PUMP_NPSH_DISPLAY_DECIMALS],
+    ["NPSH Excess", PUMP_NPSH_DISPLAY_DECIMALS],
     ["Pump NPSHa", PUMP_NPSH_DISPLAY_DECIMALS],
     ["Pump NPSHA", PUMP_NPSH_DISPLAY_DECIMALS],
     ["Pump NPSHr", PUMP_NPSH_DISPLAY_DECIMALS],

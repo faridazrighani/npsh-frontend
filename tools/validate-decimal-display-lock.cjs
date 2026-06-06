@@ -99,7 +99,7 @@ assert(runtime.includes('"Dyn Feed"') && runtime.includes('"Dyn Net"'), "Runtime
 
 const indexHtml = readFile(INDEX_FILE);
 assert(
-  indexHtml.includes("engineering-decimal-display-runtime.js?v=20260606-pump-canvas-npsh-eval-lock1"),
+  indexHtml.includes("engineering-decimal-display-runtime.js?v=20260606-pump-npsh-global-display-lock1"),
   "index.html must load the engineering decimal display runtime."
 );
 
@@ -141,11 +141,42 @@ for (const [label, value] of skipCases) {
 
 const simulationFiles = listSimulationUntirtaFiles();
 assert(simulationFiles.length === 6, `Expected 6 simulation UNTIRTA files; found ${simulationFiles.length}.`);
+const pumpNpshFixtureKeys = [
+  ["npsha", "npsha", "NPSH Available", "m"],
+  ["npshr", "npshr", "NPSH Required", "m"],
+  ["npshMargin", "npshMargin", "NPSH Margin", "m"],
+  ["npshRatio", "npshRatio", "NPSH Ratio", ""],
+  ["requiredNpsha", "requiredNpsha", "Required NPSHa", "m"],
+  ["npshExcess", "npshExcess", "NPSH excess", "m"]
+];
+function formatPumpNpshFixtureValue(value) {
+  const numeric = Number.parseFloat(value);
+  return Number.isFinite(numeric) ? numeric.toFixed(4) : null;
+}
 for (const filePath of simulationFiles) {
   const projectFile = readUntirtaProject(filePath);
   const nodes = Object.entries(projectFile.model || {});
   assert(nodes.some(([, node]) => node && node.type === "source"), `${filePath} must include at least one SRC/source object.`);
   assert(nodes.some(([, node]) => node && node.type === "pump"), `${filePath} must include at least one pump object.`);
+  for (const [nodeId, node] of nodes) {
+    if (!node || node.type !== "pump") continue;
+    const results = node.results || {};
+    const npshEvaluation = results.npshEvaluation || {};
+    assert(npshEvaluation && typeof npshEvaluation === "object", `${filePath} ${nodeId} must keep the exact pump npshEvaluation payload.`);
+    for (const [resultKey, evaluationKey, label, unit] of pumpNpshFixtureKeys) {
+      const expected = formatPumpNpshFixtureValue(npshEvaluation[evaluationKey]);
+      if (expected === null) continue;
+      const actual = String(results[resultKey] ?? "");
+      assert(
+        actual === expected,
+        `${filePath} ${nodeId} results.${resultKey} must be ${expected} from npshEvaluation.${evaluationKey}; found ${actual || "<empty>"}.`
+      );
+      assert(
+        api.formatValueForLabel(label, actual, unit) === expected,
+        `${filePath} ${nodeId} ${label} must render as ${expected} in protected displays.`
+      );
+    }
+  }
 }
 
 const appBundle = readFile(APP_BUNDLE_FILE);
