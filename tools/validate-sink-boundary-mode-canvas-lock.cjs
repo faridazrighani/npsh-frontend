@@ -54,10 +54,12 @@ const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 
-assert.equal(runtime.version, '2026.06-route-trace-audit-v22', 'Route trace runtime should expose the SNK boundary mode canvas lock version.');
+assert.equal(runtime.version, '2026.06-route-trace-audit-v26', 'Route trace runtime should expose the SNK boundary mode canvas lock version.');
 assert.equal(typeof runtime.sinkCanonicalValues, 'function', 'SNK canonical value helper should be exported for audit completeness checks.');
 assert.equal(typeof runtime.sinkModeDisplayValue, 'function', 'SNK mode display helper should be exported for audit completeness checks.');
 assert.equal(typeof runtime.syncSinkPropertyWindowCanonicalReadouts, 'function', 'SNK properties readout sync should be exported for audit completeness checks.');
+assert.equal(typeof runtime.collapseSinkTraceSections, 'function', 'SNK trace collapse helper should be exported for layout lock validation.');
+assert.equal(typeof runtime.lockSinkPropertyWindowLayout, 'function', 'SNK task-window layout lock helper should be exported for validation.');
 
 const staleSolvedSink = globalThis.globalModel['SNK-100'];
 assert.equal(
@@ -120,13 +122,27 @@ assert(runtimeSource.includes("setSinkPropertyRowValue(windowNode, 'Calculated A
 assert(runtimeSource.includes("formatCanvasValue(canonical.pressureAbsBar, 'bar a')"), 'SNK compact pressure readout should use canonical selected-boundary pressure.');
 assert(runtimeSource.includes("hideSinkPropertyRows("), 'SNK property window should hide mode-ignored rows.');
 assert(runtimeSource.includes("'ignored-when-not-flow-demand'"), 'SNK Flow Demand property row should be hidden when the selected mode is not Flow Demand.');
-assert(runtimeSource.includes("'Outlet Pressure Assumption'"), 'Free Outlet property window should expose the atmospheric outlet pressure assumption.');
-assert(runtimeSource.includes("upsertSinkPropertyReadout(windowNode, 'Evaluated Flow'"), 'SNK property window should expose evaluated flow separately from configured demand.');
-assert(runtimeSource.includes("'.fluid-field-row'") && runtimeSource.includes('sinkPropertyReadoutContainer') && runtimeSource.includes('cloneNode'), 'SNK generated readouts should preserve non-table card/grid property layout.');
-assert(runtimeSource.includes("row.querySelectorAll?.('input, select, textarea, button').forEach((control) => control.remove())"), 'SNK generated readouts should remove cloned controls before rendering read-only values.');
-assert(runtimeSource.includes("if (anchor) return anchor.closest?.('table') || null;"), 'SNK generated readouts should not fall back to unrelated tables when a non-table anchor exists.');
+assert(runtimeSource.includes('function removeLegacyGeneratedSinkPropertyRows'), 'SNK property window sync should remove old generated rows that changed the original SINK layout.');
+assert(runtimeSource.includes("const labels = ['Evaluated Flow', 'Outlet Pressure Assumption'];"), 'SNK property window should remove previous generated Evaluated Flow and Outlet Pressure Assumption rows.');
+assert(!runtimeSource.includes("upsertSinkPropertyReadout(windowNode, 'Evaluated Flow'"), 'SNK property window should not inject Evaluated Flow into the old SINK conditions layout.');
+assert(!runtimeSource.includes('function upsertSinkPropertyReadout'), 'SNK task window layout lock should not retain generated row insertion helpers.');
+assert(runtimeSource.includes('function collapseSinkTraceSections'), 'SNK Calculation Trace section should be collapsed by the route trace lock.');
+assert(runtimeSource.includes('function lockSinkPropertyWindowLayout'), 'SNK property window should have an explicit layout lock.');
+assert(runtimeSource.includes('route-trace-sink-layout-locked'), 'SNK layout lock CSS/class marker should be present.');
+assert(runtimeSource.includes('route-trace-sink-trace-collapsed'), 'SNK trace body rows should have a collapsed-state marker.');
+assert(runtimeSource.includes('Step-by-step Report') && runtimeSource.includes('Trace Perhitungan'), 'SNK trace collapse should match Calculation Trace / Step-by-step Report labels.');
+assert(runtimeSource.includes("const control = row?.querySelector?.('select, input, textarea');"), 'SNK property sync should detect existing form controls before changing row values.');
+assert(runtimeSource.includes("if (control.tagName === 'SELECT')"), 'SNK Boundary Mode sync should preserve existing dropdown controls.');
+assert(runtimeSource.includes('control.value = option.value;'), 'SNK Boundary Mode sync should update dropdown value without replacing the select element.');
+assert(runtimeSource.includes('function sinkBoundaryModeFormLabel'), 'SNK Boundary Mode property window should use form labels separately from compact canvas labels.');
+assert(runtimeSource.includes('Free Outlet / Atmospheric Discharge'), 'SNK Boundary Mode dropdown should retain the old Free Outlet / Atmospheric Discharge caption.');
+assert(runtimeSource.includes('Outlet Pressure Boundary'), 'SNK Boundary Mode dropdown should retain the old Outlet Pressure Boundary caption.');
+assert(runtimeSource.includes('Flow Demand Boundary'), 'SNK Boundary Mode dropdown should retain the old Flow Demand Boundary caption.');
+assert(runtimeSource.includes('function syncSinkBoundaryModeOptions'), 'SNK Boundary Mode dropdown options should be normalized when the bridge runs.');
+assert(!runtimeSource.includes('cloneNode'), 'SNK task window layout lock should not clone property rows.');
+assert(!runtimeSource.includes('sinkPropertyReadoutContainer'), 'SNK task window layout lock should not search for insertion containers.');
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock4'),
+  index.includes('engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock8'),
   'Index must load the route trace audit runtime with the SNK boundary mode lock cache key.'
 );
 assert(

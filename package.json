@@ -20,6 +20,12 @@
     "validate:global-live-indicator-engine-link": "node tools/validate-global-live-indicator-engine-link.cjs",
     "validate:sink-boundary-mode-canvas-lock": "node tools/validate-sink-boundary-mode-canvas-lock.cjs",
     "validate:pump-readiness-visibility-lock": "node tools/validate-pump-readiness-visibility-lock.cjs",
-    "validate:local-api-preview": "node tools/validate-local-api-preview.cjs"
+    "validate:local-api-preview": "node tools/validate-local-api-preview.cjs",
+    "test:e2e": "playwright test",
+    "test:e2e:desktop-flow-chain": "playwright test tests/e2e/desktop-simulation-flow-chain.spec.cjs",
+    "test:e2e:remaining-risks": "playwright test tests/e2e/pipe-moody-defense-export.spec.cjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
   }
 }

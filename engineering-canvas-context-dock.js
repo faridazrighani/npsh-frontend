@@ -194,10 +194,9 @@
   }
 
   function computeSpecificWeight(props) {
-    const explicit = firstNumber(props, ['specificWeight', 'specificWeightUsed', 'gamma']);
-    if (explicit !== null) return explicit;
     const density = firstNumber(props, ['density', 'densityUsed', 'rho']);
-    return density === null ? null : density * 9.81;
+    if (density !== null) return density * 9.81;
+    return firstNumber(props, ['specificWeight', 'specificWeightUsed', 'gamma']);
   }
 
   function computeKinematicViscosity(props) {
@@ -210,21 +209,17 @@
   }
 
   function computeDynamicViscosity(props) {
-    const explicit = firstNumber(props, ['dynViscosity', 'dynamicViscosity', 'dynamicVisc', 'dynamicViscosityCP', 'dynamicViscosityCp', 'viscosityDynamic', 'mu']);
-    if (explicit !== null) return explicit;
     const kinematicViscosity = firstNumber(props, ['kinematicViscosity', 'kinematicVisc', 'kinematicViscosityCSt', 'viscosityKinematic', 'viscosity', 'viscosityCSt', 'nu']);
     const density = firstNumber(props, ['density', 'densityUsed', 'rho']);
-    if (kinematicViscosity === null || density === null || density <= 0) return null;
-    return kinematicViscosity * (density / 1000);
+    if (kinematicViscosity !== null && density !== null && density > 0) return kinematicViscosity * (density / 1000);
+    return firstNumber(props, ['dynViscosity', 'dynamicViscosity', 'dynamicVisc', 'dynamicViscosityCP', 'dynamicViscosityCp', 'viscosityDynamic', 'mu']);
   }
 
   function computeVaporPressureHead(props) {
-    const explicit = firstNumber(props, ['vaporPressureHead', 'vapourPressureHead', 'vaporPressureHeadM', 'pvHead']);
-    if (explicit !== null) return explicit;
     const vaporPressureBarA = firstNumber(props, ['vaporPressure', 'vapourPressure', 'vaporPressureBarA', 'pv']);
     const density = firstNumber(props, ['density', 'densityUsed', 'rho']);
-    if (vaporPressureBarA === null || density === null || density <= 0) return null;
-    return (vaporPressureBarA * 100000) / (density * 9.81);
+    if (vaporPressureBarA !== null && density !== null && density > 0) return (vaporPressureBarA * 100000) / (density * 9.81);
+    return firstNumber(props, ['vaporPressureHead', 'vapourPressureHead', 'vaporPressureHeadM', 'pvHead']);
   }
 
   function getFluidCells(model) {

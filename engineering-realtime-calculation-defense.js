@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-realtime-calculation-defense.v1';
+  const VERSION = 'engineering-realtime-calculation-defense.v2';
 
   function runtimeModel() {
     try {
@@ -64,6 +64,34 @@
     return true;
   }
 
+  function markResultObjectCalculating(results, reason) {
+    if (!results || typeof results !== 'object') return false;
+    results.calculationFreshness = 'Calculating';
+    results.backendValidationStatus = 'Calculating';
+    results.backendValidationMessage = reason;
+    if (results.performanceChartData?.schemaVersion === 'pump-performance-chart-data.v1') {
+      results.performanceChartData.freshness = 'Calculating';
+    }
+    if (results.routeTrace && typeof results.routeTrace === 'object') {
+      results.routeTrace.lossFreshness = 'Calculating - backend refresh in progress';
+    }
+    if (results.actionReadinessBackend && typeof results.actionReadinessBackend === 'object') {
+      results.actionReadinessBackend.stale = true;
+      results.actionReadinessBackend.status = 'Calculating';
+      results.actionReadinessBackend.message = reason;
+    }
+    if (results.backendActionReadiness && typeof results.backendActionReadiness === 'object') {
+      results.backendActionReadiness.stale = true;
+      results.backendActionReadiness.status = 'Calculating';
+      results.backendActionReadiness.message = reason;
+    }
+    if (results.npshEvaluation && typeof results.npshEvaluation === 'object') {
+      results.npshEvaluation.calculationFreshness = 'Calculating';
+      results.npshEvaluation.backendValidationStatus = 'Calculating';
+    }
+    return true;
+  }
+
   function calculationAffectedNodeIds(model, nodeId = '') {
     const ids = new Set();
     if (nodeId && model[nodeId]) ids.add(nodeId);
@@ -98,6 +126,31 @@
       if (typeof root.updatePumpChart === 'function') root.updatePumpChart(nodeId || ids[0] || '');
     } catch (error) {
       // Chart refresh is best-effort; autosolve will recalculate.
+    }
+    return root.__engineeringCalculationDefenseRealtimeState;
+  }
+
+  function markCalculating(nodeId = '', reason = 'Backend recalculation in progress.') {
+    const model = runtimeModel();
+    const ids = calculationAffectedNodeIds(model, nodeId);
+    let touched = 0;
+    ids.forEach((id) => {
+      const node = model[id];
+      if (!node || typeof node !== 'object') return;
+      if (!node.results || typeof node.results !== 'object') node.results = {};
+      if (markResultObjectCalculating(node.results, reason)) touched += 1;
+    });
+    root.__engineeringCalculationDefenseRealtimeState = {
+      version: VERSION,
+      status: touched ? 'Calculating' : 'No calculation result to refresh',
+      reason,
+      nodeIds: ids,
+      startedAt: new Date().toISOString()
+    };
+    try {
+      if (typeof root.updatePumpChart === 'function') root.updatePumpChart(nodeId || ids[0] || '');
+    } catch (error) {
+      // Chart refresh is best-effort; backend apply will redraw again.
     }
     return root.__engineeringCalculationDefenseRealtimeState;
   }
@@ -150,6 +203,15 @@
       };
       root.applyBackendSimulationPrimaryResults.__engineeringRealtimeCalculationDefensePatched = true;
     }
+    const originalRunBackend = root.runBackendSimulationShadow;
+    if (typeof originalRunBackend === 'function' && !originalRunBackend.__engineeringRealtimeCalculationDefenseCalculatingPatched) {
+      root.runBackendSimulationShadow = function realtimeDefenseRunBackendWrapper(nodeId = '', options = {}, ...rest) {
+        markCalculating(nodeId, options?.realtimeReason || 'Backend recalculation in progress.');
+        return originalRunBackend.call(this, nodeId, options, ...rest);
+      };
+      root.runBackendSimulationShadow.__engineeringRealtimeCalculationDefenseCalculatingPatched = true;
+      root.runBackendSimulationShadow.__engineeringRealtimeCalculationDefenseOriginal = originalRunBackend;
+    }
     return true;
   }
 
@@ -157,6 +219,7 @@
     version: VERSION,
     install,
     markStale,
+    markCalculating,
     markCurrentFromBackend
   };
 

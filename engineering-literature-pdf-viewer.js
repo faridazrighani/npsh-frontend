@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCK_VERSION = "2026.06-literature-pdf-viewer4";
+  const LOCK_VERSION = "2026.06-literature-pdf-viewer5";
   const PDFJS_SCRIPT = "vendor/pdf.min.js?v=20260606-literature-pdf-viewer3";
   const PDFJS_WORKER = "vendor/pdf.worker.min.js?v=20260606-literature-pdf-viewer3";
   const BOOKS = [
@@ -30,7 +30,9 @@
     pageNumber: 1,
     zoom: 1,
     rendering: false,
-    pendingRender: false
+    pendingRender: false,
+    pendingBookId: null,
+    authRetryBound: false
   };
 
   const css = `
@@ -221,6 +223,35 @@
     status.dataset.state = type;
   }
 
+  async function refreshApprovedSession() {
+    if (!window.NPSHAuth?.refresh) return false;
+    try {
+      const current = await window.NPSHAuth.refresh({ force: true });
+      return current?.approved === true;
+    } catch {
+      return false;
+    }
+  }
+
+  function queuePendingOpen(bookId) {
+    state.pendingBookId = bookId;
+  }
+
+  function clearPendingOpen(bookId) {
+    if (!bookId || state.pendingBookId === bookId) state.pendingBookId = null;
+  }
+
+  function bindAuthRetryEvents() {
+    if (state.authRetryBound) return;
+    state.authRetryBound = true;
+    document.addEventListener("npsh-auth-state", event => {
+      if (event.detail?.approved !== true || !state.pendingBookId) return;
+      const pendingBookId = state.pendingBookId;
+      state.pendingBookId = null;
+      window.setTimeout(() => openLiterature(pendingBookId), 0);
+    });
+  }
+
   function updateControls() {
     const total = state.pdf?.numPages || 0;
     const input = document.getElementById("literaturePageInput");
@@ -387,13 +418,16 @@
     state.pdf = null;
     state.pageNumber = 1;
     state.zoom = 1;
+    clearPendingOpen(book.id);
     updateControls();
     setStatus("Opening literature...");
 
     try {
       if (window.NPSHAuth?.requireApproved) {
+        setStatus("Checking Google access...");
         const allowed = await window.NPSHAuth.requireApproved({ resource: book.label });
         if (!allowed) {
+          queuePendingOpen(book.id);
           setStatus("Login Google is required and the account must be approved before this PDF can be opened.", "error");
           return;
         }
@@ -407,12 +441,20 @@
         rangeChunkSize: 131072
       });
       state.pdf = await task.promise;
+      clearPendingOpen(book.id);
       state.pageNumber = 1;
       updateControls();
       await renderPage();
     } catch (error) {
       const message = String(error?.message || "");
       if (message.includes("Unexpected server response (401)")) {
+        setStatus("Checking Google session...");
+        if (await refreshApprovedSession()) {
+          clearPendingOpen(book.id);
+          await openLiterature(book.id);
+          return;
+        }
+        queuePendingOpen(book.id);
         setStatus("Login Google is required before this PDF can be opened.", "error");
         return;
       }
@@ -438,6 +480,7 @@
   function init() {
     injectStyle();
     ensureMenu();
+    bindAuthRetryEvents();
     bindMenuEvents();
   }
 

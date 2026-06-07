@@ -56,9 +56,14 @@ globalThis.applyBackendSimulationPrimaryResults = (pumpNode, backendResult, resp
   pumpNode.results.npshEvaluation = backendResult;
   return true;
 };
+let backendRefreshes = 0;
+globalThis.runBackendSimulationShadow = async () => {
+  backendRefreshes += 1;
+  return { primaryApplied: true };
+};
 
 const runtime = require(runtimePath);
-assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v1', 'Realtime defense runtime should expose v1.');
+assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v2', 'Realtime defense runtime should expose v2.');
 
 const state = runtime.markStale('P-100', 'Unit test input changed.');
 const results = globalThis.__npshGlobalModel['P-100'].results;
@@ -89,6 +94,20 @@ assert.equal(current.status, 'Current', 'Backend refresh state should mark realt
 assert.equal(current.dependencyFingerprint, 'dep-1', 'Backend dependency fingerprint should be retained.');
 
 runtime.install();
+const calculating = runtime.markCalculating('P-100', 'Backend unit test recalculation.');
+assert.equal(calculating.status, 'Calculating', 'markCalculating should expose backend refresh in progress.');
+assert.equal(results.calculationFreshness, 'Calculating', 'Pump results should be marked calculating during backend refresh.');
+assert.equal(results.backendValidationStatus, 'Calculating', 'Backend validation status should show calculating while the request is pending.');
+assert.equal(results.routeTrace.lossFreshness, 'Calculating - backend refresh in progress', 'Route trace freshness should show pending backend refresh.');
+
+globalThis.runBackendSimulationShadow('P-100');
+assert.equal(backendRefreshes, 1, 'Wrapped backend refresh should still call the original backend runner.');
+assert.equal(
+  globalThis.__engineeringCalculationDefenseRealtimeState.status,
+  'Calculating',
+  'Wrapped backend runner should mark realtime state calculating before fetch.'
+);
+
 globalThis.applyBackendSimulationPrimaryResults(globalThis.__npshGlobalModel['P-100'], { flow: 50 }, {
   calculationAudit: { calculationId: 'calc-2' },
   dependencyManifest: { dependencyFingerprint: 'dep-2' },
@@ -101,11 +120,11 @@ assert.equal(globalThis.__engineeringCalculationDefenseRealtimeState.calculation
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(
-  index.includes('engineering-realtime-calculation-defense.js?v=20260603-realtime-defense1'),
+  index.includes('engineering-realtime-calculation-defense.js?v=20260607-realtime-defense2'),
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
-  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260603-realtime-defense1'),
+  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260607-realtime-defense2'),
   'Manifest must document the realtime calculation defense cache key.'
 );
 

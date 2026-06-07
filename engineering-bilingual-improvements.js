@@ -1772,24 +1772,32 @@
       effectiveFluid?.vaporPressure,
       readSourceFluidBasisNumber(windowNode, 'source-fluid-vapor-pressure')
     );
-    let dynamicViscosity = parseSourceFluidBasisNumber(
-      effectiveFluid?.dynViscosity ?? effectiveFluid?.dynamicViscosity,
-      readSourceFluidBasisNumber(windowNode, 'source-fluid-dynamic-viscosity')
-    );
-    if (!Number.isFinite(dynamicViscosity) && Number.isFinite(density) && Number.isFinite(kinematicViscosity)) {
+    let dynamicViscosity = Number.NaN;
+    if (Number.isFinite(density) && Number.isFinite(kinematicViscosity)) {
       dynamicViscosity = kinematicViscosity * (density / 1000);
     }
-    let specificWeight = parseSourceFluidBasisNumber(
-      effectiveFluid?.specWeight ?? effectiveFluid?.specificWeight,
-      readSourceFluidBasisNumber(windowNode, 'source-fluid-specific-weight')
-    );
-    if (!Number.isFinite(specificWeight) && Number.isFinite(density)) specificWeight = density * 9.81;
-    let vaporPressureHead = parseSourceFluidBasisNumber(
-      effectiveFluid?.vaporPressureHead,
-      readSourceFluidBasisNumber(windowNode, 'source-fluid-vapor-pressure-head')
-    );
-    if (!Number.isFinite(vaporPressureHead) && Number.isFinite(vaporPressure) && Number.isFinite(density) && density > 0) {
+    if (!Number.isFinite(dynamicViscosity)) {
+      dynamicViscosity = parseSourceFluidBasisNumber(
+        effectiveFluid?.dynViscosity ?? effectiveFluid?.dynamicViscosity,
+        readSourceFluidBasisNumber(windowNode, 'source-fluid-dynamic-viscosity')
+      );
+    }
+    let specificWeight = Number.isFinite(density) ? density * 9.81 : Number.NaN;
+    if (!Number.isFinite(specificWeight)) {
+      specificWeight = parseSourceFluidBasisNumber(
+        effectiveFluid?.specWeight ?? effectiveFluid?.specificWeight,
+        readSourceFluidBasisNumber(windowNode, 'source-fluid-specific-weight')
+      );
+    }
+    let vaporPressureHead = Number.NaN;
+    if (Number.isFinite(vaporPressure) && Number.isFinite(density) && density > 0) {
       vaporPressureHead = 1e5 * vaporPressure / (density * 9.81);
+    }
+    if (!Number.isFinite(vaporPressureHead)) {
+      vaporPressureHead = parseSourceFluidBasisNumber(
+        effectiveFluid?.vaporPressureHead,
+        readSourceFluidBasisNumber(windowNode, 'source-fluid-vapor-pressure-head')
+      );
     }
     return {
       density,
@@ -2153,6 +2161,13 @@
     const flow = props.flow ?? props.designFlow ?? props.demandFlow ?? props.massFlow;
     const flowMode = props.flowInputMode || props.boundaryMode || 'Volumetric Flow';
     const temperature = props.temp ?? props.temperature ?? fluid.temperature;
+    const latestBackendResponse = root.__npshLastBackendSimulationResponse?.response || {};
+    const backendSrcAudit = latestBackendResponse.srcObjectAudit
+      || Object.values(model || {}).find((item) => item?.type === 'pump')?.results?.srcObjectAudit
+      || null;
+    const backendEngineering = backendSrcAudit?.engineeringCalculation || {};
+    const backendSubstitutions = backendEngineering.substitutions || {};
+    const backendDependency = backendSrcAudit?.dependencyChange || {};
     const displaySourceType = translateRuntimeText(sourceType);
     const displayPressureBasis = translateRuntimeText(pressureBasis);
     const displayFlowMode = translateRuntimeText(flowMode);
@@ -2226,6 +2241,36 @@
           getSourceDefenseText('Temperature Basis', 'Basis Temperatur'),
           formatDefenseValue(temperature, 'deg C', 3),
           getSourceDefenseText('Temperature selects or validates the Fluid Basis properties used by SRC and pump calculations.', 'Temperatur memilih atau memvalidasi properti Basis Fluida yang digunakan SRC dan perhitungan pompa.')
+        ]
+      ]
+    ));
+
+    appendSourceDefenseCard(layout, getSourceDefenseText('Backend Formula Substitution', 'Substitusi Formula Backend'), () => createSourceDefenseTable(
+      [
+        getSourceDefenseText('Formula', 'Formula'),
+        getSourceDefenseText('Live Substitution', 'Substitusi Live'),
+        getSourceDefenseText('Traceability', 'Traceability')
+      ],
+      [
+        [
+          'P_abs',
+          backendSubstitutions.pressureConversion || getSourceDefenseText('Run Solve to load backend SRC substitution.', 'Jalankan Hitung untuk memuat substitusi SRC backend.'),
+          backendSrcAudit?.auditable?.calculationId || latestBackendResponse.calculationId || '-'
+        ],
+        [
+          'H_p = P_abs x 100000 / (rho x g)',
+          backendSubstitutions.pressureHead || '-',
+          backendDependency.dependencyFingerprint || '-'
+        ],
+        [
+          'H_SRC = H_p + z_SRC + H_vel',
+          backendSubstitutions.sourceHydraulicHead || '-',
+          backendSrcAudit?.routeCalculation?.directNpshImpact ? getSourceDefenseText('Direct NPSHA boundary impact', 'Direct impact boundary NPSHA') : getSourceDefenseText('Needs backend trace', 'Perlu trace backend')
+        ],
+        [
+          'NPSHA = H_SRC - z_pump - hL_suction - H_vapor',
+          backendSubstitutions.npsha || '-',
+          backendDependency.priorResultStale ? getSourceDefenseText('Recalculated after stale input change', 'Dihitung ulang setelah input stale') : getSourceDefenseText('Current when calculationId matches latest result', 'Current bila calculationId cocok dengan hasil terbaru')
         ]
       ]
     ));

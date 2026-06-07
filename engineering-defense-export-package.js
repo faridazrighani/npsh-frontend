@@ -246,6 +246,49 @@
     return 'Defense Ready';
   }
 
+  function defenseExportGate(payload = activeDefensePayload()) {
+    const dependency = payload.dependencyManifest || {};
+    const calculation = payload.calculationAudit || {};
+    const pumpResults = payload.pumpNode?.results || {};
+    const realtime = root.__engineeringCalculationDefenseRealtimeState || {};
+    const freshnessTokens = [
+      realtime.status,
+      pumpResults.calculationFreshness,
+      pumpResults.backendValidationStatus,
+      calculation.freshness,
+      payload.calculationDefenseContract?.freshness
+    ].filter(Boolean).map((token) => String(token));
+    const staleToken = (token) => {
+      const text = String(token || '');
+      if (/recalculated\s+after\s+stale/i.test(text)) return false;
+      if (/stale\s+prior\s+result|prior\s+result\s+stale/i.test(text)) return false;
+      if (/current\s+backend\s+calculation.*prior.*stale/i.test(text)) return false;
+      return /\b(stale|dirty|expired|outdated)\b/i.test(text);
+    };
+    const stale = pumpResults.isCalculationStale === true
+      || dependency.isStale === true
+      || freshnessTokens.some(staleToken);
+    const realtimeCurrentForCalculation = realtime.status === 'Current'
+      && (!calculation.calculationId || !realtime.calculationId || realtime.calculationId === calculation.calculationId);
+    const calculating = !realtimeCurrentForCalculation
+      && freshnessTokens.some((token) => /calculating|pending|running/i.test(token));
+    const missingTrace = !payload.routeTrace || !dependency.dependencyFingerprint || !calculation.calculationId;
+    const blocked = stale || calculating || missingTrace;
+    const reason = calculating
+      ? 'Calculation is still running; wait for Current before exporting.'
+      : (stale
+        ? 'Calculation is stale after an input change; rerun backend solve before exporting.'
+        : (missingTrace ? 'Route trace, calculationId, or dependency fingerprint is missing.' : 'Current calculation trace is exportable.'));
+    return {
+      schemaVersion: 'defense-export-gate.v1',
+      canExport: !blocked,
+      status: blocked ? (calculating ? 'Calculating' : (stale ? 'Stale' : 'Incomplete')) : 'Current',
+      reason,
+      calculationId: calculation.calculationId || realtime.calculationId || null,
+      dependencyFingerprint: dependency.dependencyFingerprint || null
+    };
+  }
+
   function buildDefensePackage(payload = activeDefensePayload()) {
     const registry = buildUiEvidenceRegistry(payload);
     const routeTrace = payload.routeTrace || {};
@@ -258,9 +301,17 @@
     const pageLocks = formulaPageLocks(payload.libraryGovernance, routeTrace);
     const npsh = validation.acceptanceCriteria || result || {};
     const readiness = defenseReadiness(payload, registry);
+    const exportGate = defenseExportGate(payload);
+    const validationReviewNotes = [
+      ...(validation.routeComponentSourceBasis?.reviewItems || []),
+      ...(validation.checks || [])
+        .filter((check) => check.status === 'review' && check.evidence)
+        .map((check) => `${check.label || check.id}: ${check.evidence}`)
+    ];
     const gapNotes = [
       ...new Set([
         ...(validation.gapReviewNotes || []),
+        ...validationReviewNotes,
         ...(result.warnings || []),
         ...registry.filter((item) => item.requiredForDefense && item.status !== 'Ready').map((item) => `${item.taskWindow}: ${item.outputEvidence}`)
       ])
@@ -345,6 +396,7 @@
         softwareDependencyChangeGate: dependency.softwareDependencyChangeGate || null,
         staleCalculationPolicy: dependency.staleCalculationPolicy || null
       },
+      exportGate,
       gapNotes
     };
   }
@@ -493,6 +545,10 @@
       '.defense-package-section p{margin:0 0 5px;color:#334155;font-size:11px;line-height:1.35;}',
       '.defense-package-actions{display:flex;flex-wrap:wrap;gap:6px;}',
       '.defense-package-actions button{padding:6px 8px;border:1px solid #1c4568;border-radius:5px;background:#eef6fc;color:#123b5a;font-size:11px;font-weight:700;cursor:pointer;}',
+      '.defense-package-actions button:disabled{opacity:.58;cursor:not-allowed;background:#eef2f6;color:#64748b;}',
+      '.defense-export-stale-gate{padding:8px 10px;border:1px solid #c5dfce;border-radius:6px;background:#f6fff8;color:#14532d;font-size:11px;line-height:1.35;}',
+      '.defense-export-stale-gate[data-export-ready="false"]{border-color:#f2d28a;background:#fffaf0;color:#7a4b00;}',
+      '.defense-export-stale-gate strong{display:block;margin-bottom:2px;font-size:12px;}',
       '.defense-evidence-badge{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 8px;padding:6px 8px;border:1px solid #bfd6e8;border-radius:6px;background:#f8fbff;color:#123b5a;font-size:10.5px;line-height:1.3;}',
       '.defense-evidence-badge strong{font-size:11px;}',
       '.defense-evidence-badge[data-status="Missing"]{border-color:#f4b6b6;background:#fff8f8;color:#8a1f1f;}',
@@ -506,6 +562,8 @@
     const body = document.getElementById(PANEL_BODY_ID);
     if (!body) return;
     const pkg = buildDefensePackage();
+    const disabledAttr = pkg.exportGate.canExport ? '' : ' disabled aria-disabled="true"';
+    const disabledTitle = pkg.exportGate.canExport ? '' : ` title="${escapeText(pkg.exportGate.reason)}"`;
     const evidenceCards = pkg.uiEvidenceRegistry.map((item) => `
       <div class="defense-evidence-card">
         <span>${escapeText(item.taskWindow)}</span>
@@ -535,12 +593,16 @@
         <p>${escapeText(pkg.summary.conclusion)}</p>
         <p>${escapeText(pkg.gapNotes.join(' | ') || 'No gap notes.')}</p>
       </section>
+      <section class="defense-export-stale-gate" data-export-ready="${pkg.exportGate.canExport ? 'true' : 'false'}" data-export-status="${escapeText(pkg.exportGate.status)}">
+        <strong>Export Gate: ${escapeText(pkg.exportGate.status)}</strong>
+        <span>${escapeText(pkg.exportGate.reason)}</span>
+      </section>
       <div class="defense-package-actions">
-        <button type="button" data-defense-package-action="json">Download JSON</button>
-        <button type="button" data-defense-package-action="markdown">Download Markdown</button>
-        <button type="button" data-defense-package-action="csv">Download Evidence CSV</button>
-        <button type="button" data-defense-package-action="copy">Copy JSON</button>
-        <button type="button" data-defense-package-action="print">Print / Save PDF</button>
+        <button type="button" data-defense-package-action="json"${disabledAttr}${disabledTitle}>Download JSON</button>
+        <button type="button" data-defense-package-action="markdown"${disabledAttr}${disabledTitle}>Download Markdown</button>
+        <button type="button" data-defense-package-action="csv"${disabledAttr}${disabledTitle}>Download Evidence CSV</button>
+        <button type="button" data-defense-package-action="copy"${disabledAttr}${disabledTitle}>Copy JSON</button>
+        <button type="button" data-defense-package-action="print"${disabledAttr}${disabledTitle}>Print / Save PDF</button>
       </div>
     `;
   }
@@ -568,6 +630,18 @@
       const action = event.target?.dataset?.defensePackageAction;
       if (event.target?.matches?.('[data-defense-package-close]')) panel.hidden = true;
       if (event.target?.matches?.('[data-defense-package-minimize]')) panel.classList.toggle('task-window-minimized');
+      if (action && !defenseExportGate().canExport) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (typeof root.showUiToast === 'function') {
+          root.showUiToast(defenseExportGate().reason, {
+            title: 'Defense Export Package',
+            variant: 'warning'
+          });
+        }
+        renderPanelBody();
+        return;
+      }
       if (action === 'json') downloadDefenseJson();
       if (action === 'markdown') downloadDefenseMarkdown();
       if (action === 'csv') downloadDefenseCsv();
@@ -677,8 +751,10 @@
   const api = {
     version: VERSION,
     schemaVersion: SCHEMA_VERSION,
+    activeDefensePayload,
     buildDefensePackage,
     buildUiEvidenceRegistry,
+    defenseExportGate,
     defensePackageMarkdown,
     defenseEvidenceCsv,
     downloadDefenseJson,

@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCK_VERSION = "2026.06-google-access3";
+  const LOCK_VERSION = "2026.06-google-access5";
   const GOOGLE_IDENTITY_SCRIPT = "https://accounts.google.com/gsi/client";
 
   const state = {
@@ -16,6 +16,7 @@
 
   let googleScriptPromise = null;
   let sessionPromise = null;
+  let sessionRequestId = 0;
   let controlHostObserver = null;
 
   const css = `
@@ -70,6 +71,18 @@
     return fallback;
   }
 
+  function sanitizeStatusMessage(message) {
+    const text = String(message || "").trim();
+    if (!text) return "";
+    if (/Fetch API cannot load|Failed to fetch|NetworkError|Load failed/i.test(text)) {
+      return "Google login belum dapat dimuat. Refresh halaman atau izinkan accounts.google.com.";
+    }
+    if (/^941768542541-|apps\.googleusercontent\.com/i.test(text)) {
+      return "Google login belum dapat dimuat. Refresh halaman atau coba login lagi.";
+    }
+    return text;
+  }
+
   function dispatchState() {
     document.dispatchEvent(new CustomEvent("npsh-auth-state", {
       detail: getPublicState()
@@ -89,6 +102,9 @@
   }
 
   function setState(next) {
+    if (Object.prototype.hasOwnProperty.call(next, "message")) {
+      next.message = sanitizeStatusMessage(next.message);
+    }
     Object.assign(state, next);
     renderState();
     dispatchState();
@@ -126,7 +142,7 @@
     if (!elements.root || !elements.googleButton || !elements.userButton || !elements.logoutButton || !elements.status) return;
     const tone = state.approved ? "approved" : state.authenticated ? "pending" : state.message ? "error" : "ready";
     elements.root.dataset.state = tone;
-    elements.googleButton.hidden = state.approved || state.loading;
+    elements.googleButton.hidden = state.authenticated || state.loading;
     elements.userButton.hidden = !state.authenticated;
     elements.logoutButton.hidden = !state.authenticated;
     elements.userButton.textContent = state.user?.email || "Signed in";
@@ -137,7 +153,7 @@
         ? `Approved: ${state.user?.role || "user"}`
         : state.authenticated
           ? "Waiting approval"
-          : state.message || "Login required for protected PDF";
+          : sanitizeStatusMessage(state.message) || "Login required for protected PDF";
     elements.status.title = elements.status.textContent;
   }
 
@@ -194,8 +210,9 @@
     return googleScriptPromise;
   }
 
-  async function refreshSession() {
-    if (sessionPromise) return sessionPromise;
+  async function refreshSession(options = {}) {
+    if (sessionPromise && !options.force) return sessionPromise;
+    const requestId = ++sessionRequestId;
     sessionPromise = fetch(endpoint("/api/auth/session"), {
       method: "GET",
       credentials: "include",
@@ -203,6 +220,7 @@
     })
       .then(async response => {
         const data = await response.json().catch(() => ({}));
+        if (requestId !== sessionRequestId) return getPublicState();
         if (!response.ok || data.ok === false) {
           setState({
             ready: true,
@@ -225,6 +243,7 @@
         return getPublicState();
       })
       .catch(() => {
+        if (requestId !== sessionRequestId) return getPublicState();
         setState({
           ready: true,
           loading: false,
@@ -236,7 +255,7 @@
         return getPublicState();
       })
       .finally(() => {
-        sessionPromise = null;
+        if (requestId === sessionRequestId) sessionPromise = null;
       });
     return sessionPromise;
   }
@@ -261,13 +280,14 @@
       });
       const data = await loginResponse.json().catch(() => ({}));
       if (!loginResponse.ok || data.ok === false) {
+        const backendMessage = sanitizeStatusMessage(data.message || data.error || "");
         setState({
           ready: true,
           loading: false,
           authenticated: data.authenticated === true,
           approved: data.approved === true,
           user: data.user || null,
-          message: data.message || data.error || "Login failed"
+          message: backendMessage || "Login failed"
         });
         return;
       }
@@ -279,6 +299,7 @@
         user: data.user || null,
         message: ""
       });
+      await refreshSession({ force: true });
     } catch (error) {
       setState({
         ready: true,
@@ -363,8 +384,20 @@
     return false;
   }
 
+  function bindSessionWakeups() {
+    window.addEventListener("focus", () => {
+      if (!state.loading) refreshSession().catch(() => {});
+    }, { passive: true });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && !state.loading) {
+        refreshSession().catch(() => {});
+      }
+    });
+  }
+
   async function init() {
     ensureControl();
+    bindSessionWakeups();
     await Promise.allSettled([refreshSession(), renderGoogleButton()]);
   }
 
