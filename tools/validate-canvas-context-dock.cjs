@@ -12,7 +12,7 @@ const manifestPath = path.join(rootDir, 'FILE_MANIFEST.md');
 const runtime = require(runtimePath);
 
 assert.equal(runtime.version, 'engineering-canvas-context-dock.v2', 'Canvas context dock runtime should expose v2.');
-assert.equal(runtime.cacheKey, '20260608-global-ribbon-placement-lock4', 'Canvas context dock cache key should stay locked.');
+assert.equal(runtime.cacheKey, '20260608-global-ribbon-placement-lock5', 'Canvas context dock cache key should stay locked.');
 assert.equal(typeof runtime.buildDockState, 'function', 'Canvas context dock should expose buildDockState for audit tests.');
 assert.equal(typeof runtime.allowCanvasPropertiesCommandOpen, 'function', 'Canvas context dock should expose the explicit command-open hook for object properties.');
 assert.equal(typeof runtime.clearCanvasSelectionOnly, 'function', 'Canvas context dock should expose the explicit clear hook for canvas properties policy tests.');
@@ -238,18 +238,32 @@ assert(runtimeSource.includes("const CANVAS_PROPERTIES_POLICY_STATE_KEY = '__nps
 assert(runtimeSource.includes("const CANVAS_OBJECT_SELECTOR = '.pfd-object'"), 'Canvas properties open policy should target equipment/boundary/instrument canvas objects.');
 assert(runtimeSource.includes("const CANVAS_PIPE_SELECTOR = '.pipe-line'"), 'Canvas properties open policy should also cover hydraulic pipe-line selection.');
 assert(runtimeSource.includes("const TOOLBAR_PLACEMENT_SELECTOR = '.toolbar-tool-draggable'"), 'Canvas properties open policy should cover ribbon placement from draggable tools.');
+assert(runtimeSource.includes("const EXPLICIT_PROPERTIES_OPEN_TICKET_KEY = '__npshExplicitObjectPropertiesOpenUntil'"), 'Canvas policy should issue an explicit properties-open ticket only from the menu command.');
+assert(runtimeSource.includes('root[EXPLICIT_PROPERTIES_OPEN_TICKET_KEY] = Date.now() + EXPLICIT_PROPERTIES_OPEN_TICKET_MS'), 'Explicit User Task Object Properties command should create the only allowed properties-open ticket.');
 assert(runtimeSource.includes('function installCanvasPropertiesOpenPolicyEventBridge()'), 'Canvas properties open policy should install an event bridge.');
 assert(runtimeSource.includes("documentRef.addEventListener(eventName, handleCanvasPropertiesPolicyPointerStart, true)"), 'Canvas properties open policy should mark selection-only before app click handlers run.');
 assert(runtimeSource.includes('function allowCanvasPropertiesCommandOpen()'), 'Only the explicit User Task Object Properties command should clear canvas select-only mode.');
 assert(runtimeSource.includes("root.__npshAllowCanvasPropertiesCommandOpen = allowCanvasPropertiesCommandOpen"), 'Canvas policy should expose a global explicit command-open hook for the protected app bundle.');
 assert(runtimeSource.includes("documentRef.addEventListener('contextmenu', handleCanvasPropertiesPolicyContextMenu, true)"), 'Right-click context menu should keep select-only mode active instead of opening properties automatically.');
 assert(!runtimeSource.includes("documentRef.addEventListener('contextmenu', clearCanvasSelectionOnly, true)"), 'Right-click context menu must not clear select-only mode by itself.');
+assert(runtimeSource.includes('const CANVAS_OBJECT_DRAG_SETTLE_MS = 1200'), 'Canvas object drag should keep select-only state long enough to suppress post-drag properties windows.');
+assert(runtimeSource.includes('function handleCanvasPropertiesPolicyPointerMove(event)'), 'Canvas properties open policy should detect object drag/move gestures.');
+assert(runtimeSource.includes("markCanvasSelectionOnly('canvas-object-drag', CANVAS_OBJECT_DRAG_SETTLE_MS)"), 'Canvas object move should mark drag-only mode before app click handlers can open properties.');
+assert(runtimeSource.includes("markCanvasSelectionOnly('canvas-object-drag-settle', CANVAS_OBJECT_DRAG_SETTLE_MS)"), 'Canvas object move should keep properties suppressed after drag release.');
+assert(runtimeSource.includes("documentRef.addEventListener(eventName, handleCanvasPropertiesPolicyPointerMove, true)"), 'Canvas object move guard should be installed in capture phase.');
 assert(runtimeSource.includes('event.preventDefault?.();\n    event.stopPropagation?.();\n    event.stopImmediatePropagation?.();\n    dispatchLeftClickCanvasContextMenu(event);'), 'Left-click context menu bridge should suppress the core object click handler after opening the context menu.');
 assert(runtimeSource.includes("documentRef.addEventListener('click', handleCanvasPropertiesPolicyClickForContextMenu, true)"), 'Left-click canvas object selection should open the existing context menu before core object click handlers can start a connection.');
 assert(runtimeSource.includes("new root.MouseEvent('contextmenu'"), 'Left-click context menu bridge should reuse the existing object/pipe context-menu handlers.');
 assert(bundleSource.includes('window.__npshCanvasSelectionOnly?.active)&&renderSidebar(e)'), 'Core selectNode should suppress renderSidebar while canvas select-only mode is active.');
 assert(bundleSource.includes('window.__npshAllowCanvasPropertiesCommandOpen'), 'Core User Task Object Properties command should explicitly clear the canvas select-only guard before opening.');
 assert(bundleSource.includes('label:"User Task Object Properties"'), 'Context menu must retain the explicit User Task Object Properties action.');
+assert(bundleSource.includes('reason="canvas-left-select"'), 'Core canvas object pointerdown should mark select-only before selecting an existing object.');
+assert(bundleSource.includes('reason="canvas-object-drag"'), 'Core canvas object move should mark drag-only before updating object position.');
+assert(bundleSource.includes('reason="canvas-object-drag-settle"'), 'Core canvas object move release should keep properties suppressed after movement.');
+assert(bundleSource.includes('window.__npshCanvasSelectionOnly?.active)){activeChartPumpId='), 'Pump double-click chart window should be suppressed while object selection or drag policy is active.');
+assert(bundleSource.includes('Number(window.__npshExplicitObjectPropertiesOpenUntil||0)>=Date.now()))return pipePropertiesTaskRequestedNodeId=null,!1'), 'Pipe properties window should open only with the explicit User Task Object Properties ticket.');
+assert(bundleSource.includes('Number(window.__npshExplicitObjectPropertiesOpenUntil||0)>=Date.now()))return tankPropertiesTaskRequestedNodeId=null,!1'), 'Tank properties window should open only with the explicit User Task Object Properties ticket.');
+assert(bundleSource.includes('Number(window.__npshExplicitObjectPropertiesOpenUntil||0)>=Date.now()))return objectPropertiesTaskRequestedNodeId=null,!1'), 'Object properties window should open only with the explicit User Task Object Properties ticket.');
 assert(bundleSource.includes('reason="equipment-placement"'), 'Core addEquipment should mark newly placed objects as equipment-placement select-only before selecting them.');
 assert(bundleSource.indexOf('reason="equipment-placement"') < bundleSource.indexOf('selectNode(r,o)'), 'Core addEquipment should set the equipment-placement guard before selectNode runs.');
 assert(bundleSource.includes('setTimeout(()=>{"equipment-placement"===e.reason'), 'Core addEquipment should auto-clear the equipment-placement guard after placement settles.');
@@ -286,15 +300,15 @@ ribbonTools.forEach((tool) => {
   );
 });
 assert(
-  index.includes('app.bundle.min.js?v=20260608-global-ribbon-placement-lock4'),
+  index.includes('app.bundle.min.js?v=20260608-global-ribbon-placement-lock5'),
   'Index must load the core app bundle with the canvas properties policy cache key.'
 );
 assert(
-  index.includes('engineering-canvas-context-dock.js?v=20260608-global-ribbon-placement-lock4'),
+  index.includes('engineering-canvas-context-dock.js?v=20260608-global-ribbon-placement-lock5'),
   'Index must load the canvas context dock runtime with cache key.'
 );
 assert(
-  index.includes('style.min.css?v=20260608-global-ribbon-placement-lock4'),
+  index.includes('style.min.css?v=20260608-global-ribbon-placement-lock5'),
   'Index must load the main stylesheet with the global ribbon placement cache key.'
 );
 assert(
@@ -313,11 +327,11 @@ assert(
   'Thesis branding must not intercept pointer events from toolbar placement tools.'
 );
 assert(
-  manifest.includes('Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260608-global-ribbon-placement-lock4'),
+  manifest.includes('Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260608-global-ribbon-placement-lock5'),
   'Manifest must document the canvas context dock cache key.'
 );
 assert(
-  manifest.includes('Main style cache key: style.min.css?v=20260608-global-ribbon-placement-lock4'),
+  manifest.includes('Main style cache key: style.min.css?v=20260608-global-ribbon-placement-lock5'),
   'Manifest must document the main stylesheet cache key.'
 );
 

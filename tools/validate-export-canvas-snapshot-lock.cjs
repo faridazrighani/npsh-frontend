@@ -12,7 +12,7 @@ const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 
 const BENIGN_FALLBACK_WARNING = "Canvas DOM snapshot was rejected; using manual canvas renderer fallback.";
 const SNAPSHOT_FAILURE_WARNING = "Canvas snapshot could not be captured for Excel export.";
-const BUNDLE_CACHE_KEY = "app.bundle.min.js?v=20260608-global-ribbon-placement-lock4";
+const BUNDLE_CACHE_KEY = "app.bundle.min.js?v=20260608-global-ribbon-placement-lock5";
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");

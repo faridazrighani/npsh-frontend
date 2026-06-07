@@ -10,7 +10,7 @@
   'use strict';
 
   const VERSION = 'engineering-canvas-context-dock.v2';
-  const CACHE_KEY = '20260608-global-ribbon-placement-lock4';
+  const CACHE_KEY = '20260608-global-ribbon-placement-lock5';
   const DOCK_ID = 'canvasContextDock';
   const STYLE_ID = 'canvas-context-dock-style';
   const STORAGE_KEY = 'npsh.canvasContextDock.expanded';
@@ -22,9 +22,12 @@
   const CANVAS_OBJECT_SELECTOR = '.pfd-object';
   const CANVAS_PIPE_SELECTOR = '.pipe-line';
   const TOOLBAR_PLACEMENT_SELECTOR = '.toolbar-tool-draggable';
+  const EXPLICIT_PROPERTIES_OPEN_TICKET_KEY = '__npshExplicitObjectPropertiesOpenUntil';
+  const EXPLICIT_PROPERTIES_OPEN_TICKET_MS = 2500;
   const CANVAS_SELECTION_SETTLE_MS = 180;
   const CANVAS_CONTEXT_MENU_SETTLE_MS = 1800;
   const CANVAS_LEFT_CONTEXT_MENU_MAX_MOVE_PX = 7;
+  const CANVAS_OBJECT_DRAG_SETTLE_MS = 1200;
   const TOOLBAR_PLACEMENT_SETTLE_MS = 900;
   const TOOLBAR_PLACEMENT_GUARD_MS = 30000;
   const FALLBACK_ROUTE = ['Fluid Basis'];
@@ -931,6 +934,7 @@
   function allowCanvasPropertiesCommandOpen() {
     const state = clearCanvasSelectionOnly();
     state.reason = 'explicit-user-task-object-properties';
+    root[EXPLICIT_PROPERTIES_OPEN_TICKET_KEY] = Date.now() + EXPLICIT_PROPERTIES_OPEN_TICKET_MS;
     return state;
   }
 
@@ -1008,11 +1012,28 @@
     }
   }
 
+  function handleCanvasPropertiesPolicyPointerMove(event) {
+    const state = getCanvasPropertiesPolicyState();
+    const start = state.pointerStart;
+    if (!state.active || !start?.selectable || start.toolbarPlacement || start.dragging) return;
+    const point = getEventClientPoint(event);
+    const dx = point.x - start.x;
+    const dy = point.y - start.y;
+    if (Math.hypot(dx, dy) >= CANVAS_LEFT_CONTEXT_MENU_MAX_MOVE_PX) {
+      start.dragging = true;
+      markCanvasSelectionOnly('canvas-object-drag', CANVAS_OBJECT_DRAG_SETTLE_MS);
+    }
+  }
+
   function handleCanvasPropertiesPolicyPointerEnd() {
     const state = getCanvasPropertiesPolicyState();
     if (!state.active) return;
     if (state.reason === 'toolbar-placement') {
       markCanvasSelectionOnly('toolbar-placement-settle', TOOLBAR_PLACEMENT_SETTLE_MS);
+      return;
+    }
+    if (state.reason === 'canvas-object-drag') {
+      markCanvasSelectionOnly('canvas-object-drag-settle', CANVAS_OBJECT_DRAG_SETTLE_MS);
       return;
     }
     if (/^canvas-left/.test(state.reason)) {
@@ -1029,6 +1050,7 @@
     const state = getCanvasPropertiesPolicyState();
     const start = state.pointerStart;
     if (start?.toolbarPlacement) return false;
+    if (start?.dragging) return false;
     if (start?.selectable) {
       const point = getEventClientPoint(event);
       const dx = point.x - start.x;
@@ -1076,6 +1098,9 @@
     documentRef[CANVAS_PROPERTIES_POLICY_EVENT_FLAG] = true;
     ['pointerdown', 'mousedown'].forEach((eventName) => {
       documentRef.addEventListener(eventName, handleCanvasPropertiesPolicyPointerStart, true);
+    });
+    ['pointermove', 'mousemove'].forEach((eventName) => {
+      documentRef.addEventListener(eventName, handleCanvasPropertiesPolicyPointerMove, true);
     });
     ['pointerup', 'mouseup', 'click'].forEach((eventName) => {
       documentRef.addEventListener(eventName, handleCanvasPropertiesPolicyPointerEnd, true);
