@@ -17,7 +17,7 @@ Summary:
 
 ```text
 Total files: 185
-Total size: 69,151,055 bytes
+Total size: 69,152,245 bytes
 ```
 
 Top-level contents:
@@ -97,7 +97,7 @@ Pump readiness visibility cache key: engineering-pump-readiness-visibility-runti
 Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260602-pump-defense-live11
 Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260603-pump-chart-audit9
 Pump performance canonical chart cache key: engineering-pump-performance-canonical-chart.js?v=20260603-canonical-chart2
-Google auth runtime cache key: engineering-google-auth-runtime.js?v=20260607-google-access2
+Google auth runtime cache key: engineering-google-auth-runtime.js?v=20260607-google-access3
 Literature PDF viewer cache key: engineering-literature-pdf-viewer.js?v=20260607-literature-pdf-viewer4
 Live parameter repaint lock cache key: engineering-live-parameter-repaint-lock.css?v=20260605-live-param-repaint-lock1
 Live parameter repaint lock validation: npm run validate:live-parameter-repaint-lock

@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCK_VERSION = "2026.06-google-access2";
+  const LOCK_VERSION = "2026.06-google-access3";
   const GOOGLE_IDENTITY_SCRIPT = "https://accounts.google.com/gsi/client";
 
   const state = {
@@ -56,6 +56,18 @@
 
   function getClientId() {
     return String(getRuntimeConfig().googleClientId || getRuntimeConfig().authGoogleClientId || "").trim();
+  }
+
+  function getFriendlyAuthError(error, fallback = "Google login unavailable") {
+    const message = String(error?.message || error || "").trim();
+    if (!message) return fallback;
+    if (/Fetch API cannot load|Failed to fetch|NetworkError|Load failed/i.test(message)) {
+      return "Google login belum dapat dimuat. Refresh halaman atau izinkan accounts.google.com.";
+    }
+    if (/invalid_client|OAuth client/i.test(message)) {
+      return "Google OAuth Client ID tidak valid.";
+    }
+    return fallback;
   }
 
   function dispatchState() {
@@ -274,7 +286,7 @@
         authenticated: false,
         approved: false,
         user: null,
-        message: error?.message || "Login failed"
+        message: getFriendlyAuthError(error, "Login failed")
       });
     }
   }
@@ -300,7 +312,14 @@
       });
       button.dataset.rendered = "true";
     } catch (error) {
-      setState({ message: error?.message || "Google login unavailable" });
+      if (button.childElementCount > 0 || button.textContent.trim()) {
+        button.dataset.rendered = "true";
+        if (/Fetch API cannot load/i.test(String(error?.message || ""))) {
+          setState({ message: "" });
+          return;
+        }
+      }
+      setState({ message: getFriendlyAuthError(error) });
     }
   }
 
