@@ -1,5 +1,5 @@
 (function registerEngineeringRouteTraceAudit(root) {
-  const VERSION = '2026.06-route-trace-audit-v21';
+  const VERSION = '2026.06-route-trace-audit-v22';
   const PANEL_ID = 'engineeringRouteTraceAuditPanel';
   const PANEL_BODY_ID = 'engineeringRouteTraceAuditPanelBody';
   const MENU_BUTTON_ID = 'menu-tools-route-trace-audit';
@@ -480,19 +480,43 @@
 
   function sinkPropertyRowByLabel(windowNode, label) {
     if (!windowNode?.querySelectorAll) return null;
-    return Array.from(windowNode.querySelectorAll('tr')).find((row) => {
+    const tableRow = Array.from(windowNode.querySelectorAll('tr')).find((row) => {
       const firstCell = Array.from(row.children || []).find((child) => /^(TD|TH)$/i.test(child.tagName || ''));
       return normalizeText(firstCell?.textContent) === label;
+    });
+    if (tableRow) return tableRow;
+    const candidates = [
+      '.fluid-field-row',
+      '.field-row',
+      '.property-row',
+      '.prop-row',
+      '.object-property-row',
+      '[data-field-key]',
+      '[data-property-key]'
+    ].join(',');
+    return Array.from(windowNode.querySelectorAll(candidates)).find((row) => {
+      const labelNode = row.querySelector?.('.fluid-field-label, .field-label, .property-label, .prop-label, label, span');
+      const labelText = normalizeText(labelNode?.textContent || '');
+      if (labelText === label) return true;
+      const directText = normalizeText(Array.from(row.childNodes || [])
+        .filter((node) => node.nodeType === 3)
+        .map((node) => node.textContent)
+        .join(' '));
+      return directText === label;
     }) || null;
   }
 
   function sinkPropertyRowLabelCell(row) {
-    return Array.from(row?.children || []).find((child) => /^(TD|TH)$/i.test(child.tagName || '')) || null;
+    return Array.from(row?.children || []).find((child) => /^(TD|TH)$/i.test(child.tagName || ''))
+      || row?.querySelector?.('.fluid-field-label, .field-label, .property-label, .prop-label, label, span')
+      || null;
   }
 
   function sinkPropertyRowValueCell(row) {
     const cells = Array.from(row?.children || []).filter((child) => /^(TD|TH)$/i.test(child.tagName || ''));
-    return cells[1] || row?.querySelector?.('.task-prop-value, .prop-value, strong') || null;
+    return cells[1]
+      || row?.querySelector?.('.fluid-field-value, .field-value, .property-value, .prop-value, .task-prop-value, .fluid-field-control, strong')
+      || null;
   }
 
   function setRowHiddenForSinkMode(row, hidden, reason) {
@@ -550,7 +574,16 @@
       || sinkPropertyRowByLabel(windowNode, 'Mode')
       || sinkPropertyRowByLabel(windowNode, 'Boundary Abs. Pressure')
       || sinkPropertyRowByLabel(windowNode, 'Calculated Abs. Pressure');
-    return anchor?.closest?.('table') || windowNode?.querySelector?.('table') || null;
+    if (anchor) return anchor.closest?.('table') || null;
+    return windowNode?.querySelector?.('table') || null;
+  }
+
+  function sinkPropertyReadoutContainer(windowNode) {
+    const anchor = sinkPropertyRowByLabel(windowNode, 'Flow Demand')
+      || sinkPropertyRowByLabel(windowNode, 'Boundary Mode')
+      || sinkPropertyRowByLabel(windowNode, 'Pressure Basis')
+      || sinkPropertyRowByLabel(windowNode, 'Calculated Abs. Pressure');
+    return anchor?.parentElement || windowNode?.querySelector?.('.fluid-field-list, .field-list, .property-grid, .properties-grid') || null;
   }
 
   function insertSinkPropertyRowAfterAnchor(table, row, windowNode, anchorLabels = []) {
@@ -579,16 +612,49 @@
     }
     if (typeof document === 'undefined') return 0;
     const table = sinkPropertyReadoutTable(windowNode);
-    if (!table) return 0;
-    const row = document.createElement('tr');
+    let row = null;
+    if (table) {
+      row = document.createElement('tr');
+      const labelCell = document.createElement('td');
+      labelCell.textContent = label;
+      const valueCell = document.createElement('td');
+      valueCell.textContent = value;
+      row.append(labelCell, valueCell);
+      row.dataset.routeTraceSinkModeReadout = 'true';
+      row.dataset.routeTraceSinkModeLock = VERSION;
+      insertSinkPropertyRowAfterAnchor(table, row, windowNode, anchorLabels);
+      return 1;
+    }
+
+    const anchor = anchorLabels
+      .map((anchorLabel) => sinkPropertyRowByLabel(windowNode, anchorLabel))
+      .find(Boolean);
+    const container = anchor?.parentElement || sinkPropertyReadoutContainer(windowNode);
+    if (!container) return 0;
+    row = anchor?.cloneNode?.(true) || document.createElement('div');
+    row.classList?.remove('route-trace-sink-mode-hidden');
+    row.hidden = false;
+    row.removeAttribute?.('aria-hidden');
     row.dataset.routeTraceSinkModeReadout = 'true';
     row.dataset.routeTraceSinkModeLock = VERSION;
-    const labelCell = document.createElement('td');
+    row.dataset.routeTraceSinkModeGenerated = 'true';
+
+    row.querySelectorAll?.('input, select, textarea, button').forEach((control) => control.remove());
+    const labelCell = sinkPropertyRowLabelCell(row) || document.createElement('span');
+    if (!labelCell.parentElement) row.prepend(labelCell);
     labelCell.textContent = label;
-    const valueCell = document.createElement('td');
+    labelCell.classList?.add('fluid-field-label');
+
+    let valueCell = sinkPropertyRowValueCell(row);
+    if (!valueCell || valueCell === labelCell) {
+      valueCell = document.createElement('span');
+      row.appendChild(valueCell);
+    }
     valueCell.textContent = value;
-    row.append(labelCell, valueCell);
-    insertSinkPropertyRowAfterAnchor(table, row, windowNode, anchorLabels);
+    valueCell.classList?.add('fluid-field-value');
+
+    if (anchor?.nextSibling) container.insertBefore(row, anchor.nextSibling);
+    else container.appendChild(row);
     return 1;
   }
 

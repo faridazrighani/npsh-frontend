@@ -54,7 +54,7 @@ const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 
-assert.equal(runtime.version, '2026.06-route-trace-audit-v21', 'Route trace runtime should expose the SNK boundary mode canvas lock version.');
+assert.equal(runtime.version, '2026.06-route-trace-audit-v22', 'Route trace runtime should expose the SNK boundary mode canvas lock version.');
 assert.equal(typeof runtime.sinkCanonicalValues, 'function', 'SNK canonical value helper should be exported for audit completeness checks.');
 assert.equal(typeof runtime.sinkModeDisplayValue, 'function', 'SNK mode display helper should be exported for audit completeness checks.');
 assert.equal(typeof runtime.syncSinkPropertyWindowCanonicalReadouts, 'function', 'SNK properties readout sync should be exported for audit completeness checks.');
@@ -122,8 +122,11 @@ assert(runtimeSource.includes("hideSinkPropertyRows("), 'SNK property window sho
 assert(runtimeSource.includes("'ignored-when-not-flow-demand'"), 'SNK Flow Demand property row should be hidden when the selected mode is not Flow Demand.');
 assert(runtimeSource.includes("'Outlet Pressure Assumption'"), 'Free Outlet property window should expose the atmospheric outlet pressure assumption.');
 assert(runtimeSource.includes("upsertSinkPropertyReadout(windowNode, 'Evaluated Flow'"), 'SNK property window should expose evaluated flow separately from configured demand.');
+assert(runtimeSource.includes("'.fluid-field-row'") && runtimeSource.includes('sinkPropertyReadoutContainer') && runtimeSource.includes('cloneNode'), 'SNK generated readouts should preserve non-table card/grid property layout.');
+assert(runtimeSource.includes("row.querySelectorAll?.('input, select, textarea, button').forEach((control) => control.remove())"), 'SNK generated readouts should remove cloned controls before rendering read-only values.');
+assert(runtimeSource.includes("if (anchor) return anchor.closest?.('table') || null;"), 'SNK generated readouts should not fall back to unrelated tables when a non-table anchor exists.');
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock3'),
+  index.includes('engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock4'),
   'Index must load the route trace audit runtime with the SNK boundary mode lock cache key.'
 );
 assert(

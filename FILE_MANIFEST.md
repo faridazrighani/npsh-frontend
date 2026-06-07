@@ -17,7 +17,7 @@ Summary:
 
 ```text
 Total files: 185
-Total size: 69,152,245 bytes
+Total size: 69,155,111 bytes
 ```
 
 Top-level contents:
@@ -87,7 +87,7 @@ App bundle cache key: app.bundle.min.js?v=20260606-pump-canvas-npsh-hover-lock1
 Bilingual terminology runtime cache key: engineering-bilingual-improvements.js?v=20260607-sink-mode-trace1
 Source canvas parameter runtime cache key: engineering-src-canvas-parameter-runtime.js?v=20260607-src-flow-basis2
 Decimal display runtime cache key: engineering-decimal-display-runtime.js?v=20260607-pump-npsh-source-sink-display-lock4
-Route audit cache key: engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock3
+Route audit cache key: engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock4
 Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260603-realtime-defense1
 Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260605-canvas-context-dock7
 Defense export cache key: engineering-defense-export-package.js?v=20260603-defensev3
