@@ -88,13 +88,13 @@ Release integrity guardrail:
 ```text
 node npsh-api/tools/release-integrity-audit.cjs
 app.bundle.min.js.map sourcesContent: absent
-App bundle cache key: app.bundle.min.js?v=20260608-canvas-properties-command-lock1
+App bundle cache key: app.bundle.min.js?v=20260608-placement-menu-lock2
 Bilingual terminology runtime cache key: engineering-bilingual-improvements.js?v=20260607-sink-mode-trace1
 Source canvas parameter runtime cache key: engineering-src-canvas-parameter-runtime.js?v=20260607-src-flow-basis2
 Decimal display runtime cache key: engineering-decimal-display-runtime.js?v=20260607-pump-npsh-source-sink-display-lock4
 Route audit cache key: engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock8
 Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260607-realtime-defense2
-Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260608-canvas-properties-command-lock1
+Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260608-placement-menu-lock2
 Defense export cache key: engineering-defense-export-package.js?v=20260603-defensev3
 Pipe Moody chart audit cache key: engineering-pipe-moody-chart-audit.js?v=20260607-pipe-moody-audit2
 Runtime API config: same-origin /api/simulate

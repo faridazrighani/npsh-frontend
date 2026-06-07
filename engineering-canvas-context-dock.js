@@ -10,7 +10,7 @@
   'use strict';
 
   const VERSION = 'engineering-canvas-context-dock.v2';
-  const CACHE_KEY = '20260608-canvas-properties-command-lock1';
+  const CACHE_KEY = '20260608-placement-menu-lock2';
   const DOCK_ID = 'canvasContextDock';
   const STYLE_ID = 'canvas-context-dock-style';
   const STORAGE_KEY = 'npsh.canvasContextDock.expanded';
@@ -1056,6 +1056,9 @@
 
   function handleCanvasPropertiesPolicyClickForContextMenu(event) {
     if (!shouldDispatchLeftClickCanvasContextMenu(event)) return;
+    event.preventDefault?.();
+    event.stopPropagation?.();
+    event.stopImmediatePropagation?.();
     dispatchLeftClickCanvasContextMenu(event);
   }
 
@@ -1077,7 +1080,7 @@
     ['pointerup', 'mouseup', 'click'].forEach((eventName) => {
       documentRef.addEventListener(eventName, handleCanvasPropertiesPolicyPointerEnd, true);
     });
-    documentRef.addEventListener('click', handleCanvasPropertiesPolicyClickForContextMenu, false);
+    documentRef.addEventListener('click', handleCanvasPropertiesPolicyClickForContextMenu, true);
     documentRef.addEventListener('contextmenu', handleCanvasPropertiesPolicyContextMenu, true);
   }
 
