@@ -11,8 +11,9 @@ const manifestPath = path.join(rootDir, 'FILE_MANIFEST.md');
 const runtime = require(runtimePath);
 
 assert.equal(runtime.version, 'engineering-canvas-context-dock.v2', 'Canvas context dock runtime should expose v2.');
-assert.equal(runtime.cacheKey, '20260607-canvas-properties-policy1', 'Canvas context dock cache key should stay locked.');
+assert.equal(runtime.cacheKey, '20260608-canvas-properties-command-lock1', 'Canvas context dock cache key should stay locked.');
 assert.equal(typeof runtime.buildDockState, 'function', 'Canvas context dock should expose buildDockState for audit tests.');
+assert.equal(typeof runtime.allowCanvasPropertiesCommandOpen, 'function', 'Canvas context dock should expose the explicit command-open hook for object properties.');
 assert.equal(typeof runtime.clearCanvasSelectionOnly, 'function', 'Canvas context dock should expose the explicit clear hook for canvas properties policy tests.');
 assert.equal(typeof runtime.resolveRouteNodes, 'function', 'Canvas context dock should expose route resolution for audit tests.');
 assert.equal(typeof runtime.rectsOverlapOrTooClose, 'function', 'Canvas context dock should expose legend collision geometry for audit tests.');
@@ -202,8 +203,8 @@ try {
 
 runtime.markCanvasSelectionOnly('unit-test', 1000);
 assert.equal(runtime.isCanvasSelectionOnlyActive(), true, 'Canvas select-only state should be settable for object click policy.');
-runtime.clearCanvasSelectionOnly();
-assert.equal(runtime.isCanvasSelectionOnlyActive(), false, 'Canvas select-only state should be clearable before explicit context-menu properties open.');
+runtime.allowCanvasPropertiesCommandOpen();
+assert.equal(runtime.isCanvasSelectionOnlyActive(), false, 'Canvas select-only state should clear only when the explicit User Task Object Properties command is invoked.');
 
 const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const bundleSource = fs.readFileSync(bundlePath, 'utf8');
@@ -238,9 +239,15 @@ assert(runtimeSource.includes("const CANVAS_PIPE_SELECTOR = '.pipe-line'"), 'Can
 assert(runtimeSource.includes("const TOOLBAR_PLACEMENT_SELECTOR = '.toolbar-tool-draggable'"), 'Canvas properties open policy should cover ribbon placement from draggable tools.');
 assert(runtimeSource.includes('function installCanvasPropertiesOpenPolicyEventBridge()'), 'Canvas properties open policy should install an event bridge.');
 assert(runtimeSource.includes("documentRef.addEventListener(eventName, handleCanvasPropertiesPolicyPointerStart, true)"), 'Canvas properties open policy should mark selection-only before app click handlers run.');
-assert(runtimeSource.includes("documentRef.addEventListener('contextmenu', clearCanvasSelectionOnly, true)"), 'Right-click context menu should clear select-only mode before User Task Object Properties opens.');
+assert(runtimeSource.includes('function allowCanvasPropertiesCommandOpen()'), 'Only the explicit User Task Object Properties command should clear canvas select-only mode.');
+assert(runtimeSource.includes("root.__npshAllowCanvasPropertiesCommandOpen = allowCanvasPropertiesCommandOpen"), 'Canvas policy should expose a global explicit command-open hook for the protected app bundle.');
+assert(runtimeSource.includes("documentRef.addEventListener('contextmenu', handleCanvasPropertiesPolicyContextMenu, true)"), 'Right-click context menu should keep select-only mode active instead of opening properties automatically.');
+assert(!runtimeSource.includes("documentRef.addEventListener('contextmenu', clearCanvasSelectionOnly, true)"), 'Right-click context menu must not clear select-only mode by itself.');
+assert(runtimeSource.includes("documentRef.addEventListener('click', handleCanvasPropertiesPolicyClickForContextMenu, false)"), 'Left-click canvas object selection should open the existing context menu after app selection handlers settle.');
+assert(runtimeSource.includes("new root.MouseEvent('contextmenu'"), 'Left-click context menu bridge should reuse the existing object/pipe context-menu handlers.');
 assert(bundleSource.includes('window.__npshCanvasSelectionOnly?.active)&&renderSidebar(e)'), 'Core selectNode should suppress renderSidebar while canvas select-only mode is active.');
-assert(bundleSource.includes('label:"User Task Object Properties"'), 'Right-click context menu must retain the explicit User Task Object Properties action.');
+assert(bundleSource.includes('window.__npshAllowCanvasPropertiesCommandOpen'), 'Core User Task Object Properties command should explicitly clear the canvas select-only guard before opening.');
+assert(bundleSource.includes('label:"User Task Object Properties"'), 'Context menu must retain the explicit User Task Object Properties action.');
 assert(/\.context-dock-title\s*\{[\s\S]*?font-weight:\s*800;/.test(runtimeSource), 'Typography lock: Fluid Basis title must stay bold.');
 assert(/\.context-dock-route-label\s*\{[\s\S]*?font-weight:\s*800;/.test(runtimeSource), 'Typography lock: Route label must stay bold.');
 assert(/\.context-dock-cell\[data-cell-id="fluid"\]\s+\.context-dock-value\s*\{[\s\S]*?font-weight:\s*800;/.test(runtimeSource), 'Typography lock: active fluid value must stay bold.');
@@ -253,15 +260,15 @@ assert(!runtimeSource.includes('innerHTML ='), 'Runtime should not render model-
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(
-  index.includes('app.bundle.min.js?v=20260607-canvas-properties-policy1'),
+  index.includes('app.bundle.min.js?v=20260608-canvas-properties-command-lock1'),
   'Index must load the core app bundle with the canvas properties policy cache key.'
 );
 assert(
-  index.includes('engineering-canvas-context-dock.js?v=20260607-canvas-properties-policy1'),
+  index.includes('engineering-canvas-context-dock.js?v=20260608-canvas-properties-command-lock1'),
   'Index must load the canvas context dock runtime with cache key.'
 );
 assert(
-  manifest.includes('Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260607-canvas-properties-policy1'),
+  manifest.includes('Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260608-canvas-properties-command-lock1'),
   'Manifest must document the canvas context dock cache key.'
 );
 
