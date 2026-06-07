@@ -10,7 +10,7 @@
   'use strict';
 
   const VERSION = 'engineering-canvas-context-dock.v2';
-  const CACHE_KEY = '20260608-placement-menu-lock2';
+  const CACHE_KEY = '20260608-global-ribbon-placement-lock4';
   const DOCK_ID = 'canvasContextDock';
   const STYLE_ID = 'canvas-context-dock-style';
   const STORAGE_KEY = 'npsh.canvasContextDock.expanded';

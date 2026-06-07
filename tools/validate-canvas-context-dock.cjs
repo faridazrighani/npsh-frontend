@@ -6,12 +6,13 @@ const rootDir = path.resolve(__dirname, '..');
 const runtimePath = path.join(rootDir, 'engineering-canvas-context-dock.js');
 const bundlePath = path.join(rootDir, 'app.bundle.min.js');
 const indexPath = path.join(rootDir, 'index.html');
+const stylePath = path.join(rootDir, 'style.min.css');
 const manifestPath = path.join(rootDir, 'FILE_MANIFEST.md');
 
 const runtime = require(runtimePath);
 
 assert.equal(runtime.version, 'engineering-canvas-context-dock.v2', 'Canvas context dock runtime should expose v2.');
-assert.equal(runtime.cacheKey, '20260608-placement-menu-lock2', 'Canvas context dock cache key should stay locked.');
+assert.equal(runtime.cacheKey, '20260608-global-ribbon-placement-lock4', 'Canvas context dock cache key should stay locked.');
 assert.equal(typeof runtime.buildDockState, 'function', 'Canvas context dock should expose buildDockState for audit tests.');
 assert.equal(typeof runtime.allowCanvasPropertiesCommandOpen, 'function', 'Canvas context dock should expose the explicit command-open hook for object properties.');
 assert.equal(typeof runtime.clearCanvasSelectionOnly, 'function', 'Canvas context dock should expose the explicit clear hook for canvas properties policy tests.');
@@ -252,6 +253,8 @@ assert(bundleSource.includes('label:"User Task Object Properties"'), 'Context me
 assert(bundleSource.includes('reason="equipment-placement"'), 'Core addEquipment should mark newly placed objects as equipment-placement select-only before selecting them.');
 assert(bundleSource.indexOf('reason="equipment-placement"') < bundleSource.indexOf('selectNode(r,o)'), 'Core addEquipment should set the equipment-placement guard before selectNode runs.');
 assert(bundleSource.includes('setTimeout(()=>{"equipment-placement"===e.reason'), 'Core addEquipment should auto-clear the equipment-placement guard after placement settles.');
+assert(bundleSource.includes('.persistent-object-properties-task-window[data-node-id="${e}"]'), 'Core addEquipment cleanup should remove persistent object properties windows opened as a placement side effect.');
+assert(bundleSource.includes('setTimeout(a,250)'), 'Core addEquipment cleanup should retry after async render effects before explicit properties opens are allowed.');
 assert(/\.context-dock-title\s*\{[\s\S]*?font-weight:\s*800;/.test(runtimeSource), 'Typography lock: Fluid Basis title must stay bold.');
 assert(/\.context-dock-route-label\s*\{[\s\S]*?font-weight:\s*800;/.test(runtimeSource), 'Typography lock: Route label must stay bold.');
 assert(/\.context-dock-cell\[data-cell-id="fluid"\]\s+\.context-dock-value\s*\{[\s\S]*?font-weight:\s*800;/.test(runtimeSource), 'Typography lock: active fluid value must stay bold.');
@@ -262,18 +265,60 @@ assert(/\.context-dock-audit-value\s*\{[\s\S]*?font-weight:\s*400;/.test(runtime
 assert(!runtimeSource.includes('innerHTML ='), 'Runtime should not render model-derived data with innerHTML.');
 
 const index = fs.readFileSync(indexPath, 'utf8');
+const style = fs.readFileSync(stylePath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
+const ribbonTools = [
+  { group: 'Equipment', title: 'Pump', aria: 'Add Pump' },
+  { group: 'Equipment', title: 'Tank', aria: 'Add Tank' },
+  { group: 'Equipment', title: 'Vessel H', aria: 'Add Vessel H' },
+  { group: 'Equipment', title: 'Vessel V', aria: 'Add Vessel V' },
+  { group: 'Equipment', title: 'Exchanger', aria: 'Add Exchanger' },
+  { group: 'Boundary', title: 'Source', aria: 'Add Source' },
+  { group: 'Boundary', title: 'Sink', aria: 'Add Sink' },
+  { group: 'Piping', title: 'Valve', aria: 'Add Valve' },
+  { group: 'Instruments', title: 'PTF', aria: 'Add PTF' },
+  { group: 'Instruments', title: 'LIC', aria: 'Add LIC' }
+];
+ribbonTools.forEach((tool) => {
+  assert(
+    index.includes(`class="toolbar-tool toolbar-tool-draggable" title="${tool.title}" aria-label="${tool.aria}"`),
+    `${tool.group} ribbon tool ${tool.title} must remain a draggable placement-only canvas tool.`
+  );
+});
 assert(
-  index.includes('app.bundle.min.js?v=20260608-placement-menu-lock2'),
+  index.includes('app.bundle.min.js?v=20260608-global-ribbon-placement-lock4'),
   'Index must load the core app bundle with the canvas properties policy cache key.'
 );
 assert(
-  index.includes('engineering-canvas-context-dock.js?v=20260608-placement-menu-lock2'),
+  index.includes('engineering-canvas-context-dock.js?v=20260608-global-ribbon-placement-lock4'),
   'Index must load the canvas context dock runtime with cache key.'
 );
 assert(
-  manifest.includes('Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260608-placement-menu-lock2'),
+  index.includes('style.min.css?v=20260608-global-ribbon-placement-lock4'),
+  'Index must load the main stylesheet with the global ribbon placement cache key.'
+);
+assert(
+  index.includes('.toolbar-palette{display:flex;align-items:stretch;gap:6px;overflow-x:visible;padding-bottom:2px;min-height:54px;min-width:0;flex:0 0 auto;position:relative;z-index:3}') &&
+    style.includes('.toolbar-palette{display:flex;align-items:stretch;gap:6px;overflow-x:visible;padding-bottom:2px;min-height:54px;min-width:0;flex:0 0 auto;position:relative;z-index:3;'),
+  'Toolbar palette must stay above thesis branding for global drag hit-testing.'
+);
+assert(
+  index.includes('@media (min-width:768px) and (orientation:landscape){.ribbon{overflow-x:auto}.toolbar-palette{flex:0 0 auto;max-width:none;overflow:visible;') &&
+    style.includes('@media (min-width:768px) and (orientation:landscape){.ribbon{overflow-x:auto}.toolbar-palette{flex:0 0 auto;max-width:none;overflow:visible;'),
+  'Landscape toolbar must not clip Piping or Instrument drag targets behind responsive scroll masks.'
+);
+assert(
+  index.includes('.academic-identity *{pointer-events:none}') &&
+    style.includes('.academic-identity *{pointer-events:none}'),
+  'Thesis branding must not intercept pointer events from toolbar placement tools.'
+);
+assert(
+  manifest.includes('Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260608-global-ribbon-placement-lock4'),
   'Manifest must document the canvas context dock cache key.'
+);
+assert(
+  manifest.includes('Main style cache key: style.min.css?v=20260608-global-ribbon-placement-lock4'),
+  'Manifest must document the main stylesheet cache key.'
 );
 
 console.log('Canvas context dock validation passed.');
