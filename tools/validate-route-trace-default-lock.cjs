@@ -12,7 +12,7 @@ const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 
-assert.equal(runtime.version, '2026.06-route-trace-audit-v20', 'Route trace audit runtime should expose the locked v20 version.');
+assert.equal(runtime.version, '2026.06-route-trace-audit-v21', 'Route trace audit runtime should expose the locked v21 version.');
 assert.equal(typeof runtime.openRouteAuditPanel, 'function', 'Dedicated route audit panel should remain available.');
 assert.equal(typeof runtime.pruneDefaultCanvasRouteTraceOverlays, 'function', 'Canvas route trace overlay pruning should be exposed for audit tests.');
 assert.equal(typeof runtime.pruneDefaultPumpRouteTraceRows, 'function', 'Pump route trace row pruning should be exposed for audit tests.');
@@ -54,6 +54,7 @@ assert(runtimeSource.includes('Sink Elev.:'), 'SNK hover tooltip should include 
 assert(runtimeSource.includes('Mode: ${mode'), 'SNK hover tooltip should normalize Flow mode to Flow Demand where applicable.');
 assert(runtimeSource.includes('const corePatterns = [/^Mode:/i, /^Sink Flow:/i, /^Sink P abs:/i, /^Sink Elev\\.:/i, /^Sink Head:/i];'), 'SNK hover tooltip should order canonical rows like the canvas card.');
 assert(runtimeSource.includes('.route-trace-canvas-overlay-hidden{display:none!important;}'), 'Canvas overlay hidden class should be enforced by runtime CSS.');
+assert(runtimeSource.includes('.route-trace-sink-mode-hidden{display:none!important;}'), 'SNK mode-ignored property rows should be hidden by runtime CSS.');
 assert(runtimeSource.includes('function pruneDefaultPumpRouteTraceRows'), 'Runtime should prune legacy route/loss and hidden pump rows inside pump live panels.');
 assert(runtimeSource.includes('function pruneDefaultSinkCanvasRows'), 'Runtime should prune hidden SNK rows inside sink live panels.');
 assert(runtimeSource.includes('function ensureDefaultSinkCanvasRows'), 'Runtime should ensure Sink Flow/Sink Elev./Sink Head rows inside sink live panels.');
@@ -487,11 +488,11 @@ try {
 }
 
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock2'),
+  index.includes('engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock3'),
   'Index must load the route trace audit runtime with the default-lock cache key.'
 );
 assert(
-  manifest.includes('Route audit cache key: engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock2'),
+  manifest.includes('Route audit cache key: engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock3'),
   'Manifest must document the route trace default-lock cache key.'
 );
 

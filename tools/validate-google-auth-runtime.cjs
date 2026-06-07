@@ -17,7 +17,7 @@ const literatureRuntime = read("engineering-literature-pdf-viewer.js");
 const packageJson = JSON.parse(read("package.json"));
 const manifest = read("FILE_MANIFEST.md");
 
-assert(index.includes('"googleClientId":"941768542541-kos89u2knlv2vus0ctoclaq0850dsq1.apps.googleusercontent.com"'), "Runtime config must include the public Google OAuth client ID.");
+assert(index.includes('"googleClientId":"941768542541-kos89u2knlv2vus0ctotclaq0850dsq1.apps.googleusercontent.com"'), "Runtime config must include the public Google OAuth client ID.");
 assert(index.includes("engineering-google-auth-runtime.js?v=20260607-google-access2"), "Index must load the cache-busted Google auth runtime.");
 assert(
   index.indexOf("engineering-google-auth-runtime.js?v=20260607-google-access2") < index.indexOf("engineering-src-canvas-parameter-runtime.js"),

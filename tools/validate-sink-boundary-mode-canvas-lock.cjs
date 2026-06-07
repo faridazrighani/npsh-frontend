@@ -54,7 +54,7 @@ const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 
-assert.equal(runtime.version, '2026.06-route-trace-audit-v20', 'Route trace runtime should expose the SNK boundary mode canvas lock version.');
+assert.equal(runtime.version, '2026.06-route-trace-audit-v21', 'Route trace runtime should expose the SNK boundary mode canvas lock version.');
 assert.equal(typeof runtime.sinkCanonicalValues, 'function', 'SNK canonical value helper should be exported for audit completeness checks.');
 assert.equal(typeof runtime.sinkModeDisplayValue, 'function', 'SNK mode display helper should be exported for audit completeness checks.');
 assert.equal(typeof runtime.syncSinkPropertyWindowCanonicalReadouts, 'function', 'SNK properties readout sync should be exported for audit completeness checks.');
@@ -116,10 +116,14 @@ assert(runtimeSource.includes('function sinkBoundaryModeRaw'), 'Runtime should h
 assert(runtimeSource.includes("if (kind === 'free-outlet') return firstFiniteValue(tracePressureAbs, ATM_PRESSURE_BAR_A);"), 'Free Outlet pressure must not fall back to stale Flow Demand pressure.');
 assert(runtimeSource.includes('sinkHeadForSelectedSinkMode'), 'SNK head should be mode-aware instead of always using stale solved head first.');
 assert(runtimeSource.includes('function syncSinkPropertyWindowCanonicalReadouts'), 'SNK properties panel should sync compact readouts from the same canonical values as canvas.');
-assert(runtimeSource.includes("sinkPropertyRowByLabel(windowNode, 'Calculated Abs. Pressure')"), 'SNK compact Calculated Abs. Pressure row should be explicitly synchronized.');
+assert(runtimeSource.includes("setSinkPropertyRowValue(windowNode, 'Calculated Abs. Pressure'"), 'SNK compact Calculated Abs. Pressure row should be explicitly synchronized.');
 assert(runtimeSource.includes("formatCanvasValue(canonical.pressureAbsBar, 'bar a')"), 'SNK compact pressure readout should use canonical selected-boundary pressure.');
+assert(runtimeSource.includes("hideSinkPropertyRows("), 'SNK property window should hide mode-ignored rows.');
+assert(runtimeSource.includes("'ignored-when-not-flow-demand'"), 'SNK Flow Demand property row should be hidden when the selected mode is not Flow Demand.');
+assert(runtimeSource.includes("'Outlet Pressure Assumption'"), 'Free Outlet property window should expose the atmospheric outlet pressure assumption.');
+assert(runtimeSource.includes("upsertSinkPropertyReadout(windowNode, 'Evaluated Flow'"), 'SNK property window should expose evaluated flow separately from configured demand.');
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock2'),
+  index.includes('engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock3'),
   'Index must load the route trace audit runtime with the SNK boundary mode lock cache key.'
 );
 assert(
