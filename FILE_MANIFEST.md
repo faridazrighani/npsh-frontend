@@ -16,8 +16,8 @@ Purpose:
 Summary:
 
 ```text
-Total files: 183
-Total size: 69,126,290 bytes
+Total files: 185
+Total size: 69,143,497 bytes
 ```
 
 Top-level contents:
@@ -47,7 +47,8 @@ engineering-defense-export-package.js public-safe one-click defense report expor
 engineering-pump-formula-defense-live-audit.js public-safe live Pump Formula Defense badges, trace-row source/literature notes, and protected backend refresh bridge for advisor-facing pump NPSH evidence
 engineering-pump-performance-chart-audit.js public-safe pump performance chart audit guard that suppresses fallback/duty-point fit curves, keeps no-data charts visually clean, requires sourced curve data, and redraws eligible curves on log-log axes
 engineering-pump-performance-canonical-chart.js public-safe operational chart renderer that uses solver-owned performanceChartData before legacy chart arrays or pump props
-engineering-literature-pdf-viewer.js public-safe Literature task-window viewer that adds Help -> Literature, renders private book_pdf PDFs through the same-origin API with PDF.js canvas pages, zoom/page controls, no visible source links, and user-resizable window sizing
+engineering-google-auth-runtime.js public-safe Google Identity Services frontend bridge that renders a sign-in control, sends ID tokens to the backend, reads the HttpOnly app session, exposes NPSHAuth.requireApproved, and keeps approved/pending status visible
+engineering-literature-pdf-viewer.js public-safe Literature task-window viewer that adds Help -> Literature, requires an approved Google app session, renders private book_pdf PDFs through the same-origin API with PDF.js canvas pages, zoom/page controls, no visible source links, and user-resizable window sizing
 engineering-live-parameter-repaint-lock.css public-safe live canvas parameter paint-lock override that removes transient Solve repaint shadows from parameter cards, pump status badge, and pump status icon glow
 style.min.css           minified styles
 png/                    public images and favicon
@@ -61,7 +62,8 @@ tools/validate-global-live-indicator-engine-link.cjs Node validation for Global 
 tools/validate-canvas-context-dock.cjs Node validation for default-collapsed Fluid Basis dock behavior, sticky canvas viewport positioning, mobile compact lock, responsive Fluid Basis symbols, route trace source preference, stale freshness display, and cache-busted runtime load
 tools/validate-live-parameter-repaint-lock.cjs Node validation for locked live parameter repaint CSS, cache key, opaque backgrounds, no panel/badge shadow, and pump icon outline-only status display
 tools/validate-export-canvas-snapshot-lock.cjs Node validation for silent normal export canvas fallback, retained real-failure warning, and stable manual renderer snapshot path
-tools/validate-literature-pdf-viewer.cjs Node validation for Help -> Literature flyout, local PDF.js canvas viewer, zoom/page controls, same-origin literature API, resizable task window, and no private GitHub source links in public runtime
+tools/validate-literature-pdf-viewer.cjs Node validation for Help -> Literature flyout, approved Google app-session guard, local PDF.js canvas viewer, zoom/page controls, same-origin literature API, resizable task window, and no private GitHub source links in public runtime
+tools/validate-google-auth-runtime.cjs Node validation for Google Identity Services runtime wiring, backend auth endpoints, credentialed session fetches, approved-session guard, and cache-busted runtime load
 tools/validate-pump-readiness-visibility-lock.cjs Node validation for late-added developer Pump Action Readiness panel hiding, childList-only observer scope, cache-busted runtime load, and manifest lock
 ```
 
@@ -95,11 +97,13 @@ Pump readiness visibility cache key: engineering-pump-readiness-visibility-runti
 Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260602-pump-defense-live11
 Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260603-pump-chart-audit9
 Pump performance canonical chart cache key: engineering-pump-performance-canonical-chart.js?v=20260603-canonical-chart2
-Literature PDF viewer cache key: engineering-literature-pdf-viewer.js?v=20260606-literature-pdf-viewer3
+Google auth runtime cache key: engineering-google-auth-runtime.js?v=20260607-google-access2
+Literature PDF viewer cache key: engineering-literature-pdf-viewer.js?v=20260607-literature-pdf-viewer4
 Live parameter repaint lock cache key: engineering-live-parameter-repaint-lock.css?v=20260605-live-param-repaint-lock1
 Live parameter repaint lock validation: npm run validate:live-parameter-repaint-lock
 Export canvas snapshot validation: npm run validate:export-canvas-snapshot-lock
 Literature PDF viewer validation: npm run validate:literature-pdf-viewer
+Google auth runtime validation: npm run validate:google-auth-runtime
 SNK boundary mode canvas lock validation: npm run validate:sink-boundary-mode-canvas-lock
 Pump readiness visibility validation: npm run validate:pump-readiness-visibility-lock
 Pages API proxy: _worker.js -> env.NPSH_API.fetch(request), optional X-NPSH-API-Proxy-Secret from env.NPSH_API_PROXY_SECRET, static fallback -> env.ASSETS.fetch(request)

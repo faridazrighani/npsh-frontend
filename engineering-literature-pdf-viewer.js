@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCK_VERSION = "2026.06-literature-pdf-viewer3";
+  const LOCK_VERSION = "2026.06-literature-pdf-viewer4";
   const PDFJS_SCRIPT = "vendor/pdf.min.js?v=20260606-literature-pdf-viewer3";
   const PDFJS_WORKER = "vendor/pdf.worker.min.js?v=20260606-literature-pdf-viewer3";
   const BOOKS = [
@@ -391,6 +391,13 @@
     setStatus("Opening literature...");
 
     try {
+      if (window.NPSHAuth?.requireApproved) {
+        const allowed = await window.NPSHAuth.requireApproved({ resource: book.label });
+        if (!allowed) {
+          setStatus("Login Google is required and the account must be approved before this PDF can be opened.", "error");
+          return;
+        }
+      }
       const pdfjs = await loadPdfJs();
       const task = pdfjs.getDocument({
         url: buildPdfEndpoint(book.id),
@@ -404,7 +411,16 @@
       updateControls();
       await renderPage();
     } catch (error) {
-      setStatus(error?.message || "Unable to open literature.", "error");
+      const message = String(error?.message || "");
+      if (message.includes("Unexpected server response (401)")) {
+        setStatus("Login Google is required before this PDF can be opened.", "error");
+        return;
+      }
+      if (message.includes("Unexpected server response (403)")) {
+        setStatus("Your Google account is not approved for this PDF yet.", "error");
+        return;
+      }
+      setStatus(message || "Unable to open literature.", "error");
     }
   }
 

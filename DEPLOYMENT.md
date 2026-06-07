@@ -39,6 +39,17 @@ Protected runtime:
 {"apiBaseUrl":"","simulationEndpoint":"/api/simulate","backendMode":"primary","backendPrimaryEnabled":true,"protectedFrontend":true}
 ```
 
+Google-approved literature runtime:
+
+```text
+Public Client ID: 941768542541-kos89u2knlv2vus0ctoclaq0850dsq1.apps.googleusercontent.com
+Frontend runtime: engineering-google-auth-runtime.js
+Backend session: /api/auth/google, /api/auth/session, /api/auth/logout
+Protected PDF path: /api/literature/*/pdf
+```
+
+Do not add Apps Script secrets, GitHub tokens, or session secrets to this public frontend package. Those values belong only in the private `npsh-api` Worker environment.
+
 Important:
 
 - Do not upload source maps with source content; `app.bundle.min.js.map` is a public-safe self-map stub for PageSpeed diagnostics.

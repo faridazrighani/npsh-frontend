@@ -30,7 +30,7 @@ const expectedBooks = [
 assert(index.includes('id="menu-literature"'), "Help menu must include Literature.");
 assert(index.includes('id="dropdown-literature"'), "Help menu must include the Literature right-side dropdown.");
 assert(index.includes("dropdown-submenu-flyout literature-submenu"), "Literature menu must be a right-side flyout.");
-assert(index.includes("engineering-literature-pdf-viewer.js?v=20260606-literature-pdf-viewer3"), "Index must load the cache-busted literature viewer runtime.");
+assert(index.includes("engineering-literature-pdf-viewer.js?v=20260607-literature-pdf-viewer4"), "Index must load the cache-busted literature viewer runtime.");
 
 for (const bookId of expectedBooks) {
   assert(index.includes(`data-literature-id="${bookId}"`), `Index menu must include ${bookId}.`);
@@ -40,6 +40,7 @@ for (const bookId of expectedBooks) {
 assert(runtime.includes("vendor/pdf.min.js?v=20260606-literature-pdf-viewer3"), "Runtime must load local PDF.js.");
 assert(runtime.includes("vendor/pdf.worker.min.js?v=20260606-literature-pdf-viewer3"), "Runtime must configure local PDF.js worker.");
 assert(runtime.includes("pdfjs.getDocument"), "Runtime must render with PDF.js.");
+assert(runtime.includes("window.NPSHAuth?.requireApproved"), "Runtime must require the approved Google app session before opening protected PDFs.");
 assert(runtime.includes("disableAutoFetch: true"), "Runtime must avoid full eager PDF fetches.");
 assert(runtime.includes("rangeChunkSize: 131072"), "Runtime must request PDF range chunks.");
 assert(runtime.includes("literature-pdf-canvas"), "Runtime must render PDF pages to a canvas.");
@@ -58,7 +59,7 @@ assert(
   "package.json must expose validate:literature-pdf-viewer."
 );
 assert(
-  manifest.includes("Literature PDF viewer cache key: engineering-literature-pdf-viewer.js?v=20260606-literature-pdf-viewer3"),
+  manifest.includes("Literature PDF viewer cache key: engineering-literature-pdf-viewer.js?v=20260607-literature-pdf-viewer4"),
   "Manifest must document the literature viewer cache key."
 );
 assert(
