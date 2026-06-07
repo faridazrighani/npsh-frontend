@@ -4,19 +4,23 @@ const path = require('node:path');
 
 const rootDir = path.resolve(__dirname, '..');
 const runtimePath = path.join(rootDir, 'engineering-canvas-context-dock.js');
+const bundlePath = path.join(rootDir, 'app.bundle.min.js');
 const indexPath = path.join(rootDir, 'index.html');
 const manifestPath = path.join(rootDir, 'FILE_MANIFEST.md');
 
 const runtime = require(runtimePath);
 
 assert.equal(runtime.version, 'engineering-canvas-context-dock.v2', 'Canvas context dock runtime should expose v2.');
-assert.equal(runtime.cacheKey, '20260605-canvas-context-dock7', 'Canvas context dock cache key should stay locked.');
+assert.equal(runtime.cacheKey, '20260607-canvas-properties-policy1', 'Canvas context dock cache key should stay locked.');
 assert.equal(typeof runtime.buildDockState, 'function', 'Canvas context dock should expose buildDockState for audit tests.');
+assert.equal(typeof runtime.clearCanvasSelectionOnly, 'function', 'Canvas context dock should expose the explicit clear hook for canvas properties policy tests.');
 assert.equal(typeof runtime.resolveRouteNodes, 'function', 'Canvas context dock should expose route resolution for audit tests.');
 assert.equal(typeof runtime.rectsOverlapOrTooClose, 'function', 'Canvas context dock should expose legend collision geometry for audit tests.');
 assert.equal(typeof runtime.syncCanvasStatusLegendVisibility, 'function', 'Canvas context dock should expose Pump Status visibility sync for audit tests.');
 assert.equal(typeof runtime.getStoredExpandedState, 'function', 'Canvas context dock should expose stored expanded state for audit tests.');
 assert.equal(typeof runtime.getEffectiveExpandedState, 'function', 'Canvas context dock should expose effective expanded state for audit tests.');
+assert.equal(typeof runtime.isCanvasSelectionOnlyActive, 'function', 'Canvas context dock should expose canvas select-only active state for audit tests.');
+assert.equal(typeof runtime.markCanvasSelectionOnly, 'function', 'Canvas context dock should expose canvas select-only marker for audit tests.');
 assert.equal(typeof runtime.setExpanded, 'function', 'Canvas context dock should expose expand/collapse setter for audit tests.');
 assert.equal(typeof runtime.isMobileViewport, 'function', 'Canvas context dock should expose mobile viewport detection for audit tests.');
 
@@ -196,7 +200,13 @@ try {
   global.localStorage = savedLocalStorage;
 }
 
+runtime.markCanvasSelectionOnly('unit-test', 1000);
+assert.equal(runtime.isCanvasSelectionOnlyActive(), true, 'Canvas select-only state should be settable for object click policy.');
+runtime.clearCanvasSelectionOnly();
+assert.equal(runtime.isCanvasSelectionOnlyActive(), false, 'Canvas select-only state should be clearable before explicit context-menu properties open.');
+
 const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
+const bundleSource = fs.readFileSync(bundlePath, 'utf8');
 assert(runtimeSource.includes('@media (max-width: 639px)'), 'Runtime CSS must include a cellular breakpoint.');
 assert(runtimeSource.includes('position: sticky'), 'Fluid Basis dock should stay pinned to the canvas viewport while the canvas is panned.');
 assert(runtimeSource.includes('width: min(940px, calc(100% - 182px));'), 'Desktop dock width should preserve the existing left/right visual footprint.');
@@ -222,6 +232,15 @@ assert(runtimeSource.includes("typeof root.ResizeObserver !== 'function'"), 'Pum
 assert(runtimeSource.includes('legendVisibilityObserver.observe(dock)'), 'Pump Status collision lock should observe the Fluid Basis dock rectangle.');
 assert(runtimeSource.includes('legendVisibilityObserver.observe(legend)'), 'Pump Status collision lock should observe the Pump Status rectangle.');
 assert(runtimeSource.includes('function scheduleSettledLegendVisibilitySync'), 'Pump Status collision lock should retry after viewport/layout settling.');
+assert(runtimeSource.includes("const CANVAS_PROPERTIES_POLICY_STATE_KEY = '__npshCanvasSelectionOnly'"), 'Canvas properties open policy should share the select-only flag with the core bundle.');
+assert(runtimeSource.includes("const CANVAS_OBJECT_SELECTOR = '.pfd-object'"), 'Canvas properties open policy should target equipment/boundary/instrument canvas objects.');
+assert(runtimeSource.includes("const CANVAS_PIPE_SELECTOR = '.pipe-line'"), 'Canvas properties open policy should also cover hydraulic pipe-line selection.');
+assert(runtimeSource.includes("const TOOLBAR_PLACEMENT_SELECTOR = '.toolbar-tool-draggable'"), 'Canvas properties open policy should cover ribbon placement from draggable tools.');
+assert(runtimeSource.includes('function installCanvasPropertiesOpenPolicyEventBridge()'), 'Canvas properties open policy should install an event bridge.');
+assert(runtimeSource.includes("documentRef.addEventListener(eventName, handleCanvasPropertiesPolicyPointerStart, true)"), 'Canvas properties open policy should mark selection-only before app click handlers run.');
+assert(runtimeSource.includes("documentRef.addEventListener('contextmenu', clearCanvasSelectionOnly, true)"), 'Right-click context menu should clear select-only mode before User Task Object Properties opens.');
+assert(bundleSource.includes('window.__npshCanvasSelectionOnly?.active)&&renderSidebar(e)'), 'Core selectNode should suppress renderSidebar while canvas select-only mode is active.');
+assert(bundleSource.includes('label:"User Task Object Properties"'), 'Right-click context menu must retain the explicit User Task Object Properties action.');
 assert(/\.context-dock-title\s*\{[\s\S]*?font-weight:\s*800;/.test(runtimeSource), 'Typography lock: Fluid Basis title must stay bold.');
 assert(/\.context-dock-route-label\s*\{[\s\S]*?font-weight:\s*800;/.test(runtimeSource), 'Typography lock: Route label must stay bold.');
 assert(/\.context-dock-cell\[data-cell-id="fluid"\]\s+\.context-dock-value\s*\{[\s\S]*?font-weight:\s*800;/.test(runtimeSource), 'Typography lock: active fluid value must stay bold.');
@@ -234,11 +253,15 @@ assert(!runtimeSource.includes('innerHTML ='), 'Runtime should not render model-
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(
-  index.includes('engineering-canvas-context-dock.js?v=20260605-canvas-context-dock7'),
+  index.includes('app.bundle.min.js?v=20260607-canvas-properties-policy1'),
+  'Index must load the core app bundle with the canvas properties policy cache key.'
+);
+assert(
+  index.includes('engineering-canvas-context-dock.js?v=20260607-canvas-properties-policy1'),
   'Index must load the canvas context dock runtime with cache key.'
 );
 assert(
-  manifest.includes('Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260605-canvas-context-dock7'),
+  manifest.includes('Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260607-canvas-properties-policy1'),
   'Manifest must document the canvas context dock cache key.'
 );
 

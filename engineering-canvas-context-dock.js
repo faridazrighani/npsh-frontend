@@ -10,13 +10,21 @@
   'use strict';
 
   const VERSION = 'engineering-canvas-context-dock.v2';
-  const CACHE_KEY = '20260605-canvas-context-dock7';
+  const CACHE_KEY = '20260607-canvas-properties-policy1';
   const DOCK_ID = 'canvasContextDock';
   const STYLE_ID = 'canvas-context-dock-style';
   const STORAGE_KEY = 'npsh.canvasContextDock.expanded';
   const LEGEND_SELECTOR = '.canvas-status-legend';
   const LEGEND_HIDDEN_CLASS = 'canvas-status-legend-hidden';
   const LEGEND_COLLISION_MARGIN_PX = 12;
+  const CANVAS_PROPERTIES_POLICY_STATE_KEY = '__npshCanvasSelectionOnly';
+  const CANVAS_PROPERTIES_POLICY_EVENT_FLAG = '__canvasPropertiesOpenPolicyEventsInstalled';
+  const CANVAS_OBJECT_SELECTOR = '.pfd-object';
+  const CANVAS_PIPE_SELECTOR = '.pipe-line';
+  const TOOLBAR_PLACEMENT_SELECTOR = '.toolbar-tool-draggable';
+  const CANVAS_SELECTION_SETTLE_MS = 180;
+  const TOOLBAR_PLACEMENT_SETTLE_MS = 900;
+  const TOOLBAR_PLACEMENT_GUARD_MS = 30000;
   const FALLBACK_ROUTE = ['Fluid Basis'];
   const MAX_ROUTE_HOPS = 30;
 
@@ -897,6 +905,108 @@
     root.setTimeout?.(() => element.classList.remove('canvas-context-dock-node-pulse'), 1100);
   }
 
+  function getCanvasPropertiesPolicyState() {
+    const existing = root[CANVAS_PROPERTIES_POLICY_STATE_KEY];
+    if (existing && typeof existing === 'object') return existing;
+    const state = { active: false, reason: '', until: 0, timer: null };
+    root[CANVAS_PROPERTIES_POLICY_STATE_KEY] = state;
+    return state;
+  }
+
+  function clearCanvasSelectionOnly() {
+    const state = getCanvasPropertiesPolicyState();
+    state.active = false;
+    state.reason = '';
+    state.until = 0;
+    if (state.timer) {
+      root.clearTimeout?.(state.timer);
+      state.timer = null;
+    }
+    return state;
+  }
+
+  function markCanvasSelectionOnly(reason = 'canvas-left-select', durationMs = CANVAS_SELECTION_SETTLE_MS) {
+    const state = getCanvasPropertiesPolicyState();
+    const now = Date.now();
+    state.active = true;
+    state.reason = reason;
+    state.until = now + Math.max(0, durationMs);
+    if (state.timer) root.clearTimeout?.(state.timer);
+    state.timer = root.setTimeout?.(() => {
+      if (!state.until || Date.now() >= state.until) clearCanvasSelectionOnly();
+    }, Math.max(0, durationMs) + 40) || null;
+    return state;
+  }
+
+  function isCanvasSelectionOnlyActive() {
+    const state = getCanvasPropertiesPolicyState();
+    if (!state.active) return false;
+    if (state.until && Date.now() > state.until) {
+      clearCanvasSelectionOnly();
+      return false;
+    }
+    return true;
+  }
+
+  function isLeftButtonEvent(event) {
+    return !(typeof event?.button === 'number' && event.button !== 0);
+  }
+
+  function isInsideCanvas(element) {
+    const canvas = root.document?.getElementById('canvas');
+    return !!(canvas && element && canvas.contains(element));
+  }
+
+  function eventTargetsCanvasSelectable(event) {
+    const target = event?.target;
+    if (!target?.closest) return false;
+    if (target.closest('.port')) return false;
+    const object = target.closest(CANVAS_OBJECT_SELECTOR);
+    if (object && isInsideCanvas(object)) return true;
+    const pipe = target.closest(CANVAS_PIPE_SELECTOR);
+    return !!(pipe && isInsideCanvas(pipe));
+  }
+
+  function eventTargetsToolbarPlacement(event) {
+    return !!event?.target?.closest?.(TOOLBAR_PLACEMENT_SELECTOR);
+  }
+
+  function handleCanvasPropertiesPolicyPointerStart(event) {
+    if (!isLeftButtonEvent(event)) return;
+    if (eventTargetsToolbarPlacement(event)) {
+      markCanvasSelectionOnly('toolbar-placement', TOOLBAR_PLACEMENT_GUARD_MS);
+      return;
+    }
+    if (eventTargetsCanvasSelectable(event)) {
+      markCanvasSelectionOnly('canvas-left-select', 650);
+    }
+  }
+
+  function handleCanvasPropertiesPolicyPointerEnd() {
+    const state = getCanvasPropertiesPolicyState();
+    if (!state.active) return;
+    if (state.reason === 'toolbar-placement') {
+      markCanvasSelectionOnly('toolbar-placement-settle', TOOLBAR_PLACEMENT_SETTLE_MS);
+      return;
+    }
+    if (/^canvas-left/.test(state.reason)) {
+      markCanvasSelectionOnly('canvas-left-select-settle', CANVAS_SELECTION_SETTLE_MS);
+    }
+  }
+
+  function installCanvasPropertiesOpenPolicyEventBridge() {
+    const documentRef = root.document;
+    if (!documentRef || documentRef[CANVAS_PROPERTIES_POLICY_EVENT_FLAG]) return;
+    documentRef[CANVAS_PROPERTIES_POLICY_EVENT_FLAG] = true;
+    ['pointerdown', 'mousedown'].forEach((eventName) => {
+      documentRef.addEventListener(eventName, handleCanvasPropertiesPolicyPointerStart, true);
+    });
+    ['pointerup', 'mouseup', 'click'].forEach((eventName) => {
+      documentRef.addEventListener(eventName, handleCanvasPropertiesPolicyPointerEnd, true);
+    });
+    documentRef.addEventListener('contextmenu', clearCanvasSelectionOnly, true);
+  }
+
   function renderSummary(parent, state) {
     const summary = createElement('div', 'context-dock-summary');
     state.fluidCells.forEach((cell) => {
@@ -1052,6 +1162,7 @@
     });
     root.addEventListener?.('resize', () => scheduleViewportRender('resize'), { passive: true });
     root.addEventListener?.('orientationchange', () => scheduleViewportRender('orientationchange'), { passive: true });
+    installCanvasPropertiesOpenPolicyEventBridge();
 
     const canvas = root.document.getElementById('canvas');
     if (canvas && typeof root.MutationObserver === 'function') {
@@ -1098,11 +1209,14 @@
     buildDockState,
     focusRouteNode,
     formatValue,
+    clearCanvasSelectionOnly,
     getEffectiveExpandedState,
     getFluidCells,
     getStoredExpandedState,
+    isCanvasSelectionOnlyActive,
     install,
     isMobileViewport,
+    markCanvasSelectionOnly,
     refresh: () => render(),
     rectsOverlapOrTooClose,
     resolveRouteNodes,
