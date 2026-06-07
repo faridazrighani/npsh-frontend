@@ -276,6 +276,41 @@ async function defenseGateSnapshot(page) {
   });
 }
 
+test('Moody chart audit panel stays hidden on first browser load until opened explicitly', async ({ page }) => {
+  await waitForNpshApp(page);
+  await page.waitForTimeout(700);
+
+  const bootState = await page.evaluate(() => {
+    const panel = document.getElementById('engineeringPipeMoodyChartPanel');
+    const scriptCount = [...document.scripts]
+      .filter((script) => /engineering-pipe-moody-chart-audit\.js/.test(script.src || ''))
+      .length;
+    const display = panel ? getComputedStyle(panel).display : null;
+    return {
+      panelExists: !!panel,
+      hiddenAttribute: panel?.hasAttribute('hidden') || false,
+      hiddenProperty: panel?.hidden === true,
+      display,
+      visible: !!panel && display !== 'none' && panel.hidden !== true,
+      scriptCount
+    };
+  });
+
+  expect(bootState.scriptCount).toBe(1);
+  expect(bootState.visible).toBe(false);
+  if (bootState.panelExists) {
+    expect(bootState.hiddenAttribute).toBe(true);
+    expect(bootState.hiddenProperty).toBe(true);
+    expect(bootState.display).toBe('none');
+  }
+  await expect(page.locator('#engineeringPipeMoodyChartPanel')).toBeHidden();
+
+  console.log(JSON.stringify({
+    moodyDefaultHiddenE2E: 'pass',
+    ...bootState
+  }, null, 2));
+});
+
 test('Moody chart separates overlapped pipe/fitting/valve markers and keeps every tooltip name visible', async ({ page }, testInfo) => {
   await waitForNpshApp(page);
   await loadProject(page, baseProject());
@@ -332,7 +367,8 @@ test('Defense export actions are blocked while calculation is stale and restored
   expect(staleSnapshot.realtime.status).toBe('Stale');
   await page.evaluate(() => window.EngineeringDefenseExportPackage.openDefensePackagePanel());
   await expect(page.locator('.defense-export-stale-gate')).toHaveAttribute('data-export-ready', 'false');
-  await expect(page.locator('.defense-export-stale-gate')).toContainText(/stale|rerun backend solve/i);
+  await expect(page.locator('.defense-export-stale-gate')).toHaveAttribute('data-export-status', /Stale|Calculating/);
+  await expect(page.locator('.defense-export-stale-gate')).toContainText(/stale|rerun backend solve|calculating|wait for current/i);
   await expect(page.locator('[data-defense-package-action="json"]')).toBeDisabled();
   await expect(page.locator('[data-defense-package-action="print"]')).toBeDisabled();
 

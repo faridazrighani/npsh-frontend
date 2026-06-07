@@ -1,6 +1,6 @@
 (function registerEngineeringPipeMoodyChartAudit(root) {
   const VERSION = 'engineering-pipe-moody-chart-audit.v1';
-  const CACHE_KEY = '20260607-pipe-moody-audit1';
+  const CACHE_KEY = '20260607-pipe-moody-audit2';
   const PANEL_ID = 'engineeringPipeMoodyChartPanel';
   const BODY_ID = 'engineeringPipeMoodyChartPanelBody';
   const AGING_HELP_ID_PREFIX = 'pipe-aging-roughness-help';
@@ -212,6 +212,7 @@
     panel.id = PANEL_ID;
     panel.className = 'task-window pipe-moody-chart-panel';
     panel.hidden = true;
+    panel.setAttribute('hidden', '');
     panel.innerHTML = `
       <div class="task-window-header pipe-moody-chart-panel-header">
         <span>Moody Chart Audit</span>
@@ -222,7 +223,10 @@
       <div class="task-window-body pipe-moody-chart-panel-body" id="${BODY_ID}"></div>
     `;
     panel.addEventListener('click', (event) => {
-      if (event.target?.matches?.('[data-pipe-moody-close]')) panel.hidden = true;
+      if (event.target?.matches?.('[data-pipe-moody-close]')) {
+        panel.hidden = true;
+        panel.setAttribute('hidden', '');
+      }
     });
     document.body.appendChild(panel);
     return panel;
@@ -235,6 +239,7 @@
     const body = document.getElementById(BODY_ID);
     if (!panel || !body) return null;
     panel.hidden = false;
+    panel.removeAttribute('hidden');
     if (!resolved.trace?.moody?.markers?.length) {
       body.innerHTML = '<section class="pipe-moody-chart-audit"><div class="pipe-moody-chart-head"><h3>Moody Chart Audit</h3><span>No solved pipe Moody data is available.</span></div></section>';
       return null;
@@ -248,6 +253,7 @@
     style.id = 'engineering-pipe-moody-chart-audit-style';
     style.textContent = [
       '.pipe-moody-chart-panel{left:clamp(16px,4vw,72px);top:94px;width:min(940px,calc(100vw - 32px));height:min(640px,calc(100dvh - 116px));}',
+      '.pipe-moody-chart-panel[hidden]{display:none!important;}',
       '.pipe-moody-chart-panel-body{padding:12px;background:#f6f8fb;}',
       '.pipe-moody-chart-audit{display:grid;gap:10px;}',
       '.pipe-moody-chart-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}',
