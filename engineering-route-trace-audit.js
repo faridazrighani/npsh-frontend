@@ -1876,7 +1876,7 @@
       '.route-trace-canvas-overlay-hidden{display:none!important;}',
       '.route-trace-sink-mode-hidden{display:none!important;}',
       '.route-trace-sink-trace-collapsed{display:none!important;}',
-      '.route-trace-sink-layout-locked .route-trace-sink-trace-toggle .prop-section-header{cursor:pointer;user-select:none;}',
+      '.route-trace-sink-layout-locked .route-trace-sink-trace-toggle .prop-section-header{cursor:pointer;-webkit-user-select:none;user-select:none;}',
       '.route-trace-sink-layout-locked .route-trace-sink-trace-toggle .prop-section-header::before{content:"- ";font-weight:900;}',
       '.route-trace-sink-layout-locked .route-trace-sink-trace-toggle[data-route-trace-sink-trace-collapse="collapsed"] .prop-section-header::before{content:"+ ";}',
       '.route-trace-audit-panel{left:clamp(12px,3vw,42px);right:auto;top:118px;width:min(980px,calc(100vw - 28px));height:min(680px,calc(100dvh - 140px));}',

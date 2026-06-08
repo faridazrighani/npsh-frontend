@@ -16,8 +16,8 @@ Purpose:
 Summary:
 
 ```text
-Total files: 198
-Total size: 69,340,612 bytes
+Total files: 200
+Total size: 69,350,892 bytes
 ```
 
 Top-level contents:
@@ -46,6 +46,7 @@ engineering-bilingual-improvements.js bilingual engineering terminology, trace-k
 engineering-library-governance.js public-safe library manifest, trace schema, unit/fluid/equipment/literature governance, OCR terminology, formula-literature map, and quality gates
 engineering-route-trace-audit.js public-safe backend route-trace audit bridge, dependency fingerprint handoff, stale-result metadata capture, default-hidden canvas route-trace plus pump/SNK presentation-row display lock, SNK Boundary Mode canonical canvas/tooltip/readout lock, Free Outlet/Outlet Pressure demand-ignore property window lock, atmospheric outlet pressure assumption readout, SNK evaluated flow display, SNK Sink Flow/Sink P abs/Sink Elev./Sink Head canvas readouts, pump/SNK object-hover synchronization, idempotent canvas observer pruning, calculation defense contract handoff, advanced engineering validation display, defense export context capture, backend schema mismatch warning, and software dependency-change gate display
 engineering-realtime-calculation-defense.js public-safe realtime stale/calculating/freshness bridge that marks calculation results stale immediately when object-property inputs change and calculating while backend refresh is pending
+engineering-browser-issues-runtime.js public-safe browser Issues cleanup bridge for ARIA menu ownership, empty-menu role removal, and dynamic toolbar object-menu role repair
 engineering-pipe-segments-file-runtime.js public-safe Pipe Segments local `.v1` import/export bridge with compact table controls, schema validation, browser download/upload handling, and stale-result marking after import
 engineering-canvas-context-dock.js public-safe responsive Fluid Basis and Route Trace dock for the PFD canvas, including default-collapsed audit details, sticky canvas viewport positioning, mobile compact lock, mobile symbol mode, stale/current freshness display, route breadcrumb focus, audit metadata handoff, global canvas select/context-menu guard, and explicit User Task Object Properties command-only open policy
 engineering-defense-export-package.js public-safe one-click defense report exporter, calculation defense contract evidence, UI evidence registry, task-window evidence badges, redacted audit event handoff, and print/save PDF workflow
@@ -71,6 +72,7 @@ tools/validate-export-canvas-snapshot-lock.cjs Node validation for silent normal
 tools/validate-literature-pdf-viewer.cjs Node validation for Help -> Literature flyout, approved Google app-session guard, auth-approved PDF retry, local PDF.js canvas viewer, zoom/page controls, same-origin literature API, resizable task window, and no private GitHub source links in public runtime
 tools/validate-google-auth-runtime.cjs Node validation for Google Identity Services runtime wiring, backend auth endpoints, post-login session verification, stale-session overwrite prevention, credentialed session fetches, approved-session guard, and cache-busted runtime load
 tools/validate-pump-readiness-visibility-lock.cjs Node validation for late-added developer Pump Action Readiness panel hiding, childList-only observer scope, cache-busted runtime load, and manifest lock
+tools/validate-browser-issues-runtime.cjs Node validation for browser Issues cleanup: ARIA menu repair, CSS compatibility property cleanup, static header normalization, and cache-busted runtime load
 tools/validate-pipe-segments-file-runtime.cjs Node validation for Pipe Segments local `.v1` schema, filename convention, compact import/export controls, cache-busted runtime load, and stale-result marking
 ```
 
@@ -91,12 +93,13 @@ Release integrity guardrail:
 node npsh-api/tools/release-integrity-audit.cjs
 app.bundle.min.js.map sourcesContent: absent
 App bundle cache key: app.bundle.min.js?v=20260608-global-ribbon-placement-lock5
-Main style cache key: style.min.css?v=20260608-global-ribbon-placement-lock5
+Main style cache key: style.min.css?v=20260608-browser-issues1
 Bilingual terminology runtime cache key: engineering-bilingual-improvements.js?v=20260607-sink-mode-trace1
 Source canvas parameter runtime cache key: engineering-src-canvas-parameter-runtime.js?v=20260607-src-flow-basis2
 Decimal display runtime cache key: engineering-decimal-display-runtime.js?v=20260607-pump-npsh-source-sink-display-lock4
 Route audit cache key: engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock8
 Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260607-realtime-defense2
+Browser issues runtime cache key: engineering-browser-issues-runtime.js?v=20260608-browser-issues1
 Pipe Segments file runtime cache key: engineering-pipe-segments-file-runtime.js?v=20260608-pipe-segments-file1
 Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260608-global-ribbon-placement-lock5
 Defense export cache key: engineering-defense-export-package.js?v=20260603-defensev3
@@ -116,6 +119,7 @@ Literature PDF viewer validation: npm run validate:literature-pdf-viewer
 Google auth runtime validation: npm run validate:google-auth-runtime
 SNK boundary mode canvas lock validation: npm run validate:sink-boundary-mode-canvas-lock
 Pump readiness visibility validation: npm run validate:pump-readiness-visibility-lock
+Browser issues runtime validation: npm run validate:browser-issues-runtime
 Pipe Segments file runtime validation: npm run validate:pipe-segments-file-runtime
 Pages API proxy: _worker.js -> env.NPSH_API.fetch(request), optional X-NPSH-API-Proxy-Secret from env.NPSH_API_PROXY_SECRET, static fallback -> env.ASSETS.fetch(request)
 Local static preview literature fallback: tools/serve-local-preview.cjs serves /api/literature and /api/literature/:id/pdf from ../book_pdf with byte-range PDF support

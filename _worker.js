@@ -22,6 +22,45 @@ function withProxyHeaders(request, env) {
   return headers;
 }
 
+function staticContentType(pathname, currentType = '') {
+  const cleanType = String(currentType || '').toLowerCase();
+  if (cleanType.includes('charset=')) return currentType;
+  if (cleanType.startsWith('text/')) return `${currentType}; charset=utf-8`;
+  if (cleanType.includes('javascript') || cleanType.includes('json') || cleanType.includes('xml')) {
+    return `${currentType}; charset=utf-8`;
+  }
+  if (/\.svg$/i.test(pathname)) return 'image/svg+xml; charset=utf-8';
+  return currentType;
+}
+
+function withStaticHeaders(request, response) {
+  const url = new URL(request.url);
+  const headers = new Headers(response.headers);
+  const contentType = staticContentType(url.pathname, headers.get('Content-Type') || '');
+  if (contentType) headers.set('Content-Type', contentType);
+
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('Referrer-Policy', 'no-referrer');
+  headers.delete('Expires');
+  headers.delete('X-Frame-Options');
+  headers.delete('X-XSS-Protection');
+
+  if (url.pathname === '/' || /\.html?$/i.test(url.pathname)) {
+    headers.set('Content-Security-Policy', "frame-ancestors 'none'");
+  }
+  if (url.searchParams.has('v')) {
+    headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+  } else if (!headers.has('Cache-Control') || /must-revalidate/i.test(headers.get('Cache-Control') || '')) {
+    headers.set('Cache-Control', 'no-cache');
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -43,6 +82,6 @@ export default {
       return api.fetch(proxiedRequest);
     }
 
-    return env.ASSETS.fetch(request);
+    return withStaticHeaders(request, await env.ASSETS.fetch(request));
   }
 };

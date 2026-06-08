@@ -308,7 +308,7 @@ assert(
   'Index must load the canvas context dock runtime with cache key.'
 );
 assert(
-  index.includes('style.min.css?v=20260608-global-ribbon-placement-lock5'),
+  index.includes('style.min.css?v=20260608-browser-issues1'),
   'Index must load the main stylesheet with the global ribbon placement cache key.'
 );
 assert(
@@ -331,7 +331,7 @@ assert(
   'Manifest must document the canvas context dock cache key.'
 );
 assert(
-  manifest.includes('Main style cache key: style.min.css?v=20260608-global-ribbon-placement-lock5'),
+  manifest.includes('Main style cache key: style.min.css?v=20260608-browser-issues1'),
   'Manifest must document the main stylesheet cache key.'
 );
 

@@ -502,6 +502,7 @@
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
   font-size: 11px;
   line-height: 1.25;
+  -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
 }
 .canvas-context-dock[data-tone="current"] { border-color: #6eb39a; }

@@ -65,7 +65,7 @@ const contentTypes = {
   '.json': 'application/json; charset=utf-8',
   '.map': 'application/json; charset=utf-8',
   '.png': 'image/png',
-  '.svg': 'image/svg+xml',
+  '.svg': 'image/svg+xml; charset=utf-8',
   '.txt': 'text/plain; charset=utf-8',
   '.webp': 'image/webp',
   '.xml': 'application/xml; charset=utf-8'
@@ -189,8 +189,7 @@ async function sendLocalLiteraturePdf(req, res, book) {
     'Content-Length': length,
     'Content-Type': 'application/pdf',
     'Referrer-Policy': 'no-referrer',
-    'X-Content-Type-Options': 'nosniff',
-    'X-Frame-Options': 'DENY'
+    'X-Content-Type-Options': 'nosniff'
   };
   if (range.partial) headers['Content-Range'] = `bytes ${range.start}-${range.end}/${stat.size}`;
 
