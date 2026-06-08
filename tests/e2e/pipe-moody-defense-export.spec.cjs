@@ -400,6 +400,10 @@ test('Aging Roughness Factor field explains dimensionless eps_eff meaning in the
 
   await page.evaluate(() => {
     window.currentSelectedNode = 'PIPE-D';
+    window.__npshExplicitObjectPropertiesOpenUntil = Date.now() + 2000;
+    if (typeof window.requestPipePropertiesTaskWindowOpen === 'function') {
+      window.requestPipePropertiesTaskWindowOpen('PIPE-D');
+    }
     if (typeof window.openPipePropertiesTaskWindow === 'function') {
       window.openPipePropertiesTaskWindow('PIPE-D');
     }
