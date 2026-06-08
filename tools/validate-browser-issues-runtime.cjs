@@ -8,8 +8,10 @@ const STYLE_FILE = path.join(FRONTEND_ROOT, 'style.min.css');
 const WORKER_FILE = path.join(FRONTEND_ROOT, '_worker.js');
 const STATIC_PREVIEW_FILE = path.join(FRONTEND_ROOT, 'tools', 'serve-local-preview.cjs');
 const DOCK_FILE = path.join(FRONTEND_ROOT, 'engineering-canvas-context-dock.js');
+const LITERATURE_FILE = path.join(FRONTEND_ROOT, 'engineering-literature-pdf-viewer.js');
 const ROUTE_AUDIT_FILE = path.join(FRONTEND_ROOT, 'engineering-route-trace-audit.js');
 const RUNTIME_FILE = path.join(FRONTEND_ROOT, 'engineering-browser-issues-runtime.js');
+const SEO_RENDERER_FILE = path.join(FRONTEND_ROOT, 'tools', 'render-seo-metadata.cjs');
 
 function read(filePath) {
   assert(fs.existsSync(filePath), `${filePath} must exist.`);
@@ -21,13 +23,17 @@ const style = read(STYLE_FILE);
 const worker = read(WORKER_FILE);
 const staticPreview = read(STATIC_PREVIEW_FILE);
 const dock = read(DOCK_FILE);
+const literature = read(LITERATURE_FILE);
 const routeAudit = read(ROUTE_AUDIT_FILE);
+const seoRenderer = read(SEO_RENDERER_FILE);
 const runtime = require(RUNTIME_FILE);
 
 assert.strictEqual(runtime.version, 'engineering-browser-issues-runtime.v1');
 assert.strictEqual(runtime.cacheKey, '20260608-browser-issues1');
 assert(indexHtml.includes('engineering-browser-issues-runtime.js?v=20260608-browser-issues1'), 'index.html must cache-bust browser issues runtime.');
 assert(indexHtml.includes('style.min.css?v=20260608-browser-issues1'), 'index.html must cache-bust browser-issues CSS cleanup.');
+assert(indexHtml.includes('engineering-canvas-context-dock.js?v=20260608-browser-issues2'), 'index.html must cache-bust canvas context dock browser issues cleanup.');
+assert(indexHtml.includes('engineering-literature-pdf-viewer.js?v=20260608-browser-issues2'), 'index.html must cache-bust literature PDF browser issues cleanup.');
 assert(!indexHtml.includes('name="theme-color"'), 'index.html should not trigger Firefox theme-color compatibility notice.');
 assert(!indexHtml.includes('fetchpriority='), 'About dialog images should not trigger Firefox fetchpriority compatibility notice.');
 assert(!/id="toolbarObjectMenu"[^>]*role="menu"/.test(indexHtml), 'Static empty toolbar object menu must not declare role=menu.');
@@ -42,7 +48,11 @@ assert(!/(?<!-webkit-)user-select:none/.test(style.replace(/-webkit-user-select:
 
 assert(dock.includes('-webkit-backdrop-filter: blur(6px);'), 'Canvas context dock must include Safari backdrop-filter prefix.');
 assert(dock.indexOf('-webkit-backdrop-filter') < dock.indexOf('backdrop-filter'), 'Canvas context dock must list -webkit-backdrop-filter before backdrop-filter.');
+assert(!dock.includes('scrollbar-width:'), 'Canvas context dock must avoid scrollbar-width Safari compatibility warnings.');
+assert(!literature.includes('user-select:none;-webkit-user-select:none'), 'Literature PDF viewer must not list user-select before -webkit-user-select.');
+assert(literature.includes('-webkit-user-select:none;user-select:none'), 'Literature PDF viewer must list -webkit-user-select before user-select.');
 assert(routeAudit.includes('-webkit-user-select:none;user-select:none'), 'Route trace audit runtime must prefix user-select.');
+assert(!seoRenderer.includes("meta({ name: 'theme-color'"), 'SEO metadata renderer must not regenerate Firefox theme-color compatibility notices.');
 
 assert(worker.includes('staticContentType'), 'Worker must normalize static Content-Type headers.');
 assert(worker.includes("image/svg+xml; charset=utf-8"), 'Worker must add utf-8 charset to SVG content.');

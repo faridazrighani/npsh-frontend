@@ -23,7 +23,7 @@ assert(
   index.indexOf("engineering-google-auth-runtime.js?v=20260607-google-access5") < index.indexOf("engineering-src-canvas-parameter-runtime.js"),
   "Google auth runtime must load before deferred/blocking app support scripts so the login control is available immediately."
 );
-assert(index.includes("engineering-literature-pdf-viewer.js?v=20260607-literature-pdf-viewer5"), "Index must load the auth-aware literature viewer.");
+assert(index.includes("engineering-literature-pdf-viewer.js?v=20260608-browser-issues2"), "Index must load the auth-aware literature viewer.");
 
 assert(authRuntime.includes("https://accounts.google.com/gsi/client"), "Auth runtime must load Google Identity Services.");
 assert(authRuntime.includes("google.accounts.id.initialize"), "Auth runtime must initialize Google Identity Services.");

@@ -17,7 +17,7 @@ Summary:
 
 ```text
 Total files: 200
-Total size: 69,350,892 bytes
+Total size: 69,356,028 bytes
 ```
 
 Top-level contents:
@@ -101,7 +101,7 @@ Route audit cache key: engineering-route-trace-audit.js?v=20260607-snk-boundary-
 Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260607-realtime-defense2
 Browser issues runtime cache key: engineering-browser-issues-runtime.js?v=20260608-browser-issues1
 Pipe Segments file runtime cache key: engineering-pipe-segments-file-runtime.js?v=20260608-pipe-segments-file1
-Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260608-global-ribbon-placement-lock5
+Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260608-browser-issues2
 Defense export cache key: engineering-defense-export-package.js?v=20260603-defensev3
 Pipe Moody chart audit cache key: engineering-pipe-moody-chart-audit.js?v=20260607-pipe-moody-audit2
 Runtime API config: same-origin /api/simulate
@@ -111,7 +111,7 @@ Pump formula defense live audit cache key: engineering-pump-formula-defense-live
 Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260603-pump-chart-audit9
 Pump performance canonical chart cache key: engineering-pump-performance-canonical-chart.js?v=20260603-canonical-chart2
 Google auth runtime cache key: engineering-google-auth-runtime.js?v=20260607-google-access5
-Literature PDF viewer cache key: engineering-literature-pdf-viewer.js?v=20260607-literature-pdf-viewer5
+Literature PDF viewer cache key: engineering-literature-pdf-viewer.js?v=20260608-browser-issues2
 Live parameter repaint lock cache key: engineering-live-parameter-repaint-lock.css?v=20260605-live-param-repaint-lock1
 Live parameter repaint lock validation: npm run validate:live-parameter-repaint-lock
 Export canvas snapshot validation: npm run validate:export-canvas-snapshot-lock

@@ -251,7 +251,11 @@ function buildStructuredData(config) {
   return graph;
 }
 
-function buildSeoBlock(config) {
+function normalizeLineEndings(value, eol) {
+  return eol === '\n' ? value : value.replace(/\n/g, eol);
+}
+
+function buildSeoBlock(config, eol = '\n') {
   const { site, creator, publisher, image, article } = config;
   const keywords = arrayText(site.keywords);
   const subject = semicolonText([
@@ -277,7 +281,6 @@ function buildSeoBlock(config) {
     meta({ name: 'googlebot', content: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1' }),
     meta({ name: 'bingbot', content: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1' }),
     meta({ name: 'referrer', content: 'strict-origin-when-cross-origin' }),
-    meta({ name: 'theme-color', content: site.themeColor }),
     meta({ name: 'color-scheme', content: site.colorScheme }),
     link({ rel: 'icon', href: site.faviconUrl, type: 'image/x-icon' }),
     link({ rel: 'canonical', href: site.canonicalUrl }),
@@ -334,7 +337,7 @@ function buildSeoBlock(config) {
     endMarker
   ].filter(Boolean);
 
-  return `${lines.join('\n')}\n`;
+  return normalizeLineEndings(`${lines.join('\n')}\n`, eol);
 }
 
 function validateConfig(config) {
@@ -361,6 +364,7 @@ function validateRenderedHtml(html) {
   const count = pattern => (html.match(pattern) || []).length;
   assert.strictEqual(count(/<title>/g), 1, 'Exactly one <title> is required');
   assert.strictEqual(count(/name="description"/g), 1, 'Exactly one meta description is required');
+  assert.strictEqual(count(/name="theme-color"/g), 0, 'Do not publish theme-color because Firefox DevTools flags it as unsupported.');
   assert.strictEqual(count(/rel="canonical"/g), 1, 'Exactly one canonical link is required');
   assert.strictEqual(count(/type="application\/ld\+json"/g), 1, 'Exactly one JSON-LD block is required');
 
@@ -381,7 +385,9 @@ function validateRenderedHtml(html) {
 
 function renderIndex(original, seoBlock) {
   if (original.includes(startMarker) && original.includes(endMarker)) {
-    const pattern = new RegExp(`${startMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?${endMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\n?`);
+    const escapedStart = startMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapedEnd = endMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(`${escapedStart}[\\s\\S]*?${escapedEnd}(?:\\r?\\n[ \\t]*(?=\\r?\\n))*\\r?\\n?`);
     return original.replace(pattern, seoBlock);
   }
 
@@ -397,7 +403,8 @@ const config = readJson(configPath);
 validateConfig(config);
 
 const original = fs.readFileSync(indexPath, 'utf8');
-const nextHtml = renderIndex(original, buildSeoBlock(config));
+const eol = original.includes('\r\n') ? '\r\n' : '\n';
+const nextHtml = renderIndex(original, buildSeoBlock(config, eol));
 validateRenderedHtml(nextHtml);
 
 if (checkOnly) {

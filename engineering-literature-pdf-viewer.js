@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCK_VERSION = "2026.06-literature-pdf-viewer5";
+  const LOCK_VERSION = "2026.06-browser-issues2";
   const PDFJS_SCRIPT = "vendor/pdf.min.js?v=20260606-literature-pdf-viewer3";
   const PDFJS_WORKER = "vendor/pdf.worker.min.js?v=20260606-literature-pdf-viewer3";
   const BOOKS = [
@@ -53,7 +53,7 @@
 .literature-pdf-spacer{flex:1 1 auto}
 .literature-pdf-body{display:flex;flex-direction:column;padding:0;background:#dbe5ec}
 .literature-pdf-stage{flex:1 1 auto;min-height:0;overflow:auto;padding:18px;overscroll-behavior:contain;text-align:center;background:#cfdbe4}
-.literature-pdf-canvas{display:inline-block;background:#fff;box-shadow:0 10px 28px rgba(15,23,42,.28);user-select:none;-webkit-user-select:none}
+.literature-pdf-canvas{display:inline-block;background:#fff;box-shadow:0 10px 28px rgba(15,23,42,.28);-webkit-user-select:none;user-select:none}
 .literature-pdf-status{min-height:24px;padding:5px 9px;border-top:1px solid #b9c9d8;background:#f8fafc;color:#475569;font-size:11px;font-weight:700;line-height:1.2}
 .literature-pdf-status[data-state="error"]{color:#b91c1c;background:#fff1f2}
 @media (max-width:639px){.literature-pdf-window{left:8px!important;top:58px!important;width:calc(100vw - 16px)!important;height:calc(100dvh - 66px)!important;min-width:0;min-height:300px;resize:none}.literature-pdf-stage{padding:10px}.literature-pdf-toolbar{gap:4px;overflow-x:auto}.literature-pdf-toolbar button{width:32px;height:30px}.literature-pdf-window .task-window-title{font-size:12px}}

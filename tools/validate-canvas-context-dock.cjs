@@ -12,7 +12,7 @@ const manifestPath = path.join(rootDir, 'FILE_MANIFEST.md');
 const runtime = require(runtimePath);
 
 assert.equal(runtime.version, 'engineering-canvas-context-dock.v2', 'Canvas context dock runtime should expose v2.');
-assert.equal(runtime.cacheKey, '20260608-global-ribbon-placement-lock5', 'Canvas context dock cache key should stay locked.');
+assert.equal(runtime.cacheKey, '20260608-browser-issues2', 'Canvas context dock cache key should stay locked.');
 assert.equal(typeof runtime.buildDockState, 'function', 'Canvas context dock should expose buildDockState for audit tests.');
 assert.equal(typeof runtime.allowCanvasPropertiesCommandOpen, 'function', 'Canvas context dock should expose the explicit command-open hook for object properties.');
 assert.equal(typeof runtime.clearCanvasSelectionOnly, 'function', 'Canvas context dock should expose the explicit clear hook for canvas properties policy tests.');
@@ -304,7 +304,7 @@ assert(
   'Index must load the core app bundle with the canvas properties policy cache key.'
 );
 assert(
-  index.includes('engineering-canvas-context-dock.js?v=20260608-global-ribbon-placement-lock5'),
+  index.includes('engineering-canvas-context-dock.js?v=20260608-browser-issues2'),
   'Index must load the canvas context dock runtime with cache key.'
 );
 assert(
@@ -327,7 +327,7 @@ assert(
   'Thesis branding must not intercept pointer events from toolbar placement tools.'
 );
 assert(
-  manifest.includes('Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260608-global-ribbon-placement-lock5'),
+  manifest.includes('Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260608-browser-issues2'),
   'Manifest must document the canvas context dock cache key.'
 );
 assert(

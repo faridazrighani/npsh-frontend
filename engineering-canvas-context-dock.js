@@ -10,7 +10,7 @@
   'use strict';
 
   const VERSION = 'engineering-canvas-context-dock.v2';
-  const CACHE_KEY = '20260608-global-ribbon-placement-lock5';
+  const CACHE_KEY = '20260608-browser-issues2';
   const DOCK_ID = 'canvasContextDock';
   const STYLE_ID = 'canvas-context-dock-style';
   const STORAGE_KEY = 'npsh.canvasContextDock.expanded';
@@ -621,7 +621,6 @@
   gap: 5px;
   min-width: 0;
   overflow-x: auto;
-  scrollbar-width: thin;
 }
 .context-dock-route-button {
   flex: 0 0 auto;
@@ -699,7 +698,6 @@
   .context-dock-summary {
     display: flex;
     overflow-x: auto;
-    scrollbar-width: thin;
   }
   .context-dock-cell {
     flex: 0 0 56px;

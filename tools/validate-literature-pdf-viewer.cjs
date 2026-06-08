@@ -30,7 +30,8 @@ const expectedBooks = [
 assert(index.includes('id="menu-literature"'), "Help menu must include Literature.");
 assert(index.includes('id="dropdown-literature"'), "Help menu must include the Literature right-side dropdown.");
 assert(index.includes("dropdown-submenu-flyout literature-submenu"), "Literature menu must be a right-side flyout.");
-assert(index.includes("engineering-literature-pdf-viewer.js?v=20260607-literature-pdf-viewer5"), "Index must load the cache-busted literature viewer runtime.");
+assert(index.includes("engineering-literature-pdf-viewer.js?v=20260608-browser-issues2"), "Index must load the cache-busted literature viewer runtime.");
+assert(runtime.includes('const LOCK_VERSION = "2026.06-browser-issues2"'), "Literature viewer lock version must match the browser issues cleanup cache key.");
 
 for (const bookId of expectedBooks) {
   assert(index.includes(`data-literature-id="${bookId}"`), `Index menu must include ${bookId}.`);
@@ -61,7 +62,7 @@ assert(
   "package.json must expose validate:literature-pdf-viewer."
 );
 assert(
-  manifest.includes("Literature PDF viewer cache key: engineering-literature-pdf-viewer.js?v=20260607-literature-pdf-viewer5"),
+  manifest.includes("Literature PDF viewer cache key: engineering-literature-pdf-viewer.js?v=20260608-browser-issues2"),
   "Manifest must document the literature viewer cache key."
 );
 assert(
