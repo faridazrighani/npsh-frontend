@@ -10,8 +10,8 @@ const APP_BUNDLE_FILE = path.join(FRONTEND_ROOT, "app.bundle.min.js");
 const INDEX_FILE = path.join(FRONTEND_ROOT, "index.html");
 const JOURNALS_DIR = path.join(FRONTEND_ROOT, "journals");
 const API_ROOT = path.resolve(process.env.NPSH_API_ROOT || path.join(WORKSPACE_ROOT, "npsh-api"));
-const LOCK_VERSION = "2026.06-pump-npsh-source-sink-display-lock4";
-const RUNTIME_CACHE_KEY = "engineering-decimal-display-runtime.js?v=20260607-pump-npsh-source-sink-display-lock4";
+const LOCK_VERSION = "2026.06-pump-live-readout-click-lock2";
+const RUNTIME_CACHE_KEY = "engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2";
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
 function assert(condition, message) {
@@ -97,6 +97,10 @@ assert(runtime.includes('"input"'), "Runtime must react to input changes.");
 assert(runtime.includes('"change"'), "Runtime must react to committed input changes.");
 assert(runtime.includes("attempts >= 32"), "Runtime install retry loop must stay short for performance.");
 assert(runtime.includes("dataset.engineeringDecimalDisplayLock"), "Runtime must expose a QA/audit DOM lock marker.");
+assert(runtime.includes("PUMP_LIVE_READOUT_SELECTOR"), "Runtime must define the pump live readout interaction scope.");
+assert(runtime.includes("blockPumpLiveReadoutInteraction"), "Runtime must block pump live parameter pointer/click events.");
+assert(runtime.includes("touch-action: none !important;"), "Runtime must normalize pump live parameter touch/cursor behavior.");
+assert(runtime.includes("document.addEventListener?.(eventName, blockPumpLiveReadoutInteraction, { capture: true, passive: false })"), "Runtime must capture pump live readout events before object click handlers.");
 assert(runtime.includes("shouldFormatValue"), "Runtime must expose numeric label gating for audit validation.");
 assert(runtime.includes("getDisplayDecimals"), "Runtime must expose label-specific decimal precision for audit validation.");
 assert(runtime.includes('"Dyn Feed"') && runtime.includes('"Dyn Net"'), "Runtime must include dynamic SRC labels after realtime start.");
@@ -115,6 +119,32 @@ const { api, documentElement } = loadRuntimeApi(runtime);
 assert(api && api.decimals === 3, "Runtime API must report 3 display decimals.");
 assert(api && api.pumpNpshDecimals === 4, "Runtime API must report 4 pump NPSH decimals.");
 assert(documentElement.dataset.engineeringDecimalDisplayLock === api.version, "Runtime must stamp its lock version into the document element.");
+assert(typeof api.blockPumpLiveReadoutInteraction === "function", "Runtime API must expose pump live readout event blocking.");
+
+let prevented = false;
+let stopped = false;
+let immediateStopped = false;
+const fakePumpPanel = { dataset: {} };
+const blocked = api.blockPumpLiveReadoutInteraction({
+  target: {
+    nodeType: 1,
+    closest: (selector) => selector === ".pump-live-params" ? fakePumpPanel : null
+  },
+  preventDefault: () => { prevented = true; },
+  stopPropagation: () => { stopped = true; },
+  stopImmediatePropagation: () => { immediateStopped = true; }
+});
+assert(blocked === true, "Pump live readout event should be blocked.");
+assert(prevented && stopped && immediateStopped, "Pump live readout event should not propagate to object click handlers.");
+assert(fakePumpPanel.dataset.pumpLiveReadoutInteractionLock === LOCK_VERSION, "Pump live panel should receive a click-lock QA marker.");
+
+const iconEventBlocked = api.blockPumpLiveReadoutInteraction({
+  target: {
+    nodeType: 1,
+    closest: () => null
+  }
+});
+assert(iconEventBlocked === false, "Pump icon and other non-readout object clicks must remain active.");
 
 const formatCases = [
   ["Flow", "50.0", "m3/h", "50.000"],

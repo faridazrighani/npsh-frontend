@@ -127,7 +127,7 @@ assert(decimalRuntime.includes("attempts >= 32"), "Decimal display lock retry lo
 
 assert(indexHtml.includes("engineering-src-canvas-parameter-runtime.js?v=20260607-src-flow-basis2"), "Index must load the global SRC realtime indicator runtime.");
 assert(indexHtml.includes("engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock8"), "Index must load the global SNK/pump hover-sync runtime.");
-assert(indexHtml.includes("engineering-decimal-display-runtime.js?v=20260607-pump-npsh-source-sink-display-lock4"), "Index must load the global decimal display lock.");
+assert(indexHtml.includes("engineering-decimal-display-runtime.js?v=20260608-pump-live-readout-click-lock1"), "Index must load the global decimal display lock.");
 
 assert(manifest.includes("Global live indicator engine-link validation"), "Manifest must document the global live indicator engine-link validation.");
 

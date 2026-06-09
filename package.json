@@ -23,13 +23,16 @@
     "validate:local-api-preview": "node tools/validate-local-api-preview.cjs",
     "validate:browser-issues-runtime": "node tools/validate-browser-issues-runtime.cjs",
     "validate:pipe-segments-file-runtime": "node tools/validate-pipe-segments-file-runtime.cjs",
+    "validate:formula-defense-ui": "node tools/validate-formula-defense-ui.cjs",
     "test:e2e": "playwright test",
     "test:e2e:desktop-flow-chain": "playwright test tests/e2e/desktop-simulation-flow-chain.spec.cjs",
     "test:e2e:remaining-risks": "playwright test tests/e2e/pipe-moody-defense-export.spec.cjs",
     "test:e2e:browser-issues": "playwright test tests/e2e/browser-issues.spec.cjs",
-    "test:e2e:pipe-segments-file": "playwright test tests/e2e/pipe-segments-file.spec.cjs"
+    "test:e2e:pipe-segments-file": "playwright test tests/e2e/pipe-segments-file.spec.cjs",
+    "test:e2e:formula-defense-ui": "playwright test tests/e2e/formula-defense-ui.spec.cjs"
   },
   "devDependencies": {
-    "@playwright/test": "^1.60.0"
+    "@playwright/test": "^1.60.0",
+    "katex": "^0.17.0"
   }
 }

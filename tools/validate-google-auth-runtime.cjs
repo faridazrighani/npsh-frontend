@@ -18,9 +18,10 @@ const packageJson = JSON.parse(read("package.json"));
 const manifest = read("FILE_MANIFEST.md");
 
 assert(index.includes('"googleClientId":"941768542541-kos89u2knlv2vus0ctotclaq0850dsq1.apps.googleusercontent.com"'), "Runtime config must include the public Google OAuth client ID.");
-assert(index.includes("engineering-google-auth-runtime.js?v=20260607-google-access5"), "Index must load the cache-busted Google auth runtime.");
+assert(index.includes('"googleAuthorizedOrigins":["https://npsh.virsim.id"]'), "Runtime config must list Google-authorized production origins.");
+assert(index.includes("engineering-google-auth-runtime.js?v=20260608-google-access6"), "Index must load the cache-busted Google auth runtime.");
 assert(
-  index.indexOf("engineering-google-auth-runtime.js?v=20260607-google-access5") < index.indexOf("engineering-src-canvas-parameter-runtime.js"),
+  index.indexOf("engineering-google-auth-runtime.js?v=20260608-google-access6") < index.indexOf("engineering-src-canvas-parameter-runtime.js"),
   "Google auth runtime must load before deferred/blocking app support scripts so the login control is available immediately."
 );
 assert(index.includes("engineering-literature-pdf-viewer.js?v=20260608-browser-issues2"), "Index must load the auth-aware literature viewer.");
@@ -28,6 +29,10 @@ assert(index.includes("engineering-literature-pdf-viewer.js?v=20260608-browser-i
 assert(authRuntime.includes("https://accounts.google.com/gsi/client"), "Auth runtime must load Google Identity Services.");
 assert(authRuntime.includes("google.accounts.id.initialize"), "Auth runtime must initialize Google Identity Services.");
 assert(authRuntime.includes("google.accounts.id.renderButton"), "Auth runtime must render the Google sign-in button.");
+assert(authRuntime.includes("DEFAULT_GOOGLE_AUTHORIZED_ORIGINS"), "Auth runtime must keep an explicit Google authorized-origin allow list.");
+assert(authRuntime.includes("isGoogleOriginAllowed"), "Auth runtime must guard Google Identity Services by current browser origin.");
+assert(authRuntime.includes("getGoogleOriginBlockedMessage"), "Auth runtime must show a sanitized message when the current origin is not OAuth-authorized.");
+assert(authRuntime.includes("button.dataset.rendered = \"blocked-origin\""), "Auth runtime must not load the Google button on unauthorized preview origins.");
 assert(authRuntime.includes("/api/auth/google"), "Auth runtime must post Google credentials to the backend.");
 assert(authRuntime.includes("/api/auth/session"), "Auth runtime must read the backend session.");
 assert(authRuntime.includes("/api/auth/logout"), "Auth runtime must support logout.");
@@ -55,7 +60,7 @@ assert(
   "package.json must expose validate:google-auth-runtime."
 );
 assert(
-  manifest.includes("Google auth runtime cache key: engineering-google-auth-runtime.js?v=20260607-google-access5"),
+  manifest.includes("Google auth runtime cache key: engineering-google-auth-runtime.js?v=20260608-google-access6"),
   "Manifest must document the Google auth runtime cache key."
 );
 

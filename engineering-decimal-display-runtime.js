@@ -1,7 +1,8 @@
 !function(root) {
   "use strict";
 
-  const LOCK_VERSION = "2026.06-pump-npsh-source-sink-display-lock4";
+  const LOCK_VERSION = "2026.06-pump-live-readout-click-lock2";
+  const PUMP_LIVE_READOUT_INTERACTION_LOCK_STYLE_ID = "engineeringPumpLiveReadoutInteractionLock";
   const ENGINEERING_DISPLAY_DECIMALS = 3;
   const PUMP_NPSH_DISPLAY_DECIMALS = 4;
   const NUMERIC_TOKEN_PATTERN = /[-+]?(?:\d+(?:[.,]\d*)?|[.,]\d+)(?:e[-+]?\d+)?/gi;
@@ -29,6 +30,20 @@
     "[class*='live-param-value']",
     "[class*='readout-value']"
   ].join(", ");
+  const PUMP_LIVE_READOUT_SELECTOR = ".pump-live-params, .pump-live-param-section, .pump-live-param-row, .pump-live-param-label, .pump-live-param-value";
+  const PUMP_LIVE_READOUT_INTERACTIVE_OVERRIDE_SELECTOR = "[data-parameter-task-trigger], .parameter-task-trigger";
+  const PUMP_LIVE_READOUT_EVENT_TYPES = [
+    "pointerdown",
+    "pointerup",
+    "mousedown",
+    "mouseup",
+    "touchstart",
+    "touchend",
+    "click",
+    "dblclick",
+    "contextmenu",
+    "dragstart"
+  ];
   const NUMERIC_LABELS = new Set([
     "AOR Max",
     "AOR Min",
@@ -243,6 +258,65 @@
     return changed;
   }
 
+  function getElementLike(target) {
+    if (!target) return null;
+    if (target.nodeType === 1) return target;
+    return target.parentElement || null;
+  }
+
+  function getPumpLiveReadoutElement(target) {
+    const element = getElementLike(target);
+    if (!element?.closest) return null;
+    return element.closest(".pump-live-params") || (element.matches?.(PUMP_LIVE_READOUT_SELECTOR) ? element : null);
+  }
+
+  function blockPumpLiveReadoutInteraction(event) {
+    const target = getElementLike(event?.target);
+    if (target?.closest?.(PUMP_LIVE_READOUT_INTERACTIVE_OVERRIDE_SELECTOR)) return false;
+    const panel = getPumpLiveReadoutElement(event?.target);
+    if (!panel) return false;
+    panel.dataset.pumpLiveReadoutInteractionLock = LOCK_VERSION;
+    event.preventDefault?.();
+    event.stopPropagation?.();
+    event.stopImmediatePropagation?.();
+    return true;
+  }
+
+  function installPumpLiveReadoutInteractionLock() {
+    if (typeof document === "undefined") return;
+    if (root.__engineeringPumpLiveReadoutInteractionLock === LOCK_VERSION) return;
+    root.__engineeringPumpLiveReadoutInteractionLock = LOCK_VERSION;
+
+    if (document.head && !document.getElementById?.(PUMP_LIVE_READOUT_INTERACTION_LOCK_STYLE_ID)) {
+      const style = document.createElement("style");
+      style.id = PUMP_LIVE_READOUT_INTERACTION_LOCK_STYLE_ID;
+      style.textContent = `
+.pump-live-params,
+.pump-live-params * {
+  cursor: default !important;
+}
+.pump-live-params {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  touch-action: none !important;
+}
+.pump-live-params [data-parameter-task-trigger],
+.pump-live-params .parameter-task-trigger {
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  touch-action: manipulation !important;
+}
+`;
+      document.head.appendChild(style);
+    }
+
+    PUMP_LIVE_READOUT_EVENT_TYPES.forEach((eventName) => {
+      document.addEventListener?.(eventName, blockPumpLiveReadoutInteraction, { capture: true, passive: false });
+    });
+  }
+
   function scheduleNormalize(scope) {
     if (pendingNormalize) return;
     pendingNormalize = true;
@@ -280,6 +354,7 @@
   function install() {
     root.__engineeringDecimalDisplayLock = LOCK_VERSION;
     normalizeScope(document);
+    installPumpLiveReadoutInteractionLock();
     watchRealtimeChanges();
   }
 
@@ -291,6 +366,8 @@
     formatNumericExpression,
     formatValueForLabel,
     getDisplayDecimals,
+    getPumpLiveReadoutElement,
+    blockPumpLiveReadoutInteraction,
     shouldFormatValue,
     normalize: normalizeScope,
     scheduleNormalize

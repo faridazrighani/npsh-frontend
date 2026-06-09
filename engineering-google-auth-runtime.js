@@ -1,8 +1,11 @@
 (() => {
   "use strict";
 
-  const LOCK_VERSION = "2026.06-google-access5";
+  const LOCK_VERSION = "2026.06-google-access6";
   const GOOGLE_IDENTITY_SCRIPT = "https://accounts.google.com/gsi/client";
+  const DEFAULT_GOOGLE_AUTHORIZED_ORIGINS = [
+    "https://npsh.virsim.id"
+  ];
 
   const state = {
     ready: false,
@@ -57,6 +60,30 @@
 
   function getClientId() {
     return String(getRuntimeConfig().googleClientId || getRuntimeConfig().authGoogleClientId || "").trim();
+  }
+
+  function getAuthorizedGoogleOrigins() {
+    const config = getRuntimeConfig();
+    const configured = config.googleAuthorizedOrigins || config.authGoogleAuthorizedOrigins || [];
+    const origins = Array.isArray(configured) ? configured : String(configured || "").split(",");
+    return [...new Set([...DEFAULT_GOOGLE_AUTHORIZED_ORIGINS, ...origins]
+      .map(origin => String(origin || "").trim().replace(/\/+$/, ""))
+      .filter(Boolean))];
+  }
+
+  function isLocalPreviewOrigin(origin) {
+    return /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(String(origin || ""));
+  }
+
+  function isGoogleOriginAllowed(origin = window.location?.origin || "") {
+    const normalized = String(origin || "").trim().replace(/\/+$/, "");
+    if (!normalized) return false;
+    if (isLocalPreviewOrigin(normalized)) return true;
+    return getAuthorizedGoogleOrigins().includes(normalized);
+  }
+
+  function getGoogleOriginBlockedMessage() {
+    return "Google login disabled on this preview origin. Use the production domain or add this origin in Google Cloud OAuth.";
   }
 
   function getFriendlyAuthError(error, fallback = "Google login unavailable") {
@@ -316,6 +343,19 @@
     const clientId = getClientId();
     const button = document.getElementById("npshGoogleButton");
     if (!button || !clientId || button.dataset.rendered === "true") return;
+    if (!isGoogleOriginAllowed()) {
+      button.dataset.rendered = "blocked-origin";
+      button.textContent = "";
+      setState({
+        ready: true,
+        loading: false,
+        authenticated: false,
+        approved: false,
+        user: null,
+        message: getGoogleOriginBlockedMessage()
+      });
+      return;
+    }
     try {
       const google = await loadGoogleScript();
       google.accounts.id.initialize({
@@ -372,6 +412,17 @@
 
   async function requireApproved(options = {}) {
     ensureControl();
+    if (!isGoogleOriginAllowed()) {
+      setState({
+        ready: true,
+        loading: false,
+        authenticated: false,
+        approved: false,
+        user: null,
+        message: getGoogleOriginBlockedMessage()
+      });
+      return false;
+    }
     const current = await refreshSession();
     if (current.approved) return true;
     const resource = options.resource ? ` for ${options.resource}` : "";
@@ -398,6 +449,17 @@
   async function init() {
     ensureControl();
     bindSessionWakeups();
+    if (!isGoogleOriginAllowed()) {
+      setState({
+        ready: true,
+        loading: false,
+        authenticated: false,
+        approved: false,
+        user: null,
+        message: getGoogleOriginBlockedMessage()
+      });
+      return;
+    }
     await Promise.allSettled([refreshSession(), renderGoogleButton()]);
   }
 
@@ -406,6 +468,7 @@
     getState: getPublicState,
     refresh: refreshSession,
     requireApproved,
+    isGoogleOriginAllowed,
     logout
   });
 
