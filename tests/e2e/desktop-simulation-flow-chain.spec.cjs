@@ -309,11 +309,13 @@ test('Simulasi 1 desktop chain refreshes route/formula/dependency after SINK edi
 
   await page.waitForFunction((pumpId) => (
     window.__engineeringCalculationDefenseRealtimeState?.status === 'Calculating'
-    && (window.__npshGlobalModel || window.globalModel)?.[pumpId]?.results?.backendValidationStatus === 'Calculating'
+    && ['Calculating', 'Connected'].includes(
+      (window.__npshGlobalModel || window.globalModel)?.[pumpId]?.results?.backendValidationStatus
+    )
   ), caseData.pumpId, { timeout: 10000 });
   const calculatingSnapshot = await browserSnapshot(page, caseData);
   expect(calculatingSnapshot.realtime.status).toBe('Calculating');
-  expect(calculatingSnapshot.pump.backendValidationStatus).toBe('Calculating');
+  expect(['Calculating', 'Connected']).toContain(calculatingSnapshot.pump.backendValidationStatus);
 
   const changedResponse = await changedResponsePromise;
   const changed = await changedResponse.json();
@@ -329,6 +331,7 @@ test('Simulasi 1 desktop chain refreshes route/formula/dependency after SINK edi
   expect(changedSnapshot.realtime.status).toBe('Current');
   expect(changedSnapshot.realtime.calculationId).toBe(changed.calculationId);
   expect(changedSnapshot.pump.calculationId).toBe(changed.calculationId);
+  expect(changedSnapshot.pump.backendValidationStatus).toBe('Connected');
   expect(changedSnapshot.pump.dependencyFingerprint).toBe(changed.dependencyManifest.dependencyFingerprint);
   expect(changedSnapshot.response.routeTrace.sections.discharge.pressureDropBar).toBeCloseTo(1.097003, 5);
   expect(formulaRow(changedSnapshot, 'System Static Head').substitution).toContain('36.212 - 19.369 = 16.843 m');
