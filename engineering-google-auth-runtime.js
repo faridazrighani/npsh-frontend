@@ -1,11 +1,35 @@
 (() => {
   "use strict";
 
-  const LOCK_VERSION = "2026.06-google-access6";
+  const LOCK_VERSION = "2026.06-google-access7";
   const GOOGLE_IDENTITY_SCRIPT = "https://accounts.google.com/gsi/client";
   const DEFAULT_GOOGLE_AUTHORIZED_ORIGINS = [
-    "https://npsh.virsim.id"
+    "https://npsh.virsim.id",
+    "https://npsh-frontend.pages.dev"
   ];
+  const AUTH_ERROR_MESSAGES = Object.freeze({
+    app_login_required: "Login Google diperlukan sebelum PDF dapat dibuka.",
+    app_user_not_approved: "Email Google sudah login, tetapi belum approved di access database.",
+    auth_api_unavailable: "Auth API belum dapat dihubungi. Cek koneksi backend /api/auth/session.",
+    auth_session_secret_missing: "Backend belum memiliki NPSH_AUTH_SESSION_SECRET.",
+    access_database_failed: "Access database Apps Script menolak request backend.",
+    access_database_invalid_response: "Access database Apps Script mengembalikan response yang tidak valid.",
+    access_database_not_configured: "Backend belum memiliki NPSH_ACCESS_DATABASE_URL dan/atau NPSH_ACCESS_DATABASE_SECRET.",
+    expired_google_token: "Token Google sudah kadaluarsa. Silakan login ulang.",
+    frontend_google_client_id_missing: "Frontend runtime belum memiliki Google Client ID.",
+    google_client_id_missing: "Backend belum memiliki NPSH_AUTH_GOOGLE_CLIENT_ID.",
+    google_credential_missing: "Credential Google tidak diterima oleh aplikasi.",
+    google_email_not_verified: "Email Google belum terverifikasi.",
+    google_key_not_found: "Google signing key belum ditemukan. Coba login ulang.",
+    google_keys_unavailable: "Backend belum dapat mengambil Google public keys.",
+    invalid_google_audience: "Google Client ID backend tidak cocok dengan token login.",
+    invalid_google_credential: "Credential Google tidak valid.",
+    invalid_google_issuer: "Google token issuer tidak valid.",
+    invalid_google_signature: "Signature token Google tidak valid.",
+    literature_login_required: "Login Google diperlukan sebelum PDF literature dibuka.",
+    literature_source_unavailable: "Sumber PDF private belum dapat diakses backend. Cek token book_pdf.",
+    user_pending_approval: "Email Google sudah login, tetapi belum approved di access database."
+  });
 
   const state = {
     ready: false,
@@ -14,6 +38,7 @@
     authenticated: false,
     approved: false,
     user: null,
+    error: "",
     message: ""
   };
 
@@ -71,6 +96,13 @@
       .filter(Boolean))];
   }
 
+  function maskClientId(clientId) {
+    const text = String(clientId || "").trim();
+    if (!text) return "";
+    if (text.length <= 34) return text;
+    return `${text.slice(0, 12)}...${text.slice(-26)}`;
+  }
+
   function isLocalPreviewOrigin(origin) {
     return /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(String(origin || ""));
   }
@@ -83,7 +115,13 @@
   }
 
   function getGoogleOriginBlockedMessage() {
-    return "Google login disabled on this preview origin. Use the production domain or add this origin in Google Cloud OAuth.";
+    return "Google login dinonaktifkan pada origin ini. Gunakan domain production atau tambahkan origin ini di Google Cloud OAuth dan runtime config.";
+  }
+
+  function describeAuthError(errorCode, message = "", fallback = "Google login unavailable") {
+    const code = String(errorCode || "").trim();
+    const mapped = code ? AUTH_ERROR_MESSAGES[code] : "";
+    return mapped || sanitizeStatusMessage(message) || fallback;
   }
 
   function getFriendlyAuthError(error, fallback = "Google login unavailable") {
@@ -123,12 +161,18 @@
       authenticated: state.authenticated,
       approved: state.approved,
       user: state.user ? { ...state.user } : null,
+      error: state.error,
       message: state.message,
+      googleLoaded: state.googleLoaded,
+      originAllowed: isGoogleOriginAllowed(),
       version: LOCK_VERSION
     };
   }
 
   function setState(next) {
+    if (Object.prototype.hasOwnProperty.call(next, "error")) {
+      next.error = String(next.error || "").trim();
+    }
     if (Object.prototype.hasOwnProperty.call(next, "message")) {
       next.message = sanitizeStatusMessage(next.message);
     }
@@ -249,13 +293,15 @@
         const data = await response.json().catch(() => ({}));
         if (requestId !== sessionRequestId) return getPublicState();
         if (!response.ok || data.ok === false) {
+          const errorCode = String(data.error || (response.status ? `http_${response.status}` : "")).trim();
           setState({
             ready: true,
             loading: false,
             authenticated: false,
             approved: false,
             user: null,
-            message: ""
+            error: errorCode,
+            message: describeAuthError(errorCode, data.message || data.error || "", "")
           });
           return getPublicState();
         }
@@ -265,6 +311,7 @@
           authenticated: data.authenticated === true,
           approved: data.approved === true,
           user: data.user || null,
+          error: "",
           message: ""
         });
         return getPublicState();
@@ -277,7 +324,8 @@
           authenticated: false,
           approved: false,
           user: null,
-          message: "Auth API unavailable"
+          error: "auth_api_unavailable",
+          message: describeAuthError("auth_api_unavailable")
         });
         return getPublicState();
       })
@@ -290,11 +338,15 @@
   async function handleCredentialResponse(response) {
     const credential = response?.credential || "";
     if (!credential) {
-      setState({ loading: false, message: "Google credential missing" });
+      setState({
+        loading: false,
+        error: "google_credential_missing",
+        message: describeAuthError("google_credential_missing")
+      });
       return;
     }
 
-    setState({ loading: true, message: "" });
+    setState({ loading: true, error: "", message: "" });
     try {
       const loginResponse = await fetch(endpoint("/api/auth/google"), {
         method: "POST",
@@ -307,14 +359,15 @@
       });
       const data = await loginResponse.json().catch(() => ({}));
       if (!loginResponse.ok || data.ok === false) {
-        const backendMessage = sanitizeStatusMessage(data.message || data.error || "");
+        const errorCode = String(data.error || (loginResponse.status ? `http_${loginResponse.status}` : "")).trim();
         setState({
           ready: true,
           loading: false,
           authenticated: data.authenticated === true,
           approved: data.approved === true,
           user: data.user || null,
-          message: backendMessage || "Login failed"
+          error: errorCode,
+          message: describeAuthError(errorCode, data.message || data.error || "", "Login failed")
         });
         return;
       }
@@ -324,6 +377,7 @@
         authenticated: true,
         approved: data.approved === true,
         user: data.user || null,
+        error: "",
         message: ""
       });
       await refreshSession({ force: true });
@@ -334,6 +388,7 @@
         authenticated: false,
         approved: false,
         user: null,
+        error: "login_request_failed",
         message: getFriendlyAuthError(error, "Login failed")
       });
     }
@@ -342,7 +397,20 @@
   async function renderGoogleButton() {
     const clientId = getClientId();
     const button = document.getElementById("npshGoogleButton");
-    if (!button || !clientId || button.dataset.rendered === "true") return;
+    if (!button || button.dataset.rendered === "true") return;
+    if (!clientId) {
+      button.dataset.rendered = "missing-client-id";
+      setState({
+        ready: true,
+        loading: false,
+        authenticated: false,
+        approved: false,
+        user: null,
+        error: "frontend_google_client_id_missing",
+        message: describeAuthError("frontend_google_client_id_missing")
+      });
+      return;
+    }
     if (!isGoogleOriginAllowed()) {
       button.dataset.rendered = "blocked-origin";
       button.textContent = "";
@@ -352,6 +420,7 @@
         authenticated: false,
         approved: false,
         user: null,
+        error: "google_origin_not_authorized",
         message: getGoogleOriginBlockedMessage()
       });
       return;
@@ -376,16 +445,16 @@
       if (button.childElementCount > 0 || button.textContent.trim()) {
         button.dataset.rendered = "true";
         if (/Fetch API cannot load/i.test(String(error?.message || ""))) {
-          setState({ message: "" });
+          setState({ error: "", message: "" });
           return;
         }
       }
-      setState({ message: getFriendlyAuthError(error) });
+      setState({ error: "google_button_render_failed", message: getFriendlyAuthError(error) });
     }
   }
 
   async function logout() {
-    setState({ loading: true, message: "" });
+    setState({ loading: true, error: "", message: "" });
     try {
       await fetch(endpoint("/api/auth/logout"), {
         method: "POST",
@@ -399,6 +468,7 @@
         authenticated: false,
         approved: false,
         user: null,
+        error: "",
         message: ""
       });
       const button = document.getElementById("npshGoogleButton");
@@ -419,20 +489,113 @@
         authenticated: false,
         approved: false,
         user: null,
+        error: "google_origin_not_authorized",
         message: getGoogleOriginBlockedMessage()
       });
       return false;
     }
     const current = await refreshSession();
     if (current.approved) return true;
-    const resource = options.resource ? ` for ${options.resource}` : "";
+    const resource = options.resource ? ` untuk ${options.resource}` : "";
     setState({
-      message: current.authenticated
-        ? `Waiting admin approval${resource}`
-        : `Login Google required${resource}`
+      error: current.error || (current.authenticated ? "user_pending_approval" : "app_login_required"),
+      message: current.message || (current.authenticated
+        ? `Menunggu admin approval${resource}`
+        : `Login Google diperlukan${resource}`)
     });
     await renderGoogleButton();
     return false;
+  }
+
+  async function diagnose(options = {}) {
+    const report = {
+      schema: "npsh-google-auth-diagnostics.v1",
+      version: LOCK_VERSION,
+      checkedAt: new Date().toISOString(),
+      origin: window.location?.origin || "",
+      apiBaseUrl: getApiBaseUrl() || "(same-origin)",
+      sessionEndpoint: endpoint("/api/auth/session"),
+      clientIdConfigured: Boolean(getClientId()),
+      clientId: maskClientId(getClientId()),
+      authorizedOrigins: getAuthorizedGoogleOrigins(),
+      originAllowed: isGoogleOriginAllowed(),
+      googleLoaded: Boolean(window.google?.accounts?.id) || state.googleLoaded,
+      googleButtonRendered: document.getElementById("npshGoogleButton")?.dataset.rendered || "",
+      state: getPublicState(),
+      session: null,
+      checks: []
+    };
+    const addCheck = (id, pass, evidence, remediation = "-") => {
+      report.checks.push({
+        id,
+        status: pass ? "pass" : "fail",
+        evidence,
+        remediation: pass ? "-" : remediation
+      });
+    };
+    addCheck(
+      "frontend-google-client-id",
+      report.clientIdConfigured,
+      report.clientIdConfigured ? `clientId=${report.clientId}` : "clientId missing",
+      "Set googleClientId/authGoogleClientId in the frontend runtime config."
+    );
+    addCheck(
+      "browser-origin-authorized",
+      report.originAllowed,
+      `origin=${report.origin}; allowed=${report.authorizedOrigins.join(", ")}`,
+      "Add the browser origin to Google Cloud OAuth Authorized JavaScript origins and frontend googleAuthorizedOrigins."
+    );
+    try {
+      const response = await fetch(report.sessionEndpoint, {
+        method: "GET",
+        credentials: "include",
+        headers: { Accept: "application/json" }
+      });
+      const data = await response.json().catch(() => ({}));
+      const errorCode = String(data.error || "").trim();
+      report.session = {
+        httpStatus: response.status,
+        ok: data.ok === true,
+        authenticated: data.authenticated === true,
+        approved: data.approved === true,
+        status: data.status || data.user?.status || "",
+        role: data.user?.role || "",
+        userEmail: data.user?.email || "",
+        error: errorCode,
+        message: sanitizeStatusMessage(data.message || "")
+      };
+      addCheck(
+        "auth-session-endpoint",
+        response.ok && data.ok !== false,
+        `HTTP ${response.status}; authenticated=${report.session.authenticated}; approved=${report.session.approved}`,
+        describeAuthError(errorCode, data.message || data.error || "", "Check /api/auth/session backend routing.")
+      );
+      addCheck(
+        "approved-app-session",
+        report.session.approved === true,
+        `authenticated=${report.session.authenticated}; approved=${report.session.approved}; user=${report.session.userEmail || "-"}`,
+        report.session.authenticated
+          ? "Approve this email in the Apps Script access database."
+          : "Click Sign in with Google, then re-run await window.NPSHAuth.diagnose()."
+      );
+    } catch (error) {
+      report.session = {
+        httpStatus: 0,
+        ok: false,
+        authenticated: false,
+        approved: false,
+        error: "auth_api_unavailable",
+        message: getFriendlyAuthError(error, describeAuthError("auth_api_unavailable"))
+      };
+      addCheck(
+        "auth-session-endpoint",
+        false,
+        report.session.message,
+        "Check same-origin /api route, backend deployment, and Cloudflare Pages Worker proxy."
+      );
+    }
+    if (options.log !== false) console.log("NPSH Google auth diagnostics", report);
+    return report;
   }
 
   function bindSessionWakeups() {
@@ -456,6 +619,7 @@
         authenticated: false,
         approved: false,
         user: null,
+        error: "google_origin_not_authorized",
         message: getGoogleOriginBlockedMessage()
       });
       return;
@@ -469,6 +633,8 @@
     refresh: refreshSession,
     requireApproved,
     isGoogleOriginAllowed,
+    describeError: describeAuthError,
+    diagnose,
     logout
   });
 

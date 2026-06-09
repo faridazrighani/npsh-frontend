@@ -30,8 +30,8 @@ const expectedBooks = [
 assert(index.includes('id="menu-literature"'), "Help menu must include Literature.");
 assert(index.includes('id="dropdown-literature"'), "Help menu must include the Literature right-side dropdown.");
 assert(index.includes("dropdown-submenu-flyout literature-submenu"), "Literature menu must be a right-side flyout.");
-assert(index.includes("engineering-literature-pdf-viewer.js?v=20260608-browser-issues2"), "Index must load the cache-busted literature viewer runtime.");
-assert(runtime.includes('const LOCK_VERSION = "2026.06-browser-issues2"'), "Literature viewer lock version must match the browser issues cleanup cache key.");
+assert(index.includes("engineering-literature-pdf-viewer.js?v=20260609-literature-access3"), "Index must load the cache-busted literature viewer runtime.");
+assert(runtime.includes('const LOCK_VERSION = "2026.06-literature-access3"'), "Literature viewer lock version must match the literature access cache key.");
 
 for (const bookId of expectedBooks) {
   assert(index.includes(`data-literature-id="${bookId}"`), `Index menu must include ${bookId}.`);
@@ -42,6 +42,9 @@ assert(runtime.includes("vendor/pdf.min.js?v=20260606-literature-pdf-viewer3"), 
 assert(runtime.includes("vendor/pdf.worker.min.js?v=20260606-literature-pdf-viewer3"), "Runtime must configure local PDF.js worker.");
 assert(runtime.includes("pdfjs.getDocument"), "Runtime must render with PDF.js.");
 assert(runtime.includes("window.NPSHAuth?.requireApproved"), "Runtime must require the approved Google app session before opening protected PDFs.");
+assert(runtime.includes("getCurrentAuthAccessMessage"), "Runtime must show the current auth approval state when protected PDFs are blocked.");
+assert(runtime.includes("fetchLiteratureAccessError"), "Runtime must probe literature API error details after protected PDF 401/403 responses.");
+assert(runtime.includes("window.NPSHAuth?.describeError"), "Runtime must reuse the Google auth error-code translator for protected PDF failures.");
 assert(runtime.includes("bindAuthRetryEvents"), "Runtime must retry the pending protected PDF after Google auth becomes approved.");
 assert(runtime.includes("refreshApprovedSession"), "Runtime must re-check the app session before showing a stale login-required error.");
 assert(runtime.includes("disableAutoFetch: true"), "Runtime must avoid full eager PDF fetches.");
@@ -62,7 +65,7 @@ assert(
   "package.json must expose validate:literature-pdf-viewer."
 );
 assert(
-  manifest.includes("Literature PDF viewer cache key: engineering-literature-pdf-viewer.js?v=20260608-browser-issues2"),
+  manifest.includes("Literature PDF viewer cache key: engineering-literature-pdf-viewer.js?v=20260609-literature-access3"),
   "Manifest must document the literature viewer cache key."
 );
 assert(

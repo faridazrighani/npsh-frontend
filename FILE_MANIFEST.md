@@ -17,7 +17,7 @@ Summary:
 
 ```text
 Total files: 278
-Total size: 71,689,381 bytes
+Total size: 71,700,671 bytes
 ```
 
 Top-level contents:
@@ -58,8 +58,8 @@ engineering-pipe-moody-chart-audit.js public-safe pipe Moody chart visual audit 
 engineering-pump-formula-defense-live-audit.js public-safe live Pump Formula Defense badges, trace-row source/literature notes, and protected backend refresh bridge for advisor-facing pump NPSH evidence
 engineering-pump-performance-chart-audit.js public-safe pump performance chart audit guard that suppresses fallback/duty-point fit curves, keeps no-data charts visually clean, requires sourced curve data, and redraws eligible curves on log-log axes
 engineering-pump-performance-canonical-chart.js public-safe operational chart renderer that uses solver-owned performanceChartData before legacy chart arrays or pump props
-engineering-google-auth-runtime.js public-safe Google Identity Services frontend bridge that renders a sign-in control, sends ID tokens to the backend, immediately verifies the HttpOnly app session, prevents stale session refresh overwrite after login, exposes NPSHAuth.requireApproved, and keeps approved/pending status visible
-engineering-literature-pdf-viewer.js public-safe Literature task-window viewer that adds Help -> Literature, requires an approved Google app session, retries pending PDFs after approved auth, renders private book_pdf PDFs through the same-origin API with PDF.js canvas pages, zoom/page controls, no visible source links, and user-resizable window sizing
+engineering-google-auth-runtime.js public-safe Google Identity Services frontend bridge that renders a sign-in control, sends ID tokens to the backend, immediately verifies the HttpOnly app session, prevents stale session refresh overwrite after login, exposes NPSHAuth.requireApproved and NPSHAuth.diagnose, maps backend auth error codes into actionable messages, and keeps approved/pending status visible
+engineering-literature-pdf-viewer.js public-safe Literature task-window viewer that adds Help -> Literature, requires an approved Google app session, translates protected PDF auth/approval/source failures into actionable messages, retries pending PDFs after approved auth, renders private book_pdf PDFs through the same-origin API with PDF.js canvas pages, zoom/page controls, no visible source links, and user-resizable window sizing
 engineering-live-parameter-repaint-lock.css public-safe live canvas parameter paint-lock override that removes transient Solve repaint shadows from parameter cards, pump status badge, and pump status icon glow
 style.min.css           minified styles
 png/                    public images and favicon
@@ -119,8 +119,8 @@ Pump readiness visibility cache key: engineering-pump-readiness-visibility-runti
 Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260602-pump-defense-live11
 Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260603-pump-chart-audit9
 Pump performance canonical chart cache key: engineering-pump-performance-canonical-chart.js?v=20260603-canonical-chart2
-Google auth runtime cache key: engineering-google-auth-runtime.js?v=20260608-google-access6
-Literature PDF viewer cache key: engineering-literature-pdf-viewer.js?v=20260608-browser-issues2
+Google auth runtime cache key: engineering-google-auth-runtime.js?v=20260609-google-access7
+Literature PDF viewer cache key: engineering-literature-pdf-viewer.js?v=20260609-literature-access3
 Live parameter repaint lock cache key: engineering-live-parameter-repaint-lock.css?v=20260605-live-param-repaint-lock1
 Live parameter repaint lock validation: npm run validate:live-parameter-repaint-lock
 Export canvas snapshot validation: npm run validate:export-canvas-snapshot-lock

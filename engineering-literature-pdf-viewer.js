@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCK_VERSION = "2026.06-browser-issues2";
+  const LOCK_VERSION = "2026.06-literature-access3";
   const PDFJS_SCRIPT = "vendor/pdf.min.js?v=20260606-literature-pdf-viewer3";
   const PDFJS_WORKER = "vendor/pdf.worker.min.js?v=20260606-literature-pdf-viewer3";
   const BOOKS = [
@@ -223,6 +223,45 @@
     status.dataset.state = type;
   }
 
+  function describeAccessError(errorCode, message, fallback) {
+    if (window.NPSHAuth?.describeError) {
+      return window.NPSHAuth.describeError(errorCode, message, fallback);
+    }
+    return String(message || fallback || "Unable to open literature.").trim();
+  }
+
+  function getCurrentAuthAccessMessage(book) {
+    const current = window.NPSHAuth?.getState?.() || {};
+    const resource = book?.label ? `: ${book.label}` : "";
+    if (current.message) return current.message;
+    if (current.authenticated && !current.approved) {
+      return `Email Google sudah login, tetapi belum approved untuk membuka PDF${resource}.`;
+    }
+    return `Login Google diperlukan sebelum PDF dapat dibuka${resource}.`;
+  }
+
+  async function fetchLiteratureAccessError(bookId) {
+    try {
+      const response = await fetch(buildPdfEndpoint(bookId), {
+        method: "GET",
+        credentials: "include",
+        headers: { Accept: "application/json" }
+      });
+      const data = await response.json().catch(() => ({}));
+      return {
+        httpStatus: response.status,
+        error: data.error || "",
+        message: data.message || ""
+      };
+    } catch (error) {
+      return {
+        httpStatus: 0,
+        error: "literature_access_probe_failed",
+        message: error?.message || "Unable to check literature access."
+      };
+    }
+  }
+
   async function refreshApprovedSession() {
     if (!window.NPSHAuth?.refresh) return false;
     try {
@@ -428,7 +467,7 @@
         const allowed = await window.NPSHAuth.requireApproved({ resource: book.label });
         if (!allowed) {
           queuePendingOpen(book.id);
-          setStatus("Login Google is required and the account must be approved before this PDF can be opened.", "error");
+          setStatus(getCurrentAuthAccessMessage(book), "error");
           return;
         }
       }
@@ -455,11 +494,19 @@
           return;
         }
         queuePendingOpen(book.id);
-        setStatus("Login Google is required before this PDF can be opened.", "error");
+        const accessError = await fetchLiteratureAccessError(book.id);
+        setStatus(
+          describeAccessError(accessError.error || "literature_login_required", accessError.message, getCurrentAuthAccessMessage(book)),
+          "error"
+        );
         return;
       }
       if (message.includes("Unexpected server response (403)")) {
-        setStatus("Your Google account is not approved for this PDF yet.", "error");
+        const accessError = await fetchLiteratureAccessError(book.id);
+        setStatus(
+          describeAccessError(accessError.error || "app_user_not_approved", accessError.message, "Email Google belum approved untuk membuka PDF ini."),
+          "error"
+        );
         return;
       }
       setStatus(message || "Unable to open literature.", "error");

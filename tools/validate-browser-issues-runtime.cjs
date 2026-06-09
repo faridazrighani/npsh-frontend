@@ -33,7 +33,7 @@ assert.strictEqual(runtime.cacheKey, '20260608-browser-issues1');
 assert(indexHtml.includes('engineering-browser-issues-runtime.js?v=20260608-browser-issues1'), 'index.html must cache-bust browser issues runtime.');
 assert(indexHtml.includes('style.min.css?v=20260608-browser-issues1'), 'index.html must cache-bust browser-issues CSS cleanup.');
 assert(indexHtml.includes('engineering-canvas-context-dock.js?v=20260608-browser-issues2'), 'index.html must cache-bust canvas context dock browser issues cleanup.');
-assert(indexHtml.includes('engineering-literature-pdf-viewer.js?v=20260608-browser-issues2'), 'index.html must cache-bust literature PDF browser issues cleanup.');
+assert(indexHtml.includes('engineering-literature-pdf-viewer.js?v=20260609-literature-access3'), 'index.html must cache-bust literature PDF access diagnostics cleanup.');
 assert(!indexHtml.includes('name="theme-color"'), 'index.html should not trigger Firefox theme-color compatibility notice.');
 assert(!indexHtml.includes('fetchpriority='), 'About dialog images should not trigger Firefox fetchpriority compatibility notice.');
 assert(!/id="toolbarObjectMenu"[^>]*role="menu"/.test(indexHtml), 'Static empty toolbar object menu must not declare role=menu.');
