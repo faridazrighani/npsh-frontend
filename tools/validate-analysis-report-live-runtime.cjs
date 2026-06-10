@@ -9,8 +9,8 @@ const RUNTIME_FILE = path.join(FRONTEND_ROOT, "engineering-analysis-report-live-
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const CASE_FILE = path.join(FRONTEND_ROOT, "journals", "simulasi_1", "simulasi_performansi_pompa_air_umpan_tangki_deaerator.untirta");
-const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260610-analysis-report-live2";
-const VERSION = "2026.06-analysis-report-live2";
+const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260610-analysis-report-live3";
+const VERSION = "2026.06-analysis-report-live3";
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
 function assert(condition, message) {
@@ -222,6 +222,11 @@ assert(runtime.includes("updateComparisonTable"), "Runtime must update existing 
 assert(runtime.includes("updateApplicationValueTable"), "Runtime must update existing application value table cells when present.");
 assert(runtime.includes("setCellText"), "Runtime must patch cell text instead of rebuilding report layout.");
 assert(runtime.includes("row.closest?.('thead')"), "Runtime must update data rows that use TH metric cells and only skip THEAD rows.");
+assert(runtime.includes("installResponsiveCss"), "Runtime must install scoped Analysis Report responsive CSS.");
+assert(runtime.includes("engineeringAnalysisReportLiveResponsiveStyle"), "Runtime must use a stable responsive CSS marker.");
+assert(runtime.includes(".journal-analysis-task-window .academic-equation-math"), "Runtime responsive CSS must target Analysis Report formula nodes.");
+assert(runtime.includes("white-space: normal !important"), "Runtime responsive CSS must allow long report formulas to wrap.");
+assert(runtime.includes("overflow-wrap: anywhere"), "Runtime responsive CSS must break long report route/formula traces inside the panel.");
 assert(runtime.includes("data input\\s*&\\s*hasil aplikasi"), "Runtime must recognize Indonesian Analysis Report application-data headings.");
 assert(runtime.includes("setPipeGroup('Pipe Suction'") && runtime.includes("${prefix} - Total Head Loss"), "Runtime must include suction pipe total-loss metric mapping.");
 assert(runtime.includes("setPipeGroup('Pipe Discharge'") && runtime.includes("${prefix} - Total Head Loss"), "Runtime must include discharge pipe total-loss metric mapping.");
@@ -232,6 +237,7 @@ assert(!runtime.includes("innerHTML ="), "Runtime must not replace table/report 
 assert(api && api.version === VERSION, "Runtime API must expose the Analysis Report live version.");
 assert(typeof api.collectLiveMetrics === "function", "Runtime API must expose live metric collection.");
 assert(typeof api.refresh === "function", "Runtime API must expose a refresh function.");
+assert(typeof api.installResponsiveCss === "function", "Runtime API must expose responsive CSS installation for browser checks.");
 
 const metrics = api.collectLiveMetrics();
 assert(metrics && typeof metrics.get === "function" && metrics.size > 40, "Runtime must collect a broad live metric set from the current case.");

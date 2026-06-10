@@ -1,9 +1,10 @@
 (function installEngineeringAnalysisReportLiveRuntime(root) {
   'use strict';
 
-  const VERSION = '2026.06-analysis-report-live2';
+  const VERSION = '2026.06-analysis-report-live3';
   const REFRESH_MS = 1000;
   const ACTIVE_SELECTOR = '.journal-analysis-task-window, .journal-analysis-report-panel, .task-window';
+  const RESPONSIVE_STYLE_ID = 'engineeringAnalysisReportLiveResponsiveStyle';
 
   root.__npshAnalysisReportLiveBoot = VERSION;
   try {
@@ -11,6 +12,110 @@
   } catch (error) {
     console.warn('Analysis Report live runtime marker could not be installed.', error);
   }
+
+  const installResponsiveCss = () => {
+    if (typeof document === 'undefined'
+      || !document.getElementById
+      || !document.createElement
+      || !document.head?.appendChild) {
+      return false;
+    }
+    if (document.getElementById(RESPONSIVE_STYLE_ID)) return false;
+
+    const style = document.createElement('style');
+    style.id = RESPONSIVE_STYLE_ID;
+    style.textContent = `
+.journal-analysis-task-window,
+.journal-analysis-report-panel {
+  max-width: calc(100vw - 16px);
+  min-width: 0;
+}
+.journal-analysis-task-window .task-window-body,
+.journal-analysis-report-panel {
+  min-width: 0;
+  overflow-x: hidden;
+}
+.journal-analysis-task-window .journal-analysis-report-panel,
+.journal-analysis-task-window .journal-analysis-card,
+.journal-analysis-task-window section,
+.journal-analysis-task-window article,
+.journal-analysis-report-panel .journal-analysis-card,
+.journal-analysis-report-panel section,
+.journal-analysis-report-panel article {
+  max-width: 100%;
+  min-width: 0;
+}
+.journal-analysis-task-window .academic-equation-step,
+.journal-analysis-task-window .academic-equation-display,
+.journal-analysis-task-window .formula-defense-equation-surface,
+.journal-analysis-task-window .pump-optimization-equation-wrap,
+.journal-analysis-task-window .journal-analysis-formula-list,
+.journal-analysis-report-panel .academic-equation-step,
+.journal-analysis-report-panel .academic-equation-display,
+.journal-analysis-report-panel .formula-defense-equation-surface,
+.journal-analysis-report-panel .pump-optimization-equation-wrap,
+.journal-analysis-report-panel .journal-analysis-formula-list {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.journal-analysis-task-window .academic-equation-display,
+.journal-analysis-task-window .formula-defense-equation-surface,
+.journal-analysis-task-window .academic-equation-math,
+.journal-analysis-task-window .academic-inline-formula,
+.journal-analysis-task-window .formula-defense-inline-equation,
+.journal-analysis-task-window .formula-defense-fallback-equation,
+.journal-analysis-report-panel .academic-equation-display,
+.journal-analysis-report-panel .formula-defense-equation-surface,
+.journal-analysis-report-panel .academic-equation-math,
+.journal-analysis-report-panel .academic-inline-formula,
+.journal-analysis-report-panel .formula-defense-inline-equation,
+.journal-analysis-report-panel .formula-defense-fallback-equation {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+.journal-analysis-task-window .academic-equation-math,
+.journal-analysis-task-window .formula-defense-inline-equation,
+.journal-analysis-report-panel .academic-equation-math,
+.journal-analysis-report-panel .formula-defense-inline-equation {
+  display: block !important;
+  width: 100% !important;
+  overflow-x: hidden !important;
+}
+.journal-analysis-task-window .katex,
+.journal-analysis-task-window .katex *,
+.journal-analysis-report-panel .katex,
+.journal-analysis-report-panel .katex * {
+  max-width: 100% !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+.journal-analysis-task-window .katex-display,
+.journal-analysis-report-panel .katex-display {
+  overflow: visible !important;
+  margin: 0 !important;
+}
+.journal-analysis-task-window .katex-html,
+.journal-analysis-report-panel .katex-html {
+  white-space: normal !important;
+}
+.journal-analysis-task-window .katex .base,
+.journal-analysis-report-panel .katex .base {
+  display: inline !important;
+  white-space: normal !important;
+}
+.journal-analysis-task-window table,
+.journal-analysis-report-panel table {
+  max-width: 100%;
+}
+`;
+    document.head.appendChild(style);
+    return true;
+  };
 
   const normalizeMetric = (value) => String(value || '')
     .replace(/\s+/g, ' ')
@@ -521,6 +626,7 @@
   };
 
   const refresh = () => {
+    installResponsiveCss();
     const metrics = collectLiveMetrics();
     if (!metrics.size) return 0;
     let changed = 0;
@@ -573,6 +679,7 @@
     version: VERSION,
     refresh,
     collectLiveMetrics,
+    installResponsiveCss,
     scheduleRefresh
   };
 
@@ -606,6 +713,7 @@
   }
 
   try {
+    installResponsiveCss();
     patchUpdateSimulation();
     scheduleRefresh();
   } catch (error) {

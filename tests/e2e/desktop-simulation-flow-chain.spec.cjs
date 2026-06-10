@@ -475,6 +475,43 @@ test('Analysis Report live cells refresh from current calculation state without 
   expect(changedReport.pumpHeadComparison.application).toBe('31.127 m');
   expect(changedReport.viscosityApplication.value).toBe('0.355 cSt');
   expect(changedReport.lastRefresh?.changed).toBeGreaterThanOrEqual(3);
+
+  await page.evaluate(() => {
+    const taskWindow = document.querySelector('.journal-analysis-task-window');
+    const panel = taskWindow?.querySelector('.journal-analysis-report-panel') || taskWindow?.querySelector('.task-window-body');
+    if (!taskWindow || !panel) throw new Error('Analysis Report task window is not open.');
+    Object.assign(taskWindow.style, {
+      left: '12px',
+      top: '4px',
+      width: '992px',
+      height: '760px'
+    });
+    const card = document.createElement('section');
+    card.className = 'journal-analysis-card analysis-responsive-probe-card';
+    card.innerHTML = `
+      <h3>Responsive Formula Probe</h3>
+      <article class="academic-equation-step">
+        <div class="academic-equation-display formula-defense-equation-surface">
+          <span class="academic-equation-math formula-defense-inline-equation analysis-responsive-probe">
+            FluidBasisJSON+decoded.untirtavalidationAudit/model/resultsAtOpenTime;staticCase1FormulasOverrideGenericDynamicHydraulicRouteTraceSourcePipePumpDischargePipeSNKNetworkCalculateTargetFlowRequiredHeadNPSHaAllowableNPSHrAndOutletPressure
+          </span>
+        </div>
+      </article>`;
+    panel.appendChild(card);
+    window.EngineeringAnalysisReportLiveRuntime?.installResponsiveCss?.();
+  });
+
+  await page.waitForFunction(() => {
+    const taskWindow = document.querySelector('.journal-analysis-task-window');
+    const body = taskWindow?.querySelector('.task-window-body') || taskWindow;
+    const probe = taskWindow?.querySelector('.analysis-responsive-probe');
+    if (!body || !probe) return false;
+    const bodyRect = body.getBoundingClientRect();
+    const probeRect = probe.getBoundingClientRect();
+    return getComputedStyle(probe).whiteSpace === 'normal'
+      && body.scrollWidth <= body.clientWidth + 2
+      && probeRect.right <= bodyRect.right + 2;
+  }, null, { timeout: 10000 });
 });
 
 test('Simulasi 4 desktop chain renders actual methanol NPSH-risk fixture', async ({ page }, testInfo) => {
