@@ -53,7 +53,7 @@ async function waitForNpshApp(page) {
   await page.waitForFunction(() => (
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.updateSimulation === 'function'
-    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v2'
+    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v3'
     && window.CanvasContextDock?.version === 'engineering-canvas-context-dock.v2'
     && window.EngineeringRouteTraceAudit?.version
     && window.EngineeringDefenseExportPackage?.schemaVersion === 'defense-export-package.v1'
@@ -222,6 +222,45 @@ async function browserSnapshot(page, caseData) {
   }, { pumpId: caseData.pumpId, sinkId: caseData.sinkId });
 }
 
+async function analysisReportCellSnapshot(page) {
+  return page.evaluate(() => {
+    const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const findComparison = (metric) => {
+      const desired = normalize(metric);
+      const rows = Array.from(document.querySelectorAll('.journal-analysis-comparison-table tbody tr'));
+      const row = rows.find((item) => normalize(item.cells?.[0]?.textContent) === desired);
+      return row ? {
+        metric: row.cells[0]?.textContent.trim() || '',
+        journal: row.cells[1]?.textContent.trim() || '',
+        application: row.cells[2]?.textContent.trim() || '',
+        error: row.cells[3]?.textContent.trim() || ''
+      } : null;
+    };
+    const findApplicationValue = (metric) => {
+      const desired = normalize(metric);
+      const sections = Array.from(document.querySelectorAll('.journal-analysis-report-panel section, .journal-analysis-report-panel article'));
+      const section = sections.find((item) => /application input|application data|data input|hasil aplikasi/i.test(item.textContent || ''));
+      const rows = Array.from(section?.querySelectorAll('table tbody tr') || []);
+      const row = rows.find((item) => normalize(item.cells?.[0]?.textContent) === desired);
+      return row ? {
+        metric: row.cells[0]?.textContent.trim() || '',
+        value: row.cells[1]?.textContent.trim() || ''
+      } : null;
+    };
+    return {
+      tempComparison: findComparison('Fluid Basis - Temperature'),
+      pumpHeadComparison: findComparison('Pump - Pump head evaluated'),
+      pumpNpshrComparison: findComparison('Pump - NPSHr'),
+      pumpNpshaNpshrComparison: findComparison('Pump - NPSHa / NPSHr'),
+      pumpMarginComparison: findComparison('Pump - NPSH margin'),
+      pumpRatioComparison: findComparison('Pump - NPSH ratio'),
+      pumpMarginRatioComparison: findComparison('Pump - NPSH Margin / Ratio'),
+      viscosityApplication: findApplicationValue('Fluid Basis - Kinematic viscosity'),
+      lastRefresh: window.__npshAnalysisReportLiveLastRefresh || null
+    };
+  });
+}
+
 function formulaRow(snapshot, stepName) {
   return (snapshot.response.formulaRows || []).find((row) => row.step === stepName) || {};
 }
@@ -314,12 +353,23 @@ test('Simulasi 1 desktop chain refreshes route/formula/dependency after SINK edi
     )
   ), caseData.pumpId, { timeout: 10000 });
   const calculatingSnapshot = await browserSnapshot(page, caseData);
-  expect(calculatingSnapshot.realtime.status).toBe('Calculating');
+  expect(['Calculating', 'Current']).toContain(calculatingSnapshot.realtime.status);
   expect(['Calculating', 'Connected']).toContain(calculatingSnapshot.pump.backendValidationStatus);
 
-  const changedResponse = await changedResponsePromise;
-  const changed = await changedResponse.json();
+  await changedResponsePromise;
   await changedSolvePromise;
+  await page.waitForFunction((previousCalculationId) => {
+    const response = window.__npshLastBackendSimulationResponse?.response || {};
+    const state = window.__engineeringCalculationDefenseRealtimeState || {};
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const pumpId = Object.keys(model).find((id) => model[id]?.type === 'pump');
+    const pumpResults = model[pumpId]?.results || {};
+    return !!response.calculationId
+      && response.calculationId !== previousCalculationId
+      && state.calculationId === response.calculationId
+      && pumpResults.calculationAudit?.calculationId === response.calculationId;
+  }, baseline.calculationId, { timeout: 15000 });
+  const changed = await page.evaluate(() => window.__npshLastBackendSimulationResponse?.response || null);
   const changedSnapshot = await browserSnapshot(page, caseData);
 
   expect(changed.calculationId).not.toBe(baseline.calculationId);
@@ -378,6 +428,55 @@ test('Simulasi 1 desktop chain refreshes route/formula/dependency after SINK edi
   }, null, 2));
 });
 
+test('Analysis Report live cells refresh from current calculation state without rebuilding layout', async ({ page }) => {
+  const caseData = loadJournalCase('simulation-case-1');
+  await waitForNpshApp(page);
+  await loadProject(page, caseData);
+  await runProtectedSolve(page, caseData);
+
+  await page.evaluate(({ entry, report }) => {
+    window.openJournalAnalysisTaskWindow(entry, report);
+    window.EngineeringAnalysisReportLiveRuntime?.refresh?.();
+  }, { entry: caseData.entry, report: caseData.report });
+
+  await page.waitForSelector('.journal-analysis-task-window .journal-analysis-comparison-table', { timeout: 10000 });
+  const baselineReport = await analysisReportCellSnapshot(page);
+  expect(baselineReport.tempComparison.application).toContain('100 deg C');
+  expect(baselineReport.pumpHeadComparison.application).toContain('24 m');
+  expect(baselineReport.viscosityApplication.value).toContain('0.803');
+
+  await page.evaluate((pumpId) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    model.FLUID.props.temp = 80;
+    model.FLUID.props.viscosity = 0.355;
+    model.FLUID.props.dynViscosity = 0.344;
+    const pump = model[pumpId];
+    pump.results.npshEvaluation.pumpHead = 31.127;
+    pump.results.requiredSystemHead = 31.127;
+    window.EngineeringAnalysisReportLiveRuntime.refresh();
+  }, caseData.pumpId);
+
+  await page.waitForFunction(() => {
+    const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const comparisonRows = Array.from(document.querySelectorAll('.journal-analysis-comparison-table tbody tr'));
+    const tempRow = comparisonRows.find((row) => normalize(row.cells?.[0]?.textContent) === 'fluid basis - temperature');
+    const headRow = comparisonRows.find((row) => normalize(row.cells?.[0]?.textContent) === 'pump - pump head evaluated');
+    const appSections = Array.from(document.querySelectorAll('.journal-analysis-report-panel section, .journal-analysis-report-panel article'));
+    const appSection = appSections.find((section) => /application input|application data|data input|hasil aplikasi/i.test(section.textContent || ''));
+    const viscosityRow = Array.from(appSection?.querySelectorAll('table tbody tr') || [])
+      .find((row) => normalize(row.cells?.[0]?.textContent) === 'fluid basis - kinematic viscosity');
+    return tempRow?.cells?.[2]?.textContent.includes('80 deg C')
+      && headRow?.cells?.[2]?.textContent.includes('31.127 m')
+      && viscosityRow?.cells?.[1]?.textContent.includes('0.355 cSt');
+  }, null, { timeout: 10000 });
+
+  const changedReport = await analysisReportCellSnapshot(page);
+  expect(changedReport.tempComparison.application).toBe('80 deg C');
+  expect(changedReport.pumpHeadComparison.application).toBe('31.127 m');
+  expect(changedReport.viscosityApplication.value).toBe('0.355 cSt');
+  expect(changedReport.lastRefresh?.changed).toBeGreaterThanOrEqual(3);
+});
+
 test('Simulasi 4 desktop chain renders actual methanol NPSH-risk fixture', async ({ page }, testInfo) => {
   const caseData = loadJournalCase('simulation-case-4');
   expect(caseData.entry.sampleFile).toMatch(/simulasi_4/i);
@@ -429,4 +528,89 @@ test('Simulasi 4 desktop chain renders actual methanol NPSH-risk fixture', async
     routeTrace: snapshot.audit.routeTraceText,
     screenshotPath
   }, null, 2));
+});
+
+test('Manual NPSHr UI edit autosolves Simulasi 4 and refreshes linked report values', async ({ page }) => {
+  const caseData = loadJournalCase('simulation-case-4');
+
+  await waitForNpshApp(page);
+  await loadProject(page, caseData);
+
+  const baseline = await runProtectedSolve(page, caseData);
+  expect(baseline.results.npshr).toBe(5);
+  expect(baseline.results.npshMargin).toBeCloseTo(-0.25, 4);
+
+  await page.evaluate(({ entry, report, pumpId }) => {
+    window.openJournalAnalysisTaskWindow(entry, report);
+    window.currentSelectedNode = pumpId;
+    window.__npshExplicitObjectPropertiesOpenUntil = Date.now() + 2000;
+    window.requestObjectPropertiesTaskWindowOpen?.(pumpId);
+    window.openObjectPropertiesTaskWindow?.(pumpId);
+    const taskWindow = document.querySelector(`.persistent-object-properties-task-window[data-node-id="${pumpId}"]`);
+    window.renderSidebar?.(pumpId, { taskWindow, skipDismissedGuard: true });
+    window.EngineeringAnalysisReportLiveRuntime?.refresh?.();
+  }, { entry: caseData.entry, report: caseData.report, pumpId: caseData.pumpId });
+
+  await page.waitForSelector('.journal-analysis-task-window .journal-analysis-comparison-table', { timeout: 10000 });
+  const npshrInput = page.locator(`.persistent-object-properties-task-window[data-node-id="${caseData.pumpId}"] input[data-key="designNpshr"], .persistent-object-properties-task-window[data-node-id="${caseData.pumpId}"] input[name="design-npshr"]`).first();
+  await expect(npshrInput).toBeVisible({ timeout: 10000 });
+
+  const responsePromise = page.waitForResponse(async (response) => {
+    if (!/\/api\/simulate(?:[?#]|$)/.test(response.url()) || response.request().method() !== 'POST' || response.status() !== 200) {
+      return false;
+    }
+    try {
+      const payload = JSON.parse(response.request().postData() || '{}');
+      return Number(payload?.model?.[caseData.pumpId]?.props?.designNpshr) === 4;
+    } catch {
+      return false;
+    }
+  }, { timeout: 30000 });
+
+  await npshrInput.click();
+  await npshrInput.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
+  await npshrInput.type('4');
+
+  const response = await responsePromise;
+  const body = await response.json();
+  await page.waitForFunction((pumpId) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const pump = model[pumpId] || {};
+    const results = pump.results || {};
+    const npsh = results.npshEvaluation || {};
+    const state = window.__engineeringCalculationDefenseRealtimeState || {};
+    return Number(pump.props?.designNpshr) === 4
+      && Number(npsh.npshr ?? results.npshr) === 4
+      && Math.abs(Number(npsh.npshMargin ?? results.npshMargin) - 0.75) < 1e-6
+      && Math.abs(Number(npsh.npshRatio ?? results.npshRatio) - 1.1875) < 1e-6
+      && state.status === 'Current'
+      && results.backendValidationStatus === 'Connected';
+  }, caseData.pumpId, { timeout: 15000 });
+
+  await page.waitForFunction(() => {
+    const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const rows = Array.from(document.querySelectorAll('.journal-analysis-comparison-table tbody tr'));
+    const readApp = (metric) => {
+      const row = rows.find((item) => normalize(item.cells?.[0]?.textContent) === normalize(metric));
+      return row?.cells?.[2]?.textContent || '';
+    };
+    const npshrText = readApp('Pump - NPSHr') || readApp('Pump - NPSHa / NPSHr');
+    const marginText = readApp('Pump - NPSH margin') || readApp('Pump - NPSH Margin / Ratio');
+    const ratioText = readApp('Pump - NPSH ratio') || readApp('Pump - NPSH Margin / Ratio');
+    return /(?:^|\/\s*)4(?:\.0+)?\s*m/i.test(npshrText)
+      && /0\.75\s*m/i.test(marginText)
+      && /1\.1875/i.test(ratioText);
+  }, null, { timeout: 15000 });
+
+  const changedReport = await analysisReportCellSnapshot(page);
+  const npshrApplication = changedReport.pumpNpshrComparison?.application || changedReport.pumpNpshaNpshrComparison?.application || '';
+  const marginApplication = changedReport.pumpMarginComparison?.application || changedReport.pumpMarginRatioComparison?.application || '';
+  const ratioApplication = changedReport.pumpRatioComparison?.application || changedReport.pumpMarginRatioComparison?.application || '';
+  expect(body.results.npshr).toBe(4);
+  expect(body.results.npshMargin).toBeCloseTo(0.75, 6);
+  expect(body.results.npshRatio).toBeCloseTo(1.1875, 6);
+  expect(body.results.status).toBe('Warning');
+  expect(npshrApplication).toMatch(/(?:^|\/\s*)4(?:\.0+)? m/);
+  expect(marginApplication).toMatch(/0\.75 m/);
+  expect(ratioApplication).toMatch(/1\.1875/);
 });

@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const VERSION = "2026.06-parameter-task-blocks1";
+  const VERSION = "2026.06-parameter-task-blocks2";
   const STYLE_ID = "engineeringParameterTaskRuntimeStyle";
   const TRIGGER_SELECTOR = "[data-parameter-task-trigger]";
   const SECTION_SELECTOR = ".pump-live-param-section";
@@ -1249,6 +1249,23 @@
     root.EngineeringFormulaDefenseUI?.enhanceDocument?.(document);
   }
 
+  function refreshOpenWindows(pumpId = "") {
+    if (typeof document === "undefined") return 0;
+    let count = 0;
+    Array.from(document.querySelectorAll(WINDOW_SELECTOR)).forEach((windowNode) => {
+      const body = windowNode.querySelector?.(".task-window-body");
+      const scrollTop = body?.scrollTop || 0;
+      const scrollLeft = body?.scrollLeft || 0;
+      refreshWindowContent(windowNode, pumpId || windowNode.dataset.pumpNodeId);
+      if (body) {
+        body.scrollTop = scrollTop;
+        body.scrollLeft = scrollLeft;
+      }
+      count += 1;
+    });
+    return count;
+  }
+
   function openParameterTaskWindow(block = "status", pumpId = "", trigger = null) {
     if (typeof document === "undefined") return null;
     const definition = BLOCKS[block] || BLOCKS.status;
@@ -1409,6 +1426,7 @@
     openParameterStatusTaskWindow,
     openParameterSuctionTaskWindow,
     openParameterDischargeTaskWindow,
+    refreshOpenWindows,
     buildStatusSnapshot,
     buildRouteSnapshot,
     windows: () => Array.from(document.querySelectorAll(WINDOW_SELECTOR))

@@ -45,14 +45,14 @@ engineering-pump-readiness-visibility-runtime.js public-safe final-defense guard
 engineering-bilingual-improvements.js bilingual engineering terminology, trace-key registry, runtime UI workflow localization, and diagnostics overlay
 engineering-library-governance.js public-safe library manifest, trace schema, unit/fluid/equipment/literature governance, OCR terminology, formula-literature map, and quality gates
 engineering-route-trace-audit.js public-safe backend route-trace audit bridge, dependency fingerprint handoff, stale-result metadata capture, default-hidden canvas route-trace plus pump/SNK presentation-row display lock, SNK Boundary Mode canonical canvas/tooltip/readout lock, Free Outlet/Outlet Pressure demand-ignore property window lock, atmospheric outlet pressure assumption readout, SNK evaluated flow display, SNK Sink Flow/Sink P abs/Sink Elev./Sink Head canvas readouts, pump/SNK object-hover synchronization, idempotent canvas observer pruning, calculation defense contract handoff, advanced engineering validation display, defense export context capture, backend schema mismatch warning, and software dependency-change gate display
-engineering-realtime-calculation-defense.js public-safe realtime stale/calculating/freshness bridge that marks calculation results stale immediately when object-property inputs change and calculating while backend refresh is pending
+engineering-realtime-calculation-defense.js public-safe realtime stale/calculating/freshness bridge that marks calculation results stale immediately when object-property inputs change, autosolves trusted user edits through the protected backend, and refreshes linked report/task-window views after backend completion
 engineering-browser-issues-runtime.js public-safe browser Issues cleanup bridge for ARIA menu ownership, empty-menu role removal, and dynamic toolbar object-menu role repair
 engineering-pipe-segments-file-runtime.js public-safe Pipe Segments local `.v1` import/export bridge with compact table controls, schema validation, browser download/upload handling, and stale-result marking after import
 engineering-formula-defense-ui.js public-safe Formula Defense UI bridge for KaTeX equation rendering, WCAG AA dark/light contrast, responsive Pipe Fitting Valve Breakdown tables, dependency chain visualization, and debounced realtime recalculation
 engineering-decimal-display-runtime.js public-safe live readout decimal lock and click-guard bridge for pump parameter cards
-engineering-parameter-task-runtime.js public-safe hidden pump Status/Suction/Discharge task-window defense notes with route-trace formulas for oral examination answers
+engineering-parameter-task-runtime.js public-safe hidden pump Status/Suction/Discharge task-window defense notes with route-trace formulas for oral examination answers and refresh support for open parameter windows after realtime solves
 engineering-local-trace-fallback-runtime.js public-safe local route-trace fallback that keeps Pump Status connected, current, and schema-complete when the protected backend is not reachable in local preview
-engineering-analysis-report-live-runtime.js public-safe Analysis Report live-link bridge that refreshes existing report table cells from current Fluid Basis, pipe trace totals, pump NPSH/system-head results, SNK/outlet readouts, and backend/local calculation context without rebuilding report layout
+engineering-analysis-report-live-runtime.js public-safe Analysis Report live-link bridge that refreshes existing comparison and application-value report table cells from current Fluid Basis, pipe trace totals, pump NPSH/system-head results, SNK/outlet readouts, and backend/local calculation context without rebuilding report layout
 engineering-canvas-context-dock.js public-safe responsive Fluid Basis and Route Trace dock for the PFD canvas, including default-collapsed audit details, sticky canvas viewport positioning, mobile compact lock, mobile symbol mode, stale/current freshness display, route breadcrumb focus, audit metadata handoff, global canvas select/context-menu guard, and explicit User Task Object Properties command-only open policy
 engineering-defense-export-package.js public-safe one-click defense report exporter, calculation defense contract evidence, UI evidence registry, task-window evidence badges, redacted audit event handoff, and print/save PDF workflow
 engineering-pipe-moody-chart-audit.js public-safe pipe Moody chart visual audit overlay that stays hidden until explicitly opened, separates overlapped markers, exposes all overlapped element names in tooltip/list evidence, and adds dimensionless Aging Roughness Factor help text
@@ -80,7 +80,7 @@ tools/validate-pump-readiness-visibility-lock.cjs Node validation for late-added
 tools/validate-browser-issues-runtime.cjs Node validation for browser Issues cleanup: ARIA menu repair, CSS compatibility property cleanup, static header normalization, and cache-busted runtime load
 tools/validate-pipe-segments-file-runtime.cjs Node validation for Pipe Segments local `.v1` schema, filename convention, compact import/export controls, cache-busted runtime load, and stale-result marking
 tools/validate-formula-defense-ui.cjs Node validation for Formula Defense UI KaTeX rendering, WCAG contrast, dependency chain visualization, responsive table contract, cache-busted runtime load, and realtime debounce
-tools/validate-analysis-report-live-runtime.cjs Node validation for Analysis Report live-link runtime loading, existing-table cell refresh behavior, Simulasi 1 Fluid/Pipe/Pump/SNK metric mapping, cache key, npm script, and manifest lock
+tools/validate-analysis-report-live-runtime.cjs Node validation for Analysis Report live-link runtime loading, existing-table cell refresh behavior including bilingual headers and TH metric rows, Simulasi 1 Fluid/Pipe/Pump/SNK metric mapping, cache key, npm script, and manifest lock
 ```
 
 Protected-bundle guardrail:
@@ -104,11 +104,11 @@ Main style cache key: style.min.css?v=20260608-browser-issues1
 Bilingual terminology runtime cache key: engineering-bilingual-improvements.js?v=20260607-sink-mode-trace1
 Source canvas parameter runtime cache key: engineering-src-canvas-parameter-runtime.js?v=20260607-src-flow-basis2
 Decimal display runtime cache key: engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2
-Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=20260609-parameter-blocks1
+Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=20260610-parameter-blocks2
 Local trace fallback runtime cache key: engineering-local-trace-fallback-runtime.js?v=20260609-local-trace2
-Analysis Report live runtime cache key: engineering-analysis-report-live-runtime.js?v=20260609-analysis-report-live1
+Analysis Report live runtime cache key: engineering-analysis-report-live-runtime.js?v=20260610-analysis-report-live2
 Route audit cache key: engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock8
-Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260607-realtime-defense2
+Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260610-realtime-autosolve1
 Browser issues runtime cache key: engineering-browser-issues-runtime.js?v=20260608-browser-issues1
 Pipe Segments file runtime cache key: engineering-pipe-segments-file-runtime.js?v=20260608-pipe-segments-file1
 Formula Defense UI runtime cache key: engineering-formula-defense-ui.js?v=20260608-formula-defense-ui2

@@ -1,7 +1,7 @@
 (function installEngineeringAnalysisReportLiveRuntime(root) {
   'use strict';
 
-  const VERSION = '2026.06-analysis-report-live1';
+  const VERSION = '2026.06-analysis-report-live2';
   const REFRESH_MS = 1000;
   const ACTIVE_SELECTOR = '.journal-analysis-task-window, .journal-analysis-report-panel, .task-window';
 
@@ -441,13 +441,19 @@
   const tableHeaders = (table) => {
     const row = table.tHead?.rows?.[0] || table.querySelector('tr');
     if (!row) return null;
-    const labels = Array.from(row.cells || []).map((cell) => normalizeMetric(cell.textContent));
-    const indexOf = (needle) => labels.findIndex((label) => label.includes(needle));
-    const metricIndex = indexOf('metric');
-    const applicationIndex = indexOf('application');
-    const journalIndex = indexOf('journal');
-    const errorIndex = indexOf('error');
-    const valueIndex = labels.findIndex((label) => label === 'value');
+    const labels = Array.from(row.cells || []).map((cell) => normalizeMetric([
+      cell.textContent,
+      cell.dataset?.label,
+      cell.dataset?.i18nDataLabelFallback,
+      cell.dataset?.i18nFallback,
+      cell.dataset?.i18nTextFallback
+    ].filter(Boolean).join(' ')));
+    const indexOfAny = (...needles) => labels.findIndex((label) => needles.some((needle) => label.includes(needle)));
+    const metricIndex = indexOfAny('metric', 'metrik');
+    const applicationIndex = indexOfAny('application', 'aplikasi');
+    const journalIndex = indexOfAny('journal', 'jurnal');
+    const errorIndex = indexOfAny('error');
+    const valueIndex = indexOfAny('value', 'nilai');
     return { labels, metricIndex, applicationIndex, journalIndex, errorIndex, valueIndex };
   };
 
@@ -473,7 +479,7 @@
     if (!headers || headers.metricIndex < 0 || headers.applicationIndex < 0) return 0;
     let changed = 0;
     Array.from(table.querySelectorAll('tbody tr, tr')).forEach((row) => {
-      if (row.querySelector('th')) return;
+      if (row.closest?.('thead')) return;
       const cells = Array.from(row.cells || []);
       const metricCell = cells[headers.metricIndex];
       const appCell = cells[headers.applicationIndex];
@@ -494,8 +500,8 @@
     const headers = tableHeaders(table);
     if (!headers || headers.metricIndex < 0 || headers.valueIndex < 0 || headers.applicationIndex >= 0) return false;
     const containerText = String(table.closest('section, article, .journal-analysis-card, .fluid-help-card, .task-window-body')?.textContent || '').slice(0, 3000);
-    return /application data|application recalculation|calculated outlet|app recalculation/i.test(containerText)
-      && !/journal data/i.test(containerText.slice(0, 500));
+    return /application input\s*&\s*result data|application data|application recalculation|calculated outlet|app recalculation|data input\s*&\s*hasil aplikasi|hasil aplikasi/i.test(containerText)
+      && !/journal data|ekstraksi data jurnal/i.test(containerText.slice(0, 500));
   };
 
   const updateApplicationValueTable = (table, metrics) => {
@@ -503,7 +509,7 @@
     if (!headers || headers.metricIndex < 0 || headers.valueIndex < 0 || !isApplicationValueTable(table)) return 0;
     let changed = 0;
     Array.from(table.querySelectorAll('tbody tr, tr')).forEach((row) => {
-      if (row.querySelector('th')) return;
+      if (row.closest?.('thead')) return;
       const cells = Array.from(row.cells || []);
       const metricCell = cells[headers.metricIndex];
       const valueCell = cells[headers.valueIndex];
@@ -519,7 +525,8 @@
     if (!metrics.size) return 0;
     let changed = 0;
     const candidates = Array.from(document.querySelectorAll(ACTIVE_SELECTOR))
-      .filter((element) => /analysis report|journal|comparison|application/i.test(element.textContent || ''));
+      .filter((element) => element.classList?.contains?.('journal-analysis-task-window')
+        || /analysis report|journal|comparison|application|laporan analisis|jurnal|perbandingan|aplikasi/i.test(element.textContent || ''));
     const roots = candidates.length ? candidates : [document.body];
     roots.forEach((rootNode) => {
       rootNode.querySelectorAll('table').forEach((table) => {

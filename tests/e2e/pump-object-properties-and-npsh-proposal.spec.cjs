@@ -128,7 +128,7 @@ async function waitForNpshApp(page) {
   await page.waitForFunction(() => (
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.updateSimulation === 'function'
-    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v2'
+    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v3'
     && window.EngineeringDefenseExportPackage?.schemaVersion === 'defense-export-package.v1'
     && window.__npshRouteTraceAuditInstalled?.fetchSimulation
   ), null, { timeout: 30000 });

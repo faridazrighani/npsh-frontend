@@ -9,8 +9,8 @@ const RUNTIME_FILE = path.join(FRONTEND_ROOT, "engineering-analysis-report-live-
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const CASE_FILE = path.join(FRONTEND_ROOT, "journals", "simulasi_1", "simulasi_performansi_pompa_air_umpan_tangki_deaerator.untirta");
-const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260609-analysis-report-live1";
-const VERSION = "2026.06-analysis-report-live1";
+const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260610-analysis-report-live2";
+const VERSION = "2026.06-analysis-report-live2";
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
 function assert(condition, message) {
@@ -37,9 +37,9 @@ function readUntirtaProject(filePath) {
   return project;
 }
 
-function loadRuntime(runtimeSource, model) {
+function loadRuntime(runtimeSource, model, documentOverride = null) {
   const fakeBody = { querySelectorAll: () => [] };
-  const fakeDocument = {
+  const fakeDocument = documentOverride || {
     documentElement: { dataset: {} },
     body: fakeBody,
     addEventListener: () => {},
@@ -65,6 +65,140 @@ function loadRuntime(runtimeSource, model) {
   return sandbox.EngineeringAnalysisReportLiveRuntime;
 }
 
+function normalizeMetric(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .replace(/\s+\/\s+/g, " / ")
+    .trim()
+    .toLowerCase();
+}
+
+class FakeClassList {
+  constructor(classes = []) {
+    this.classes = new Set(classes);
+  }
+
+  contains(className) {
+    return this.classes.has(className);
+  }
+}
+
+class FakeCell {
+  constructor(text, tagName = "td", dataset = {}) {
+    this.textContent = text;
+    this.tagName = tagName.toUpperCase();
+    this.dataset = { ...dataset };
+    this.title = "";
+  }
+}
+
+class FakeRow {
+  constructor(cells, parentName = "tbody") {
+    this.cells = cells;
+    this.parentName = parentName;
+  }
+
+  querySelector(selector) {
+    return selector === "th" && this.cells.some((cell) => cell.tagName === "TH") ? this.cells.find((cell) => cell.tagName === "TH") : null;
+  }
+
+  closest(selector) {
+    return selector === "thead" && this.parentName === "thead" ? this : null;
+  }
+}
+
+class FakeTable {
+  constructor({ headers, rows, section }) {
+    this.section = section;
+    this.headerRow = new FakeRow(headers.map((header) => new FakeCell(header.text, "th", header.dataset || {})), "thead");
+    this.tHead = { rows: [this.headerRow] };
+    this.rows = rows.map((row) => new FakeRow(row, "tbody"));
+  }
+
+  querySelector(selector) {
+    return selector === "tr" ? this.headerRow : null;
+  }
+
+  querySelectorAll(selector) {
+    if (selector === "tbody tr, tr") return [...this.rows, this.headerRow];
+    return [];
+  }
+
+  closest(selector) {
+    return /section|article|journal-analysis-card|fluid-help-card|task-window-body/.test(selector) ? this.section : null;
+  }
+}
+
+class FakeSection {
+  constructor(textContent) {
+    this.textContent = textContent;
+    this.tables = [];
+  }
+
+  querySelectorAll(selector) {
+    return selector === "table" ? this.tables : [];
+  }
+}
+
+function createReportDocument() {
+  const section = new FakeSection("Laporan Analisis Data Input & Hasil Aplikasi Perbandingan Jurnal vs Aplikasi");
+  const comparisonTable = new FakeTable({
+    section,
+    headers: [
+      { text: "Metrik", dataset: { i18nDataLabelFallback: "Metric" } },
+      { text: "Jurnal", dataset: { i18nDataLabelFallback: "Journal" } },
+      { text: "Aplikasi", dataset: { i18nDataLabelFallback: "Application" } },
+      { text: "Error", dataset: { i18nDataLabelFallback: "Error" } },
+      { text: "Status", dataset: { i18nDataLabelFallback: "Status" } }
+    ],
+    rows: [
+      [
+        new FakeCell("Fluid Basis - Temperature"),
+        new FakeCell("100 deg C"),
+        new FakeCell("100 deg C"),
+        new FakeCell("0.00%"),
+        new FakeCell("OK")
+      ],
+      [
+        new FakeCell("Pump - Pump head evaluated"),
+        new FakeCell("24 m"),
+        new FakeCell("24 m"),
+        new FakeCell("0.00%"),
+        new FakeCell("OK")
+      ]
+    ]
+  });
+  const applicationTable = new FakeTable({
+    section,
+    headers: [
+      { text: "Metrik", dataset: { i18nDataLabelFallback: "Metric" } },
+      { text: "Nilai", dataset: { i18nDataLabelFallback: "Value" } },
+      { text: "Sumber", dataset: { i18nDataLabelFallback: "Source" } }
+    ],
+    rows: [
+      [
+        new FakeCell("Fluid Basis - Kinematic viscosity", "th"),
+        new FakeCell("0.803 cSt"),
+        new FakeCell("Static report")
+      ],
+      [
+        new FakeCell("Pump - NPSHa", "th"),
+        new FakeCell("6.4656 m"),
+        new FakeCell("Static report")
+      ]
+    ]
+  });
+  section.tables.push(comparisonTable, applicationTable);
+  return {
+    documentElement: { dataset: {} },
+    body: section,
+    addEventListener: () => {},
+    querySelectorAll: () => [section],
+    comparisonTable,
+    applicationTable
+  };
+}
+
 function metricText(metrics, label) {
   const value = metrics.get(label.toLowerCase());
   assert(value, `Missing live metric: ${label}`);
@@ -87,6 +221,8 @@ assert(runtime.includes("patchUpdateSimulation"), "Runtime must hook updateSimul
 assert(runtime.includes("updateComparisonTable"), "Runtime must update existing comparison table cells.");
 assert(runtime.includes("updateApplicationValueTable"), "Runtime must update existing application value table cells when present.");
 assert(runtime.includes("setCellText"), "Runtime must patch cell text instead of rebuilding report layout.");
+assert(runtime.includes("row.closest?.('thead')"), "Runtime must update data rows that use TH metric cells and only skip THEAD rows.");
+assert(runtime.includes("data input\\s*&\\s*hasil aplikasi"), "Runtime must recognize Indonesian Analysis Report application-data headings.");
 assert(runtime.includes("setPipeGroup('Pipe Suction'") && runtime.includes("${prefix} - Total Head Loss"), "Runtime must include suction pipe total-loss metric mapping.");
 assert(runtime.includes("setPipeGroup('Pipe Discharge'") && runtime.includes("${prefix} - Total Head Loss"), "Runtime must include discharge pipe total-loss metric mapping.");
 assert(runtime.includes("Pump - NPSHa"), "Runtime must include pump NPSHa metric mapping.");
@@ -109,6 +245,34 @@ assert(metricText(metrics, "Pump - NPSHa").includes("6.4656 m"), "Pump NPSHa mus
 assert(metricText(metrics, "Pump - Pump head evaluated").includes("24 m"), "Pump evaluated head must come from solved pump/system head.");
 assert(metricText(metrics, "SNK - Reference pressure").includes("1.74370712905 bar a"), "SNK reference pressure must come from sink boundary result.");
 assert(metricText(metrics, "Outlet Readout - Vapor margin").includes("7.759"), "Outlet vapor margin must be recalculated from live pressure and Fluid Basis.");
+
+const changedProject = JSON.parse(JSON.stringify(project));
+changedProject.model.FLUID.props.temp = 80;
+changedProject.model.FLUID.props.viscosity = 0.355;
+changedProject.model.FLUID.props.dynViscosity = 0.344;
+changedProject.model["P-100"].results.npshEvaluation.npsha = 7.123456;
+changedProject.model["P-100"].results.npshEvaluation.pumpHead = 31.127;
+changedProject.model["P-100"].results.requiredSystemHead = 31.127;
+const reportDocument = createReportDocument();
+const liveDomApi = loadRuntime(runtime, changedProject.model, reportDocument);
+const changedCells = liveDomApi.refresh();
+assert(changedCells >= 4, "Refresh must update comparison and application-value table cells in an open Analysis Report.");
+assert(
+  reportDocument.comparisonTable.rows[0].cells[2].textContent === "80 deg C",
+  "Comparison table Application cell must refresh from current Fluid Basis temperature."
+);
+assert(
+  reportDocument.comparisonTable.rows[1].cells[2].textContent === "31.127 m",
+  "Comparison table Application cell must refresh from current pump calculation result."
+);
+assert(
+  reportDocument.applicationTable.rows[0].cells[1].textContent === "0.355 cSt",
+  "Application Input & Result Data table must refresh rows that use TH metric cells."
+);
+assert(
+  reportDocument.applicationTable.rows[1].cells[1].textContent === "7.123456 m",
+  "Application Input & Result Data table must refresh NPSHa from current pump calculation result."
+);
 
 assert(
   packageJson.scripts?.["validate:analysis-report-live-runtime"] === "node tools/validate-analysis-report-live-runtime.cjs",

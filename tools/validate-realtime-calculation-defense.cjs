@@ -61,9 +61,29 @@ globalThis.runBackendSimulationShadow = async () => {
   backendRefreshes += 1;
   return { primaryApplied: true };
 };
+let updateSimulationCalls = [];
+let reportRefreshes = 0;
+let parameterRefreshes = 0;
+globalThis.updateSimulation = async (options = {}) => {
+  updateSimulationCalls.push(options);
+  return { ok: true, options };
+};
+globalThis.EngineeringAnalysisReportLiveRuntime = {
+  refresh: () => {
+    reportRefreshes += 1;
+    return 1;
+  },
+  scheduleRefresh: () => {}
+};
+globalThis.EngineeringParameterTaskRuntime = {
+  refreshOpenWindows: () => {
+    parameterRefreshes += 1;
+    return 1;
+  }
+};
 
 const runtime = require(runtimePath);
-assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v2', 'Realtime defense runtime should expose v2.');
+assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v3', 'Realtime defense runtime should expose v3.');
 
 const state = runtime.markStale('P-100', 'Unit test input changed.');
 const results = globalThis.__npshGlobalModel['P-100'].results;
@@ -117,15 +137,36 @@ assert.equal(globalThis.__engineeringCalculationDefenseRealtimeState.calculation
 assert.equal(globalThis.__engineeringCalculationDefenseRealtimeState.dependencyFingerprint, 'dep-2', 'Wrapped backend apply should retain dependency fingerprint.');
 assert.equal(globalThis.__engineeringCalculationDefenseRealtimeState.calculationDefenseStatus, 'Ready', 'Wrapped backend apply should retain calculation defense status.');
 
+runtime.requestAutoSolve('P-100', 'Autosolve unit test.', { delayMs: 0 });
+runtime.flushAutoSolve().then(() => {
+  const autoCall = updateSimulationCalls.find((call) => call.__engineeringRealtimeAutoSolve);
+  assert(autoCall, 'requestAutoSolve should call updateSimulation through the realtime autosolve path.');
+  assert.equal(autoCall.forceBackend, true, 'Autosolve should force the protected backend refresh.');
+  assert.equal(autoCall.renderSidebarAfter, true, 'Autosolve should allow linked object windows to refresh after solving.');
+  assert.equal(reportRefreshes > 0, true, 'Autosolve should refresh live Analysis Report cells.');
+  assert.equal(parameterRefreshes > 0, true, 'Autosolve should refresh open Parameter Task windows.');
+
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(
-  index.includes('engineering-realtime-calculation-defense.js?v=20260607-realtime-defense2'),
+  index.includes('engineering-realtime-calculation-defense.js?v=20260610-realtime-autosolve1'),
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
-  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260607-realtime-defense2'),
+  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260610-realtime-autosolve1'),
   'Manifest must document the realtime calculation defense cache key.'
+);
+assert(
+  index.includes('engineering-parameter-task-runtime.js?v=20260610-parameter-blocks2'),
+  'Index must load the Parameter Task runtime with the refresh-capable cache key.'
+);
+assert(
+  manifest.includes('Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=20260610-parameter-blocks2'),
+  'Manifest must document the Parameter Task runtime cache key.'
 );
 
 console.log('Realtime calculation defense validation passed.');
+}).catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
