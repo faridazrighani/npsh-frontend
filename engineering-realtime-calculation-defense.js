@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-realtime-calculation-defense.v3';
+  const VERSION = 'engineering-realtime-calculation-defense.v4';
   const AUTO_SOLVE_DEBOUNCE_MS = 650;
   const CALCULATION_FIELD_PATTERN = /\b(inputMode|optimizationMode|npshrSourceMode|npshAssessmentMode|npshMarginBasis|screeningDefaultsApplied|elevation|suctionElevation|dischargeElevation|designFlow|designHead|designEfficiency|designNpshr|bepFlow|porMinPercent|porMaxPercent|aorMinPercent|aorMaxPercent|minNpshMarginRatio|minNpshMargin|speed|curveDataSource|curveSourceNote|curveData|flow|demandFlow|massFlow|flowInputMode|boundaryMode|boundaryDataSource|pressure|pressureInputBasis|pressureBasis|pressureEnergyBasis|sourceType|temperatureMode|temp|temperature|fluidName|density|viscosity|kinematicViscosity|dynViscosity|dynamicViscosity|vaporPressure|specificWeight|vaporPressureHead|routeStyle|elevationProfileMode|startElevation|endElevation|highPointElevation|highPointLocationPercent|roughnessAgingFactor|headLossAllowancePercent|segments|length|diameter|roughness|fittingType|fittingQuantity|fittingK|minorLoss|additionalK|active|liquidLevel|level)\b/i;
 
@@ -77,6 +77,338 @@
     } catch (error) {
       // Event dispatch is diagnostic only.
     }
+  }
+
+  function finiteNumber(value) {
+    if (value === null || value === undefined || value === '') return null;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    const match = String(value).replace(',', '.').match(/[-+]?\d*\.?\d+(?:e[-+]?\d+)?/i);
+    if (!match) return null;
+    const number = Number(match[0]);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function firstFinite(...values) {
+    for (const value of values) {
+      const number = finiteNumber(value);
+      if (number !== null) return number;
+    }
+    return null;
+  }
+
+  function roundTraceNumber(value, digits = 6) {
+    const number = finiteNumber(value);
+    if (number === null) return null;
+    return Number(number.toFixed(digits));
+  }
+
+  function objectEntries(model = runtimeModel()) {
+    return Object.entries(model || {}).filter(([, node]) => node && typeof node === 'object');
+  }
+
+  function runtimeConnections(model = runtimeModel()) {
+    try {
+      if (typeof connections !== 'undefined' && Array.isArray(connections)) return connections;
+    } catch (error) {
+      // Protected runtime can hide direct globals.
+    }
+    if (Array.isArray(root.__npshConnections)) return root.__npshConnections;
+    if (Array.isArray(root.connections)) return root.connections;
+    try {
+      if (typeof root.getSimulationState === 'function') {
+        const state = JSON.parse(root.getSimulationState());
+        if (Array.isArray(state?.connections)) return state.connections;
+      }
+    } catch (error) {
+      // Fall through to empty topology.
+    }
+    return [];
+  }
+
+  function normalizeDiameterM(value) {
+    const number = finiteNumber(value);
+    if (number === null || number <= 0) return null;
+    return number > 5 ? number / 1000 : number;
+  }
+
+  function normalizeRoughnessM(value) {
+    const number = finiteNumber(value);
+    if (number === null || number < 0) return 45e-6;
+    return number > 0.02 ? number / 1000 : number;
+  }
+
+  function fluidProps(model = runtimeModel()) {
+    const fluid = model?.FLUID?.props || {};
+    const density = firstFinite(fluid.density, 1000);
+    const viscosityCSt = firstFinite(fluid.viscosity, fluid.kinematicViscosity, 1);
+    return {
+      density,
+      viscosityCSt,
+      vaporPressureBarA: firstFinite(fluid.vaporPressure, 0),
+      fluidName: fluid.fluidName || fluid.name || ''
+    };
+  }
+
+  const FITTING_K = {
+    'Sharp-edged entrance': 0.5,
+    'Reentrant entrance': 0.8,
+    'Well-rounded entrance': 0.03,
+    'Submerged exit': 1,
+    '90 smooth bend - flanged': 0.3,
+    '90 elbow - threaded': 0.9,
+    '90 miter bend - no vanes': 1.1,
+    '90 miter bend - with vanes': 0.2,
+    '45 elbow - threaded': 0.4,
+    '180 return bend - flanged': 0.2,
+    'Tee - line flow flanged': 0.2,
+    'Tee - branch flow flanged': 1,
+    'Threaded union': 0.08,
+    '90 elbow - long radius flanged': 0.2,
+    '90 elbow - short radius flanged': 0.5,
+    '45 elbow - flanged': 0.2,
+    'Concentric reducer - gradual': 0.15,
+    'Sudden contraction': 0.5,
+    'Sudden expansion': 1,
+    'Y-strainer - clean': 2,
+    'Basket strainer - clean': 1.5,
+    'Gate valve - fully open': 0.2,
+    'Globe valve - fully open': 10,
+    'Angle valve - fully open': 5,
+    'Ball valve - fully open': 0.05,
+    'Butterfly valve - fully open': 0.4,
+    'Plug valve - fully open': 0.4,
+    'Control valve - generic open': 10,
+    'Swing check valve': 2
+  };
+
+  function frictionFactorTurbulent(reynolds, relativeRoughness) {
+    let friction = 0.25 / Math.pow(Math.log10(Math.max(relativeRoughness, 0) / 3.7 + 5.74 / Math.pow(reynolds, 0.9)), 2);
+    for (let index = 0; index < 20; index += 1) {
+      const next = 1 / Math.pow(-2 * Math.log10(Math.max(relativeRoughness, 0) / 3.7 + 2.51 / (reynolds * Math.sqrt(friction))), 2);
+      if (Math.abs(next - friction) < 1e-7) return next;
+      friction = next;
+    }
+    return friction;
+  }
+
+  function darcyFrictionFactor(reynolds, relativeRoughness) {
+    if (!Number.isFinite(reynolds) || reynolds <= 0) return null;
+    const laminar = 64 / reynolds;
+    if (reynolds <= 2300) return laminar;
+    const turbulent = frictionFactorTurbulent(Math.max(reynolds, 4000), relativeRoughness);
+    if (reynolds >= 4000) return turbulent;
+    return laminar + ((reynolds - 2300) / 1700) * (turbulent - laminar);
+  }
+
+  function flowRegime(reynolds) {
+    if (!Number.isFinite(reynolds) || reynolds <= 0) return 'Not calculated';
+    if (reynolds <= 2300) return 'Laminar';
+    if (reynolds < 4000) return 'Transitional';
+    return 'Turbulent';
+  }
+
+  function segmentK(segment = {}) {
+    const fittingType = String(segment.fittingType || 'None');
+    const kEach = fittingType === 'Custom K'
+      ? firstFinite(segment.fittingK, segment.kEach, 0)
+      : firstFinite(segment.fittingK, FITTING_K[fittingType], 0);
+    const defaultQuantity = fittingType && fittingType !== 'None' ? 1 : 0;
+    const quantity = Math.max(0, firstFinite(segment.fittingQuantity, segment.quantity, defaultQuantity) || 0);
+    const fittingTotalK = Math.max(0, (kEach || 0) * quantity);
+    const additionalK = Math.max(0, firstFinite(segment.additionalK, segment.minorLoss, segment.minorLossK, 0) || 0);
+    return {
+      kEach,
+      quantity,
+      fittingTotalK,
+      additionalK,
+      totalK: fittingTotalK + additionalK
+    };
+  }
+
+  function pipeFlowM3H(pipeNode = {}, model = runtimeModel()) {
+    const results = pipeNode.results || {};
+    const trace = results.calculationTrace || {};
+    const fromPipe = firstFinite(results.flow, trace.basis?.flowM3H, pipeNode.props?.flow, pipeNode.props?.designFlow);
+    if (fromPipe !== null) return fromPipe;
+    const pump = objectEntries(model).find(([, node]) => node.type === 'pump')?.[1] || {};
+    return firstFinite(
+      pump.results?.flow,
+      pump.results?.npshEvaluation?.flow,
+      pump.results?.fixedFlow,
+      pump.props?.designFlow,
+      0
+    ) || 0;
+  }
+
+  function existingTraceRows(trace = {}) {
+    const segments = Array.isArray(trace.segments) ? trace.segments : [];
+    const breakdown = Array.isArray(trace.fittingValveBreakdown) ? trace.fittingValveBreakdown : [];
+    return { segments, breakdown };
+  }
+
+  function buildPipeSegmentRows(pipeId = '', pipeNode = {}, model = runtimeModel()) {
+    const props = pipeNode?.props || {};
+    const results = pipeNode?.results || {};
+    const trace = results.calculationTrace || {};
+    const { segments: existingSegments, breakdown } = existingTraceRows(trace);
+    const configuredSegments = Array.isArray(props.segments) ? props.segments : [];
+    if (!configuredSegments.length && existingSegments.length) {
+      return existingSegments.map((segment, index) => ({ index, ...segment }));
+    }
+
+    const flowM3H = pipeFlowM3H(pipeNode, model);
+    const flowM3S = flowM3H / 3600;
+    const fluid = fluidProps(model);
+    const kinematicViscosityM2S = Math.max((firstFinite(trace.basis?.viscosityCSt, fluid.viscosityCSt, 1) || 1) * 1e-6, 1e-12);
+    const roughnessAgingFactor = Math.max(0, firstFinite(props.roughnessAgingFactor, trace.basis?.roughnessAgingFactor, 1) || 1);
+    const allowanceFraction = Math.max(0, firstFinite(props.headLossAllowancePercent, trace.basis?.headLossAllowancePercent, 0) || 0) / 100;
+
+    return configuredSegments.map((segment, index) => {
+      const existing = existingSegments[index] || {};
+      const existingBreakdown = breakdown[index] || {};
+      const diameter = normalizeDiameterM(firstFinite(segment.diameter, existing.diameter));
+      const length = Math.max(0, firstFinite(segment.length, existing.length, 0) || 0);
+      const area = diameter ? Math.PI * diameter * diameter / 4 : null;
+      const velocity = area && flowM3S > 0 ? flowM3S / area : null;
+      const roughness = normalizeRoughnessM(firstFinite(segment.roughness, existing.roughness, props.roughness));
+      const effectiveRoughness = roughness * roughnessAgingFactor;
+      const reynolds = velocity && diameter ? velocity * diameter / kinematicViscosityM2S : null;
+      const relativeRoughness = diameter ? effectiveRoughness / diameter : null;
+      const frictionFactor = reynolds ? darcyFrictionFactor(reynolds, relativeRoughness || 0) : null;
+      const velocityHead = velocity ? velocity * velocity / (2 * 9.81) : null;
+      const k = segmentK(segment);
+      const computedMajorLoss = frictionFactor && diameter && velocityHead ? frictionFactor * (length / diameter) * velocityHead : 0;
+      const fittingLoss = velocityHead ? k.fittingTotalK * velocityHead : 0;
+      const additionalLoss = velocityHead ? k.additionalK * velocityHead : 0;
+      const computedMinorLoss = fittingLoss + additionalLoss;
+      const baseTotalLoss = computedMajorLoss + computedMinorLoss;
+      const allowanceLoss = baseTotalLoss * allowanceFraction;
+      const computedTotalLoss = baseTotalLoss + allowanceLoss;
+
+      return {
+        ...existing,
+        index,
+        pipeId,
+        name: segment.name || existing.name || existingBreakdown.name || `Segment ${index + 1}`,
+        componentType: existingBreakdown.componentType || existing.componentType || '',
+        fittingType: segment.fittingType || existing.fittingType || 'None',
+        fittingQuantity: roundTraceNumber(k.quantity, 4),
+        kEach: roundTraceNumber(k.kEach, 6),
+        fittingTotalK: roundTraceNumber(k.fittingTotalK, 6),
+        additionalK: roundTraceNumber(k.additionalK, 6),
+        totalK: roundTraceNumber(firstFinite(existingBreakdown.totalK, existing.totalK, k.totalK), 6),
+        minorLossK: roundTraceNumber(firstFinite(existingBreakdown.totalK, existing.minorLossK, k.totalK), 6),
+        length: roundTraceNumber(length, 6),
+        diameter: roundTraceNumber(diameter, 6),
+        roughness: roundTraceNumber(roughness, 10),
+        effectiveRoughness: roundTraceNumber(effectiveRoughness, 10),
+        velocity: roundTraceNumber(velocity, 6),
+        reynolds: roundTraceNumber(reynolds, 3),
+        flowRegime: existing.flowRegime || flowRegime(reynolds),
+        frictionFactor: roundTraceNumber(frictionFactor, 9),
+        majorLoss: roundTraceNumber(firstFinite(existingBreakdown.majorLoss, existing.majorLoss, computedMajorLoss), 6),
+        fittingLoss: roundTraceNumber(firstFinite(existing.fittingLoss, fittingLoss), 6),
+        additionalLoss: roundTraceNumber(firstFinite(existing.additionalLoss, additionalLoss), 6),
+        minorLoss: roundTraceNumber(firstFinite(existingBreakdown.minorLoss, existing.minorLoss, computedMinorLoss), 6),
+        allowanceLoss: roundTraceNumber(firstFinite(existing.allowanceLoss, allowanceLoss), 6),
+        totalLoss: roundTraceNumber(firstFinite(existingBreakdown.totalLoss, existing.totalLoss, computedTotalLoss), 6),
+        profile: existing.profile || {},
+        steps: Array.isArray(existing.steps) ? existing.steps : [],
+        pressureSteps: Array.isArray(existing.pressureSteps) ? existing.pressureSteps : []
+      };
+    }).filter((segment) => segment.diameter !== null || segment.totalLoss !== null || segment.totalK !== null);
+  }
+
+  function enrichPipeCalculationTrace(pipeId = '', pipeNode = {}, model = runtimeModel()) {
+    if (!pipeNode || typeof pipeNode !== 'object' || pipeNode.type !== 'pipe') return null;
+    if (!pipeNode.results || typeof pipeNode.results !== 'object') pipeNode.results = {};
+    if (!pipeNode.results.calculationTrace || typeof pipeNode.results.calculationTrace !== 'object') {
+      pipeNode.results.calculationTrace = {};
+    }
+    const trace = pipeNode.results.calculationTrace;
+    const rows = buildPipeSegmentRows(pipeId, pipeNode, model);
+    if (!rows.length) return trace;
+    const flowM3H = pipeFlowM3H(pipeNode, model);
+    const fluid = fluidProps(model);
+    const totals = rows.reduce((sum, segment) => {
+      sum.majorLoss += firstFinite(segment.majorLoss, 0) || 0;
+      sum.minorLoss += firstFinite(segment.minorLoss, 0) || 0;
+      sum.allowanceLoss += firstFinite(segment.allowanceLoss, 0) || 0;
+      sum.totalLoss += firstFinite(segment.totalLoss, 0) || 0;
+      sum.totalK += firstFinite(segment.totalK, segment.minorLossK, 0) || 0;
+      return sum;
+    }, { majorLoss: 0, minorLoss: 0, allowanceLoss: 0, totalLoss: 0, totalK: 0 });
+    trace.segmentRows = rows;
+    trace.segments = rows;
+    trace.basis = {
+      ...(trace.basis || {}),
+      flowM3H: roundTraceNumber(firstFinite(trace.basis?.flowM3H, flowM3H), 6),
+      flowM3S: roundTraceNumber(firstFinite(trace.basis?.flowM3S, flowM3H / 3600), 8),
+      density: roundTraceNumber(firstFinite(trace.basis?.density, fluid.density), 4),
+      viscosityCSt: roundTraceNumber(firstFinite(trace.basis?.viscosityCSt, fluid.viscosityCSt), 6),
+      vaporPressureBarA: roundTraceNumber(firstFinite(trace.basis?.vaporPressureBarA, fluid.vaporPressureBarA), 6)
+    };
+    trace.totals = {
+      ...(trace.totals || {}),
+      majorLoss: roundTraceNumber(totals.majorLoss, 6),
+      minorLoss: roundTraceNumber(totals.minorLoss, 6),
+      allowanceLoss: roundTraceNumber(totals.allowanceLoss, 6),
+      totalLoss: roundTraceNumber(totals.totalLoss, 6),
+      totalK: roundTraceNumber(totals.totalK, 6)
+    };
+    return trace;
+  }
+
+  function buildCanonicalCalculationState(model = runtimeModel()) {
+    const pipes = {};
+    objectEntries(model)
+      .filter(([, node]) => node.type === 'pipe')
+      .forEach(([id, node]) => {
+        const trace = enrichPipeCalculationTrace(id, node, model);
+        pipes[id] = {
+          id,
+          flowM3H: pipeFlowM3H(node, model),
+          basis: { ...(trace?.basis || {}) },
+          totals: { ...(trace?.totals || {}) },
+          segments: Array.isArray(trace?.segmentRows) ? trace.segmentRows.map((segment) => ({ ...segment })) : []
+        };
+      });
+    const pumps = {};
+    objectEntries(model)
+      .filter(([, node]) => node.type === 'pump')
+      .forEach(([id, node]) => {
+        const results = node.results || {};
+        const evaluation = results.npshEvaluation || {};
+        pumps[id] = {
+          id,
+          flow: firstFinite(evaluation.flow, results.flow, results.fixedFlow),
+          npsha: firstFinite(evaluation.npsha, results.npsha),
+          npshr: firstFinite(evaluation.npshr, results.npshr),
+          npshMargin: firstFinite(evaluation.npshMargin, results.npshMargin),
+          npshRatio: firstFinite(evaluation.npshRatio, results.npshRatio),
+          pumpHead: firstFinite(evaluation.pumpHead, results.head, results.pumpHeadAtFlow),
+          backendValidationStatus: results.backendValidationStatus || evaluation.backendValidationStatus || '',
+          calculationFreshness: results.calculationFreshness || evaluation.calculationFreshness || ''
+        };
+      });
+    return {
+      version: VERSION,
+      source: 'engineering-realtime-calculation-defense',
+      generatedAt: new Date().toISOString(),
+      fluid: fluidProps(model),
+      pipes,
+      pumps,
+      connections: runtimeConnections(model).map((connection) => ({ ...connection }))
+    };
+  }
+
+  function publishCanonicalCalculationState(reason = 'calculation-state-refresh', nodeId = '', model = runtimeModel()) {
+    const state = buildCanonicalCalculationState(model);
+    state.reason = reason;
+    state.nodeId = nodeId;
+    root.__npshCanonicalCalculationState = state;
+    dispatchRealtimeEvent('npsh:calculation-state-updated', state);
+    return state;
   }
 
   function markResultObjectStale(results, reason) {
@@ -169,6 +501,7 @@
       nodeIds: ids,
       markedAt: new Date().toISOString()
     };
+    publishCanonicalCalculationState('mark-stale', nodeId, model);
     try {
       if (typeof root.updatePumpChart === 'function') root.updatePumpChart(nodeId || ids[0] || '');
     } catch (error) {
@@ -195,6 +528,7 @@
       nodeIds: ids,
       startedAt: new Date().toISOString()
     };
+    publishCanonicalCalculationState('mark-calculating', nodeId, model);
     try {
       if (typeof root.updatePumpChart === 'function') root.updatePumpChart(nodeId || ids[0] || '');
     } catch (error) {
@@ -213,6 +547,7 @@
       calculationDefenseStatus: payload.calculationDefenseContract?.status || null,
       updatedAt: new Date().toISOString()
     };
+    publishCanonicalCalculationState('backend-current', payload.nodeId || '');
     dispatchRealtimeEvent('npsh:calculation-current', root.__engineeringCalculationDefenseRealtimeState);
     return root.__engineeringCalculationDefenseRealtimeState;
   }
@@ -233,6 +568,7 @@
 
   function refreshLinkedViews(nodeId = '', reason = 'calculation refresh') {
     let refreshed = 0;
+    publishCanonicalCalculationState(reason, nodeId);
     try {
       refreshed += root.CanvasContextDock?.refresh?.() ? 1 : 0;
     } catch (error) {
@@ -471,7 +807,11 @@
     flushAutoSolve,
     cancelAutoSolve,
     refreshLinkedViews,
-    patchUpdateSimulation
+    patchUpdateSimulation,
+    buildPipeSegmentRows,
+    enrichPipeCalculationTrace,
+    buildCanonicalCalculationState,
+    publishCanonicalCalculationState
   };
 
   root.EngineeringRealtimeCalculationDefense = api;

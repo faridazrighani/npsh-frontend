@@ -9,8 +9,8 @@ const RUNTIME_FILE = path.join(FRONTEND_ROOT, "engineering-analysis-report-live-
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const CASE_FILE = path.join(FRONTEND_ROOT, "journals", "simulasi_1", "simulasi_performansi_pompa_air_umpan_tangki_deaerator.untirta");
-const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260610-analysis-report-live3";
-const VERSION = "2026.06-analysis-report-live3";
+const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260611-analysis-report-live4";
+const VERSION = "2026.06-analysis-report-live4";
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
 function assert(condition, message) {
@@ -218,6 +218,8 @@ assert(runtime.includes("collectLiveMetrics"), "Runtime must collect live model 
 assert(runtime.includes("__npshLastBackendSimulationResponse"), "Runtime must be able to read latest backend response context.");
 assert(runtime.includes("MutationObserver"), "Runtime must refresh when report windows are inserted.");
 assert(runtime.includes("patchUpdateSimulation"), "Runtime must hook updateSimulation for realtime calculation refreshes.");
+assert(runtime.includes("npsh:calculation-state-updated"), "Runtime must refresh when canonical calculation state changes.");
+assert(runtime.includes("trace.segmentRows || trace.segments"), "Runtime must prefer canonical pipe segment rows when reading pipe trace steps.");
 assert(runtime.includes("updateComparisonTable"), "Runtime must update existing comparison table cells.");
 assert(runtime.includes("updateApplicationValueTable"), "Runtime must update existing application value table cells when present.");
 assert(runtime.includes("setCellText"), "Runtime must patch cell text instead of rebuilding report layout.");

@@ -8,6 +8,31 @@ const indexPath = path.join(rootDir, 'index.html');
 const manifestPath = path.join(rootDir, 'FILE_MANIFEST.md');
 
 globalThis.__npshGlobalModel = {
+  FLUID: {
+    type: 'fluid',
+    props: {
+      fluidName: 'Water',
+      density: 958.348,
+      viscosity: 0.803,
+      vaporPressure: 1.01418
+    }
+  },
+  'PIPE-1': {
+    type: 'pipe',
+    props: {
+      segments: [
+        { name: 'Journal suction pipe 4 in', diameter: 0.098, length: 2, roughness: 0.00015, fittingType: 'None' },
+        { name: 'Globe valve 4 in', diameter: 0.098, length: 0, roughness: 0.00015, fittingType: 'Custom K', fittingK: 5.8, fittingQuantity: 1 }
+      ]
+    },
+    results: {
+      flow: 50,
+      calculationTrace: {
+        basis: { flowM3H: 50, viscosityCSt: 0.803, density: 958.348 },
+        totals: {}
+      }
+    }
+  },
   'P-100': {
     type: 'pump',
     props: { designFlow: 50 },
@@ -83,7 +108,21 @@ globalThis.EngineeringParameterTaskRuntime = {
 };
 
 const runtime = require(runtimePath);
-assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v3', 'Realtime defense runtime should expose v3.');
+assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v4', 'Realtime defense runtime should expose v4.');
+assert.equal(typeof runtime.buildPipeSegmentRows, 'function', 'Realtime defense runtime should expose canonical pipe segment row builder.');
+assert.equal(typeof runtime.publishCanonicalCalculationState, 'function', 'Realtime defense runtime should expose canonical calculation state publisher.');
+
+const segmentRows = runtime.buildPipeSegmentRows('PIPE-1', globalThis.__npshGlobalModel['PIPE-1'], globalThis.__npshGlobalModel);
+assert.equal(segmentRows.length, 2, 'Canonical segment builder should keep one row per configured pipe segment.');
+assert.equal(segmentRows[0].diameter, 0.098, 'Canonical segment row should carry pipe diameter.');
+assert.equal(segmentRows[0].length, 2, 'Canonical segment row should carry pipe length.');
+assert(Math.abs(segmentRows[0].reynolds - 224717.037) < 1, 'Canonical segment row should calculate Reynolds number from live flow and Fluid Basis viscosity.');
+assert(Math.abs(segmentRows[0].majorLoss - 0.08038) < 0.0002, 'Canonical segment row should calculate Darcy-Weisbach major loss.');
+assert(Math.abs(segmentRows[1].minorLoss - 1.002259) < 0.0002, 'Canonical segment row should calculate K-method minor loss.');
+
+const canonical = runtime.publishCanonicalCalculationState('unit-test', 'PIPE-1');
+assert.equal(canonical.pipes['PIPE-1'].segments.length, 2, 'Canonical calculation state should distribute pipe segment rows globally.');
+assert.equal(globalThis.__npshGlobalModel['PIPE-1'].results.calculationTrace.segmentRows.length, 2, 'Canonical pipe rows should be attached to the live pipe trace.');
 
 const state = runtime.markStale('P-100', 'Unit test input changed.');
 const results = globalThis.__npshGlobalModel['P-100'].results;
@@ -149,19 +188,19 @@ runtime.flushAutoSolve().then(() => {
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(
-  index.includes('engineering-realtime-calculation-defense.js?v=20260610-realtime-autosolve1'),
+  index.includes('engineering-realtime-calculation-defense.js?v=20260611-realtime-global1'),
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
-  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260610-realtime-autosolve1'),
+  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260611-realtime-global1'),
   'Manifest must document the realtime calculation defense cache key.'
 );
 assert(
-  index.includes('engineering-parameter-task-runtime.js?v=20260610-parameter-blocks2'),
+  index.includes('engineering-parameter-task-runtime.js?v=20260611-parameter-blocks3'),
   'Index must load the Parameter Task runtime with the refresh-capable cache key.'
 );
 assert(
-  manifest.includes('Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=20260610-parameter-blocks2'),
+  manifest.includes('Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=20260611-parameter-blocks3'),
   'Manifest must document the Parameter Task runtime cache key.'
 );
 

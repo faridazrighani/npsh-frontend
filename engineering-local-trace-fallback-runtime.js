@@ -1,7 +1,7 @@
 (function registerEngineeringLocalTraceFallback(root) {
   "use strict";
 
-  const VERSION = "2026.06-local-trace-fallback2";
+  const VERSION = "2026.06-local-trace-fallback3";
   const LOCAL_SOURCE = "frontend-local-trace";
   const LOCAL_FRESHNESS = "Current (local trace)";
   const BACKEND_UNAVAILABLE_PATTERNS = [
@@ -1094,10 +1094,38 @@
     return true;
   }
 
+  function realtimeCalculationInProgress() {
+    const state = root.__engineeringCalculationDefenseRealtimeState || {};
+    return state.status === "Calculating";
+  }
+
+  function keepPumpCalculating(pumpNode, reason = "Protected backend recalculation is running.") {
+    if (!pumpNode || typeof pumpNode !== "object") return false;
+    const results = nodeResults(pumpNode);
+    results.backendValidationStatus = "Calculating";
+    results.backendValidationMessage = reason;
+    results.calculationFreshness = "Calculating";
+    if (results.npshEvaluation && typeof results.npshEvaluation === "object") {
+      results.npshEvaluation.backendValidationStatus = "Calculating";
+      results.npshEvaluation.backendValidationMessage = reason;
+      results.npshEvaluation.calculationFreshness = "Calculating";
+    }
+    if (results.routeTrace && typeof results.routeTrace === "object") {
+      results.routeTrace.lossFreshness = "Calculating - backend refresh in progress";
+    }
+    return true;
+  }
+
   function patchRuntimeFunctions() {
     let patched = false;
     patched = patchFunction("setBackendProtectedUnavailableResult", "__engineeringLocalTraceFallbackPatched", (original) => function localTraceUnavailableWrapper(pumpNode, ...args) {
       const result = original.call(this, pumpNode, ...args);
+      if (realtimeCalculationInProgress()) {
+        const reason = root.__engineeringCalculationDefenseRealtimeState?.reason || "Protected backend recalculation is running.";
+        keepPumpCalculating(pumpNode, reason);
+        scheduleNormalize("backend-unavailable-after-calculating", { force: true, delayMs: 900 });
+        return result;
+      }
       if (pumpNode && typeof pumpNode === "object") {
         const model = runtimeModel();
         const pumpId = Object.keys(model || {}).find((id) => model[id] === pumpNode) || "";

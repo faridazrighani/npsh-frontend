@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const VERSION = "2026.06-parameter-task-blocks2";
+  const VERSION = "2026.06-parameter-task-blocks3";
   const STYLE_ID = "engineeringParameterTaskRuntimeStyle";
   const TRIGGER_SELECTOR = "[data-parameter-task-trigger]";
   const SECTION_SELECTOR = ".pump-live-param-section";
@@ -586,6 +586,27 @@
     return block === "suction" ? route.suctionPipe : route.dischargePipe;
   }
 
+  function canonicalPipeSegments(pipeId = "", pipeNode = {}, model = runtimeModel()) {
+    try {
+      const realtime = root.EngineeringRealtimeCalculationDefense;
+      if (typeof realtime?.enrichPipeCalculationTrace === "function") {
+        const trace = realtime.enrichPipeCalculationTrace(pipeId, pipeNode, model);
+        if (Array.isArray(trace?.segmentRows) && trace.segmentRows.length) return trace.segmentRows;
+        if (Array.isArray(trace?.segments) && trace.segments.length) return trace.segments;
+      }
+      if (typeof realtime?.buildPipeSegmentRows === "function") {
+        const rows = realtime.buildPipeSegmentRows(pipeId, pipeNode, model);
+        if (Array.isArray(rows) && rows.length) return rows;
+      }
+    } catch (error) {
+      // Parameter explanation can still render the backend trace if canonical enrichment is unavailable.
+    }
+    const trace = pipeNode?.results?.calculationTrace || {};
+    if (Array.isArray(trace.segmentRows) && trace.segmentRows.length) return trace.segmentRows;
+    if (Array.isArray(trace.segments) && trace.segments.length) return trace.segments;
+    return [];
+  }
+
   function createFluidBasisCard(fluid = {}) {
     const density = fluid.density;
     const vaporPressure = fluid.vaporPressure;
@@ -644,7 +665,7 @@
       ["Minor loss", formatValue(totals.minorLoss, "m", 6), "h_minor = K_total x v^2/(2g)."],
       ["Total loss", formatValue(totals.totalLoss, "m", 6), "HL = major + minor + allowance."]
     ]));
-    const segments = Array.isArray(trace.segments) ? trace.segments : [];
+    const segments = canonicalPipeSegments(snapshot.pipeId, pipe, snapshot.model);
     if (segments.length) {
       content.appendChild(createTable(["Segment", "D/L/K", "Re/f", "Loss"], segments.map((segment) => [
         displayText(segment.name, `Segment ${(segment.index ?? 0) + 1}`),

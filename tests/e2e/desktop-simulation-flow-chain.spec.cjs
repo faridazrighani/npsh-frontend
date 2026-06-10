@@ -53,7 +53,7 @@ async function waitForNpshApp(page) {
   await page.waitForFunction(() => (
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.updateSimulation === 'function'
-    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v3'
+    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v4'
     && window.CanvasContextDock?.version === 'engineering-canvas-context-dock.v2'
     && window.EngineeringRouteTraceAudit?.version
     && window.EngineeringDefenseExportPackage?.schemaVersion === 'defense-export-package.v1'
@@ -311,6 +311,25 @@ test('Simulasi 1 desktop chain refreshes route/formula/dependency after SINK edi
   expect(baselineSnapshot.audit.routeTraceText).toContain('SNK-100');
   expect(formulaRow(baselineSnapshot, 'System Curve Head').substitution).toContain('24.000 m');
   expect(baselineSnapshot.exportGate.canExport).toBe(true);
+
+  const suctionSegmentAudit = await page.evaluate((pumpId) => {
+    window.EngineeringRealtimeCalculationDefense?.publishCanonicalCalculationState?.('e2e-segment-audit', pumpId);
+    window.EngineeringParameterTaskRuntime?.openParameterSuctionTaskWindow?.(pumpId);
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const rows = window.EngineeringRealtimeCalculationDefense?.buildPipeSegmentRows?.('PIPE-1', model['PIPE-1'], model) || [];
+    const tableText = document.querySelector('.parameter-suction-task-window .parameter-segment-table')?.innerText || '';
+    return {
+      rows,
+      tableText
+    };
+  }, caseData.pumpId);
+  expect(suctionSegmentAudit.rows[0].diameter).toBeCloseTo(0.098, 4);
+  expect(suctionSegmentAudit.rows[0].reynolds).toBeCloseTo(224717, 0);
+  expect(suctionSegmentAudit.rows[0].majorLoss).toBeCloseTo(0.08038, 5);
+  expect(suctionSegmentAudit.tableText).toContain('D=0.0980');
+  expect(suctionSegmentAudit.tableText).toContain('Re=224717');
+  expect(suctionSegmentAudit.tableText).not.toContain('D=-');
+  expect(suctionSegmentAudit.tableText).not.toContain('Major -');
 
   const staleSnapshot = await changeSinkBoundaryInBrowser(page, caseData, {
     elevation: 15,

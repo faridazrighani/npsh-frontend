@@ -1,7 +1,7 @@
 (function installEngineeringAnalysisReportLiveRuntime(root) {
   'use strict';
 
-  const VERSION = '2026.06-analysis-report-live3';
+  const VERSION = '2026.06-analysis-report-live4';
   const REFRESH_MS = 1000;
   const ACTIVE_SELECTOR = '.journal-analysis-task-window, .journal-analysis-report-panel, .task-window';
   const RESPONSIVE_STYLE_ID = 'engineeringAnalysisReportLiveResponsiveStyle';
@@ -279,7 +279,8 @@
 
   const traceStepResult = (pipeEntry, title) => {
     const desired = normalizeMetric(title);
-    const segments = pipeTrace(pipeEntry).segments || [];
+    const trace = pipeTrace(pipeEntry);
+    const segments = trace.segmentRows || trace.segments || [];
     for (const segment of segments) {
       const steps = [...(segment.steps || []), ...(segment.pressureSteps || [])];
       const step = steps.find((item) => normalizeMetric(item?.title) === desired);
@@ -696,7 +697,7 @@
   }
 
   try {
-    ['input', 'change', 'click', 'npsh:simulation-updated', 'npsh:backend-response'].forEach((eventName) => {
+    ['input', 'change', 'click', 'npsh:simulation-updated', 'npsh:backend-response', 'npsh:calculation-state-updated'].forEach((eventName) => {
       document.addEventListener(eventName, scheduleRefresh, true);
     });
   } catch (error) {
