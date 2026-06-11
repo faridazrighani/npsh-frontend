@@ -24,7 +24,7 @@ Checks passed:
 - Live parameter repaint-lock validation passed and must stay part of the frontend validation set.
 - Pipe/Fitting/Valve canvas hydraulic label validation passed and must stay part of the frontend validation set.
 - Pipe Formula Defense source-confidence map validation passed and must stay part of the frontend validation set.
-- Formula Defense UI compact/responsive layout validation passed and must stay part of the frontend validation set.
+- Formula Defense UI compact/responsive/resizable layout validation passed and must stay part of the frontend validation set.
 - Export canvas snapshot fallback is locked to stay silent during normal XLSX/DOCX/PDF export.
 
 Important dependency:

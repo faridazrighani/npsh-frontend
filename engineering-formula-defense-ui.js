@@ -7,7 +7,7 @@
   'use strict';
 
   const VERSION = 'engineering-formula-defense-ui.v1';
-  const CACHE_KEY = '20260611-formula-defense-ui4';
+  const CACHE_KEY = '20260611-formula-defense-ui6';
   const DEBOUNCE_MS = 120;
   const KATEX_SCRIPT = `vendor/katex/katex.min.js?v=${CACHE_KEY}`;
   const KATEX_CSS = `vendor/katex/katex.min.css?v=${CACHE_KEY}`;
@@ -246,9 +246,11 @@
   to { opacity: 1; transform: scale(1); }
 }
 .pipe-formula-defense-task-window[data-pipe-formula-defense-layout="compact-v2"] {
-  width: min(96vw, 1740px) !important;
-  max-width: calc(100vw - 18px) !important;
-  max-height: calc(100dvh - 18px) !important;
+  width: min(96vw, 1740px);
+  min-width: min(380px, calc(100vw - 18px));
+  min-height: min(300px, calc(100dvh - 18px));
+  max-width: calc(100vw - 18px);
+  max-height: calc(100dvh - 18px);
 }
 .pipe-formula-defense-task-window[data-pipe-formula-defense-layout="compact-v2"] .task-window-body,
 .pipe-formula-defense-task-window[data-pipe-formula-defense-layout="compact-v2"] .pipe-formula-defense-body {
@@ -261,6 +263,8 @@
   grid-template-columns: minmax(0, 1fr);
   gap: 8px !important;
   align-content: start;
+  container-type: inline-size;
+  container-name: pipe-formula-defense;
 }
 .pipe-formula-defense-layout .fluid-help-card {
   margin: 0 !important;
@@ -334,7 +338,58 @@
 }
 .pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table,
 .pipe-formula-defense-layout .pipe-formula-defense-role-path-table {
-  min-width: 980px !important;
+  table-layout: fixed !important;
+}
+.pipe-formula-defense-layout .pipe-formula-defense-role-path-table {
+  width: max(100%, 840px) !important;
+  min-width: 840px !important;
+}
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table {
+  width: max(100%, 1120px) !important;
+  min-width: 1120px !important;
+}
+.pipe-formula-defense-layout .pipe-formula-defense-role-path-table th:nth-child(1),
+.pipe-formula-defense-layout .pipe-formula-defense-role-path-table td:nth-child(1) {
+  width: 22%;
+  min-width: 150px;
+}
+.pipe-formula-defense-layout .pipe-formula-defense-role-path-table th:nth-child(2),
+.pipe-formula-defense-layout .pipe-formula-defense-role-path-table td:nth-child(2) {
+  width: 24%;
+  min-width: 180px;
+}
+.pipe-formula-defense-layout .pipe-formula-defense-role-path-table th:nth-child(3),
+.pipe-formula-defense-layout .pipe-formula-defense-role-path-table td:nth-child(3) {
+  width: 54%;
+  min-width: 260px;
+}
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table th:nth-child(1),
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table td:nth-child(1) {
+  width: 24%;
+}
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table th:nth-child(2),
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table td:nth-child(2) {
+  width: 15%;
+}
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table th:nth-child(3),
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table td:nth-child(3) {
+  width: 58px;
+}
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table th:nth-child(4),
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table td:nth-child(4) {
+  width: 74px;
+}
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table th:nth-child(5),
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table td:nth-child(5),
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table th:nth-child(6),
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table td:nth-child(6),
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table th:nth-child(7),
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table td:nth-child(7) {
+  width: 84px;
+}
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table th:nth-child(8),
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table td:nth-child(8) {
+  width: auto;
 }
 .pipe-formula-defense-layout .pipe-formula-defense-summary-table,
 .pipe-formula-defense-layout .pipe-formula-defense-rollup-table,
@@ -385,6 +440,34 @@
 .pipe-formula-defense-layout .pipe-formula-defense-moody-table th:nth-child(n+2),
 .pipe-formula-defense-layout .pipe-formula-defense-moody-table td:nth-child(n+2) {
   text-align: right !important;
+}
+.pipe-formula-defense-layout .pipe-formula-defense-role-path-table th,
+.pipe-formula-defense-layout .pipe-formula-defense-role-path-table td,
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table th,
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table td {
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+}
+.pipe-formula-defense-layout .pipe-formula-defense-role-path-table th,
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table th,
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table td:nth-child(3),
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table td:nth-child(4),
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table td:nth-child(5),
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table td:nth-child(6),
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table td:nth-child(7) {
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  white-space: nowrap !important;
+}
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table th:nth-child(8),
+.pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table td:nth-child(8) {
+  text-align: left !important;
+  font-weight: 600 !important;
+}
+.pipe-formula-defense-target-table-wrap {
+  max-width: 100%;
+  overflow-x: auto !important;
+  scrollbar-gutter: stable;
 }
 .pipe-formula-defense-layout .fluid-formula-defense-table code,
 .pipe-formula-defense-layout .pump-curve-formula-card code,
@@ -591,7 +674,7 @@
 @media (max-width: 760px) {
   .pipe-formula-defense-task-window[data-pipe-formula-defense-layout="compact-v2"] {
     inset: 6px !important;
-    width: calc(100vw - 12px) !important;
+    width: calc(100vw - 12px);
     max-width: calc(100vw - 12px) !important;
     max-height: calc(100dvh - 12px) !important;
   }
@@ -627,6 +710,60 @@
   }
   .pipe-formula-defense-fitting-breakdown-table {
     min-width: 860px !important;
+  }
+}
+@container pipe-formula-defense (max-width: 700px) {
+  .pipe-formula-defense-layout .pipe-formula-defense-role-path-table,
+  .pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .pipe-formula-defense-layout .pipe-formula-defense-role-path-table thead,
+  .pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table thead {
+    display: none !important;
+  }
+  .pipe-formula-defense-layout .pipe-formula-defense-role-path-table tbody,
+  .pipe-formula-defense-layout .pipe-formula-defense-role-path-table tr,
+  .pipe-formula-defense-layout .pipe-formula-defense-role-path-table td,
+  .pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table tbody,
+  .pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table tr,
+  .pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table td {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .pipe-formula-defense-layout .pipe-formula-defense-role-path-table tr,
+  .pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table tr {
+    margin: 7px 8px !important;
+    overflow: hidden;
+    border: 1px solid #d6e3ef !important;
+    border-radius: 6px !important;
+    background: #ffffff !important;
+  }
+  .pipe-formula-defense-layout .pipe-formula-defense-role-path-table td,
+  .pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table td {
+    display: grid !important;
+    grid-template-columns: minmax(112px, 34%) minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+    padding: 7px 8px !important;
+    border-top: 1px solid #e3eef7 !important;
+    background: #ffffff !important;
+    text-align: left !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+  }
+  .pipe-formula-defense-layout .pipe-formula-defense-role-path-table td:first-child,
+  .pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table td:first-child {
+    border-top: 0 !important;
+  }
+  .pipe-formula-defense-layout .pipe-formula-defense-role-path-table td::before,
+  .pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table td::before {
+    content: attr(data-label);
+    color: #475569;
+    font-size: 10.5px;
+    font-weight: 800;
+    line-height: 1.25;
   }
 }
 `;
@@ -949,6 +1086,19 @@
     });
   }
 
+  function ensureTableDataLabels(table) {
+    if (!table?.querySelectorAll) return;
+    const labels = [...table.querySelectorAll('thead th')].map((cell) => normalizeFormulaText(cell.textContent));
+    if (!labels.length) return;
+    table.querySelectorAll('tbody tr').forEach((row) => {
+      [...row.children].forEach((cell, index) => {
+        if (cell?.tagName === 'TD' && !cell.dataset.label) {
+          cell.dataset.label = labels[index] || '';
+        }
+      });
+    });
+  }
+
   function enhanceTables(scope = document) {
     if (!scope?.querySelectorAll) return;
     const pipeFormulaTables = [
@@ -961,6 +1111,12 @@
       table.dataset.formulaDefenseResponsive = 'true';
       const wrapper = table.closest('.pump-curve-explanation-table-wrap, .pipe-formula-defense-fitting-breakdown-wrap, .fluid-formula-defense-table-wrap');
       wrapper?.classList.add('formula-defense-responsive-table-wrap');
+      ensureTableDataLabels(table);
+      if (table.classList.contains('pipe-formula-defense-role-path-table') || table.classList.contains('pipe-formula-defense-fitting-breakdown-table')) {
+        wrapper?.classList.add('pipe-formula-defense-target-table-wrap');
+        wrapper?.classList.toggle('pipe-formula-defense-role-path-wrap', table.classList.contains('pipe-formula-defense-role-path-table'));
+        wrapper?.classList.toggle('pipe-formula-defense-fitting-breakdown-wrap', table.classList.contains('pipe-formula-defense-fitting-breakdown-table'));
+      }
       table.querySelectorAll('td[colspan]').forEach((cell) => {
         if (/no .*breakdown|no fittings|not available/i.test(cell.textContent || '')) {
           cell.classList.add('formula-defense-empty-state');

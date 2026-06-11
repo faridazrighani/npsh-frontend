@@ -24,7 +24,7 @@ const manifest = fs.existsSync(MANIFEST_FILE) ? read(MANIFEST_FILE) : '';
 const runtime = require(RUNTIME_FILE);
 
 assert.strictEqual(runtime.version, 'engineering-formula-defense-ui.v1');
-assert.strictEqual(runtime.cacheKey, '20260611-formula-defense-ui4');
+assert.strictEqual(runtime.cacheKey, '20260611-formula-defense-ui6');
 assert.strictEqual(runtime.debounceMs, 120);
 assert.strictEqual(
   packageJson.scripts?.['validate:formula-defense-ui'],
@@ -38,8 +38,8 @@ assert.strictEqual(
 );
 assert.strictEqual(packageJson.devDependencies?.katex, '^0.17.0', 'KaTeX must be tracked as a local dev dependency.');
 
-assert(indexHtml.includes('vendor/katex/katex.min.css?v=20260611-formula-defense-ui4'), 'index.html must cache-bust local KaTeX CSS.');
-assert(indexHtml.includes('engineering-formula-defense-ui.js?v=20260611-formula-defense-ui4'), 'index.html must cache-bust Formula Defense UI runtime.');
+assert(indexHtml.includes('vendor/katex/katex.min.css?v=20260611-formula-defense-ui6'), 'index.html must cache-bust local KaTeX CSS.');
+assert(indexHtml.includes('engineering-formula-defense-ui.js?v=20260611-formula-defense-ui6'), 'index.html must cache-bust Formula Defense UI runtime.');
 assert(fs.existsSync(KATEX_JS_FILE), 'Local KaTeX JS asset must be vendored for static deployment.');
 assert(fs.existsSync(KATEX_CSS_FILE), 'Local KaTeX CSS asset must be vendored for static deployment.');
 
@@ -54,11 +54,23 @@ assert(!runtimeSource.includes('@media (prefers-color-scheme: dark)'), 'Formula 
 assert(runtimeSource.includes('.pipe-formula-defense-fitting-breakdown-table thead th'), 'Formula runtime must style the fitting/valve breakdown sticky header.');
 assert(runtimeSource.includes('data-pipe-formula-defense-layout="compact-v2"'), 'Formula runtime CSS must target the compact Pipe Formula Defense layout.');
 assert(runtimeSource.includes('dataset.pipeFormulaDefenseLayout = \'compact-v2\''), 'Formula runtime must mark Pipe Formula Defense windows as compact.');
+assert(runtimeSource.includes('container-type: inline-size'), 'Pipe Formula Defense layout must support container-based responsive behavior after user resizing.');
+assert(runtimeSource.includes('@container pipe-formula-defense (max-width: 700px)'), 'Pipe Formula Defense target tables must switch to card rows inside narrow resized windows.');
+assert(runtimeSource.includes('.pipe-formula-defense-role-path-table'), 'Formula runtime must explicitly target Realtime Role Path responsiveness.');
+assert(runtimeSource.includes('min-width: 840px !important'), 'Realtime Role Path table must keep a readable table width before switching to card rows.');
+assert(runtimeSource.includes('min-width: 1120px !important'), 'Pipe Fitting Valve Breakdown table must keep numeric columns readable before switching to card rows.');
+assert(runtimeSource.includes('table-layout: fixed !important'), 'Target Pipe Formula Defense tables must use fixed layout for stable column widths.');
+assert(runtimeSource.includes('white-space: nowrap !important'), 'Pipe Fitting Valve Breakdown numeric headers and values must not wrap vertically.');
+assert(runtimeSource.includes('overflow-wrap: normal !important'), 'Pipe Fitting Valve Breakdown numeric headers and values must avoid per-character wrapping.');
+assert(runtimeSource.includes('.pipe-formula-defense-fitting-breakdown-table th:nth-child(8)'), 'Pipe Fitting Valve Breakdown Source / Note header must be styled independently from numeric columns.');
+assert(runtimeSource.includes('pipe-formula-defense-target-table-wrap'), 'Formula runtime must mark target table wrappers for responsive overflow.');
+assert(runtimeSource.includes('ensureTableDataLabels'), 'Formula runtime must provide cell labels for responsive card-row tables.');
 assert(runtimeSource.includes('.pipe-formula-defense-source-table'), 'Formula runtime must style the Source & Confidence Map table.');
 assert(runtimeSource.includes('pipe-source-map-formula-cell'), 'Formula runtime must restore Source & Confidence Map formulas as normal light code text.');
 assert(runtimeSource.includes('restorePipeSourceMapFormulaCells'), 'Formula runtime must normalize Source & Confidence Map formula cells after KaTeX enhancement.');
 assert(runtimeSource.includes('refreshOpenPipeFormulaDefenseWindows'), 'Formula runtime must refresh open Pipe Formula Defense windows after recalculation.');
 assert(runtimeSource.includes('__formulaDefensePipeRefreshPatched'), 'Formula runtime must patch updateSimulation for realtime Pipe Formula Defense refresh.');
+assert(!runtimeSource.includes('width: min(96vw, 1740px) !important'), 'Pipe Formula Defense window width must not be locked against user resize handles.');
 assert(runtimeSource.includes('nth-child(even)'), 'Formula runtime must provide zebra row styling.');
 assert(runtimeSource.includes('overflow-x: auto'), 'Formula runtime must keep fitting/valve tables horizontally scrollable.');
 assert(runtimeSource.includes('formula-dependency-visualization'), 'Formula runtime must render dependency chain visualization.');
@@ -115,7 +127,7 @@ assert(/route loss/i.test(pipeChain.recalculated), 'Pipe diameter changes must r
 
 if (manifest) {
   assert(manifest.includes('engineering-formula-defense-ui.js'), 'FILE_MANIFEST must mention Formula Defense UI runtime.');
-  assert(manifest.includes('20260611-formula-defense-ui4'), 'FILE_MANIFEST must mention Formula Defense UI cache key.');
+  assert(manifest.includes('20260611-formula-defense-ui6'), 'FILE_MANIFEST must mention Formula Defense UI cache key.');
   assert(manifest.includes('validate:formula-defense-ui'), 'FILE_MANIFEST must mention Formula Defense UI validation.');
 }
 

@@ -48,7 +48,7 @@ engineering-route-trace-audit.js public-safe backend route-trace audit bridge, d
 engineering-realtime-calculation-defense.js public-safe realtime stale/calculating/freshness bridge that marks calculation results stale immediately when object-property inputs change, autosolves trusted user edits through the protected backend, and refreshes linked report/task-window views after backend completion
 engineering-browser-issues-runtime.js public-safe browser Issues cleanup bridge for ARIA menu ownership, empty-menu role removal, and dynamic toolbar object-menu role repair
 engineering-pipe-segments-file-runtime.js public-safe Pipe Segments local `.v1` import/export bridge with compact table controls, schema validation, browser download/upload handling, and stale-result marking after import
-engineering-formula-defense-ui.js public-safe Formula Defense UI bridge for compact responsive Pipe Formula Defense layout, Source & Confidence Map/table wrapping with normal light code text, KaTeX equation rendering on normal light equation surfaces with dark text, WCAG AA contrast, dependency chain visualization, open-window refresh after realtime recalculation, and debounced realtime input handling
+engineering-formula-defense-ui.js public-safe Formula Defense UI bridge for compact resizable Pipe Formula Defense layout, responsive Realtime Role Path and Pipe Fitting Valve Breakdown tables, Source & Confidence Map/table wrapping with normal light code text, KaTeX equation rendering on normal light equation surfaces with dark text, WCAG AA contrast, dependency chain visualization, open-window refresh after realtime recalculation, and debounced realtime input handling
 engineering-decimal-display-runtime.js public-safe live readout decimal lock and click-guard bridge for pump parameter cards
 engineering-parameter-task-runtime.js public-safe hidden pump Status/Suction/Discharge task-window defense notes with route-trace formulas for oral examination answers and refresh support for open parameter windows after realtime solves
 engineering-local-trace-fallback-runtime.js public-safe local route-trace fallback that keeps Pump Status connected, current, and schema-complete when the protected backend is not reachable in local preview; preserves Calculating during in-flight protected backend solves
@@ -81,7 +81,7 @@ tools/validate-google-auth-runtime.cjs Node validation for Google Identity Servi
 tools/validate-pump-readiness-visibility-lock.cjs Node validation for late-added developer Pump Action Readiness panel hiding, childList-only observer scope, cache-busted runtime load, and manifest lock
 tools/validate-browser-issues-runtime.cjs Node validation for browser Issues cleanup: ARIA menu repair, CSS compatibility property cleanup, static header normalization, and cache-busted runtime load
 tools/validate-pipe-segments-file-runtime.cjs Node validation for Pipe Segments local `.v1` schema, filename convention, compact import/export controls, cache-busted runtime load, and stale-result marking
-tools/validate-formula-defense-ui.cjs Node validation for compact Pipe Formula Defense layout, Source & Confidence Map responsive table/plain formula contract, Formula Defense UI KaTeX rendering, WCAG contrast, dependency chain visualization, cache-busted runtime load, and realtime refresh/debounce
+tools/validate-formula-defense-ui.cjs Node validation for compact resizable Pipe Formula Defense layout, Realtime Role Path and Pipe Fitting Valve Breakdown responsive card-row behavior, Source & Confidence Map responsive table/plain formula contract, Formula Defense UI KaTeX rendering, WCAG contrast, dependency chain visualization, cache-busted runtime load, and realtime refresh/debounce
 tools/validate-pipe-canvas-hydraulic-label.cjs Node validation for Pipe/Fitting/Valve canvas hydraulic label runtime loading, 3-decimal display contract, symbolic row labels, cache key, npm script, and manifest lock
 tools/validate-pipe-source-confidence-map.cjs Node validation for Pipe Formula Defense Source & Confidence Map restoration, pump path role inference, pressure-profile evidence, cache key, npm script, and manifest lock
 tools/validate-analysis-report-live-runtime.cjs Node validation for Analysis Report live-link runtime loading, existing-table cell refresh behavior including bilingual headers and TH metric rows, Simulasi 1 Fluid/Pipe/Pump/SNK metric mapping, cache key, npm script, and manifest lock
@@ -117,8 +117,8 @@ Route audit cache key: engineering-route-trace-audit.js?v=20260607-snk-boundary-
 Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260611-realtime-global1
 Browser issues runtime cache key: engineering-browser-issues-runtime.js?v=20260608-browser-issues1
 Pipe Segments file runtime cache key: engineering-pipe-segments-file-runtime.js?v=20260608-pipe-segments-file1
-Formula Defense UI runtime cache key: engineering-formula-defense-ui.js?v=20260611-formula-defense-ui4
-Formula Defense UI KaTeX CSS cache key: vendor/katex/katex.min.css?v=20260611-formula-defense-ui4
+Formula Defense UI runtime cache key: engineering-formula-defense-ui.js?v=20260611-formula-defense-ui6
+Formula Defense UI KaTeX CSS cache key: vendor/katex/katex.min.css?v=20260611-formula-defense-ui6
 Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260608-browser-issues2
 Defense export cache key: engineering-defense-export-package.js?v=20260603-defensev3
 Pipe Moody chart audit cache key: engineering-pipe-moody-chart-audit.js?v=20260607-pipe-moody-audit2

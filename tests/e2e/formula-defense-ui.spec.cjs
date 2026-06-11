@@ -32,22 +32,45 @@ function mockFormulaDefenseMarkup() {
           </div>
         </article>
         <article class="pipe-trace-block">
+          <h3>Realtime Role Path</h3>
+          <div class="pump-curve-explanation-table-wrap">
+            <table class="pump-curve-explanation-table pipe-formula-defense-role-path-table">
+              <thead>
+                <tr>
+                  <th>Realtime Role Path</th>
+                  <th>Live Readout</th>
+                  <th>Who Uses It</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Pipe segments/fittings -> Total loss</td>
+                  <td>Major 0.080 m / Minor 2.535 m / Total 2.616 m</td>
+                  <td>Total loss is sent back to the hydraulic network solver and then to pump NPSH/system-head calculations.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+        <article class="pipe-trace-block">
           <h3>Pipe Fitting Valve Breakdown</h3>
           <div class="pump-curve-explanation-table-wrap">
             <table class="pump-curve-explanation-table pipe-formula-defense-fitting-breakdown-table">
               <thead>
                 <tr>
                   <th>Segment</th>
-                  <th>Element</th>
+                  <th>Type</th>
                   <th>Qty</th>
-                  <th>K</th>
-                  <th>Major Loss (m)</th>
-                  <th>Minor Loss (m)</th>
+                  <th>K total</th>
+                  <th>Major hL</th>
+                  <th>Minor hL</th>
+                  <th>Total hL</th>
+                  <th>Source / Note</th>
                 </tr>
               </thead>
               <tbody>
-                <tr><td>PIPE-1-Seg-1</td><td>Journal pipe</td><td>1</td><td>0.000</td><td>1.756</td><td>0.000</td></tr>
-                <tr><td>PIPE-1-Seg-2</td><td>Globe valve</td><td>1</td><td>18.448</td><td>0.000</td><td>9.912</td></tr>
+                <tr><td>PIPE-1-Seg-1 Journal discharge pipe 3 in</td><td>Pipe major loss</td><td>0.000</td><td>0.000</td><td>1.756 m</td><td>0.000 m</td><td>1.756 m</td><td>[Journal] Journal Case 6 discharge pipe: internal diameter 0.0738 m, length 10 m.</td></tr>
+                <tr><td>PIPE-1-Seg-2 Globe valve 3 in</td><td>Valve / inline component</td><td>1.000</td><td>6.100</td><td>0.000 m</td><td>3.278 m</td><td>3.278 m</td><td>[Journal] Journal discharge minor loss: globe valve 3 in, K = 6.1.</td></tr>
               </tbody>
             </table>
           </div>
@@ -169,6 +192,8 @@ test('Formula Defense UI renders light KaTeX equations, responsive tables, depen
   const tableState = await page.evaluate(() => {
     const table = document.querySelector('.pipe-formula-defense-fitting-breakdown-table');
     const wrapper = table.closest('.pump-curve-explanation-table-wrap');
+    const roleTable = document.querySelector('.pipe-formula-defense-role-path-table');
+    const roleWrapper = roleTable.closest('.pump-curve-explanation-table-wrap');
     const sourceTable = document.querySelector('.pipe-formula-defense-source-table');
     const sourceWrapper = sourceTable.closest('.fluid-formula-defense-table-wrap');
     const sourceFormulaCell = sourceTable.querySelector('.pipe-source-map-formula-cell');
@@ -181,6 +206,12 @@ test('Formula Defense UI renders light KaTeX equations, responsive tables, depen
     return {
       responsive: table.dataset.formulaDefenseResponsive,
       wrapperOverflowX: getComputedStyle(wrapper).overflowX,
+      targetWrapper: wrapper.classList.contains('pipe-formula-defense-target-table-wrap'),
+      firstCellLabel: table.querySelector('tbody td')?.dataset.label,
+      roleResponsive: roleTable.dataset.formulaDefenseResponsive,
+      roleWrapperOverflowX: getComputedStyle(roleWrapper).overflowX,
+      roleTargetWrapper: roleWrapper.classList.contains('pipe-formula-defense-target-table-wrap'),
+      roleFirstCellLabel: roleTable.querySelector('tbody td')?.dataset.label,
       sourceResponsive: sourceTable.dataset.formulaDefenseResponsive,
       sourceWrapperOverflowX: getComputedStyle(sourceWrapper).overflowX,
       sourceFormulaBackground: formulaStyle.backgroundColor,
@@ -196,6 +227,12 @@ test('Formula Defense UI renders light KaTeX equations, responsive tables, depen
   });
   expect(tableState.responsive).toBe('true');
   expect(tableState.wrapperOverflowX).toBe('auto');
+  expect(tableState.targetWrapper).toBe(true);
+  expect(tableState.firstCellLabel).toBe('Segment');
+  expect(tableState.roleResponsive).toBe('true');
+  expect(tableState.roleWrapperOverflowX).toBe('auto');
+  expect(tableState.roleTargetWrapper).toBe(true);
+  expect(tableState.roleFirstCellLabel).toBe('Realtime Role Path');
   expect(tableState.sourceResponsive).toBe('true');
   expect(tableState.sourceWrapperOverflowX).toBe('auto');
   expect(tableState.sourceFormulaBackground).toBe('rgb(255, 255, 255)');
@@ -206,6 +243,82 @@ test('Formula Defense UI renders light KaTeX equations, responsive tables, depen
   expect(tableState.headerPosition).toBe('sticky');
   expect(tableState.secondRowBackground).not.toBe(tableState.firstRowBackground);
   expect(tableState.qtyAlignment).toBe('right');
+
+  const mediumTableState = await page.evaluate(() => {
+    const win = document.getElementById('formulaDefenseMock');
+    win.style.width = '860px';
+    win.style.height = '620px';
+    win.classList.add('task-window-resized');
+    window.EngineeringFormulaDefenseUI.enhanceDocument(document);
+    const roleTable = document.querySelector('.pipe-formula-defense-role-path-table');
+    const roleWrapper = roleTable.closest('.pump-curve-explanation-table-wrap');
+    const fittingTable = document.querySelector('.pipe-formula-defense-fitting-breakdown-table');
+    const fittingWrapper = fittingTable.closest('.pump-curve-explanation-table-wrap');
+    const kHead = fittingTable.querySelector('thead th:nth-child(4)');
+    const majorHead = fittingTable.querySelector('thead th:nth-child(5)');
+    const majorCell = fittingTable.querySelector('tbody tr:first-child td:nth-child(5)');
+    const sourceHead = fittingTable.querySelector('thead th:nth-child(8)');
+    const sourceCell = fittingTable.querySelector('tbody tr:first-child td:nth-child(8)');
+    return {
+      width: Math.round(win.getBoundingClientRect().width),
+      fittingTableWidth: Math.round(fittingTable.getBoundingClientRect().width),
+      fittingWrapperClientWidth: Math.round(fittingWrapper.clientWidth),
+      fittingWrapperScrollWidth: Math.round(fittingWrapper.scrollWidth),
+      fittingHeadDisplay: getComputedStyle(fittingTable.querySelector('thead')).display,
+      kHeadText: kHead.textContent.trim(),
+      kHeadWhiteSpace: getComputedStyle(kHead).whiteSpace,
+      kHeadOverflowWrap: getComputedStyle(kHead).overflowWrap,
+      majorHeadWhiteSpace: getComputedStyle(majorHead).whiteSpace,
+      majorCellWhiteSpace: getComputedStyle(majorCell).whiteSpace,
+      sourceHeadAlign: getComputedStyle(sourceHead).textAlign,
+      sourceCellAlign: getComputedStyle(sourceCell).textAlign,
+      roleTableWidth: Math.round(roleTable.getBoundingClientRect().width),
+      roleWrapperClientWidth: Math.round(roleWrapper.clientWidth),
+      roleWrapperScrollWidth: Math.round(roleWrapper.scrollWidth),
+      roleHeadDisplay: getComputedStyle(roleTable.querySelector('thead')).display
+    };
+  });
+  expect(mediumTableState.width).toBeGreaterThanOrEqual(856);
+  expect(mediumTableState.width).toBeLessThanOrEqual(864);
+  expect(mediumTableState.fittingTableWidth).toBeGreaterThanOrEqual(1110);
+  expect(mediumTableState.fittingWrapperScrollWidth).toBeGreaterThan(mediumTableState.fittingWrapperClientWidth);
+  expect(mediumTableState.fittingHeadDisplay).toBe('table-header-group');
+  expect(mediumTableState.kHeadText).toBe('K total');
+  expect(mediumTableState.kHeadWhiteSpace).toBe('nowrap');
+  expect(mediumTableState.kHeadOverflowWrap).toBe('normal');
+  expect(mediumTableState.majorHeadWhiteSpace).toBe('nowrap');
+  expect(mediumTableState.majorCellWhiteSpace).toBe('nowrap');
+  expect(mediumTableState.sourceHeadAlign).toBe('left');
+  expect(mediumTableState.sourceCellAlign).toBe('left');
+  expect(mediumTableState.roleTableWidth).toBeGreaterThanOrEqual(830);
+  expect(mediumTableState.roleWrapperScrollWidth).toBeGreaterThanOrEqual(mediumTableState.roleWrapperClientWidth);
+  expect(mediumTableState.roleHeadDisplay).toBe('table-header-group');
+
+  const resizedState = await page.evaluate(() => {
+    const win = document.getElementById('formulaDefenseMock');
+    win.style.width = '520px';
+    win.style.height = '520px';
+    win.classList.add('task-window-resized');
+    window.EngineeringFormulaDefenseUI.enhanceDocument(document);
+    const roleTable = document.querySelector('.pipe-formula-defense-role-path-table');
+    const fittingTable = document.querySelector('.pipe-formula-defense-fitting-breakdown-table');
+    return {
+      width: Math.round(win.getBoundingClientRect().width),
+      height: Math.round(win.getBoundingClientRect().height),
+      roleHeadDisplay: getComputedStyle(roleTable.querySelector('thead')).display,
+      roleCellDisplay: getComputedStyle(roleTable.querySelector('tbody td')).display,
+      fittingHeadDisplay: getComputedStyle(fittingTable.querySelector('thead')).display,
+      fittingCellDisplay: getComputedStyle(fittingTable.querySelector('tbody td')).display
+    };
+  });
+  expect(resizedState.width).toBeGreaterThanOrEqual(516);
+  expect(resizedState.width).toBeLessThanOrEqual(524);
+  expect(resizedState.height).toBeGreaterThanOrEqual(516);
+  expect(resizedState.height).toBeLessThanOrEqual(524);
+  expect(resizedState.roleHeadDisplay).toBe('none');
+  expect(resizedState.fittingHeadDisplay).toBe('none');
+  expect(resizedState.roleCellDisplay).toBe('grid');
+  expect(resizedState.fittingCellDisplay).toBe('grid');
 
   await expect(page.locator('.formula-dependency-visualization')).toContainText('Changed Input');
   await expect(page.locator('.formula-dependency-visualization')).toContainText('Affected Variables');
