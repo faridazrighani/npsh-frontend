@@ -24,6 +24,7 @@
     "validate:browser-issues-runtime": "node tools/validate-browser-issues-runtime.cjs",
     "validate:pipe-segments-file-runtime": "node tools/validate-pipe-segments-file-runtime.cjs",
     "validate:formula-defense-ui": "node tools/validate-formula-defense-ui.cjs",
+    "validate:pipe-canvas-hydraulic-label": "node tools/validate-pipe-canvas-hydraulic-label.cjs",
     "validate:analysis-report-live-runtime": "node tools/validate-analysis-report-live-runtime.cjs",
     "test:e2e": "playwright test",
     "test:e2e:desktop-flow-chain": "playwright test tests/e2e/desktop-simulation-flow-chain.spec.cjs",
