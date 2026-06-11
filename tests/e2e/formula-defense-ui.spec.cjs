@@ -183,6 +183,50 @@ test('Formula Defense UI renders light KaTeX equations, responsive tables, depen
   await expect(page.locator('#formulaDefenseMock')).toHaveAttribute('data-pipe-formula-defense-layout', 'compact-v2');
   await expect(page.locator('.pipe-formula-defense-layout')).toHaveAttribute('data-pipe-formula-defense-layout', 'compact-v2');
   await expect(page.locator('#darkFormula .academic-equation-math .katex')).toBeVisible();
+  const referenceWindowState = await page.evaluate(() => {
+    const win = document.getElementById('formulaDefenseMock');
+    const body = win.querySelector('.task-window-body, .pipe-formula-defense-body');
+    const header = win.querySelector('.fluid-help-card h3');
+    const table = win.querySelector('.pump-curve-explanation-table');
+    const roleTable = win.querySelector('.pipe-formula-defense-role-path-table');
+    const sourceTable = win.querySelector('.pipe-formula-defense-source-table');
+    const winStyle = getComputedStyle(win);
+    const bodyStyle = getComputedStyle(body);
+    const headerStyle = getComputedStyle(header);
+    return {
+      width: Math.round(win.getBoundingClientRect().width),
+      height: Math.round(win.getBoundingClientRect().height),
+      cssWidth: winStyle.width,
+      cssHeight: winStyle.height,
+      bodyPadding: bodyStyle.padding,
+      bodyBackground: bodyStyle.backgroundColor,
+      cardHeaderPadding: headerStyle.padding,
+      cardHeaderFontSize: headerStyle.fontSize,
+      cardHeaderLineHeight: headerStyle.lineHeight,
+      cardHeaderBackground: headerStyle.backgroundColor,
+      cardHeaderColor: headerStyle.color,
+      roleTableMinWidth: getComputedStyle(roleTable).minWidth,
+      roleTableFontSize: getComputedStyle(roleTable).fontSize,
+      sourceTableMinWidth: getComputedStyle(sourceTable).minWidth,
+      sourceTableFontSize: getComputedStyle(sourceTable).fontSize
+    };
+  });
+  expect(referenceWindowState.width).toBeGreaterThanOrEqual(696);
+  expect(referenceWindowState.width).toBeLessThanOrEqual(704);
+  expect(referenceWindowState.height).toBeGreaterThanOrEqual(696);
+  expect(referenceWindowState.height).toBeLessThanOrEqual(704);
+  expect(referenceWindowState.cssWidth).toBe('700px');
+  expect(referenceWindowState.cssHeight).toBe('700px');
+  expect(referenceWindowState.bodyPadding).toBe('14px');
+  expect(referenceWindowState.bodyBackground).toBe('rgb(246, 248, 251)');
+  expect(referenceWindowState.cardHeaderPadding).toBe('10px 12px');
+  expect(referenceWindowState.cardHeaderFontSize).toBe('13px');
+  expect(referenceWindowState.cardHeaderBackground).toBe('rgb(238, 246, 252)');
+  expect(referenceWindowState.cardHeaderColor).toBe('rgb(18, 59, 90)');
+  expect(referenceWindowState.roleTableMinWidth).toBe('min(760px, 100%)');
+  expect(referenceWindowState.roleTableFontSize).toBe('10.6px');
+  expect(referenceWindowState.sourceTableMinWidth).toBe('min(760px, 100%)');
+  expect(referenceWindowState.sourceTableFontSize).toBe('10.5px');
   const afterContrast = await contrastForFormula(page);
   expect(afterContrast.visible).toBe(true);
   expect(afterContrast.ratio).toBeGreaterThanOrEqual(4.5);
@@ -240,7 +284,7 @@ test('Formula Defense UI renders light KaTeX equations, responsive tables, depen
   expect(tableState.sourceFormulaText).toBe('Q_m3/s = Q_m3/h / 3600');
   expect(tableState.sourceFormulaPlain).toBe('true');
   expect(tableState.sourceFormulaCellBackground).not.toBe('rgb(0, 0, 0)');
-  expect(tableState.headerPosition).toBe('sticky');
+  expect(tableState.headerPosition).toBe('static');
   expect(tableState.secondRowBackground).not.toBe(tableState.firstRowBackground);
   expect(tableState.qtyAlignment).toBe('right');
 
@@ -280,8 +324,8 @@ test('Formula Defense UI renders light KaTeX equations, responsive tables, depen
   });
   expect(mediumTableState.width).toBeGreaterThanOrEqual(856);
   expect(mediumTableState.width).toBeLessThanOrEqual(864);
-  expect(mediumTableState.fittingTableWidth).toBeGreaterThanOrEqual(1110);
-  expect(mediumTableState.fittingWrapperScrollWidth).toBeGreaterThan(mediumTableState.fittingWrapperClientWidth);
+  expect(mediumTableState.fittingTableWidth).toBeGreaterThanOrEqual(850);
+  expect(mediumTableState.fittingWrapperScrollWidth).toBeGreaterThanOrEqual(mediumTableState.fittingWrapperClientWidth);
   expect(mediumTableState.fittingHeadDisplay).toBe('table-header-group');
   expect(mediumTableState.kHeadText).toBe('K total');
   expect(mediumTableState.kHeadWhiteSpace).toBe('nowrap');
@@ -290,7 +334,7 @@ test('Formula Defense UI renders light KaTeX equations, responsive tables, depen
   expect(mediumTableState.majorCellWhiteSpace).toBe('nowrap');
   expect(mediumTableState.sourceHeadAlign).toBe('left');
   expect(mediumTableState.sourceCellAlign).toBe('left');
-  expect(mediumTableState.roleTableWidth).toBeGreaterThanOrEqual(830);
+  expect(mediumTableState.roleTableWidth).toBeGreaterThanOrEqual(800);
   expect(mediumTableState.roleWrapperScrollWidth).toBeGreaterThanOrEqual(mediumTableState.roleWrapperClientWidth);
   expect(mediumTableState.roleHeadDisplay).toBe('table-header-group');
 

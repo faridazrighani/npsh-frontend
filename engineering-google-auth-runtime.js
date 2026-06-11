@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LOCK_VERSION = "2026.06-google-access7";
+  const LOCK_VERSION = "2026.06-google-access8";
   const GOOGLE_IDENTITY_SCRIPT = "https://accounts.google.com/gsi/client";
   const DEFAULT_GOOGLE_AUTHORIZED_ORIGINS = [
     "https://npsh.virsim.id",
@@ -103,14 +103,9 @@
     return `${text.slice(0, 12)}...${text.slice(-26)}`;
   }
 
-  function isLocalPreviewOrigin(origin) {
-    return /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(String(origin || ""));
-  }
-
   function isGoogleOriginAllowed(origin = window.location?.origin || "") {
     const normalized = String(origin || "").trim().replace(/\/+$/, "");
     if (!normalized) return false;
-    if (isLocalPreviewOrigin(normalized)) return true;
     return getAuthorizedGoogleOrigins().includes(normalized);
   }
 

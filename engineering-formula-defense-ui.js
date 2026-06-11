@@ -7,7 +7,7 @@
   'use strict';
 
   const VERSION = 'engineering-formula-defense-ui.v1';
-  const CACHE_KEY = '20260611-formula-defense-ui6';
+  const CACHE_KEY = '20260612-formula-defense-ui9';
   const DEBOUNCE_MS = 120;
   const KATEX_SCRIPT = `vendor/katex/katex.min.js?v=${CACHE_KEY}`;
   const KATEX_CSS = `vendor/katex/katex.min.css?v=${CACHE_KEY}`;
@@ -33,6 +33,8 @@
   let recalcSequence = 0;
   let lastChangedInput = null;
   let pipeRefreshPatched = false;
+  let pipeTraceBuilderPatched = false;
+  let katexWarnFilterInstalled = false;
 
   function hasDocument() {
     return typeof document !== 'undefined' && document.documentElement;
@@ -246,22 +248,24 @@
   to { opacity: 1; transform: scale(1); }
 }
 .pipe-formula-defense-task-window[data-pipe-formula-defense-layout="compact-v2"] {
-  width: min(96vw, 1740px);
-  min-width: min(380px, calc(100vw - 18px));
+  width: min(700px, calc(100vw - 24px));
+  height: min(700px, calc(100dvh - 128px));
+  min-width: min(360px, calc(100vw - 24px));
   min-height: min(300px, calc(100dvh - 18px));
-  max-width: calc(100vw - 18px);
-  max-height: calc(100dvh - 18px);
+  max-width: calc(100vw - 16px);
+  max-height: calc(100dvh - 24px);
 }
 .pipe-formula-defense-task-window[data-pipe-formula-defense-layout="compact-v2"] .task-window-body,
 .pipe-formula-defense-task-window[data-pipe-formula-defense-layout="compact-v2"] .pipe-formula-defense-body {
-  padding: 8px 10px !important;
-  overflow: auto !important;
-  background: #f7fbff !important;
+  padding: 14px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  background: #f6f8fb !important;
 }
 .pipe-formula-defense-layout {
   display: grid !important;
   grid-template-columns: minmax(0, 1fr);
-  gap: 8px !important;
+  gap: 9px !important;
   align-content: start;
   container-type: inline-size;
   container-name: pipe-formula-defense;
@@ -269,8 +273,8 @@
 .pipe-formula-defense-layout .fluid-help-card {
   margin: 0 !important;
   overflow: hidden;
-  border: 1px solid #cfe3f5 !important;
-  border-radius: 6px !important;
+  border: 1px solid #d8e6f2 !important;
+  border-radius: 8px !important;
   background: #ffffff !important;
   box-shadow: none !important;
 }
@@ -278,15 +282,14 @@
 .pipe-formula-defense-layout .fluid-help-card > summary {
   display: flex;
   align-items: center;
-  min-height: 31px;
   margin: 0 !important;
-  padding: 7px 11px !important;
-  border-bottom: 1px solid #dbeaf7;
-  background: #eaf4fc !important;
-  color: #003a5d !important;
-  font-size: 12.5px !important;
+  padding: 10px 12px !important;
+  border-bottom: 1px solid #edf2f7;
+  background: #eef6fc !important;
+  color: #123b5a !important;
+  font-size: 13px !important;
   line-height: 1.2;
-  font-weight: 800 !important;
+  font-weight: 700 !important;
   letter-spacing: 0;
 }
 .pipe-formula-defense-layout .fluid-help-card > summary {
@@ -296,16 +299,28 @@
   margin: 0 !important;
 }
 .pipe-formula-defense-layout .src-help-text,
-.pipe-formula-defense-layout .fluid-help-list,
+.pipe-formula-defense-layout .fluid-help-list {
+  color: #334155 !important;
+  font-size: 12px !important;
+}
+.pipe-formula-defense-layout .src-help-text {
+  padding: 10px 12px !important;
+  line-height: 1.38 !important;
+}
+.pipe-formula-defense-layout .fluid-help-list {
+  margin: 0 !important;
+  padding: 10px 13px 10px 28px !important;
+  line-height: 1.36 !important;
+}
 .pipe-formula-defense-layout .pipe-formula-defense-note {
-  padding: 9px 11px !important;
-  color: #243244 !important;
-  font-size: 11.5px !important;
-  line-height: 1.45 !important;
+  margin: 8px 0 0 !important;
+  padding: 0 !important;
+  color: #334155 !important;
+  font-size: 10.5px !important;
+  line-height: 1.35 !important;
 }
 .pipe-formula-defense-layout .src-help-text p,
-.pipe-formula-defense-layout .fluid-help-list li,
-.pipe-formula-defense-layout .pipe-formula-defense-note {
+.pipe-formula-defense-layout .fluid-help-list li {
   margin: 0 0 5px !important;
 }
 .pipe-formula-defense-layout .src-help-text p:last-child,
@@ -325,43 +340,46 @@
 .pipe-formula-defense-layout .fluid-formula-defense-table,
 .pipe-formula-defense-layout .pump-curve-explanation-table {
   width: 100% !important;
-  min-width: 760px;
+  min-width: 520px;
   border-collapse: collapse !important;
   table-layout: fixed;
   background: #ffffff !important;
-  color: #243244 !important;
+  color: #333333 !important;
   font-size: 11px !important;
-  line-height: 1.25 !important;
+  line-height: 1.35 !important;
 }
 .pipe-formula-defense-layout .pipe-formula-defense-source-table {
-  min-width: 1080px !important;
+  min-width: min(760px, 100%) !important;
+  font-size: 10.5px !important;
 }
 .pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table,
 .pipe-formula-defense-layout .pipe-formula-defense-role-path-table {
   table-layout: fixed !important;
 }
 .pipe-formula-defense-layout .pipe-formula-defense-role-path-table {
-  width: max(100%, 840px) !important;
-  min-width: 840px !important;
+  width: 100% !important;
+  min-width: min(760px, 100%) !important;
+  font-size: 10.6px !important;
 }
 .pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table {
-  width: max(100%, 1120px) !important;
-  min-width: 1120px !important;
+  width: max(100%, 860px) !important;
+  min-width: 860px !important;
+  font-size: 10.6px !important;
 }
 .pipe-formula-defense-layout .pipe-formula-defense-role-path-table th:nth-child(1),
 .pipe-formula-defense-layout .pipe-formula-defense-role-path-table td:nth-child(1) {
-  width: 22%;
-  min-width: 150px;
+  width: 24%;
 }
 .pipe-formula-defense-layout .pipe-formula-defense-role-path-table th:nth-child(2),
 .pipe-formula-defense-layout .pipe-formula-defense-role-path-table td:nth-child(2) {
-  width: 24%;
-  min-width: 180px;
+  width: 28%;
+  color: #0b4778 !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums;
 }
 .pipe-formula-defense-layout .pipe-formula-defense-role-path-table th:nth-child(3),
 .pipe-formula-defense-layout .pipe-formula-defense-role-path-table td:nth-child(3) {
-  width: 54%;
-  min-width: 260px;
+  width: 48%;
 }
 .pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table th:nth-child(1),
 .pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table td:nth-child(1) {
@@ -394,30 +412,34 @@
 .pipe-formula-defense-layout .pipe-formula-defense-summary-table,
 .pipe-formula-defense-layout .pipe-formula-defense-rollup-table,
 .pipe-formula-defense-layout .pipe-formula-defense-moody-table {
-  min-width: 720px !important;
+  min-width: min(760px, 100%) !important;
 }
 .pipe-formula-defense-layout .fluid-formula-defense-table thead th,
 .pipe-formula-defense-layout .pump-curve-explanation-table thead th {
-  position: sticky;
+  position: static;
   top: 0;
   z-index: 2;
-  padding: 7px 9px !important;
-  border-bottom: 1px solid #dbeaf7 !important;
-  background: #eaf4fc !important;
-  color: #003a5d !important;
-  font-weight: 800 !important;
+  padding: 7px 8px !important;
+  border-bottom: 1px solid #edf2f7 !important;
+  background: #eef6fc !important;
+  color: #123b5a !important;
+  font-weight: 700 !important;
   text-align: left !important;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: break-word;
 }
 .pipe-formula-defense-layout .fluid-formula-defense-table td,
 .pipe-formula-defense-layout .pump-curve-explanation-table td {
-  padding: 7px 9px !important;
-  border-top: 1px solid #e3eef7 !important;
-  background: #ffffff !important;
-  color: #243244 !important;
+  padding: 7px 8px !important;
+  border-top: 0 !important;
+  border-bottom: 1px solid #edf2f7 !important;
+  background: transparent !important;
+  color: #333333 !important;
   vertical-align: top !important;
   white-space: normal !important;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  word-break: break-word;
 }
 .pipe-formula-defense-layout .fluid-formula-defense-table tbody tr:nth-child(even) td,
 .pipe-formula-defense-layout .pump-curve-explanation-table tbody tr:nth-child(even) td {
@@ -603,11 +625,11 @@
   border-spacing: 0 !important;
 }
 .pipe-formula-defense-fitting-breakdown-table thead th {
-  position: sticky !important;
+  position: static !important;
   top: 0;
   z-index: 3;
-  background: #123b5a !important;
-  color: #ffffff !important;
+  background: #eef6fc !important;
+  color: #123b5a !important;
   white-space: nowrap;
 }
 .pipe-formula-defense-fitting-breakdown-table tbody tr:nth-child(even) td {
@@ -697,10 +719,10 @@
   }
   .pipe-formula-defense-layout .fluid-formula-defense-table,
   .pipe-formula-defense-layout .pump-curve-explanation-table {
-    min-width: 720px;
+    min-width: 520px;
   }
   .pipe-formula-defense-layout .pipe-formula-defense-source-table {
-    min-width: 980px !important;
+    min-width: min(760px, 100%) !important;
   }
   .pipe-formula-defense-layout .pipe-formula-defense-segment-metrics {
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -712,7 +734,7 @@
     min-width: 860px !important;
   }
 }
-@container pipe-formula-defense (max-width: 700px) {
+@container pipe-formula-defense (max-width: 540px) {
   .pipe-formula-defense-layout .pipe-formula-defense-role-path-table,
   .pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table {
     width: 100% !important;
@@ -881,7 +903,21 @@
   }
 
   function isBenignKatexSpaceMetricWarning(args) {
-    return /No character metrics for ' '\s+in style 'Main-Regular' and mode 'text'/i.test(args.map(String).join(' '));
+    return /No character metrics\b.*Main-Regular\b.*mode\s+['"]?text/i.test(args.map(String).join(' '));
+  }
+
+  function installKatexWarningFilter() {
+    const consoleObject = root.console;
+    if (katexWarnFilterInstalled || !consoleObject?.warn || consoleObject.warn.__formulaDefenseKatexWarnFilter) return false;
+    const originalWarn = consoleObject.warn;
+    consoleObject.warn = function formulaDefenseGlobalKatexWarnFilter(...args) {
+      if (isBenignKatexSpaceMetricWarning(args)) return;
+      return originalWarn.apply(consoleObject, args);
+    };
+    consoleObject.warn.__formulaDefenseKatexWarnFilter = true;
+    consoleObject.warn.__formulaDefenseKatexWarnOriginal = originalWarn;
+    katexWarnFilterInstalled = true;
+    return true;
   }
 
   function renderKatexToString(katex, tex, options) {
@@ -937,30 +973,42 @@
     }
   }
 
-  function formatResult(result) {
-    if (typeof root.formatAcademicEquationResult === 'function') return root.formatAcademicEquationResult(result);
-    if (!result || typeof result !== 'object') return '';
-    const value = result.value ?? result.result ?? result.displayValue;
-    const unit = result.unit ? ` ${result.unit}` : '';
-    return value === undefined || value === null ? '' : `${value}${unit}`;
+  function formatEquationResult(step = {}, resultText = '') {
+    if (resultText) return String(resultText);
+    if (typeof root.formatAcademicEquationResult === 'function') return root.formatAcademicEquationResult(step, resultText);
+    const value = step.result ?? step.value ?? step.displayValue;
+    const unit = step.unit ? ` ${step.unit}` : '';
+    if (value === undefined || value === null || value === '') return '-';
+    if (typeof value === 'number') {
+      const digits = Number.isFinite(step.digits) ? step.digits : 3;
+      return `${Number.isInteger(value) ? String(value) : Number(value.toFixed(digits)).toString()}${unit}`;
+    }
+    return `${value}${unit && value !== '-' ? unit : ''}`;
   }
 
-  function buildEquationStepHtml(step = {}) {
-    const context = step.contextLabel || step.label || step.name || 'Formula';
+  function buildEquationStepHtml(step = {}, index = 0, options = {}) {
+    const context = step.title || step.contextLabel || step.label || step.name || options.titleFallback || 'Calculation Step';
+    const reference = step.reference || step.source || step.basis || '';
     const formula = step.formula || step.equation || step.substitution || step.rule || step.description || '';
     const rendered = renderFormulaMarkup(formula, context, { displayMode: true });
-    const resultText = formatResult(step.result);
+    const substitution = step.substitution || step.sample || '';
+    const resultText = formatEquationResult(step, options.resultText || '');
+    const compactClass = options.compact ? ' academic-equation-step-compact' : '';
+    const visibleSourceClass = rendered.mapped ? '' : ' academic-equation-source-visible';
     const parts = [
-      '<div class="academic-equation-step formula-defense-equation-step" data-formula-defense-equation="true">',
-      `<div class="academic-equation-context">${escapeHtml(context)}</div>`,
-      '<div class="academic-equation-display formula-defense-equation-surface">',
-      `<span class="academic-equation-math" data-formula-source="${escapeHtml(formula)}" data-equation-renderer="${escapeHtml(rendered.renderer)}">${rendered.html}</span>`,
-      '</div>'
+      `<article class="academic-equation-step${compactClass} formula-defense-equation-step" data-formula-defense-equation="true">`,
+      `<div class="academic-equation-title">${index + 1}. ${escapeHtml(context)}</div>`
     ];
-    if (resultText) {
-      parts.push(`<div class="academic-equation-result">Result: ${escapeHtml(resultText)}</div>`);
-    }
-    parts.push('</div>');
+    if (reference) parts.push(`<div class="academic-equation-reference">${escapeHtml(reference)}</div>`);
+    parts.push(
+      '<div class="academic-equation-display formula-defense-equation-surface">',
+      `<div class="academic-equation-math" data-formula-source="${escapeHtml(formula)}" data-equation-renderer="${escapeHtml(rendered.renderer)}">${rendered.html}</div>`,
+      rendered.mapped ? '' : `<div class="academic-equation-source${visibleSourceClass}">${escapeHtml(formula || '-')}</div>`,
+      '</div>'
+    );
+    if (substitution) parts.push(`<div class="academic-equation-substitution">${escapeHtml(substitution)}</div>`);
+    parts.push(`<strong class="academic-equation-result">${escapeHtml(resultText)}</strong>`);
+    parts.push('</article>');
     return parts.join('');
   }
 
@@ -986,23 +1034,23 @@
     root.renderAcademicFormulaMarkup.__formulaDefenseUiOriginal = originalFormula || null;
 
     const originalStepHtml = root.renderAcademicEquationStepHtml;
-    root.renderAcademicEquationStepHtml = function formulaDefenseRenderAcademicEquationStepHtml(step) {
+    root.renderAcademicEquationStepHtml = function formulaDefenseRenderAcademicEquationStepHtml(step, index = 0, options = {}) {
       try {
-        return buildEquationStepHtml(step);
+        return buildEquationStepHtml(step, index, options);
       } catch (error) {
-        return typeof originalStepHtml === 'function' ? originalStepHtml.call(this, step) : '';
+        return typeof originalStepHtml === 'function' ? originalStepHtml.call(this, step, index, options) : '';
       }
     };
     root.renderAcademicEquationStepHtml.__formulaDefenseUiPatched = true;
     root.renderAcademicEquationStepHtml.__formulaDefenseUiOriginal = originalStepHtml || null;
 
     const originalCreateStep = root.createAcademicEquationStepElement;
-    root.createAcademicEquationStepElement = function formulaDefenseCreateAcademicEquationStepElement(step) {
+    root.createAcademicEquationStepElement = function formulaDefenseCreateAcademicEquationStepElement(step, index = 0, options = {}) {
       if (!hasDocument()) {
-        return typeof originalCreateStep === 'function' ? originalCreateStep.call(this, step) : null;
+        return typeof originalCreateStep === 'function' ? originalCreateStep.call(this, step, index, options) : null;
       }
       const template = document.createElement('template');
-      template.innerHTML = buildEquationStepHtml(step);
+      template.innerHTML = buildEquationStepHtml(step, index, options);
       return template.content.firstElementChild;
     };
     root.createAcademicEquationStepElement.__formulaDefenseUiPatched = true;
@@ -1232,6 +1280,500 @@
     else if (/current/i.test(state.status)) setCalculationUiState('Current', state.calculationId ? `calculationId ${state.calculationId}` : 'backend current');
   }
 
+  function runtimeModel() {
+    try {
+      if (typeof globalModel !== 'undefined' && globalModel) return globalModel;
+    } catch (error) {
+      // Protected builds may not expose globalModel as a direct binding.
+    }
+    return root.globalModel || root.__npshGlobalModel || {};
+  }
+
+  function runtimeConnections() {
+    try {
+      if (typeof connections !== 'undefined' && Array.isArray(connections)) return connections;
+    } catch (error) {
+      // Protected builds may not expose connections as a direct binding.
+    }
+    return Array.isArray(root.connections) ? root.connections : [];
+  }
+
+  function finiteNumber(value, fallback = null) {
+    const numeric = Number.parseFloat(value);
+    return Number.isFinite(numeric) ? numeric : fallback;
+  }
+
+  function roundPipeTraceNumber(value, digits = 4) {
+    const numeric = finiteNumber(value);
+    return numeric === null ? null : Number(numeric.toFixed(digits));
+  }
+
+  function formatPipeTraceNumber(value, digits = 4) {
+    const numeric = finiteNumber(value);
+    if (numeric === null) return '-';
+    const absolute = Math.abs(numeric);
+    if (absolute >= 10000 || (absolute > 0 && absolute < 0.0001)) return numeric.toExponential(4);
+    return Number(numeric.toFixed(digits)).toString();
+  }
+
+  function getPipeTraceFluidProps(fluidInput = null) {
+    const model = runtimeModel();
+    const props = fluidInput || model?.FLUID?.props || {};
+    return {
+      density: finiteNumber(props.density, 1000),
+      viscosityCSt: finiteNumber(props.viscosity, finiteNumber(props.kinematicViscosity, 1)),
+      vaporPressureBarA: finiteNumber(props.vaporPressure, 0)
+    };
+  }
+
+  function getPipeRoughnessAgingFactor(props = {}) {
+    return Math.max(0, finiteNumber(props.roughnessAgingFactor, 1));
+  }
+
+  function createPipeTraceStep(title, formula, substitution, result, unit = '', reference = '') {
+    return {
+      title,
+      formula,
+      substitution,
+      result: roundPipeTraceNumber(result, 6),
+      unit,
+      reference
+    };
+  }
+
+  function getPipeFrictionFactorFormula(segment = {}) {
+    const regime = segment.flowRegime || '';
+    if (regime === 'Laminar') return 'f = 64 / Re';
+    if (regime === 'Transitional') return 'f = blend(64/Re, Colebrook f) between Re 2300 and 4000';
+    if (regime === 'Turbulent') return '1/sqrt(f) = -2 log10(eps/(3.7D) + 2.51/(Re sqrt(f)))';
+    return 'f = Darcy friction factor from Reynolds number and eps/D';
+  }
+
+  function pipeFormulaDefenseStep(segment = {}, title) {
+    const match = String(title || '').toLowerCase();
+    return [...(segment.steps || []), ...(segment.pressureSteps || [])]
+      .find((step) => String(step.title || '').toLowerCase() === match) || null;
+  }
+
+  function buildPipeFormulaDefenseRows(trace) {
+    if (!trace) return [];
+    const basis = trace.basis || {};
+    const totals = trace.totals || {};
+    const firstSegment = (trace.segments || [])[0] || {};
+    const steps = [...(firstSegment.steps || []), ...(firstSegment.pressureSteps || [])];
+    const stepByTitle = (title) => steps.find((step) => step.title === title) || {};
+    const profile = firstSegment.profile || {};
+    const formatStep = (step) => (step && step.result !== null && step.result !== undefined)
+      ? `${formatPipeTraceNumber(step.result, step.unit === '' ? 6 : 4)}${step.unit ? ` ${step.unit}` : ''}`
+      : '-';
+    const formatLoss = (value) => Number.isFinite(Number.parseFloat(value)) ? `${formatPipeTraceNumber(value)} m` : '-';
+    const segmentLossSubstitution = (title, total) => {
+      const values = (trace.segments || [])
+        .map((segment) => Number.parseFloat(pipeFormulaDefenseStep(segment, title)?.result))
+        .filter((value) => Number.isFinite(value));
+      return values.length
+        ? `${values.map((value) => formatPipeTraceNumber(value)).join(' + ')} = ${formatPipeTraceNumber(total)} m`
+        : 'Segment trace is not available until this pipe has solved flow.';
+    };
+    const hasHighPoint = Number.isFinite(totals.highPointPressure) && Number.isFinite(totals.highPointVaporMargin);
+    const segmentName = firstSegment.name || 'active pipe segment';
+    return [
+      {
+        step: 'Short Answer for Advisor',
+        inputSource: 'Current Pipe Object Properties and solved hydraulic network.',
+        formula: 'Darcy-Weisbach major loss + K-method minor loss',
+        substitution: 'The pipe uses solved flow, active Fluid Basis, pipe ID, roughness, length, fittings, and elevation profile.',
+        result: trace.isSolved ? 'Pipe hydraulic loss trace is available.' : 'Pipe needs solved network flow.',
+        literatureBasis: 'Fluid mechanics pipe-flow literature and ANSI/HI NPSH suction-loss context.',
+        advisorDefenseNote: 'The pipe model is a steady-state, single-phase, incompressible hydraulic calculation, not a transient/two-phase model.'
+      },
+      {
+        step: 'Flow Conversion',
+        inputSource: 'Solved network flow through the solid hydraulic pipe path.',
+        formula: 'Q = flow / 3600',
+        substitution: `${formatPipeTraceNumber(basis.flowM3H, 6)} / 3600 = ${formatPipeTraceNumber(basis.flowM3S, 8)}`,
+        result: `${formatPipeTraceNumber(basis.flowM3S, 8)} m3/s`,
+        literatureBasis: 'SI flow-unit conversion before velocity and Reynolds number.',
+        advisorDefenseNote: 'All subsequent pipe equations use SI base units.'
+      },
+      {
+        step: 'Pipe Area',
+        inputSource: `${segmentName}: pipe size/custom ID source.`,
+        formula: stepByTitle('Area').formula || 'A = pi D^2 / 4',
+        substitution: stepByTitle('Area').substitution || '-',
+        result: formatStep(stepByTitle('Area')),
+        literatureBasis: 'Circular pipe geometry.',
+        advisorDefenseNote: 'Diameter must follow project piping class or documented custom internal diameter.'
+      },
+      {
+        step: 'Velocity',
+        inputSource: 'Converted flow and pipe area.',
+        formula: stepByTitle('Velocity').formula || 'V = Q / A',
+        substitution: stepByTitle('Velocity').substitution || '-',
+        result: formatStep(stepByTitle('Velocity')),
+        literatureBasis: 'Continuity equation.',
+        advisorDefenseNote: 'Velocity drives dynamic head, Reynolds number, major loss, and minor loss.'
+      },
+      {
+        step: 'Reynolds Number',
+        inputSource: 'Velocity, pipe ID, and Fluid Basis kinematic viscosity.',
+        formula: stepByTitle('Reynolds Number').formula || 'Re = V D / nu',
+        substitution: stepByTitle('Reynolds Number').substitution || '-',
+        result: formatStep(stepByTitle('Reynolds Number')),
+        literatureBasis: 'Internal-flow regime criterion.',
+        advisorDefenseNote: 'Laminar, transitional, or turbulent regime determines how friction factor is defended.'
+      },
+      {
+        step: 'Darcy Friction Factor',
+        inputSource: 'Reynolds number plus effective relative roughness.',
+        formula: stepByTitle('Darcy Friction Factor').formula || 'f = Darcy friction factor from Re and eps/D',
+        substitution: stepByTitle('Darcy Friction Factor').substitution || '-',
+        result: formatStep(stepByTitle('Darcy Friction Factor')),
+        literatureBasis: 'Laminar f=64/Re; turbulent Colebrook/Moody; transitional warning band.',
+        advisorDefenseNote: 'The application reports Darcy f, not Fanning f.'
+      },
+      {
+        step: 'Major Loss',
+        inputSource: 'All pipe segments: friction factor, length, diameter, and velocity head.',
+        formula: 'h_major,total = sum[f_i x (L_i / D_i) x V_i^2/(2g)]',
+        substitution: segmentLossSubstitution('Major Loss', totals.majorLoss),
+        result: formatLoss(totals.majorLoss),
+        literatureBasis: 'Darcy-Weisbach equation.',
+        advisorDefenseNote: 'This total matches Pipe Object Properties > Major Loss; segment-level details remain in All Segment Calculation Trace.'
+      },
+      {
+        step: 'Minor Loss',
+        inputSource: 'All pipe segments: fitting/valve K, quantity, and Add K entries.',
+        formula: 'h_minor,total = sum(K_total,i x V_i^2/(2g))',
+        substitution: segmentLossSubstitution('Minor Loss', totals.minorLoss),
+        result: formatLoss(totals.minorLoss),
+        literatureBasis: 'K-method for fittings, entrances, exits, reducers, strainers, and valve-like losses.',
+        advisorDefenseNote: 'This total matches Pipe Object Properties > Minor Loss; K values are typical/user/vendor data depending on source, and separate Valve Object losses must not be counted again here.'
+      },
+      {
+        step: 'Allowance and Total Loss',
+        inputSource: 'Major loss, minor loss, and optional head-loss allowance.',
+        formula: 'h_total = h_major + h_minor + h_allow',
+        substitution: `${formatPipeTraceNumber(totals.majorLoss)} + ${formatPipeTraceNumber(totals.minorLoss)} + ${formatPipeTraceNumber(totals.allowanceLoss)} = ${formatPipeTraceNumber(totals.totalLoss)} m`,
+        result: `${formatPipeTraceNumber(totals.totalLoss)} m`,
+        literatureBasis: 'Total line loss used by hydraulic energy balance.',
+        advisorDefenseNote: 'Suction-side total loss subtracts from NPSHa; discharge-side total loss increases required pump head/system curve.'
+      },
+      ...(hasHighPoint ? [{
+        step: 'Pressure and High Point Check',
+        inputSource: 'Solved pressure profile, elevation profile, and Fluid Basis vapor pressure.',
+        formula: 'P_static = rho g (H - z - V^2/2g) / 100000; margin = P_high - P_vapor',
+        substitution: `${formatPipeTraceNumber(totals.highPointPressure)} - ${formatPipeTraceNumber(basis.vaporPressureBarA)} = ${formatPipeTraceNumber(totals.highPointVaporMargin)} bar`,
+        result: `${formatPipeTraceNumber(totals.highPointVaporMargin)} bar`,
+        literatureBasis: 'Energy/head balance and vapor-pressure screening.',
+        advisorDefenseNote: 'This is a steady-state vapor-margin screen, not water hammer, flashing, or two-phase transient analysis.'
+      }] : []),
+      {
+        step: 'Endpoint Pressure Elevation Rule',
+        inputSource: 'Pipe endpoint elevations, solved hydraulic heads, and velocity heads.',
+        formula: 'P_in = rho g(H_in - z_start - V_in^2/2g)/100000; P_out = rho g(H_out - z_end - V_out^2/2g)/100000',
+        substitution: Number.isFinite(profile.startElevation) || Number.isFinite(profile.endElevation)
+          ? `z_start=${formatPipeTraceNumber(profile.startElevation)} m, z_end=${formatPipeTraceNumber(profile.endElevation)} m, P_in=${formatPipeTraceNumber(profile.startPressure)} bar a, P_out=${formatPipeTraceNumber(profile.endPressure)} bar a`
+          : 'Endpoint pressure profile is available after the pipe has solved inlet and outlet head.',
+        result: Number.isFinite(profile.endPressure) ? `Outlet pressure follows z_end and solved H_out: ${formatPipeTraceNumber(profile.endPressure)} bar a` : '-',
+        literatureBasis: 'Bernoulli equation: static pressure is hydraulic head minus elevation head and velocity head.',
+        advisorDefenseNote: 'Changing Start Elevation Override affects inlet/profile pressure. Outlet Pressure changes when End Elevation Override, outlet hydraulic head, flow/velocity, or boundary conditions change.'
+      }
+    ];
+  }
+
+  function classifyPipeSegmentComponent(segment = {}) {
+    const text = [segment.name, segment.fittingType, segment.notes].filter(Boolean).join(' ').toLowerCase();
+    if (/valve|check/.test(text)) return 'Valve / inline component';
+    if (/strainer|orifice|filter/.test(text)) return 'Inline component';
+    if (/elbow|bend|tee|reducer|contraction|expansion|entrance|exit|inlet|outlet/.test(text)) return 'Fitting / local loss';
+    if (finiteNumber(segment.minorLossK, 0) > 0 && finiteNumber(segment.length, 0) > 0) return 'Pipe + fitting K';
+    if (finiteNumber(segment.minorLossK, 0) > 0) return 'Equivalent K / residual';
+    return 'Pipe major loss';
+  }
+
+  function classifyPipeSegmentSource(segment = {}) {
+    const text = [segment.name, segment.fittingType, segment.notes].filter(Boolean).join(' ').toLowerCase();
+    if (/calibrat|equivalent|adjusted|derived|matching|residual/.test(text)) {
+      return { status: 'Calibrated', source: 'Equivalent K calibrated to literature/design loss', review: 'Verify the calibration basis and duty flow.' };
+    }
+    if (/journal|published|paper|literature|table\s*\d|case\s*\d/.test(text)) {
+      return { status: 'Journal', source: 'Journal / literature value', review: '' };
+    }
+    if (String(segment.fittingType || '') === 'Custom K' || finiteNumber(segment.additionalK, 0) > 0) {
+      return { status: 'User', source: 'User-entered custom K', review: segment.notes ? '' : 'Add a note/source for this custom K value.' };
+    }
+    if (segment.fittingType && segment.fittingType !== 'None') {
+      return { status: 'Typical', source: 'Typical handbook/table K value', review: 'Confirm against project standard or vendor data for final validation.' };
+    }
+    if (finiteNumber(segment.length, 0) > 0) return { status: 'Geometry', source: 'Pipe geometry, roughness, and Darcy friction', review: '' };
+    return { status: 'Input', source: 'Pipe Object Properties input', review: '' };
+  }
+
+  function pipeSegmentSourceNote(segment = {}) {
+    const source = classifyPipeSegmentSource(segment);
+    const note = segment.notes || 'Pipe Object Properties input';
+    return `[${source.status}] ${note}${source.review ? ` Review: ${source.review}` : ''}`;
+  }
+
+  function buildPipeFittingValveBreakdown(segments = []) {
+    return segments.map((segment) => {
+      const source = classifyPipeSegmentSource(segment);
+      return {
+        index: segment.index,
+        name: segment.name || `Segment ${(segment.index ?? 0) + 1}`,
+        componentType: classifyPipeSegmentComponent(segment),
+        fittingType: segment.fittingType || 'None',
+        quantity: roundPipeTraceNumber(segment.fittingQuantity, 4),
+        kEach: roundPipeTraceNumber(segment.fittingK, 6),
+        fittingTotalK: roundPipeTraceNumber(segment.fittingTotalK, 6),
+        additionalK: roundPipeTraceNumber(segment.additionalK, 6),
+        totalK: roundPipeTraceNumber(segment.minorLossK, 6),
+        majorLoss: roundPipeTraceNumber(segment.majorLoss, 6),
+        fittingLoss: roundPipeTraceNumber(segment.fittingLoss, 6),
+        additionalLoss: roundPipeTraceNumber(segment.additionalLoss, 6),
+        minorLoss: roundPipeTraceNumber(segment.minorLoss, 6),
+        allowanceLoss: roundPipeTraceNumber(segment.allowanceLoss, 6),
+        totalLoss: roundPipeTraceNumber(segment.totalLoss, 6),
+        dataBasis: source.source,
+        sourceCategory: source.status,
+        sourceReview: source.review,
+        sourceNote: pipeSegmentSourceNote(segment)
+      };
+    });
+  }
+
+  function buildPipeMoodyTrace(segments = []) {
+    const markers = segments
+      .filter((segment) => finiteNumber(segment.reynolds, 0) > 0 && finiteNumber(segment.frictionFactor, 0) > 0)
+      .map((segment) => ({
+        index: segment.index,
+        name: segment.name || `Segment ${segment.index + 1}`,
+        reynolds: roundPipeTraceNumber(segment.reynolds, 0),
+        frictionFactor: roundPipeTraceNumber(segment.frictionFactor, 6),
+        relRoughness: roundPipeTraceNumber(segment.diameter > 0 ? segment.effectiveRoughness / segment.diameter : 0, 8),
+        flowRegime: segment.flowRegime,
+        diameter: roundPipeTraceNumber(segment.diameter, 6),
+        effectiveRoughness: roundPipeTraceNumber(segment.effectiveRoughness, 10)
+      }));
+    return {
+      markers,
+      isSolved: markers.length > 0,
+      note: 'Darcy friction factor chart. Fanning friction factor equals Darcy f / 4.'
+    };
+  }
+
+  function getPipeTracePumpPathRole(pipeId, results = {}) {
+    if (typeof root.getPipePumpPathRole === 'function') {
+      try {
+        const role = root.getPipePumpPathRole(pipeId, runtimeModel(), runtimeConnections(), results);
+        if (role) return role;
+      } catch (error) {
+        // Fall back to existing trace role below.
+      }
+    }
+    return results?.calculationTrace?.pumpPathRole || { role: '-', impact: '-' };
+  }
+
+  function getSegmentProfiles(results = {}) {
+    return new Map((results.segmentProfiles || []).map((profile) => [profile.index, profile]));
+  }
+
+  function buildPipeSourceMap(trace, context = {}) {
+    const api = root.EngineeringPipeSourceConfidenceMapRuntime;
+    if (typeof api?.buildPipeSourceConfidenceMap === 'function') {
+      try {
+        return api.buildPipeSourceConfidenceMap({ ...context, trace });
+      } catch (error) {
+        return trace?.sourceMap || [];
+      }
+    }
+    return trace?.sourceMap || [];
+  }
+
+  function buildAcademicPipeCalculationTrace(flow, props = {}, results = {}, fluid = null, pipeId = '', baseTrace = null) {
+    if (typeof root.normalizePipeProps === 'function') {
+      try {
+        root.normalizePipeProps(props, pipeId);
+      } catch (error) {
+        // Normalization is best-effort; calculation helpers may already handle props.
+      }
+    }
+    const flowM3H = Math.max(0, finiteNumber(flow, finiteNumber(results?.flow, finiteNumber(baseTrace?.basis?.flowM3H, 0))) || 0);
+    const flowM3S = flowM3H / 3600;
+    const fluidProps = getPipeTraceFluidProps(fluid);
+    const nuM2S = 1e-6 * Math.max(fluidProps.viscosityCSt, 0.000001);
+    const agingFactor = getPipeRoughnessAgingFactor(props);
+    const allowancePercent = Math.max(0, finiteNumber(props.headLossAllowancePercent, baseTrace?.basis?.headLossAllowancePercent ?? 0) || 0);
+    const allowanceFraction = allowancePercent / 100;
+    const rawSegments = typeof root.calculatePipeHydraulicSegments === 'function'
+      ? root.calculatePipeHydraulicSegments(flowM3H, props, fluid, pipeId)
+      : [];
+    const segments = Array.isArray(rawSegments) ? rawSegments : [];
+    const profileMap = getSegmentProfiles(results);
+    const pumpPathRole = getPipeTracePumpPathRole(pipeId, results);
+    const totals = segments.reduce((sum, segment) => {
+      sum.majorLoss += segment.majorLoss || 0;
+      sum.minorLoss += segment.minorLoss || 0;
+      sum.allowanceLoss += segment.allowanceLoss || 0;
+      sum.totalLoss += segment.totalLoss || 0;
+      sum.totalK += segment.minorLossK || 0;
+      return sum;
+    }, { majorLoss: 0, minorLoss: 0, allowanceLoss: 0, totalLoss: 0, totalK: 0 });
+    const traceSegments = segments.map((segment) => {
+      const profile = profileMap.get(segment.index) || {};
+      const area = Math.PI * Math.pow(segment.diameter, 2) / 4;
+      const relativeRoughness = segment.diameter > 0 ? segment.effectiveRoughness / segment.diameter : 0;
+      const velocityHead = Math.pow(segment.velocity, 2) / 19.62;
+      const steps = [
+        createPipeTraceStep('Area', 'A = pi x D^2 / 4', `pi x ${formatPipeTraceNumber(segment.diameter)}^2 / 4 = ${formatPipeTraceNumber(area)} m2`, area, 'm2', 'Circular pipe cross-sectional area'),
+        createPipeTraceStep('Velocity', 'V = Q / A', `${formatPipeTraceNumber(flowM3S, 6)} / ${formatPipeTraceNumber(area, 6)} = ${formatPipeTraceNumber(segment.velocity)} m/s`, segment.velocity, 'm/s', 'Average pipe velocity'),
+        createPipeTraceStep('Reynolds Number', 'Re = V x D / nu', `${formatPipeTraceNumber(segment.velocity)} x ${formatPipeTraceNumber(segment.diameter)} / ${formatPipeTraceNumber(nuM2S, 8)} = ${formatPipeTraceNumber(segment.reynolds, 0)}`, segment.reynolds, '', 'Pipe flow regime basis'),
+        createPipeTraceStep('Effective Roughness', 'eps_eff = eps x aging factor', `${formatPipeTraceNumber(segment.roughness, 8)} x ${formatPipeTraceNumber(agingFactor)} = ${formatPipeTraceNumber(segment.effectiveRoughness, 8)} m`, segment.effectiveRoughness, 'm', 'Aging/degradation screening'),
+        createPipeTraceStep('Relative Roughness', 'eps_eff / D', `${formatPipeTraceNumber(segment.effectiveRoughness, 8)} / ${formatPipeTraceNumber(segment.diameter)} = ${formatPipeTraceNumber(relativeRoughness, 6)}`, relativeRoughness, '', 'Moody/Colebrook roughness input'),
+        createPipeTraceStep('Darcy Friction Factor', getPipeFrictionFactorFormula(segment), `Re = ${formatPipeTraceNumber(segment.reynolds, 0)}; eps/D = ${formatPipeTraceNumber(relativeRoughness, 6)}; regime = ${segment.flowRegime || '-'}; f = ${formatPipeTraceNumber(segment.frictionFactor, 6)}`, segment.frictionFactor, '', 'Darcy f from laminar equation, Colebrook/Moody turbulent basis, or transitional blend warning'),
+        createPipeTraceStep('Velocity Head', 'hv = V^2 / (2g)', `${formatPipeTraceNumber(segment.velocity)}^2 / (2 x ${formatPipeTraceNumber(9.81)}) = ${formatPipeTraceNumber(velocityHead)} m`, velocityHead, 'm', 'Dynamic head term'),
+        createPipeTraceStep('Major Loss', 'h_major = f x (L / D) x hv', `${formatPipeTraceNumber(segment.frictionFactor, 6)} x (${formatPipeTraceNumber(segment.length)} / ${formatPipeTraceNumber(segment.diameter)}) x ${formatPipeTraceNumber(velocityHead)} = ${formatPipeTraceNumber(segment.majorLoss)} m`, segment.majorLoss, 'm', 'Darcy-Weisbach pipe friction'),
+        createPipeTraceStep('Minor Loss', 'h_minor = K_total x hv', `${formatPipeTraceNumber(segment.minorLossK)} x ${formatPipeTraceNumber(velocityHead)} = ${formatPipeTraceNumber(segment.minorLoss)} m`, segment.minorLoss, 'm', 'Fitting and additional K loss'),
+        createPipeTraceStep('Allowance Loss', 'h_allow = (h_major + h_minor) x allowance', `(${formatPipeTraceNumber(segment.majorLoss)} + ${formatPipeTraceNumber(segment.minorLoss)}) x ${formatPipeTraceNumber(allowanceFraction, 4)} = ${formatPipeTraceNumber(segment.allowanceLoss)} m`, segment.allowanceLoss, 'm', 'Fouling/design allowance'),
+        createPipeTraceStep('Segment Total Loss', 'h_total = h_major + h_minor + h_allow', `${formatPipeTraceNumber(segment.majorLoss)} + ${formatPipeTraceNumber(segment.minorLoss)} + ${formatPipeTraceNumber(segment.allowanceLoss)} = ${formatPipeTraceNumber(segment.totalLoss)} m`, segment.totalLoss, 'm', 'Segment loss contribution')
+      ];
+      const pressureSteps = [];
+      if (Number.isFinite(profile.startPressure)) {
+        pressureSteps.push(createPipeTraceStep('Segment Inlet Pressure', 'P_in = rho x g x (H_in - z_in - hv) / 100000', `${formatPipeTraceNumber(profile.startPressure)} bar a`, profile.startPressure, 'bar a', 'Static pressure from hydraulic head'));
+      }
+      if (Number.isFinite(profile.endPressure)) {
+        pressureSteps.push(createPipeTraceStep('Segment Outlet Pressure', 'P_out = rho x g x (H_out - z_out - hv) / 100000', `${formatPipeTraceNumber(profile.endPressure)} bar a`, profile.endPressure, 'bar a', 'Static pressure after segment loss'));
+      }
+      if (Number.isFinite(profile.highPointPressure)) {
+        pressureSteps.push(createPipeTraceStep('High Point Vapor Margin', 'Margin = P_high_point - P_vapor', `${formatPipeTraceNumber(profile.highPointPressure)} - ${formatPipeTraceNumber(fluidProps.vaporPressureBarA)} = ${formatPipeTraceNumber(profile.highPointVaporMargin)} bar`, profile.highPointVaporMargin, 'bar', 'High point cavitation screening'));
+      }
+      return {
+        index: segment.index,
+        name: segment.name || `Segment ${segment.index + 1}`,
+        componentType: classifyPipeSegmentComponent(segment),
+        fittingType: segment.fittingType,
+        fittingQuantity: roundPipeTraceNumber(segment.fittingQuantity, 4),
+        kEach: roundPipeTraceNumber(segment.fittingK, 6),
+        totalK: roundPipeTraceNumber(segment.minorLossK, 6),
+        sourceCategory: classifyPipeSegmentSource(segment).status,
+        sourceNote: pipeSegmentSourceNote(segment),
+        notes: segment.notes || '',
+        flowRegime: segment.flowRegime,
+        warning: segment.regimeWarning,
+        dataSources: {
+          size: segment.sizeSource,
+          material: segment.materialSource,
+          fitting: segment.fittingSource
+        },
+        profile,
+        steps,
+        pressureSteps
+      };
+    });
+    const trace = {
+      ...(baseTrace && typeof baseTrace === 'object' ? baseTrace : {}),
+      isSolved: flowM3H > 0 && segments.length > 0,
+      message: flowM3H > 0 && segments.length > 0
+        ? 'Pipe calculation trace is based on the current solved hydraulic flow.'
+        : 'Pipe calculation trace needs solved pipe flow. Connect the pipe in a hydraulic path and run the simulation.',
+      basis: {
+        ...(baseTrace?.basis || {}),
+        flowM3H: roundPipeTraceNumber(flowM3H, 6),
+        flowM3S: roundPipeTraceNumber(flowM3S, 8),
+        density: roundPipeTraceNumber(fluidProps.density, 4),
+        viscosityCSt: roundPipeTraceNumber(fluidProps.viscosityCSt, 6),
+        kinematicViscosityM2S: roundPipeTraceNumber(nuM2S, 10),
+        vaporPressureBarA: roundPipeTraceNumber(fluidProps.vaporPressureBarA, 6),
+        roughnessAgingFactor: roundPipeTraceNumber(agingFactor, 4),
+        headLossAllowancePercent: roundPipeTraceNumber(allowancePercent, 4),
+        elevationProfileMode: props.elevationProfileMode || 'End Elevations'
+      },
+      totals: {
+        ...(baseTrace?.totals || {}),
+        majorLoss: roundPipeTraceNumber(totals.majorLoss, 6),
+        minorLoss: roundPipeTraceNumber(totals.minorLoss, 6),
+        allowanceLoss: roundPipeTraceNumber(totals.allowanceLoss, 6),
+        totalLoss: roundPipeTraceNumber(totals.totalLoss, 6),
+        totalK: roundPipeTraceNumber(totals.totalK, 6),
+        controllingHighPointSegment: results?.highPointSegment || baseTrace?.totals?.controllingHighPointSegment || '',
+        highPointPressure: results?.highPointPressure ?? baseTrace?.totals?.highPointPressure ?? null,
+        highPointVaporMargin: results?.highPointVaporMargin ?? baseTrace?.totals?.highPointVaporMargin ?? null
+      },
+      moody: baseTrace?.moody || buildPipeMoodyTrace(segments),
+      segments: traceSegments,
+      fittingValveBreakdown: buildPipeFittingValveBreakdown(segments),
+      pumpPathRole,
+      dependencyChain: [
+        'Connected hydraulic path provides the solved flow for each pipe segment.',
+        'Pipe geometry and flow determine cross-sectional area, velocity, and velocity head.',
+        'Fluid basis and pipe geometry determine Reynolds number and flow regime.',
+        'Pipe roughness and flow regime determine friction factor.',
+        'Pipe length and friction factor determine major loss.',
+        'Fittings, valves, strainers, and custom K values determine minor loss.',
+        'Major and minor losses are combined into segment loss.',
+        'Segment losses are summed into total pipe/path loss.',
+        'Suction path loss affects pump suction pressure and NPSHa.',
+        'Discharge path loss affects required system head and downstream pressure.'
+      ],
+      warnings: [...new Set([...(results?.warnings || []), ...traceSegments.map((segment) => segment.warning).filter(Boolean)])],
+      references: baseTrace?.references || [
+        'Fluid mechanics internal pipe flow, Reynolds number, Darcy-Weisbach loss, Moody/Colebrook friction, and minor-loss coefficients.',
+        'Steady-flow energy equation, pipe friction, and head-loss terms.',
+        'ANSI/HI NPSH suction-line loss and NPSHa margin context.'
+      ],
+      notes: baseTrace?.notes || [
+        'Friction factor shown is Darcy f, not Fanning f.',
+        'Fluid viscosity basis is kinematic viscosity in cSt.',
+        'Pipe size, roughness, and fitting K defaults are reference/typical engineering values unless marked User or Estimate.'
+      ],
+      engineeringLimitations: baseTrace?.engineeringLimitations || [
+        'Pressure used for NPSH and vapor-pressure checks must be absolute pressure (bar a). Gauge inputs must be converted at the boundary.',
+        'Elevation datum must be consistent between source/sink boundaries, pipe endpoints, high points, and pump nozzles.',
+        'Roughness, aging factor, and head-loss allowance are engineering inputs that can materially change the system curve and NPSHa.',
+        'Fitting K values can vary by geometry and vendor; typical values are screening inputs until replaced by project/vendor data.',
+        'Valve Object losses and valve-like pipe fitting K values should not be counted twice.',
+        'Transitional Reynolds-number results are approximate and should be treated as review/warning conditions.',
+        'High point vapor margin is a steady-state single-phase screen; it does not model transient, water hammer, flashing, two-phase flow, or gas entrainment.'
+      ]
+    };
+    trace.sourceMap = buildPipeSourceMap(trace, {
+      pipeId,
+      pipe: runtimeModel()?.[pipeId],
+      props,
+      results,
+      flow: flowM3H,
+      fluid
+    });
+    trace.formulaDefenseRows = buildPipeFormulaDefenseRows(trace);
+    return trace;
+  }
+
+  function patchPipeFormulaDefenseTraceBuilders() {
+    if (pipeTraceBuilderPatched) return false;
+    pipeTraceBuilderPatched = true;
+    const originalBuildTrace = root.buildPipeCalculationTrace;
+    if (typeof originalBuildTrace !== 'function' || !originalBuildTrace.__formulaDefenseAcademicTracePatched) {
+      root.buildPipeCalculationTrace = function formulaDefenseBuildPipeCalculationTrace(flow, props = {}, results = {}, fluid = null, pipeId = '', ...rest) {
+        let baseTrace = null;
+        if (typeof originalBuildTrace === 'function') {
+          try {
+            baseTrace = originalBuildTrace.call(this, flow, props, results, fluid, pipeId, ...rest);
+          } catch (error) {
+            baseTrace = results?.calculationTrace || null;
+          }
+        } else {
+          baseTrace = results?.calculationTrace || null;
+        }
+        return buildAcademicPipeCalculationTrace(flow, props, results, fluid, pipeId, baseTrace);
+      };
+      root.buildPipeCalculationTrace.__formulaDefenseAcademicTracePatched = true;
+      root.buildPipeCalculationTrace.__formulaDefenseAcademicTraceOriginal = originalBuildTrace || null;
+    }
+    root.buildPipeFormulaDefenseRows = buildPipeFormulaDefenseRows;
+    return true;
+  }
+
   function pipeIdFromFormulaDefenseWindow(windowNode) {
     return windowNode?.dataset?.pipeNode
       || windowNode?.dataset?.nodeId
@@ -1242,6 +1784,7 @@
 
   function refreshOpenPipeFormulaDefenseWindows() {
     if (!hasDocument()) return 0;
+    patchPipeFormulaDefenseTraceBuilders();
     let refreshed = 0;
     document.querySelectorAll('.pipe-formula-defense-task-window').forEach((windowNode) => {
       const pipeId = pipeIdFromFormulaDefenseWindow(windowNode);
@@ -1265,6 +1808,7 @@
   function patchPipeFormulaDefenseRealtimeRefresh() {
     if (pipeRefreshPatched) return false;
     pipeRefreshPatched = true;
+    patchPipeFormulaDefenseTraceBuilders();
 
     const originalUpdateSimulation = root.updateSimulation;
     if (typeof originalUpdateSimulation === 'function' && !originalUpdateSimulation.__formulaDefensePipeRefreshPatched) {
@@ -1330,7 +1874,9 @@
   function enhanceDocument(scope = document) {
     if (!hasDocument()) return;
     installCss();
+    installKatexWarningFilter();
     patchAcademicRenderer();
+    patchPipeFormulaDefenseTraceBuilders();
     enhancePipeFormulaDefenseLayout(scope);
     enhanceFormulaNodes(scope);
     enhanceTables(scope);
@@ -1458,7 +2004,9 @@
     if (!hasDocument()) return false;
     installCss();
     ensureKatexCss();
+    installKatexWarningFilter();
     patchAcademicRenderer();
+    patchPipeFormulaDefenseTraceBuilders();
     patchRealtimeBridge();
     patchPipeFormulaDefenseRealtimeRefresh();
     if (!root.__NPSH_FORMULA_DEFENSE_UI_DISABLE_AUTO_ENHANCE__ || options.force) {
@@ -1490,7 +2038,9 @@
     scheduleDebouncedRecalculation,
     install,
     dependencyChainForInput,
-    refreshOpenPipeFormulaDefenseWindows
+    refreshOpenPipeFormulaDefenseWindows,
+    buildPipeFormulaDefenseRows,
+    buildAcademicPipeCalculationTrace
   };
 
   if (hasDocument()) {
