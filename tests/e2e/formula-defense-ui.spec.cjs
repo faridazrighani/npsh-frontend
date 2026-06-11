@@ -19,7 +19,7 @@ async function gotoWithoutFormulaAutoEnhance(page) {
 function mockFormulaDefenseMarkup() {
   return `
     <section id="formulaDefenseMock" class="task-window pipe-formula-defense-task-window" data-task-node-id="PIPE-1" data-formula-defense-window="true">
-      <div class="pipe-formula-defense-body">
+      <div class="pipe-formula-defense-body pipe-formula-defense-layout">
         <h2>Pipe Formula Defense</h2>
         <article class="pipe-trace-block">
           <h3>Formula Sequence & Active Substitution</h3>
@@ -48,6 +48,33 @@ function mockFormulaDefenseMarkup() {
               <tbody>
                 <tr><td>PIPE-1-Seg-1</td><td>Journal pipe</td><td>1</td><td>0.000</td><td>1.756</td><td>0.000</td></tr>
                 <tr><td>PIPE-1-Seg-2</td><td>Globe valve</td><td>1</td><td>18.448</td><td>0.000</td><td>9.912</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+        <article class="fluid-help-card">
+          <h3>Source & Confidence Map</h3>
+          <div class="pump-curve-explanation-table-wrap fluid-formula-defense-table-wrap">
+            <table class="pump-curve-explanation-table fluid-formula-defense-table pipe-formula-defense-source-table">
+              <thead>
+                <tr>
+                  <th>Parameter</th>
+                  <th>Value</th>
+                  <th>Status</th>
+                  <th>Method</th>
+                  <th>Formula</th>
+                  <th>Reference</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Flow</td>
+                  <td>50.000 m3/h</td>
+                  <td>Network-derived</td>
+                  <td>Solved pipe path</td>
+                  <td class="academic-inline-formula" title="Q_m3/s = Q_m3/h / 3600">Q_m3/s = Q_m3/h / 3600</td>
+                  <td>Hydraulic network flow balance</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -102,7 +129,7 @@ async function contrastForFormula(page) {
   });
 }
 
-test('Formula Defense UI renders visible KaTeX equations, responsive tables, dependency trace, and realtime debounce', async ({ page }, testInfo) => {
+test('Formula Defense UI renders light KaTeX equations, responsive tables, dependency trace, and realtime debounce', async ({ page }, testInfo) => {
   await gotoWithoutFormulaAutoEnhance(page);
   await page.evaluate((markup) => {
     const conflictStyle = document.createElement('style');
@@ -113,14 +140,16 @@ test('Formula Defense UI renders visible KaTeX equations, responsive tables, dep
   }, mockFormulaDefenseMarkup());
 
   const beforeContrast = await contrastForFormula(page);
-  expect(beforeContrast.ratio).toBeLessThan(1.2);
+  expect(beforeContrast.visible).toBe(true);
+  expect(beforeContrast.backgroundColor).toBe('rgb(255, 255, 255)');
+  expect(beforeContrast.ratio).toBeGreaterThanOrEqual(4.5);
 
-  const beforePath = testInfo.outputPath('formula-defense-before-invisible.png');
+  const beforePath = testInfo.outputPath('formula-defense-before-light-surface.png');
   await page.locator('#formulaDefenseMock').screenshot({ path: beforePath });
   fs.mkdirSync(stableArtifactDir, { recursive: true });
-  const stableBeforePath = path.join(stableArtifactDir, 'formula-defense-before-invisible.png');
+  const stableBeforePath = path.join(stableArtifactDir, 'formula-defense-before-light-surface.png');
   await page.locator('#formulaDefenseMock').screenshot({ path: stableBeforePath });
-  await testInfo.attach('formula defense before invisible formula', { path: beforePath, contentType: 'image/png' });
+  await testInfo.attach('formula defense before light surface', { path: beforePath, contentType: 'image/png' });
 
   await page.evaluate(() => {
     document.getElementById('legacyFormulaConflictStyle')?.remove();
@@ -128,20 +157,37 @@ test('Formula Defense UI renders visible KaTeX equations, responsive tables, dep
     window.EngineeringFormulaDefenseUI.enhanceDocument(document);
   });
 
+  await expect(page.locator('#formulaDefenseMock')).toHaveAttribute('data-pipe-formula-defense-layout', 'compact-v2');
+  await expect(page.locator('.pipe-formula-defense-layout')).toHaveAttribute('data-pipe-formula-defense-layout', 'compact-v2');
   await expect(page.locator('#darkFormula .academic-equation-math .katex')).toBeVisible();
   const afterContrast = await contrastForFormula(page);
   expect(afterContrast.visible).toBe(true);
   expect(afterContrast.ratio).toBeGreaterThanOrEqual(4.5);
+  expect(afterContrast.backgroundColor).toBe('rgb(255, 255, 255)');
+  expect(afterContrast.color).toBe('rgb(15, 23, 42)');
 
   const tableState = await page.evaluate(() => {
     const table = document.querySelector('.pipe-formula-defense-fitting-breakdown-table');
     const wrapper = table.closest('.pump-curve-explanation-table-wrap');
+    const sourceTable = document.querySelector('.pipe-formula-defense-source-table');
+    const sourceWrapper = sourceTable.closest('.fluid-formula-defense-table-wrap');
+    const sourceFormulaCell = sourceTable.querySelector('.pipe-source-map-formula-cell');
+    const sourceFormula = sourceFormulaCell.querySelector('code');
     const header = table.querySelector('thead th');
     const firstRow = table.querySelector('tbody tr:first-child td');
     const secondRow = table.querySelector('tbody tr:nth-child(2) td');
+    const formulaStyle = getComputedStyle(sourceFormula);
+    const formulaCellStyle = getComputedStyle(sourceFormula.closest('td'));
     return {
       responsive: table.dataset.formulaDefenseResponsive,
       wrapperOverflowX: getComputedStyle(wrapper).overflowX,
+      sourceResponsive: sourceTable.dataset.formulaDefenseResponsive,
+      sourceWrapperOverflowX: getComputedStyle(sourceWrapper).overflowX,
+      sourceFormulaBackground: formulaStyle.backgroundColor,
+      sourceFormulaColor: formulaStyle.color,
+      sourceFormulaText: sourceFormula.textContent,
+      sourceFormulaPlain: sourceFormulaCell.dataset.formulaDefensePlain,
+      sourceFormulaCellBackground: formulaCellStyle.backgroundColor,
       headerPosition: getComputedStyle(header).position,
       firstRowBackground: getComputedStyle(firstRow).backgroundColor,
       secondRowBackground: getComputedStyle(secondRow).backgroundColor,
@@ -150,6 +196,13 @@ test('Formula Defense UI renders visible KaTeX equations, responsive tables, dep
   });
   expect(tableState.responsive).toBe('true');
   expect(tableState.wrapperOverflowX).toBe('auto');
+  expect(tableState.sourceResponsive).toBe('true');
+  expect(tableState.sourceWrapperOverflowX).toBe('auto');
+  expect(tableState.sourceFormulaBackground).toBe('rgb(255, 255, 255)');
+  expect(tableState.sourceFormulaColor).toBe('rgb(15, 23, 42)');
+  expect(tableState.sourceFormulaText).toBe('Q_m3/s = Q_m3/h / 3600');
+  expect(tableState.sourceFormulaPlain).toBe('true');
+  expect(tableState.sourceFormulaCellBackground).not.toBe('rgb(0, 0, 0)');
   expect(tableState.headerPosition).toBe('sticky');
   expect(tableState.secondRowBackground).not.toBe(tableState.firstRowBackground);
   expect(tableState.qtyAlignment).toBe('right');
@@ -182,6 +235,12 @@ test('Formula Defense UI renders visible KaTeX equations, responsive tables, dep
   expect(autosolveState.options.refreshReason).toBe('realtime-input');
   expect(autosolveState.options.forceBackend).toBe(true);
   expect(autosolveState.latencyMs).toBeLessThan(200);
+  const refreshState = await page.evaluate(() => ({
+    refreshApi: typeof window.EngineeringFormulaDefenseUI.refreshOpenPipeFormulaDefenseWindows,
+    refreshed: window.EngineeringFormulaDefenseUI.refreshOpenPipeFormulaDefenseWindows()
+  }));
+  expect(refreshState.refreshApi).toBe('function');
+  expect(refreshState.refreshed).toBeGreaterThanOrEqual(0);
 
   await expect(page.locator('.formula-defense-calculation-banner')).toContainText(/Current|Calculating|Stale/);
 

@@ -24,7 +24,7 @@ const manifest = fs.existsSync(MANIFEST_FILE) ? read(MANIFEST_FILE) : '';
 const runtime = require(RUNTIME_FILE);
 
 assert.strictEqual(runtime.version, 'engineering-formula-defense-ui.v1');
-assert.strictEqual(runtime.cacheKey, '20260608-formula-defense-ui2');
+assert.strictEqual(runtime.cacheKey, '20260611-formula-defense-ui4');
 assert.strictEqual(runtime.debounceMs, 120);
 assert.strictEqual(
   packageJson.scripts?.['validate:formula-defense-ui'],
@@ -38,8 +38,8 @@ assert.strictEqual(
 );
 assert.strictEqual(packageJson.devDependencies?.katex, '^0.17.0', 'KaTeX must be tracked as a local dev dependency.');
 
-assert(indexHtml.includes('vendor/katex/katex.min.css?v=20260608-formula-defense-ui2'), 'index.html must cache-bust local KaTeX CSS.');
-assert(indexHtml.includes('engineering-formula-defense-ui.js?v=20260608-formula-defense-ui2'), 'index.html must cache-bust Formula Defense UI runtime.');
+assert(indexHtml.includes('vendor/katex/katex.min.css?v=20260611-formula-defense-ui4'), 'index.html must cache-bust local KaTeX CSS.');
+assert(indexHtml.includes('engineering-formula-defense-ui.js?v=20260611-formula-defense-ui4'), 'index.html must cache-bust Formula Defense UI runtime.');
 assert(fs.existsSync(KATEX_JS_FILE), 'Local KaTeX JS asset must be vendored for static deployment.');
 assert(fs.existsSync(KATEX_CSS_FILE), 'Local KaTeX CSS asset must be vendored for static deployment.');
 
@@ -48,7 +48,17 @@ assert(runtimeSource.includes('sanitizeTexForKatex'), 'Formula runtime must sani
 assert(runtimeSource.includes('isBenignKatexSpaceMetricWarning'), 'Formula runtime must suppress the known benign KaTeX text-space metric warning.');
 assert(runtimeSource.includes('wcagContrastRatio'), 'Formula runtime must expose WCAG contrast validation logic.');
 assert(runtimeSource.includes('dataset.formulaContrast'), 'Formula runtime must mark enhanced formula nodes with contrast evidence.');
+assert(runtimeSource.includes("surface: '#ffffff'"), 'Formula runtime must keep equation surfaces on a normal light background.');
+assert(runtimeSource.includes("text: '#0f172a'"), 'Formula runtime must keep equation text dark.');
+assert(!runtimeSource.includes('@media (prefers-color-scheme: dark)'), 'Formula runtime must not auto-darken equations from OS dark mode.');
 assert(runtimeSource.includes('.pipe-formula-defense-fitting-breakdown-table thead th'), 'Formula runtime must style the fitting/valve breakdown sticky header.');
+assert(runtimeSource.includes('data-pipe-formula-defense-layout="compact-v2"'), 'Formula runtime CSS must target the compact Pipe Formula Defense layout.');
+assert(runtimeSource.includes('dataset.pipeFormulaDefenseLayout = \'compact-v2\''), 'Formula runtime must mark Pipe Formula Defense windows as compact.');
+assert(runtimeSource.includes('.pipe-formula-defense-source-table'), 'Formula runtime must style the Source & Confidence Map table.');
+assert(runtimeSource.includes('pipe-source-map-formula-cell'), 'Formula runtime must restore Source & Confidence Map formulas as normal light code text.');
+assert(runtimeSource.includes('restorePipeSourceMapFormulaCells'), 'Formula runtime must normalize Source & Confidence Map formula cells after KaTeX enhancement.');
+assert(runtimeSource.includes('refreshOpenPipeFormulaDefenseWindows'), 'Formula runtime must refresh open Pipe Formula Defense windows after recalculation.');
+assert(runtimeSource.includes('__formulaDefensePipeRefreshPatched'), 'Formula runtime must patch updateSimulation for realtime Pipe Formula Defense refresh.');
 assert(runtimeSource.includes('nth-child(even)'), 'Formula runtime must provide zebra row styling.');
 assert(runtimeSource.includes('overflow-x: auto'), 'Formula runtime must keep fitting/valve tables horizontally scrollable.');
 assert(runtimeSource.includes('formula-dependency-visualization'), 'Formula runtime must render dependency chain visualization.');
@@ -94,10 +104,10 @@ assert.strictEqual(benignSpaceMetricWarnings, 0, 'KaTeX text-space metric warnin
 assert.strictEqual(unrelatedWarnings, 0, 'Formula renderer must not introduce unrelated console warnings.');
 
 const contrast = runtime.wcagContrastRatio(
-  { r: 248, g: 250, b: 252 },
-  { r: 11, g: 18, b: 32 }
+  { r: 15, g: 23, b: 42 },
+  { r: 255, g: 255, b: 255 }
 );
-assert(contrast >= 4.5, `Dark formula surface must meet WCAG AA contrast, got ${contrast}.`);
+assert(contrast >= 4.5, `Light formula surface with dark text must meet WCAG AA contrast, got ${contrast}.`);
 
 const pipeChain = runtime.dependencyChainForInput('PIPE-1 diameter = 0.0738');
 assert(/velocity/i.test(pipeChain.affected), 'Pipe diameter changes must affect velocity.');
@@ -105,8 +115,8 @@ assert(/route loss/i.test(pipeChain.recalculated), 'Pipe diameter changes must r
 
 if (manifest) {
   assert(manifest.includes('engineering-formula-defense-ui.js'), 'FILE_MANIFEST must mention Formula Defense UI runtime.');
-  assert(manifest.includes('20260608-formula-defense-ui2'), 'FILE_MANIFEST must mention Formula Defense UI cache key.');
+  assert(manifest.includes('20260611-formula-defense-ui4'), 'FILE_MANIFEST must mention Formula Defense UI cache key.');
   assert(manifest.includes('validate:formula-defense-ui'), 'FILE_MANIFEST must mention Formula Defense UI validation.');
 }
 
-console.log('Formula Defense UI validation passed: KaTeX rendering, WCAG contrast, dependency graph, responsive table, and realtime debounce are locked.');
+console.log('Formula Defense UI validation passed: compact Pipe Formula Defense layout, KaTeX rendering, WCAG contrast, responsive tables, and realtime refresh are locked.');
