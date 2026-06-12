@@ -7,7 +7,7 @@
   'use strict';
 
   const VERSION = 'engineering-formula-defense-ui.v1';
-  const CACHE_KEY = '20260612-formula-defense-ui9';
+  const CACHE_KEY = '20260612-formula-defense-ui13';
   const DEBOUNCE_MS = 120;
   const KATEX_SCRIPT = `vendor/katex/katex.min.js?v=${CACHE_KEY}`;
   const KATEX_CSS = `vendor/katex/katex.min.css?v=${CACHE_KEY}`;
@@ -374,7 +374,7 @@
 .pipe-formula-defense-layout .pipe-formula-defense-role-path-table td:nth-child(2) {
   width: 28%;
   color: #0b4778 !important;
-  font-weight: 700 !important;
+  font-weight: 400 !important;
   font-variant-numeric: tabular-nums;
 }
 .pipe-formula-defense-layout .pipe-formula-defense-role-path-table th:nth-child(3),
@@ -436,6 +436,7 @@
   border-bottom: 1px solid #edf2f7 !important;
   background: transparent !important;
   color: #333333 !important;
+  font-weight: 400 !important;
   vertical-align: top !important;
   white-space: normal !important;
   overflow-wrap: normal;
@@ -454,7 +455,7 @@
 .pipe-formula-defense-layout .pipe-formula-defense-rollup-table td:nth-child(2),
 .pipe-formula-defense-layout .pipe-formula-defense-moody-table td:nth-child(n+2) {
   color: #0f314d !important;
-  font-weight: 800 !important;
+  font-weight: 400 !important;
   font-variant-numeric: tabular-nums;
 }
 .pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table th:nth-child(n+3),
@@ -484,7 +485,7 @@
 .pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table th:nth-child(8),
 .pipe-formula-defense-layout .pipe-formula-defense-fitting-breakdown-table td:nth-child(8) {
   text-align: left !important;
-  font-weight: 600 !important;
+  font-weight: 400 !important;
 }
 .pipe-formula-defense-target-table-wrap {
   max-width: 100%;
@@ -613,6 +614,7 @@
   margin-top: 2px;
   color: #0f314d !important;
   font-size: 11px !important;
+  font-weight: 400 !important;
   line-height: 1.2 !important;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
@@ -702,7 +704,7 @@
   }
   .pipe-formula-defense-task-window[data-pipe-formula-defense-layout="compact-v2"] .task-window-body,
   .pipe-formula-defense-task-window[data-pipe-formula-defense-layout="compact-v2"] .pipe-formula-defense-body {
-    padding: 6px !important;
+    padding: 7px !important;
   }
   .pipe-formula-defense-layout {
     gap: 6px !important;
@@ -732,6 +734,12 @@
   }
   .pipe-formula-defense-fitting-breakdown-table {
     min-width: 860px !important;
+  }
+}
+@media (min-width: 761px) and (max-width: 960px) {
+  .pipe-formula-defense-task-window[data-pipe-formula-defense-layout="compact-v2"] .task-window-body,
+  .pipe-formula-defense-task-window[data-pipe-formula-defense-layout="compact-v2"] .pipe-formula-defense-body {
+    padding: 9px !important;
   }
 }
 @container pipe-formula-defense (max-width: 540px) {
@@ -1375,7 +1383,8 @@
         ? `${values.map((value) => formatPipeTraceNumber(value)).join(' + ')} = ${formatPipeTraceNumber(total)} m`
         : 'Segment trace is not available until this pipe has solved flow.';
     };
-    const hasHighPoint = Number.isFinite(totals.highPointPressure) && Number.isFinite(totals.highPointVaporMargin);
+    const hasHighPoint = Number.isFinite(totals.highPointPressure)
+      && Number.isFinite(totals.highPointVaporMargin);
     const segmentName = firstSegment.name || 'active pipe segment';
     return [
       {
@@ -1516,6 +1525,138 @@
     return `[${source.status}] ${note}${source.review ? ` Review: ${source.review}` : ''}`;
   }
 
+  function firstMeaningfulText(...values) {
+    const genericStatus = /^(user|exact|typical|journal|calibrated|geometry|input|standard|estimate)$/i;
+    for (const value of values) {
+      const text = String(value ?? '').trim().replace(/\s+/g, ' ');
+      if (!text || genericStatus.test(text)) continue;
+      return text;
+    }
+    return '';
+  }
+
+  function formatPipeBasisCompactNumber(value, digits = 3) {
+    const numeric = finiteNumber(value);
+    if (numeric === null) return '-';
+    const absolute = Math.abs(numeric);
+    if (absolute >= 10000 || (absolute > 0 && absolute < 0.0001)) return numeric.toExponential(4);
+    return Number(numeric.toFixed(digits)).toString();
+  }
+
+  function formatPipeBasisFixedNumber(value, digits = 3) {
+    const numeric = finiteNumber(value);
+    if (numeric === null) return '-';
+    return numeric.toFixed(digits);
+  }
+
+  function shortPipeSizeBasisLabel(label) {
+    const text = firstMeaningfulText(label) || 'Custom diameter';
+    if (/custom\s+diam/i.test(text)) return 'Custom dia';
+    return text
+      .replace(/\s*-\s*Sch(?:edule)?\s*/i, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function shortPipeMaterialBasisLabel(label) {
+    const text = firstMeaningfulText(label) || 'Custom roughness';
+    if (/custom\s+rough/i.test(text)) return 'Custom ε';
+    return text;
+  }
+
+  function shortPipeFittingBasisLabel(label) {
+    const text = firstMeaningfulText(label) || 'None';
+    if (/^none$/i.test(text)) return 'None';
+    if (/^custom\s+k$/i.test(text)) return 'Custom K';
+    return text
+      .replace(/\s*-\s*fully\s+open\b/i, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function buildPipeSegmentBasisSource(source, display) {
+    const original = source && typeof source === 'object'
+      ? { ...source }
+      : { status: firstMeaningfulText(source) || '' };
+    return {
+      ...original,
+      sourceStatus: original.status || '',
+      status: display.caption,
+      caption: display.caption,
+      tooltip: display.tooltip,
+      selection: display.selection,
+      numericValue: display.numericValue,
+      unit: display.unit
+    };
+  }
+
+  function buildPipeSegmentBasisDisplay(segment = {}, propSegment = {}) {
+    const pipeSizeSelection = firstMeaningfulText(
+      segment.pipeSize,
+      propSegment.pipeSize,
+      segment.npsSchedule,
+      propSegment.npsSchedule,
+      segment.sizeBasis,
+      propSegment.sizeBasis,
+      segment.sizeSource?.label,
+      propSegment.sizeSource?.label
+    ) || 'Custom diameter';
+    const materialSelection = firstMeaningfulText(
+      segment.material,
+      propSegment.material,
+      segment.materialBasis,
+      propSegment.materialBasis,
+      segment.materialSource?.label,
+      propSegment.materialSource?.label
+    ) || 'Custom roughness';
+    const fittingSelection = firstMeaningfulText(
+      segment.fittingType,
+      propSegment.fittingType,
+      segment.fittingBasis,
+      propSegment.fittingBasis,
+      segment.fittingSource?.label,
+      propSegment.fittingSource?.label
+    ) || 'None';
+    const diameter = finiteNumber(segment.diameter, finiteNumber(propSegment.diameter));
+    const roughness = finiteNumber(segment.roughness, finiteNumber(propSegment.roughness));
+    const fittingK = finiteNumber(segment.fittingK, finiteNumber(propSegment.fittingK, 0)) || 0;
+    const totalK = finiteNumber(segment.minorLossK, finiteNumber(segment.fittingTotalK, finiteNumber(propSegment.fittingTotalK, fittingK))) || 0;
+    const quantity = finiteNumber(segment.fittingQuantity, finiteNumber(propSegment.fittingQuantity, /^none$/i.test(fittingSelection) ? 0 : 1)) || 0;
+    const diameterMm = diameter === null ? null : diameter * 1000;
+    const roughnessMm = roughness === null ? null : roughness * 1000;
+    const pipeSizeLabel = shortPipeSizeBasisLabel(pipeSizeSelection);
+    const materialLabel = shortPipeMaterialBasisLabel(materialSelection);
+    const fittingLabel = shortPipeFittingBasisLabel(fittingSelection);
+    const pipeSizeValue = `${formatPipeBasisCompactNumber(diameterMm)} mm`;
+    const roughnessValue = `${materialLabel.includes('ε') ? '' : 'ε '}${formatPipeBasisFixedNumber(roughnessMm)} mm`;
+    const fittingValue = /^custom\s+k$/i.test(fittingLabel)
+      ? formatPipeBasisCompactNumber(fittingK)
+      : `K ${formatPipeBasisCompactNumber(fittingK)}`;
+    return {
+      size: {
+        caption: `${pipeSizeLabel} · ${pipeSizeValue}`,
+        tooltip: `Selected NPS / Schedule: ${pipeSizeSelection}; internal diameter = ${formatPipeBasisFixedNumber(diameterMm)} mm.`,
+        selection: pipeSizeSelection,
+        numericValue: diameter,
+        unit: 'm'
+      },
+      material: {
+        caption: `${materialLabel} · ${roughnessValue}`,
+        tooltip: `Selected material: ${materialSelection}; roughness ε = ${formatPipeBasisFixedNumber(roughnessMm)} mm.`,
+        selection: materialSelection,
+        numericValue: roughness,
+        unit: 'm'
+      },
+      fitting: {
+        caption: `${fittingLabel} · ${fittingValue}`,
+        tooltip: `Selected fitting: ${fittingSelection}; K each = ${formatPipeBasisCompactNumber(fittingK, 4)}; qty = ${formatPipeBasisCompactNumber(quantity, 4)}; total K = ${formatPipeBasisCompactNumber(totalK, 4)}.`,
+        selection: fittingSelection,
+        numericValue: totalK,
+        unit: ''
+      }
+    };
+  }
+
   function buildPipeFittingValveBreakdown(segments = []) {
     return segments.map((segment) => {
       const source = classifyPipeSegmentSource(segment);
@@ -1620,7 +1761,11 @@
       sum.totalK += segment.minorLossK || 0;
       return sum;
     }, { majorLoss: 0, minorLoss: 0, allowanceLoss: 0, totalLoss: 0, totalK: 0 });
-    const traceSegments = segments.map((segment) => {
+    const propSegments = Array.isArray(props?.segments) ? props.segments : [];
+    const traceSegments = segments.map((segment, segmentIndex) => {
+      const propSegmentIndex = finiteNumber(segment.index, segmentIndex);
+      const propSegment = propSegments[propSegmentIndex] || {};
+      const basisDisplay = buildPipeSegmentBasisDisplay(segment, propSegment);
       const profile = profileMap.get(segment.index) || {};
       const area = Math.PI * Math.pow(segment.diameter, 2) / 4;
       const relativeRoughness = segment.diameter > 0 ? segment.effectiveRoughness / segment.diameter : 0;
@@ -1662,10 +1807,11 @@
         flowRegime: segment.flowRegime,
         warning: segment.regimeWarning,
         dataSources: {
-          size: segment.sizeSource,
-          material: segment.materialSource,
-          fitting: segment.fittingSource
+          size: buildPipeSegmentBasisSource(segment.sizeSource || propSegment.sizeSource, basisDisplay.size),
+          material: buildPipeSegmentBasisSource(segment.materialSource || propSegment.materialSource, basisDisplay.material),
+          fitting: buildPipeSegmentBasisSource(segment.fittingSource || propSegment.fittingSource, basisDisplay.fitting)
         },
+        basisDisplay,
         profile,
         steps,
         pressureSteps
@@ -1782,6 +1928,61 @@
       || '';
   }
 
+  function pipeTraceForFormulaDefenseWindow(windowNode) {
+    const pipeId = pipeIdFromFormulaDefenseWindow(windowNode);
+    const pipe = pipeId ? runtimeModel()?.[pipeId] : null;
+    if (!pipe || pipe.type !== 'pipe') return null;
+    const results = pipe.results || {};
+    const flow = finiteNumber(
+      results.flow,
+      finiteNumber(results.calculationTrace?.basis?.flowM3H, finiteNumber(results.calculationTrace?.basis?.flow, 0))
+    );
+    try {
+      if (typeof root.buildPipeCalculationTrace === 'function') {
+        return root.buildPipeCalculationTrace(flow, pipe.props || {}, results, null, pipeId);
+      }
+    } catch (error) {
+      // Fall back to any existing trace snapshot below.
+    }
+    return results.calculationTrace || null;
+  }
+
+  function applyPipeSegmentBasisTooltips(scope = document) {
+    if (!hasDocument()) return 0;
+    let updated = 0;
+    const windows = scope?.matches?.('.pipe-formula-defense-task-window')
+      ? [scope]
+      : [...(scope?.querySelectorAll?.('.pipe-formula-defense-task-window') || [])];
+    windows.forEach((windowNode) => {
+      const trace = pipeTraceForFormulaDefenseWindow(windowNode);
+      const segments = trace?.segments || [];
+      if (!segments.length) return;
+      windowNode.querySelectorAll('.pipe-formula-defense-segment-card').forEach((card, index) => {
+        const dataSources = segments[index]?.dataSources || {};
+        const entries = [
+          ['Pipe size basis', dataSources.size],
+          ['Material basis', dataSources.material],
+          ['Fitting basis', dataSources.fitting]
+        ];
+        entries.forEach(([label, source]) => {
+          if (!source?.caption && !source?.tooltip) return;
+          const metric = [...card.querySelectorAll('.pipe-formula-defense-segment-metric')]
+            .find((node) => node.querySelector('span')?.textContent.trim() === label);
+          const valueNode = metric?.querySelector('strong');
+          if (!metric || !valueNode) return;
+          if (source.caption) valueNode.textContent = source.caption;
+          if (source.tooltip) {
+            metric.title = source.tooltip;
+            valueNode.title = source.tooltip;
+            metric.dataset.pipeBasisTooltip = 'true';
+          }
+          updated += 1;
+        });
+      });
+    });
+    return updated;
+  }
+
   function refreshOpenPipeFormulaDefenseWindows() {
     if (!hasDocument()) return 0;
     patchPipeFormulaDefenseTraceBuilders();
@@ -1801,6 +2002,7 @@
       }
       enhancePipeFormulaDefenseLayout(windowNode);
       enhanceTables(windowNode);
+      applyPipeSegmentBasisTooltips(windowNode);
     });
     return refreshed;
   }
@@ -1861,6 +2063,7 @@
           enhancePipeFormulaDefenseLayout(args[0] || document);
           enhanceTables(args[0] || document);
           enhanceFormulaNodes(args[0] || document);
+          applyPipeSegmentBasisTooltips(args[0] || document);
         }, 0);
         return result;
       };
@@ -1880,6 +2083,7 @@
     enhancePipeFormulaDefenseLayout(scope);
     enhanceFormulaNodes(scope);
     enhanceTables(scope);
+    applyPipeSegmentBasisTooltips(scope);
     enhanceDependencyPanels(scope);
     syncRealtimeState();
   }

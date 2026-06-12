@@ -34,6 +34,9 @@ assert(indexHtml.includes('engineering-browser-issues-runtime.js?v=20260608-brow
 assert(indexHtml.includes('style.min.css?v=20260608-browser-issues1'), 'index.html must cache-bust browser-issues CSS cleanup.');
 assert(indexHtml.includes('engineering-canvas-context-dock.js?v=20260608-browser-issues2'), 'index.html must cache-bust canvas context dock browser issues cleanup.');
 assert(indexHtml.includes('engineering-literature-pdf-viewer.js?v=20260609-literature-access3'), 'index.html must cache-bust literature PDF access diagnostics cleanup.');
+assert(indexHtml.includes('__chromium_devtools_metrics_reporter'), 'index.html must install the Chromium DevTools metrics reporter guard early.');
+assert(indexHtml.includes("typeof window.__chromium_devtools_metrics_reporter === 'function'"), 'Chromium DevTools metrics reporter guard must preserve real reporter functions.');
+assert(indexHtml.includes("set(value)"), 'Chromium DevTools metrics reporter guard must handle later non-function assignments.');
 assert(!indexHtml.includes('name="theme-color"'), 'index.html should not trigger Firefox theme-color compatibility notice.');
 assert(!indexHtml.includes('fetchpriority='), 'About dialog images should not trigger Firefox fetchpriority compatibility notice.');
 assert(!/id="toolbarObjectMenu"[^>]*role="menu"/.test(indexHtml), 'Static empty toolbar object menu must not declare role=menu.');

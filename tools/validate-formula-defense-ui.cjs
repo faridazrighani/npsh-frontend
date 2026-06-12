@@ -24,7 +24,7 @@ const manifest = fs.existsSync(MANIFEST_FILE) ? read(MANIFEST_FILE) : '';
 const runtime = require(RUNTIME_FILE);
 
 assert.strictEqual(runtime.version, 'engineering-formula-defense-ui.v1');
-assert.strictEqual(runtime.cacheKey, '20260612-formula-defense-ui9');
+assert.strictEqual(runtime.cacheKey, '20260612-formula-defense-ui13');
 assert.strictEqual(runtime.debounceMs, 120);
 assert.strictEqual(
   packageJson.scripts?.['validate:formula-defense-ui'],
@@ -38,8 +38,8 @@ assert.strictEqual(
 );
 assert.strictEqual(packageJson.devDependencies?.katex, '^0.17.0', 'KaTeX must be tracked as a local dev dependency.');
 
-assert(indexHtml.includes('vendor/katex/katex.min.css?v=20260612-formula-defense-ui9'), 'index.html must cache-bust local KaTeX CSS.');
-assert(indexHtml.includes('engineering-formula-defense-ui.js?v=20260612-formula-defense-ui9'), 'index.html must cache-bust Formula Defense UI runtime.');
+assert(indexHtml.includes('vendor/katex/katex.min.css?v=20260612-formula-defense-ui13'), 'index.html must cache-bust local KaTeX CSS.');
+assert(indexHtml.includes('engineering-formula-defense-ui.js?v=20260612-formula-defense-ui13'), 'index.html must cache-bust Formula Defense UI runtime.');
 assert(fs.existsSync(KATEX_JS_FILE), 'Local KaTeX JS asset must be vendored for static deployment.');
 assert(fs.existsSync(KATEX_CSS_FILE), 'Local KaTeX CSS asset must be vendored for static deployment.');
 
@@ -60,12 +60,16 @@ assert(runtimeSource.includes('container-type: inline-size'), 'Pipe Formula Defe
 assert(runtimeSource.includes('width: min(700px, calc(100vw - 24px))'), 'Pipe Formula Defense default width must match the npsh-untirta 700px reference window.');
 assert(runtimeSource.includes('height: min(700px, calc(100dvh - 128px))'), 'Pipe Formula Defense default height must match the npsh-untirta 700px reference window.');
 assert(runtimeSource.includes('padding: 14px !important'), 'Pipe Formula Defense body padding must match the npsh-untirta desktop reference.');
+assert(runtimeSource.includes('@media (min-width: 761px) and (max-width: 960px)'), 'Pipe Formula Defense must match the npsh-untirta tablet responsive breakpoint.');
+assert(runtimeSource.includes('padding: 9px !important'), 'Pipe Formula Defense body padding must match the npsh-untirta tablet reference.');
+assert(runtimeSource.includes('padding: 7px !important'), 'Pipe Formula Defense body padding must match the npsh-untirta mobile reference.');
 assert(runtimeSource.includes('font-size: 13px !important'), 'Pipe Formula Defense card heading font size must match the npsh-untirta reference.');
 assert(runtimeSource.includes('@container pipe-formula-defense (max-width: 540px)'), 'Pipe Formula Defense target tables must switch to card rows only inside narrow resized windows.');
 assert(runtimeSource.includes('.pipe-formula-defense-role-path-table'), 'Formula runtime must explicitly target Realtime Role Path responsiveness.');
 assert(runtimeSource.includes('min-width: min(760px, 100%) !important'), 'Realtime Role Path and Source Map tables must use the npsh-untirta compact reference width.');
 assert(runtimeSource.includes('min-width: 860px !important'), 'Pipe Fitting Valve Breakdown table must keep numeric columns readable without widening the task window.');
 assert(runtimeSource.includes('table-layout: fixed !important'), 'Target Pipe Formula Defense tables must use fixed layout for stable column widths.');
+assert(runtimeSource.includes('font-weight: 400 !important'), 'Pipe Formula Defense table body values must use normal font weight.');
 assert(runtimeSource.includes('white-space: nowrap !important'), 'Pipe Fitting Valve Breakdown numeric headers and values must not wrap vertically.');
 assert(runtimeSource.includes('overflow-wrap: normal !important'), 'Pipe Fitting Valve Breakdown numeric headers and values must avoid per-character wrapping.');
 assert(runtimeSource.includes('.pipe-formula-defense-fitting-breakdown-table th:nth-child(8)'), 'Pipe Fitting Valve Breakdown Source / Note header must be styled independently from numeric columns.');
@@ -78,6 +82,9 @@ assert(runtimeSource.includes('refreshOpenPipeFormulaDefenseWindows'), 'Formula 
 assert(runtimeSource.includes('__formulaDefensePipeRefreshPatched'), 'Formula runtime must patch updateSimulation for realtime Pipe Formula Defense refresh.');
 assert(runtimeSource.includes('buildAcademicPipeCalculationTrace'), 'Formula runtime must rebuild academic pipe trace rows from live calculation results.');
 assert(runtimeSource.includes('buildPipeFormulaDefenseRows'), 'Formula runtime must provide Formula Sequence & Active Substitution rows.');
+assert(runtimeSource.includes('buildPipeSegmentBasisDisplay'), 'Formula runtime must build compact segment basis captions from pipe dropdown choices.');
+assert(runtimeSource.includes('sourceStatus'), 'Compact segment basis captions must preserve the original source status for auditability.');
+assert(runtimeSource.includes('applyPipeSegmentBasisTooltips'), 'Formula runtime must attach detailed basis tooltips after segment cards render.');
 assert(runtimeSource.includes('__formulaDefenseAcademicTracePatched'), 'Formula runtime must patch buildPipeCalculationTrace with academic trace content.');
 assert(runtimeSource.includes('fittingValveBreakdown'), 'Formula runtime must preserve Pipe Fitting Valve Breakdown data while enriching segment steps.');
 assert(!runtimeSource.includes('width: min(96vw, 1740px)'), 'Pipe Formula Defense window must not default to the oversized 1740px layout.');
@@ -141,6 +148,8 @@ global.calculatePipeHydraulicSegments = () => ([{
   index: 0,
   name: 'PIPE-2-Seg-1 Journal discharge pipe 3 in',
   notes: 'Journal Case 6 discharge pipe: internal diameter 0.0738 m, length 10 m.',
+  pipeSize: 'Custom diameter',
+  material: 'Custom roughness',
   length: 10,
   diameter: 0.0738,
   roughness: 0.00015,
@@ -168,11 +177,13 @@ global.calculatePipeHydraulicSegments = () => ([{
   index: 1,
   name: 'PIPE-2-Seg-2 Globe valve 3 in',
   notes: 'Journal discharge minor loss: globe valve 3 in, K = 6.1.',
+  pipeSize: 'Custom diameter',
+  material: 'Custom roughness',
   length: 0,
   diameter: 0.0738,
   roughness: 0.00015,
   effectiveRoughness: 0.00015,
-  fittingType: 'Globe valve',
+  fittingType: 'Globe valve - fully open',
   fittingQuantity: 1,
   fittingK: 6.1,
   fittingTotalK: 6.1,
@@ -197,26 +208,40 @@ const academicTrace = runtime.buildAcademicPipeCalculationTrace(
   { headLossAllowancePercent: 0, roughnessAgingFactor: 1, elevationProfileMode: 'End Elevations' },
   {
     segmentProfiles: [
-      { index: 0, startElevation: 0, endElevation: 10, startPressure: 3.781, endPressure: 2.676 }
-    ]
+      { index: 0, startElevation: 0, endElevation: 10, startPressure: 3.781, endPressure: 2.676, highPointPressure: 2.676, highPointVaporMargin: 1.662 }
+    ],
+    highPointPressure: 2.676,
+    highPointVaporMargin: 1.662
   },
   { density: 958.348, viscosity: 0.803, vaporPressure: 1.014 },
   'PIPE-2'
 );
 if (originalCalculatePipeHydraulicSegments) global.calculatePipeHydraulicSegments = originalCalculatePipeHydraulicSegments;
 else delete global.calculatePipeHydraulicSegments;
-assert(academicTrace.formulaDefenseRows.length >= 10, 'Formula Sequence & Active Substitution must include the reference row set.');
+assert.strictEqual(academicTrace.formulaDefenseRows.length, 11, 'Formula Sequence must include the 11-row set when high-point pressure data is available.');
+assert(academicTrace.formulaDefenseRows.some((row) => row.step === 'Pressure and High Point Check'), 'Formula Sequence must include high-point check when high-point pressure data is available.');
 assert(academicTrace.formulaDefenseRows.some((row) => row.step === 'Flow Conversion' && /50/.test(row.substitution)), 'Formula Sequence must include live flow conversion substitution.');
 assert(academicTrace.formulaDefenseRows.some((row) => row.step === 'Major Loss' && row.substitution.includes('1.7562')), 'Formula Sequence must aggregate segment major loss substitutions.');
 assert.strictEqual(academicTrace.segments.length, 2, 'All Segment Calculation Trace must expose every segment from live hydraulics.');
+assert.strictEqual(academicTrace.segments[0].dataSources.size.status, 'Custom dia · 73.8 mm', 'Pipe size basis must show the dropdown-derived compact diameter caption.');
+assert.strictEqual(academicTrace.segments[0].dataSources.size.sourceStatus, 'User', 'Pipe size compact caption must preserve original source status.');
+assert(academicTrace.segments[0].dataSources.size.tooltip.includes('Selected NPS / Schedule: Custom diameter'), 'Pipe size compact caption must keep full dropdown detail in its tooltip.');
+assert.strictEqual(academicTrace.segments[0].dataSources.material.status, 'Custom ε · 0.150 mm', 'Material basis must show custom roughness as a compact caption.');
+assert.strictEqual(academicTrace.segments[0].dataSources.material.sourceStatus, 'User', 'Material compact caption must preserve original source status.');
+assert(academicTrace.segments[0].dataSources.material.tooltip.includes('roughness ε = 0.150 mm'), 'Material compact caption must keep full roughness detail in its tooltip.');
+assert.strictEqual(academicTrace.segments[0].dataSources.fitting.status, 'None · K 0', 'Fitting basis must show None with K = 0.');
+assert.strictEqual(academicTrace.segments[1].dataSources.fitting.status, 'Globe valve · K 6.1', 'Fitting basis must compact the selected library fitting label and K value.');
+assert.strictEqual(academicTrace.segments[1].dataSources.fitting.sourceStatus, 'Journal', 'Fitting compact caption must preserve original source status.');
+assert(academicTrace.segments[1].dataSources.fitting.tooltip.includes('Selected fitting: Globe valve - fully open'), 'Fitting compact caption must keep full dropdown detail in its tooltip.');
 assert(academicTrace.segments[0].steps.some((step) => step.title === 'Area'), 'Segment trace must include Area step.');
 assert(academicTrace.segments[0].steps.some((step) => step.title === 'Darcy Friction Factor'), 'Segment trace must include Darcy friction factor step.');
 assert(academicTrace.segments[0].pressureSteps.some((step) => step.title === 'Segment Inlet Pressure'), 'Segment trace must include pressure profile steps when available.');
+assert(academicTrace.segments[0].pressureSteps.some((step) => step.title === 'High Point Vapor Margin'), 'Segment trace must include High Point Vapor Margin when high-point pressure data is available.');
 assert.strictEqual(academicTrace.fittingValveBreakdown.length, 2, 'Fitting/valve breakdown must be preserved from live segment data.');
 
 if (manifest) {
   assert(manifest.includes('engineering-formula-defense-ui.js'), 'FILE_MANIFEST must mention Formula Defense UI runtime.');
-  assert(manifest.includes('20260612-formula-defense-ui9'), 'FILE_MANIFEST must mention Formula Defense UI cache key.');
+  assert(manifest.includes('20260612-formula-defense-ui13'), 'FILE_MANIFEST must mention Formula Defense UI cache key.');
   assert(manifest.includes('validate:formula-defense-ui'), 'FILE_MANIFEST must mention Formula Defense UI validation.');
 }
 

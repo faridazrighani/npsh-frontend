@@ -1,12 +1,21 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-performance-canonical-chart.v2';
+  const VERSION = 'pump-performance-canonical-chart.v3';
   const CANVAS_SELECTORS = [
     '#pumpChart',
     '#captionAuditPumpChartCanvas',
     '.caption-audit-inline-chart-wrap canvas',
     '.modal-chart-wrap canvas'
   ];
+  const REALTIME_EVENTS = [
+    'npsh:calculation-stale',
+    'npsh:calculation-calculating',
+    'npsh:calculation-current',
+    'npsh:linked-views-refreshed',
+    'npsh:realtime-autosolve-complete'
+  ];
+  const PUMP_CHART_INPUT_PATTERN = /\b(inputMode|optimizationMode|npshrSourceMode|npshAssessmentMode|npshMarginBasis|designFlow|designHead|designEfficiency|designNpshr|bepFlow|porMinPercent|porMaxPercent|aorMinPercent|aorMaxPercent|minNpshMarginRatio|minNpshMargin|speed|curveDataSource|curveSourceNote|curveData|flow|head|eff|npshr|pressure|elevation|density|viscosity|vaporPressure|segments|length|diameter|roughness|fittingType|fittingQuantity|fittingK|minorLoss|additionalK)\b/i;
+  let renderGuardTimer = 0;
 
   const STYLES = {
     pumpHead: { label: 'Pump Head', color: '#164a7a', width: 2.4 },
@@ -50,6 +59,44 @@
       // Ignore inaccessible state.
     }
     return firstPumpId(model);
+  }
+
+  function resolvePumpIdFromTarget(target) {
+    const holder = target?.closest?.('[data-node], [data-node-id], [data-pump-node-id], [data-task-node-id]');
+    const candidate = target?.dataset?.node
+      || target?.dataset?.nodeId
+      || target?.dataset?.pumpNodeId
+      || holder?.dataset?.node
+      || holder?.dataset?.nodeId
+      || holder?.dataset?.pumpNodeId
+      || holder?.dataset?.taskNodeId
+      || '';
+    return resolvePumpId(candidate);
+  }
+
+  function inputTokens(target) {
+    if (!target) return '';
+    const dataset = target.dataset || {};
+    return [
+      target.name,
+      target.id,
+      target.getAttribute?.('aria-label'),
+      target.getAttribute?.('placeholder'),
+      dataset.key,
+      dataset.field,
+      dataset.prop,
+      dataset.name,
+      dataset.metric,
+      dataset.readoutKey
+    ].filter(Boolean).join(' ');
+  }
+
+  function isPumpChartLiveInput(target) {
+    if (!target || !target.matches?.('input, select, textarea')) return false;
+    if (target.disabled || target.readOnly || target.type === 'file') return false;
+    if (target.closest?.('#pumpCurveTable') && /^(flow|head|eff|npshr)$/i.test(String(target.dataset?.field || ''))) return true;
+    const insideLiveEditor = target.closest?.('.task-window, .full-editor-modal, .canvas-task-window, #taskWindowBody, [data-task-prop-body="true"]');
+    return !!insideLiveEditor && PUMP_CHART_INPUT_PATTERN.test(inputTokens(target));
   }
 
   function toNumber(value) {
@@ -499,8 +546,11 @@
   }
 
   function scheduleRender(pumpId) {
-    [20, 90, 190, 380, 540].forEach((delay) => {
-      root.setTimeout?.(() => render(pumpId), delay);
+    [0, 40, 120, 260, 520, 900].forEach((delay) => {
+      root.setTimeout?.(() => {
+        ensureRuntimeGuards();
+        render(pumpId);
+      }, delay);
     });
   }
 
@@ -552,43 +602,127 @@
     return canvas;
   }
 
+  function markCanonicalFunction(fn, role) {
+    fn.__pumpPerformanceCanonicalChartVersion = VERSION;
+    fn.__pumpPerformanceCanonicalChartRole = role;
+    return fn;
+  }
+
+  function copyRuntimePatchFlags(target, source) {
+    [
+      '__engineeringRealtimeCalculationDefenseUpdatePatched',
+      '__engineeringRealtimeCalculationDefenseOriginal',
+      '__analysisReportLivePatched',
+      '__analysisReportLiveOriginal'
+    ].forEach((key) => {
+      if (source && Object.prototype.hasOwnProperty.call(source, key)) {
+        target[key] = source[key];
+      }
+    });
+  }
+
+  function wrapFunctionAfter(name, after, role) {
+    const current = root[name];
+    if (typeof current !== 'function' || current.__pumpPerformanceCanonicalChartVersion === VERSION) return false;
+    const wrapped = function canonicalChartFunctionWrapper(...args) {
+      const result = current.apply(this, args);
+      const runAfter = () => after(...args);
+      if (result && typeof result.then === 'function') result.finally(runAfter);
+      else runAfter();
+      return result;
+    };
+    markCanonicalFunction(wrapped, role);
+    wrapped.__pumpPerformanceCanonicalChartOriginal = current;
+    copyRuntimePatchFlags(wrapped, current);
+    root[name] = wrapped;
+    return true;
+  }
+
+  function installChartEndpoints() {
+    let changed = false;
+    if (typeof root.updatePumpChart !== 'function' || root.updatePumpChart.__pumpPerformanceCanonicalChartVersion !== VERSION) {
+      root.updatePumpChart = markCanonicalFunction(function updatePumpCanonicalChart(pumpId) {
+        const chartModel = render(pumpId);
+        scheduleRender(pumpId);
+        return chartModel;
+      }, 'updatePumpChart');
+      changed = true;
+    }
+
+    if (typeof root.openPumpPerformanceCurveWindow !== 'function' || root.openPumpPerformanceCurveWindow.__pumpPerformanceCanonicalChartVersion !== VERSION) {
+      root.openPumpPerformanceCurveWindow = markCanonicalFunction(function openPumpCanonicalPerformanceCurveWindow(pumpId) {
+        const id = resolvePumpId(pumpId);
+        ensureModal(id);
+        const chartModel = render(id);
+        scheduleRender(id);
+        return chartModel;
+      }, 'openPumpPerformanceCurveWindow');
+      changed = true;
+    }
+    return changed;
+  }
+
+  function bindRealtimeEvents() {
+    if (typeof document === 'undefined' || root.__pumpPerformanceCanonicalRealtimeEventsBound) return false;
+    const onRealtimeEvent = (event) => {
+      const detail = event?.detail || {};
+      scheduleRender(detail.nodeId || detail.pumpId || detail.selectedNodeId || '');
+    };
+    REALTIME_EVENTS.forEach((name) => document.addEventListener(name, onRealtimeEvent));
+    root.__pumpPerformanceCanonicalRealtimeEventsBound = true;
+    return true;
+  }
+
+  function bindLiveInputRefresh() {
+    if (typeof document === 'undefined' || root.__pumpPerformanceCanonicalLiveInputBound) return false;
+    const onInput = (event) => {
+      if (event?.isComposing || !isPumpChartLiveInput(event.target)) return;
+      const pumpId = resolvePumpIdFromTarget(event.target);
+      root.setTimeout?.(() => scheduleRender(pumpId), 0);
+    };
+    document.addEventListener('input', onInput, true);
+    document.addEventListener('change', onInput, true);
+    root.__pumpPerformanceCanonicalLiveInputBound = true;
+    return true;
+  }
+
+  function ensureRuntimeGuards() {
+    const changed = [
+      wrapFunctionAfter('updateSimulation', () => scheduleRender(), 'updateSimulation'),
+      wrapFunctionAfter('updatePumpResultReadouts', () => scheduleRender(), 'updatePumpResultReadouts'),
+      installChartEndpoints(),
+      bindRealtimeEvents(),
+      bindLiveInputRefresh()
+    ].some(Boolean);
+    if (changed) scheduleRender();
+    return changed;
+  }
+
+  function startRenderGuardLoop() {
+    if (!root.setTimeout) return;
+    [0, 80, 220, 500, 900, 1400, 2200, 3600, 5200, 7600].forEach((delay) => {
+      root.setTimeout(() => {
+        ensureRuntimeGuards();
+        scheduleRender();
+      }, delay);
+    });
+    if (typeof document !== 'undefined' && !renderGuardTimer && root.setInterval) {
+      renderGuardTimer = root.setInterval(() => {
+        ensureRuntimeGuards();
+      }, 1600);
+      root.__pumpPerformanceCanonicalChartGuardTimer = renderGuardTimer;
+    }
+  }
+
   function install() {
-    if (root.__pumpPerformanceCanonicalChartInstalled) return false;
+    if (root.__pumpPerformanceCanonicalChartInstalled) {
+      ensureRuntimeGuards();
+      scheduleRender();
+      return false;
+    }
     root.__pumpPerformanceCanonicalChartInstalled = true;
 
-    const originalUpdateSimulation = root.updateSimulation;
-    if (typeof originalUpdateSimulation === 'function') {
-      root.updateSimulation = function canonicalChartUpdateSimulationWrapper(...args) {
-        const result = originalUpdateSimulation.apply(this, args);
-        const after = () => scheduleRender();
-        if (result && typeof result.then === 'function') result.finally(after);
-        else after();
-        return result;
-      };
-    }
-
-    const originalUpdateReadouts = root.updatePumpResultReadouts;
-    if (typeof originalUpdateReadouts === 'function') {
-      root.updatePumpResultReadouts = function canonicalChartReadoutWrapper(...args) {
-        const result = originalUpdateReadouts.apply(this, args);
-        scheduleRender();
-        return result;
-      };
-    }
-
-    root.updatePumpChart = function updatePumpCanonicalChart(pumpId) {
-      scheduleRender(pumpId);
-      return root.__pumpPerformanceCanonicalChartLast || null;
-    };
-    root.updatePumpChart.__pumpPerformanceCanonicalChartVersion = VERSION;
-
-    root.openPumpPerformanceCurveWindow = function openPumpCanonicalPerformanceCurveWindow(pumpId) {
-      const id = resolvePumpId(pumpId);
-      ensureModal(id);
-      scheduleRender(id);
-      return root.__pumpPerformanceCanonicalChartLast || null;
-    };
-    root.openPumpPerformanceCurveWindow.__pumpPerformanceCanonicalChartVersion = VERSION;
+    ensureRuntimeGuards();
 
     if (typeof document !== 'undefined') {
       const observer = new MutationObserver((records) => {
@@ -603,6 +737,7 @@
       root.__pumpPerformanceCanonicalChartObserver = observer;
     }
 
+    startRenderGuardLoop();
     scheduleRender();
     return true;
   }
@@ -611,7 +746,9 @@
     version: VERSION,
     install,
     render,
-    buildChartModel
+    buildChartModel,
+    scheduleRender,
+    ensureRuntimeGuards
   };
 
   root.EngineeringPumpPerformanceCanonicalChart = api;

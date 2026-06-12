@@ -16,6 +16,17 @@ async function gotoWithoutFormulaAutoEnhance(page) {
   ), null, { timeout: 30000 });
 }
 
+async function gotoWithFormulaRuntime(page) {
+  await page.goto('/');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => (
+    window.EngineeringFormulaDefenseUI?.version === 'engineering-formula-defense-ui.v1'
+    && typeof window.openPipeFormulaDefenseTaskWindow === 'function'
+    && typeof window.buildPipeCalculationTrace === 'function'
+    && typeof window.calculatePipeHydraulicSegments === 'function'
+  ), null, { timeout: 30000 });
+}
+
 function mockFormulaDefenseMarkup() {
   return `
     <section id="formulaDefenseMock" class="task-window pipe-formula-defense-task-window" data-task-node-id="PIPE-1" data-formula-defense-window="true">
@@ -242,6 +253,7 @@ test('Formula Defense UI renders light KaTeX equations, responsive tables, depen
     const sourceWrapper = sourceTable.closest('.fluid-formula-defense-table-wrap');
     const sourceFormulaCell = sourceTable.querySelector('.pipe-source-map-formula-cell');
     const sourceFormula = sourceFormulaCell.querySelector('code');
+    const moodyTable = document.querySelector('.pipe-formula-defense-moody-table');
     const header = table.querySelector('thead th');
     const firstRow = table.querySelector('tbody tr:first-child td');
     const secondRow = table.querySelector('tbody tr:nth-child(2) td');
@@ -266,7 +278,13 @@ test('Formula Defense UI renders light KaTeX equations, responsive tables, depen
       headerPosition: getComputedStyle(header).position,
       firstRowBackground: getComputedStyle(firstRow).backgroundColor,
       secondRowBackground: getComputedStyle(secondRow).backgroundColor,
-      qtyAlignment: getComputedStyle(table.querySelector('tbody tr:first-child td:nth-child(3)')).textAlign
+      qtyAlignment: getComputedStyle(table.querySelector('tbody tr:first-child td:nth-child(3)')).textAlign,
+      roleLiveReadoutWeight: getComputedStyle(roleTable.querySelector('tbody tr:first-child td:nth-child(2)')).fontWeight,
+      breakdownTypeWeight: getComputedStyle(table.querySelector('tbody tr:first-child td:nth-child(2)')).fontWeight,
+      breakdownNumericWeight: getComputedStyle(table.querySelector('tbody tr:first-child td:nth-child(5)')).fontWeight,
+      moodyNumericWeight: moodyTable
+        ? getComputedStyle(moodyTable.querySelector('tbody tr:first-child td:nth-child(2)')).fontWeight
+        : null
     };
   });
   expect(tableState.responsive).toBe('true');
@@ -287,6 +305,10 @@ test('Formula Defense UI renders light KaTeX equations, responsive tables, depen
   expect(tableState.headerPosition).toBe('static');
   expect(tableState.secondRowBackground).not.toBe(tableState.firstRowBackground);
   expect(tableState.qtyAlignment).toBe('right');
+  expect(tableState.roleLiveReadoutWeight).toBe('400');
+  expect(tableState.breakdownTypeWeight).toBe('400');
+  expect(tableState.breakdownNumericWeight).toBe('400');
+  if (tableState.moodyNumericWeight) expect(tableState.moodyNumericWeight).toBe('400');
 
   const mediumTableState = await page.evaluate(() => {
     const win = document.getElementById('formulaDefenseMock');
@@ -418,4 +440,179 @@ test('Formula Defense UI renders light KaTeX equations, responsive tables, depen
     stableBeforePath,
     stableAfterPath
   }, null, 2));
+});
+
+test('Pipe Formula Defense values refresh from live pipe model data', async ({ page }) => {
+  await gotoWithFormulaRuntime(page);
+  await page.evaluate(() => {
+    window.EngineeringFormulaDefenseUI.install({ force: true });
+    const model = typeof globalModel !== 'undefined' ? globalModel : (window.globalModel ||= {});
+    model.FLUID = { type: 'fluid', props: { density: 958.348, viscosity: 0.803, vaporPressure: 1.014 } };
+    const makePipe = (flow, diameter) => {
+      const segments = [{
+        name: 'PIPE-RT-Seg-1 Live diameter pipe',
+        pipeSize: 'Custom diameter',
+        material: 'Custom roughness',
+        length: 10,
+        diameter,
+        roughness: 0.00015,
+        fittingType: 'None',
+        fittingQuantity: 0,
+        fittingK: 0,
+        additionalK: 0,
+        notes: 'Realtime validation segment.'
+      }, {
+        name: 'PIPE-RT-Seg-2 Live valve K',
+        pipeSize: 'Custom diameter',
+        material: 'Custom roughness',
+        length: 0,
+        diameter,
+        roughness: 0.00015,
+        fittingType: 'Custom K',
+        fittingQuantity: 1,
+        fittingK: 6.1,
+        additionalK: 0,
+        notes: 'Realtime validation K.'
+      }];
+      const segmentProfiles = segments.map((segment, index) => ({
+        index,
+        startElevation: 0,
+        endElevation: 0,
+        startPressure: 3.781,
+        endPressure: 2.676,
+        highPointPressure: 2.676,
+        highPointVaporMargin: 1.662
+      }));
+      return {
+        type: 'pipe',
+        name: 'PIPE-RT',
+        props: { elevationProfileMode: 'End Elevations', roughnessAgingFactor: 1, headLossAllowancePercent: 0, segments },
+        results: {
+          flow,
+          pressureCalculated: true,
+          segmentProfiles,
+          pressure: 3.2,
+          inletPressure: 3.781,
+          outletPressure: 2.676,
+          highPointPressure: 2.676,
+          highPointVaporMargin: 1.662,
+          warnings: []
+        }
+      };
+    };
+    const pipe = makePipe(50, 0.0738);
+    model['PIPE-RT'] = pipe;
+    window.globalModel = model;
+    pipe.results.calculationTrace = window.buildPipeCalculationTrace(50, pipe.props, pipe.results, null, 'PIPE-RT');
+    window.openPipeFormulaDefenseTaskWindow('PIPE-RT');
+    window.EngineeringFormulaDefenseUI.refreshOpenPipeFormulaDefenseWindows();
+  });
+  await page.waitForSelector('.pipe-formula-defense-task-window[data-pipe-node="PIPE-RT"] .pipe-formula-defense-source-table tbody tr');
+  await page.waitForFunction(() => (
+    document.querySelector('.pipe-formula-defense-task-window[data-pipe-node="PIPE-RT"] .pipe-formula-defense-segment-metric[data-pipe-basis-tooltip="true"]')
+  ), null, { timeout: 3000 });
+
+  const before = await page.evaluate(() => {
+    const win = document.querySelector('.pipe-formula-defense-task-window[data-pipe-node="PIPE-RT"]');
+    const text = (selector) => win.querySelector(selector)?.textContent.trim() || '';
+    const basisValue = (segmentIndex, label) => {
+      const card = win.querySelectorAll('.pipe-formula-defense-segment-card')[segmentIndex];
+      return [...(card?.querySelectorAll('.pipe-formula-defense-segment-metric') || [])]
+        .find((metric) => metric.querySelector('span')?.textContent.trim() === label)
+        ?.querySelector('strong')?.textContent.trim() || '';
+    };
+    const basisTitle = (segmentIndex, label) => {
+      const card = win.querySelectorAll('.pipe-formula-defense-segment-card')[segmentIndex];
+      return [...(card?.querySelectorAll('.pipe-formula-defense-segment-metric') || [])]
+        .find((metric) => metric.querySelector('span')?.textContent.trim() === label)
+        ?.getAttribute('title') || '';
+    };
+    const basisWeight = (segmentIndex, label) => {
+      const card = win.querySelectorAll('.pipe-formula-defense-segment-card')[segmentIndex];
+      const node = [...(card?.querySelectorAll('.pipe-formula-defense-segment-metric') || [])]
+        .find((metric) => metric.querySelector('span')?.textContent.trim() === label)
+        ?.querySelector('strong');
+      return node ? getComputedStyle(node).fontWeight : '';
+    };
+    return {
+      sourceFlow: text('.pipe-formula-defense-source-table tbody tr:first-child td:nth-child(2)'),
+      roleLoss: text('.pipe-formula-defense-role-path-table tbody tr:nth-child(3) td:nth-child(2)'),
+      formulaFlow: [...win.querySelectorAll('.pipe-formula-defense-formula-list .academic-equation-step')]
+        .find((step) => /Flow Conversion/.test(step.textContent))?.textContent || '',
+      firstMajor: text('.pipe-formula-defense-fitting-breakdown-table tbody tr:first-child td:nth-child(5)'),
+      firstSizeBasis: basisValue(0, 'Pipe size basis'),
+      firstMaterialBasis: basisValue(0, 'Material basis'),
+      secondFittingBasis: basisValue(1, 'Fitting basis'),
+      firstSizeTitle: basisTitle(0, 'Pipe size basis'),
+      firstSizeWeight: basisWeight(0, 'Pipe size basis')
+    };
+  });
+  expect(before.sourceFlow).toContain('50.000 m3/h');
+  expect(before.formulaFlow).toContain('50');
+  expect(before.firstSizeBasis).toBe('Custom dia · 73.8 mm');
+  expect(before.firstMaterialBasis).toBe('Custom ε · 0.150 mm');
+  expect(before.secondFittingBasis).toBe('Custom K · 6.1');
+  expect(before.firstSizeTitle).toContain('Selected NPS / Schedule: Custom diameter');
+  expect(before.firstSizeWeight).toBe('400');
+
+  await page.evaluate(() => {
+    const pipe = window.globalModel['PIPE-RT'];
+    pipe.results.flow = 60;
+    pipe.props.segments.forEach((segment) => {
+      segment.diameter = 0.081;
+    });
+    pipe.results.segmentProfiles = pipe.props.segments.map((segment, index) => ({
+      index,
+      startElevation: 0,
+      endElevation: 0,
+      startPressure: 3.9,
+      endPressure: 2.9,
+      highPointPressure: 2.9,
+      highPointVaporMargin: 1.886
+    }));
+    pipe.results.pressure = 3.4;
+    pipe.results.inletPressure = 3.9;
+    pipe.results.outletPressure = 2.9;
+    pipe.results.highPointPressure = 2.9;
+    pipe.results.highPointVaporMargin = 1.886;
+    pipe.results.calculationTrace = window.buildPipeCalculationTrace(60, pipe.props, pipe.results, null, 'PIPE-RT');
+    window.EngineeringFormulaDefenseUI.refreshOpenPipeFormulaDefenseWindows();
+  });
+
+  await page.waitForFunction(() => {
+    const win = document.querySelector('.pipe-formula-defense-task-window[data-pipe-node="PIPE-RT"]');
+    return win?.querySelector('.pipe-formula-defense-source-table tbody tr:first-child td:nth-child(2)')?.textContent.includes('60.000 m3/h');
+  }, null, { timeout: 3000 });
+
+  const after = await page.evaluate(() => {
+    const win = document.querySelector('.pipe-formula-defense-task-window[data-pipe-node="PIPE-RT"]');
+    const text = (selector) => win.querySelector(selector)?.textContent.trim() || '';
+    const basisValue = (segmentIndex, label) => {
+      const card = win.querySelectorAll('.pipe-formula-defense-segment-card')[segmentIndex];
+      return [...(card?.querySelectorAll('.pipe-formula-defense-segment-metric') || [])]
+        .find((metric) => metric.querySelector('span')?.textContent.trim() === label)
+        ?.querySelector('strong')?.textContent.trim() || '';
+    };
+    return {
+      sourceFlow: text('.pipe-formula-defense-source-table tbody tr:first-child td:nth-child(2)'),
+      roleLoss: text('.pipe-formula-defense-role-path-table tbody tr:nth-child(3) td:nth-child(2)'),
+      formulaFlow: [...win.querySelectorAll('.pipe-formula-defense-formula-list .academic-equation-step')]
+        .find((step) => /Flow Conversion/.test(step.textContent))?.textContent || '',
+      firstMajor: text('.pipe-formula-defense-fitting-breakdown-table tbody tr:first-child td:nth-child(5)'),
+      firstSizeBasis: basisValue(0, 'Pipe size basis'),
+      firstMaterialBasis: basisValue(0, 'Material basis'),
+      secondFittingBasis: basisValue(1, 'Fitting basis'),
+      segmentCards: win.querySelectorAll('.pipe-formula-defense-segment-card').length,
+      sourceRows: win.querySelectorAll('.pipe-formula-defense-source-table tbody tr').length
+    };
+  });
+  expect(after.sourceFlow).toContain('60.000 m3/h');
+  expect(after.formulaFlow).toContain('60');
+  expect(after.roleLoss).not.toBe(before.roleLoss);
+  expect(after.firstMajor).not.toBe(before.firstMajor);
+  expect(after.firstSizeBasis).toBe('Custom dia · 81 mm');
+  expect(after.firstMaterialBasis).toBe(before.firstMaterialBasis);
+  expect(after.secondFittingBasis).toBe(before.secondFittingBasis);
+  expect(after.segmentCards).toBe(2);
+  expect(after.sourceRows).toBe(16);
 });

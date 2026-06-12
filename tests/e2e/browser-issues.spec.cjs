@@ -30,6 +30,12 @@ test('browser Issues cleanup keeps ARIA roles and response headers compatible', 
   expect(apiHeaders['x-xss-protection']).toBeUndefined();
 
   const browserIssueState = await page.evaluate(() => {
+    window.__chromium_devtools_metrics_reporter = { broken: true };
+    const chromiumReporterTypeAfterObject = typeof window.__chromium_devtools_metrics_reporter;
+    window.__chromium_devtools_metrics_reporter('npsh-devtools-console-guard');
+    window.__chromium_devtools_metrics_reporter = 'still-not-a-function';
+    const chromiumReporterTypeAfterString = typeof window.__chromium_devtools_metrics_reporter;
+    window.__chromium_devtools_metrics_reporter('npsh-devtools-console-guard-again');
     window.EngineeringBrowserIssuesRuntime.repairMenuRoles(document);
     const emptyObjectMenu = document.getElementById('toolbarObjectMenu');
     const invalidMenus = [...document.querySelectorAll('[role="menu"]')]
@@ -40,6 +46,8 @@ test('browser Issues cleanup keeps ARIA roles and response headers compatible', 
       fetchPriorityImageCount: document.querySelectorAll('img[fetchpriority]').length,
       objectMenuRole: emptyObjectMenu?.getAttribute('role') || null,
       objectMenuItemCount: emptyObjectMenu?.querySelectorAll('[role="menuitem"]').length || 0,
+      chromiumReporterTypeAfterObject,
+      chromiumReporterTypeAfterString,
       invalidMenus
     };
   });
@@ -51,6 +59,8 @@ test('browser Issues cleanup keeps ARIA roles and response headers compatible', 
   } else {
     expect(browserIssueState.objectMenuRole).toBeNull();
   }
+  expect(browserIssueState.chromiumReporterTypeAfterObject).toBe('function');
+  expect(browserIssueState.chromiumReporterTypeAfterString).toBe('function');
   expect(browserIssueState.invalidMenus).toEqual([]);
 
   console.log(JSON.stringify({
@@ -59,6 +69,8 @@ test('browser Issues cleanup keeps ARIA roles and response headers compatible', 
     runtimeCacheControl: runtimeResponse.headers()['cache-control'],
     svgContentType: svgResponse.headers()['content-type'],
     apiContentType: apiHeaders['content-type'],
+    chromiumReporterTypeAfterObject: browserIssueState.chromiumReporterTypeAfterObject,
+    chromiumReporterTypeAfterString: browserIssueState.chromiumReporterTypeAfterString,
     invalidMenus: browserIssueState.invalidMenus
   }, null, 2));
 });

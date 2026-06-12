@@ -47,7 +47,7 @@ function setModel(pump, extras = {}) {
 
 setModel({ props: {}, results: {} });
 let result = audit.compute('P-100');
-assert.strictEqual(result.version, 'pump-performance-chart-audit.v9');
+assert.strictEqual(result.version, 'pump-performance-chart-audit.v10');
 assert.strictEqual(result.axisMode, 'log-log');
 assert.strictEqual(result.chartHasDrawableCurve, false);
 assert.strictEqual(result.status, 'Curve Data Unavailable');
@@ -245,18 +245,18 @@ globalThis.updatePumpChart = function lateCaptionChartOverride() {
 audit.ensureRuntimeGuards();
 assert.strictEqual(
   globalThis.updatePumpChart.__pumpPerformanceChartAuditVersion,
-  'pump-performance-chart-audit.v9',
+  'pump-performance-chart-audit.v10',
   'Audit runtime must rewrap late caption chart overrides.'
 );
 globalThis.updatePumpChart('P-100');
 assert.strictEqual(lateRendererCalls, 0, 'Audit chart draw must not call the old fallback renderer.');
 
 assert(
-  index.includes('engineering-pump-performance-chart-audit.js?v=20260603-pump-chart-audit9'),
+  index.includes('engineering-pump-performance-chart-audit.js?v=20260612-pump-chart-audit10'),
   'Index must cache-bust the pump performance chart audit runtime.'
 );
 assert(
-  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260603-canonical-chart2'),
+  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260612-canonical-chart3'),
   'Audit runtime must load the canonical operational chart renderer after audit guards.'
 );
 assert.strictEqual(typeof audit.loadCanonicalChartRenderer, 'function', 'Audit runtime must expose canonical renderer loader.');
@@ -277,18 +277,68 @@ globalThis.document = {
 assert.doesNotThrow(() => audit.refresh('P-100'), 'Audit refresh must not draw over the canonical chart renderer.');
 assert.strictEqual(
   globalThis.__pumpPerformanceChartAuditLast?.version,
-  'pump-performance-chart-audit.v9',
+  'pump-performance-chart-audit.v10',
   'Audit refresh should still retain the latest computed audit model.'
 );
 if (previousDocument === undefined) delete globalThis.document;
 else globalThis.document = previousDocument;
 
 const canonical = require(path.join(rootDir, 'engineering-pump-performance-canonical-chart.js'));
+assert.strictEqual(canonical.version, 'pump-performance-canonical-chart.v3', 'Canonical chart runtime must expose the realtime-refresh version.');
+assert.strictEqual(typeof canonical.ensureRuntimeGuards, 'function', 'Canonical chart runtime must expose self-healing realtime guards.');
 const chartModel = canonical.buildChartModel('P-100');
 assert.strictEqual(chartModel.canonical, false, 'Current test model without performanceChartData should use legacy fallback.');
 const canonicalUpdatePumpChart = globalThis.updatePumpChart;
 audit.ensureRuntimeGuards();
 assert.strictEqual(globalThis.updatePumpChart, canonicalUpdatePumpChart, 'Audit guard must not rewrap the canonical chart renderer.');
+
+globalThis.updatePumpChart = function overwrittenPumpChartRenderer() {
+  return { stale: true };
+};
+canonical.ensureRuntimeGuards();
+assert.strictEqual(
+  globalThis.updatePumpChart.__pumpPerformanceCanonicalChartVersion,
+  'pump-performance-canonical-chart.v3',
+  'Canonical renderer must reclaim updatePumpChart after any late override.'
+);
+
+setModel({
+  props: {
+    designFlow: 50,
+    designHead: 24,
+    designEfficiency: 62,
+    designNpshr: 2.4,
+    bepFlow: 50
+  },
+  results: {
+    performanceChartData: {
+      schemaVersion: 'pump-performance-chart-data.v1',
+      sourceMode: 'Backend solved chart',
+      freshness: 'Current',
+      sourceAudit: {
+        curveDataSource: 'Backend solved chart',
+        curveDataConfidence: 'Protected backend'
+      },
+      dutyPoint: { flow: 50, head: 24, npsha: 6.47, npshr: 2.4 },
+      series: {
+        pumpHead: [{ flow: 5, value: 30 }, { flow: 50, value: 24 }],
+        systemHead: [{ flow: 5, value: 8.8 }, { flow: 50, value: 24 }],
+        npsha: [{ flow: 5, value: 9 }, { flow: 50, value: 6.47 }],
+        npshr: [{ flow: 5, value: 2.4 }, { flow: 50, value: 2.4 }]
+      }
+    }
+  }
+});
+const liveBefore = globalThis.updatePumpChart('P-100');
+const liveBeforeFlow = liveBefore.dutyPoint.flow;
+globalThis.__npshGlobalModel['P-100'].results.performanceChartData.dutyPoint.flow = 72;
+globalThis.__npshGlobalModel['P-100'].results.performanceChartData.dutyPoint.head = 31;
+globalThis.__npshGlobalModel['P-100'].results.performanceChartData.series.pumpHead[1].flow = 72;
+globalThis.__npshGlobalModel['P-100'].results.performanceChartData.series.pumpHead[1].value = 31;
+const liveAfter = globalThis.updatePumpChart('P-100');
+assert.strictEqual(liveBeforeFlow, 50, 'Initial chart render should read current backend duty flow.');
+assert.strictEqual(liveAfter.dutyPoint.flow, 72, 'Pump chart render must refresh duty flow from the latest model data.');
+assert.strictEqual(liveAfter.series.pumpHead[1].value, 31, 'Pump chart curve numbers must refresh from the latest model data.');
 
 setModel({
   props: {

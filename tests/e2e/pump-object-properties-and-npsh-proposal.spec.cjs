@@ -130,6 +130,7 @@ async function waitForNpshApp(page) {
     && typeof window.updateSimulation === 'function'
     && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v4'
     && window.EngineeringDefenseExportPackage?.schemaVersion === 'defense-export-package.v1'
+    && window.EngineeringPumpFormulaDefenseLiveAudit?.version === 'pump-formula-defense-live-audit.v2'
     && window.__npshRouteTraceAuditInstalled?.fetchSimulation
   ), null, { timeout: 30000 });
 }
@@ -268,6 +269,22 @@ async function browserSnapshot(page) {
   });
 }
 
+async function pumpFormulaDefenseWindowSnapshot(page) {
+  return page.evaluate(() => {
+    const windowNode = document.querySelector('.pump-formula-defense-task-window');
+    const rows = window.__npshGlobalModel?.P?.results?.npshEvaluation?.calculationTrace?.academicFormulaDefenseRows || [];
+    return {
+      exists: !!windowNode,
+      text: windowNode?.textContent || '',
+      rowCount: rows.length,
+      rowCalculationIds: rows.map((row) => row.calculationId).filter(Boolean),
+      refreshMeta: window.__pumpFormulaDefenseLiveAuditLastRefresh || null,
+      runtimeVersion: window.EngineeringPumpFormulaDefenseLiveAudit?.version || null,
+      contentRefreshVersion: window.refreshPumpFormulaDefenseWindowContent?.__pumpFormulaDefenseLiveAuditVersion || null
+    };
+  });
+}
+
 test('Pump object properties, chart, proposal buttons, formula defense, and stale export gate refresh from backend', async ({ page }, testInfo) => {
   const simulateRequests = [];
   await page.route('**/api/simulate', async (route) => {
@@ -318,6 +335,15 @@ test('Pump object properties, chart, proposal buttons, formula defense, and stal
     window.__engineeringCalculationDefenseRealtimeState?.status === 'Calculating'
     && window.__npshGlobalModel?.P?.results?.backendValidationStatus === 'Calculating'
   ), null, { timeout: 10000 });
+  await page.evaluate(() => {
+    window.openPumpFormulaDefenseTaskWindow?.('P');
+    window.EngineeringPumpFormulaDefenseLiveAudit?.refresh?.('P');
+  });
+  const calculatingFormulaWindow = await pumpFormulaDefenseWindowSnapshot(page);
+  expect(calculatingFormulaWindow.exists).toBe(true);
+  expect(calculatingFormulaWindow.runtimeVersion).toBe('pump-formula-defense-live-audit.v2');
+  expect(calculatingFormulaWindow.contentRefreshVersion).toBe('pump-formula-defense-live-audit.v2');
+  expect(calculatingFormulaWindow.text).toMatch(/NPSHa|NPSHr|Trace Rows/i);
   await changedSolvePromise;
   await page.waitForFunction((previousCalculationId) => {
     const state = window.__engineeringCalculationDefenseRealtimeState || {};
@@ -350,6 +376,23 @@ test('Pump object properties, chart, proposal buttons, formula defense, and stal
   expect(changed.pumpWindowAuditContract.pumpFormulaDefense.auditTrail.calculationId).toBe(changed.calculationId);
   expect(changedSnapshot.chart.inputFingerprint.value).not.toBe(baselineSnapshot.chart.inputFingerprint.value);
   expect(changedSnapshot.formulaRows.every((row) => row.calculationId === changed.calculationId)).toBe(true);
+  await page.waitForFunction((calculationId) => {
+    const windowNode = document.querySelector('.pump-formula-defense-task-window');
+    const rows = window.__npshGlobalModel?.P?.results?.npshEvaluation?.calculationTrace?.academicFormulaDefenseRows || [];
+    const refreshMeta = window.__pumpFormulaDefenseLiveAuditLastRefresh || {};
+    return !!windowNode
+      && window.EngineeringPumpFormulaDefenseLiveAudit?.version === 'pump-formula-defense-live-audit.v2'
+      && window.refreshPumpFormulaDefenseWindowContent?.__pumpFormulaDefenseLiveAuditVersion === 'pump-formula-defense-live-audit.v2'
+      && rows.length > 0
+      && rows.every((row) => row.calculationId === calculationId)
+      && Array.isArray(refreshMeta.pumpIds)
+      && refreshMeta.pumpIds.includes('P')
+      && /Trace Rows|Manufacturer\/Test|NPSHa|NPSHr/i.test(windowNode.textContent || '');
+  }, changed.calculationId, { timeout: 10000 });
+  const changedFormulaWindow = await pumpFormulaDefenseWindowSnapshot(page);
+  expect(changedFormulaWindow.refreshMeta.version).toBe('pump-formula-defense-live-audit.v2');
+  expect(changedFormulaWindow.rowCalculationIds.every((id) => id === changed.calculationId)).toBe(true);
+  expect(changedFormulaWindow.text).toContain(changed.calculationId);
   expect(pumpCurveRow?.substitution || pumpCurveRow?.substitutedValues || '').toMatch(/Qop=.*H_pump=.*curve basis=/i);
   expect(marginRow?.substitution || marginRow?.substitutedValues || '').toMatch(/[0-9].*-\s*[0-9].*=/);
   expect(simulateRequests.length).toBeGreaterThanOrEqual(2);
