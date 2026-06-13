@@ -409,11 +409,13 @@ test('Formula Defense UI renders light KaTeX equations, responsive tables, depen
     };
   });
   await page.locator('#diameterInput').fill('0.0810');
-  const autosolve = await page.waitForFunction(() => window.__formulaDefenseAutosolveCalls?.[0] || null, null, { timeout: 1200 });
-  const autosolveState = await autosolve.jsonValue();
-  expect(autosolveState.options.refreshReason).toBe('realtime-input');
-  expect(autosolveState.options.forceBackend).toBe(true);
-  expect(autosolveState.latencyMs).toBeLessThan(200);
+  await page.waitForTimeout(350);
+  const autosolveState = await page.evaluate(() => ({
+    calls: window.__formulaDefenseAutosolveCalls,
+    bypass: window.__formulaDefenseUiAutosolveBypass
+  }));
+  expect(autosolveState.calls).toHaveLength(0);
+  expect(autosolveState.bypass.reason).toContain('RealtimeCalculationDefense owns autosolve');
   const refreshState = await page.evaluate(() => ({
     refreshApi: typeof window.EngineeringFormulaDefenseUI.refreshOpenPipeFormulaDefenseWindows,
     refreshed: window.EngineeringFormulaDefenseUI.refreshOpenPipeFormulaDefenseWindows()

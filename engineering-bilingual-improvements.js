@@ -2564,6 +2564,13 @@
 
   function installRealtimeAutosolveBridge() {
     if (!root.document) return;
+    if (root.__NPSH_USE_LEGACY_BILINGUAL_AUTOSOLVE__ !== true) {
+      root.__EngineeringRealtimeAutosolveInstalled = true;
+      if (root.document.documentElement?.dataset) {
+        root.document.documentElement.dataset.engineeringRealtimeAutosolveInstalled = 'disabled-by-realtime-defense';
+      }
+      return;
+    }
     const installMarker = root.document.documentElement;
     if (root.__EngineeringRealtimeAutosolveInstalled || installMarker?.dataset.engineeringRealtimeAutosolveInstalled === 'true') return;
     try {

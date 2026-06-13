@@ -24,7 +24,7 @@ const manifest = fs.existsSync(MANIFEST_FILE) ? read(MANIFEST_FILE) : '';
 const runtime = require(RUNTIME_FILE);
 
 assert.strictEqual(runtime.version, 'engineering-formula-defense-ui.v1');
-assert.strictEqual(runtime.cacheKey, '20260612-formula-defense-ui13');
+assert.strictEqual(runtime.cacheKey, '20260613-formula-defense-ui15');
 assert.strictEqual(runtime.debounceMs, 120);
 assert.strictEqual(
   packageJson.scripts?.['validate:formula-defense-ui'],
@@ -38,8 +38,8 @@ assert.strictEqual(
 );
 assert.strictEqual(packageJson.devDependencies?.katex, '^0.17.0', 'KaTeX must be tracked as a local dev dependency.');
 
-assert(indexHtml.includes('vendor/katex/katex.min.css?v=20260612-formula-defense-ui13'), 'index.html must cache-bust local KaTeX CSS.');
-assert(indexHtml.includes('engineering-formula-defense-ui.js?v=20260612-formula-defense-ui13'), 'index.html must cache-bust Formula Defense UI runtime.');
+assert(indexHtml.includes('vendor/katex/katex.min.css?v=20260613-formula-defense-ui15'), 'index.html must cache-bust local KaTeX CSS.');
+assert(indexHtml.includes('engineering-formula-defense-ui.js?v=20260613-formula-defense-ui15'), 'index.html must cache-bust Formula Defense UI runtime.');
 assert(fs.existsSync(KATEX_JS_FILE), 'Local KaTeX JS asset must be vendored for static deployment.');
 assert(fs.existsSync(KATEX_CSS_FILE), 'Local KaTeX CSS asset must be vendored for static deployment.');
 
@@ -97,6 +97,10 @@ assert(runtimeSource.includes('Affected Variables'), 'Dependency visualization m
 assert(runtimeSource.includes('Recalculated Variables'), 'Dependency visualization must identify recalculated variables.');
 assert(runtimeSource.includes('Final Result'), 'Dependency visualization must identify final results.');
 assert(runtimeSource.includes('scheduleDebouncedRecalculation'), 'Formula runtime must schedule debounced recalculation.');
+assert(runtimeSource.includes('scheduleEnhanceDocument'), 'Formula runtime must scope and schedule enhancement refreshes.');
+assert(runtimeSource.includes('EngineeringPerformanceRefreshGovernor'), 'Formula runtime must delegate broad enhancement refreshes to the performance governor when available.');
+assert(runtimeSource.includes('hasRealtimeAutosolveOwner'), 'Formula runtime must avoid duplicate autosolve when RealtimeCalculationDefense owns calculation refresh.');
+assert(runtimeSource.includes('Formula Defense UI did not call updateSimulation'), 'Formula runtime must record an audit-safe duplicate-autosolve bypass reason.');
 assert(runtimeSource.includes('document.contains(target)'), 'Autosolve must ignore removed temporary E2E inputs.');
 assert(runtimeSource.includes("refreshReason: 'realtime-input'"), 'Autosolve must identify realtime recalculation calls.');
 assert(runtimeSource.includes('formula-defense-calculation-banner'), 'Formula runtime must expose stale/calculating/current loading state.');
@@ -241,7 +245,7 @@ assert.strictEqual(academicTrace.fittingValveBreakdown.length, 2, 'Fitting/valve
 
 if (manifest) {
   assert(manifest.includes('engineering-formula-defense-ui.js'), 'FILE_MANIFEST must mention Formula Defense UI runtime.');
-  assert(manifest.includes('20260612-formula-defense-ui13'), 'FILE_MANIFEST must mention Formula Defense UI cache key.');
+  assert(manifest.includes('20260613-formula-defense-ui15'), 'FILE_MANIFEST must mention Formula Defense UI cache key.');
   assert(manifest.includes('validate:formula-defense-ui'), 'FILE_MANIFEST must mention Formula Defense UI validation.');
 }
 

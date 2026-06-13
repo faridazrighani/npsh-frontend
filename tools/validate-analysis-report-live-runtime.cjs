@@ -9,8 +9,8 @@ const RUNTIME_FILE = path.join(FRONTEND_ROOT, "engineering-analysis-report-live-
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const CASE_FILE = path.join(FRONTEND_ROOT, "journals", "simulasi_1", "simulasi_performansi_pompa_air_umpan_tangki_deaerator.untirta");
-const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260611-analysis-report-live4";
-const VERSION = "2026.06-analysis-report-live4";
+const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260613-analysis-report-live5";
+const VERSION = "2026.06-analysis-report-live5";
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
 function assert(condition, message) {
@@ -219,6 +219,10 @@ assert(runtime.includes("__npshLastBackendSimulationResponse"), "Runtime must be
 assert(runtime.includes("MutationObserver"), "Runtime must refresh when report windows are inserted.");
 assert(runtime.includes("patchUpdateSimulation"), "Runtime must hook updateSimulation for realtime calculation refreshes.");
 assert(runtime.includes("npsh:calculation-state-updated"), "Runtime must refresh when canonical calculation state changes.");
+assert(runtime.includes("const REFRESH_MS = 3000"), "Analysis Report runtime interval must be reduced for lower background load.");
+assert(runtime.includes("const ACTIVE_SELECTOR = '.journal-analysis-task-window, .journal-analysis-report-panel'"), "Analysis Report runtime must not scan every generic task window.");
+assert(runtime.includes("hasActiveReportSurface"), "Runtime must avoid refreshing when no Analysis Report surface is visible.");
+assert(!runtime.includes("ACTIVE_SELECTOR = '.journal-analysis-task-window, .journal-analysis-report-panel, .task-window'"), "Runtime must not target broad .task-window surfaces.");
 assert(runtime.includes("trace.segmentRows || trace.segments"), "Runtime must prefer canonical pipe segment rows when reading pipe trace steps.");
 assert(runtime.includes("updateComparisonTable"), "Runtime must update existing comparison table cells.");
 assert(runtime.includes("updateApplicationValueTable"), "Runtime must update existing application value table cells when present.");
@@ -240,6 +244,7 @@ assert(api && api.version === VERSION, "Runtime API must expose the Analysis Rep
 assert(typeof api.collectLiveMetrics === "function", "Runtime API must expose live metric collection.");
 assert(typeof api.refresh === "function", "Runtime API must expose a refresh function.");
 assert(typeof api.installResponsiveCss === "function", "Runtime API must expose responsive CSS installation for browser checks.");
+assert(typeof api.hasActiveReportSurface === "function", "Runtime API must expose visible Analysis Report surface detection.");
 
 const metrics = api.collectLiveMetrics();
 assert(metrics && typeof metrics.get === "function" && metrics.size > 40, "Runtime must collect a broad live metric set from the current case.");

@@ -281,7 +281,7 @@
     </script>
     <!-- SEO_METADATA_END -->
     <noscript><link rel="stylesheet" href="style.min.css?v=20260608-browser-issues1"></noscript>
-    <link rel="stylesheet" href="vendor/katex/katex.min.css?v=20260612-formula-defense-ui13">
+    <link rel="stylesheet" href="vendor/katex/katex.min.css?v=20260613-formula-defense-ui15">
     <link rel="stylesheet" href="engineering-live-parameter-repaint-lock.css?v=20260605-live-param-repaint-lock1">
     <style data-critical-about>
         :root{--bg-canvas:#f4f7f9;--grid-line:#dce4eb;--panel-bg:#fff;--border-color:#e0e0e0;--ribbon-bg:#f9f9f9;--ribbon-hover:#e6f0fa;--ribbon-active-border:#b3d4f5;--text-main:#333;--font-main:'Segoe UI',system-ui,-apple-system,sans-serif}
@@ -715,24 +715,27 @@
     .then(() => addScript('engineering-source-temperature-runtime.js?v=20260601-src-fluid-link1'))
     .then(() => {
       document.readyState !== 'loading' && fireReady();
-      return addScript('engineering-bilingual-improvements.js?v=20260607-sink-mode-trace1');
+      return addScript('engineering-bilingual-improvements.js?v=20260613-bilingual-autosolve2');
     })
     .then(() => addScript('engineering-browser-issues-runtime.js?v=20260608-browser-issues1'))
     .then(() => addScript('engineering-pipe-segments-file-runtime.js?v=20260608-pipe-segments-file1'))
-    .then(() => addScript('engineering-formula-defense-ui.js?v=20260612-formula-defense-ui13')));
+    .then(() => addScript('engineering-formula-defense-ui.js?v=20260613-formula-defense-ui15')));
   const loadSupport = () => supportPromise || (supportPromise = loadCore()
     .then(() => addScript('engineering-library-governance.js?v=20260530-pagespeed3'))
     .then(() => addScript('engineering-caption-audit-overrides.js?v=20260606-route-schema1'))
     .then(() => addScript('engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock8'))
-    .then(() => addScript('engineering-realtime-calculation-defense.js?v=20260611-realtime-global1'))
+    .then(() => addScript('engineering-performance-refresh-governor.js?v=20260613-refresh-governor2'))
+    .then(() => addScript('engineering-realtime-calculation-defense.js?v=20260613-realtime-global6'))
+    .then(() => addScript('engineering-calculation-lifecycle-runtime.js?v=20260613-calculation-lifecycle4'))
+    .then(() => addScript('engineering-calculation-progress-overlay.js?v=20260613-calculation-progress7'))
     .then(() => {
       window.EngineeringFormulaDefenseUI?.install?.({ force: true });
       return Promise.resolve();
     })
     .then(() => addScript('engineering-defense-export-package.js?v=20260603-defensev3'))
     .then(() => addScript('engineering-pipe-moody-chart-audit.js?v=20260607-pipe-moody-audit2'))
-    .then(() => addScript('engineering-pump-formula-defense-live-audit.js?v=20260612-pump-defense-live12'))
-    .then(() => addScript('engineering-pump-performance-chart-audit.js?v=20260612-pump-chart-audit10'))
+    .then(() => addScript('engineering-pump-formula-defense-live-audit.js?v=20260613-pump-defense-live13'))
+    .then(() => addScript('engineering-pump-performance-chart-audit.js?v=20260613-pump-chart-audit11'))
     .catch(error => console.warn('Deferred diagnostics did not load.', error)));
   const beginInteraction = () => {
     ensureStyles().catch(error => console.warn('Deferred stylesheet did not load.', error));
@@ -781,7 +784,7 @@
     <script src="engineering-local-trace-fallback-runtime.js?v=20260611-local-trace3"></script>
     <script src="engineering-pipe-canvas-hydraulic-label-runtime.js?v=20260611-pipe-canvas-hydraulic-label4"></script>
     <script src="engineering-pipe-source-confidence-map-runtime.js?v=20260611-pipe-source-confidence-map1"></script>
-    <script src="engineering-analysis-report-live-runtime.js?v=20260611-analysis-report-live4"></script>
+    <script src="engineering-analysis-report-live-runtime.js?v=20260613-analysis-report-live5"></script>
     <script src="engineering-literature-pdf-viewer.js?v=20260609-literature-access3"></script>
 </body>
 </html>

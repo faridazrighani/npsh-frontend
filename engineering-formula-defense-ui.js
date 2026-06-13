@@ -7,7 +7,7 @@
   'use strict';
 
   const VERSION = 'engineering-formula-defense-ui.v1';
-  const CACHE_KEY = '20260612-formula-defense-ui13';
+  const CACHE_KEY = '20260613-formula-defense-ui15';
   const DEBOUNCE_MS = 120;
   const KATEX_SCRIPT = `vendor/katex/katex.min.js?v=${CACHE_KEY}`;
   const KATEX_CSS = `vendor/katex/katex.min.css?v=${CACHE_KEY}`;
@@ -1983,6 +1983,23 @@
     return updated;
   }
 
+  function scheduleEnhanceDocument(scope = document, options = {}) {
+    if (!hasDocument()) return false;
+    const targetScope = scope || document;
+    const governor = root.EngineeringPerformanceRefreshGovernor;
+    if (governor && typeof governor.scheduleEnhance === 'function') {
+      return governor.scheduleEnhance(targetScope, options);
+    }
+    root.setTimeout?.(() => enhanceDocument(targetScope), options.delayMs || 0);
+    return true;
+  }
+
+  function enhanceScopeForTarget(target) {
+    return target?.closest?.(DEFENSE_WINDOW_SELECTOR)
+      || target?.closest?.('.task-window, .full-editor-modal, .canvas-task-window, #taskWindowBody')
+      || document;
+  }
+
   function refreshOpenPipeFormulaDefenseWindows() {
     if (!hasDocument()) return 0;
     patchPipeFormulaDefenseTraceBuilders();
@@ -2018,8 +2035,8 @@
         const scheduleRefresh = () => {
           root.setTimeout?.(() => {
             refreshOpenPipeFormulaDefenseWindows();
-            enhanceDocument(document);
-          }, 0);
+            scheduleEnhanceDocument(document, { reason: 'pipe formula updateSimulation', delayMs: 180 });
+          }, 120);
         };
         const result = originalUpdateSimulation.apply(this, args);
         if (result && typeof result.then === 'function') {
@@ -2046,9 +2063,9 @@
       root.openPipeFormulaDefenseTaskWindow = function formulaDefenseOpenPipeWindowWrapper(...args) {
         const result = originalOpen.apply(this, args);
         root.setTimeout?.(() => {
-          enhanceDocument(document);
           refreshOpenPipeFormulaDefenseWindows();
-        }, 0);
+          scheduleEnhanceDocument(document, { reason: 'pipe formula window opened', delayMs: 120 });
+        }, 60);
         return result;
       };
       root.openPipeFormulaDefenseTaskWindow.__formulaDefensePipeUiPatched = true;
@@ -2101,6 +2118,12 @@
     return !!target.closest?.('.task-window, .full-editor-modal, .canvas-task-window, #taskWindowBody, [data-task-prop-body="true"]');
   }
 
+  function hasRealtimeAutosolveOwner() {
+    const realtime = root.EngineeringRealtimeCalculationDefense;
+    return root.__NPSH_FORMULA_DEFENSE_UI_USE_LEGACY_AUTOSOLVE__ !== true
+      && (typeof realtime?.requestAutoSolve === 'function' || typeof realtime?.markStale === 'function');
+  }
+
   async function runDebouncedRecalculation(target, sequence) {
     if (!hasDocument() || sequence !== recalcSequence) return false;
     if (!target || !document.contains(target)) return false;
@@ -2137,7 +2160,7 @@
       setCalculationUiState('Stale', error?.message || 'backend recalculation failed');
       return false;
     } finally {
-      root.setTimeout?.(() => enhanceDocument(document), 0);
+      scheduleEnhanceDocument(enhanceScopeForTarget(target), { reason: 'formula defense recalculation finished', delayMs: 160 });
     }
   }
 
@@ -2145,6 +2168,18 @@
     if (!hasDocument() || root.__NPSH_FORMULA_DEFENSE_UI_DISABLE_AUTOSOLVE__) return false;
     if (!isEngineeringInput(target)) return false;
     lastChangedInput = describeChangedInput(target);
+    if (hasRealtimeAutosolveOwner()) {
+      root.clearTimeout?.(recalcTimer);
+      recalcSequence += 1;
+      setCalculationUiState('Stale', `changed ${lastChangedInput}`);
+      root.__formulaDefenseUiAutosolveBypass = {
+        version: VERSION,
+        reason: 'RealtimeCalculationDefense owns autosolve; Formula Defense UI did not call updateSimulation.',
+        changedInput: lastChangedInput,
+        bypassedAt: new Date().toISOString()
+      };
+      return true;
+    }
     const sequence = ++recalcSequence;
     root.clearTimeout?.(recalcTimer);
     setCalculationUiState('Stale', `changed ${lastChangedInput}`);
@@ -2160,7 +2195,10 @@
     const onChange = (event) => {
       if (event.isComposing || !isEngineeringInput(event.target)) return;
       scheduleDebouncedRecalculation(event.target);
-      root.setTimeout?.(() => enhanceDocument(document), 0);
+      const defenseScope = event.target.closest?.(DEFENSE_WINDOW_SELECTOR);
+      if (defenseScope) {
+        scheduleEnhanceDocument(defenseScope, { reason: 'formula defense input changed', delayMs: 180 });
+      }
     };
     document.addEventListener('input', onChange, true);
     document.addEventListener('change', onChange, true);
@@ -2180,7 +2218,7 @@
           break;
         }
       }
-      if (shouldEnhance) root.requestAnimationFrame?.(() => enhanceDocument(document));
+      if (shouldEnhance) scheduleEnhanceDocument(document, { reason: 'formula node added', delayMs: 180 });
     });
     observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
   }
@@ -2195,8 +2233,8 @@
         const result = original.apply(this, args);
         root.setTimeout?.(() => {
           syncRealtimeState();
-          enhanceDocument(document);
-        }, 0);
+          scheduleEnhanceDocument(document, { reason: `realtime ${key}`, delayMs: 180 });
+        }, 60);
         return result;
       };
       realtime[key].__formulaDefenseUiOriginal = original;
@@ -2214,7 +2252,7 @@
     patchRealtimeBridge();
     patchPipeFormulaDefenseRealtimeRefresh();
     if (!root.__NPSH_FORMULA_DEFENSE_UI_DISABLE_AUTO_ENHANCE__ || options.force) {
-      enhanceDocument(document);
+      scheduleEnhanceDocument(document, { reason: 'formula defense install', delayMs: options.force ? 0 : 160 });
       installObserver();
     }
     installRealtimeListeners();
@@ -2222,7 +2260,7 @@
       installed = true;
       loadKatex().then(() => {
         if (!root.__NPSH_FORMULA_DEFENSE_UI_DISABLE_AUTO_ENHANCE__ || options.force) {
-          enhanceDocument(document);
+          scheduleEnhanceDocument(document, { reason: 'katex loaded', delayMs: options.force ? 0 : 160 });
         }
       });
     }
@@ -2239,6 +2277,7 @@
     wcagContrastRatio,
     colorForTheme,
     enhanceDocument,
+    scheduleEnhanceDocument,
     scheduleDebouncedRecalculation,
     install,
     dependencyChainForInput,

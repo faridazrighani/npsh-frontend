@@ -252,11 +252,11 @@ globalThis.updatePumpChart('P-100');
 assert.strictEqual(lateRendererCalls, 0, 'Audit chart draw must not call the old fallback renderer.');
 
 assert(
-  index.includes('engineering-pump-performance-chart-audit.js?v=20260612-pump-chart-audit10'),
+  index.includes('engineering-pump-performance-chart-audit.js?v=20260613-pump-chart-audit11'),
   'Index must cache-bust the pump performance chart audit runtime.'
 );
 assert(
-  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260612-canonical-chart3'),
+  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260613-canonical-chart4'),
   'Audit runtime must load the canonical operational chart renderer after audit guards.'
 );
 assert.strictEqual(typeof audit.loadCanonicalChartRenderer, 'function', 'Audit runtime must expose canonical renderer loader.');
@@ -283,7 +283,12 @@ assert.strictEqual(
 if (previousDocument === undefined) delete globalThis.document;
 else globalThis.document = previousDocument;
 
-const canonical = require(path.join(rootDir, 'engineering-pump-performance-canonical-chart.js'));
+const canonicalPath = path.join(rootDir, 'engineering-pump-performance-canonical-chart.js');
+const canonicalSource = fs.readFileSync(canonicalPath, 'utf8');
+const canonical = require(canonicalPath);
+assert(canonicalSource.includes('EngineeringPerformanceRefreshGovernor'), 'Canonical chart renderer must use the performance governor when available.');
+assert(!canonicalSource.includes('[0, 40, 120, 260, 520, 900]'), 'Canonical chart renderer must not schedule six repeated renders per update.');
+assert(canonicalSource.includes('hasRenderableCanvas'), 'Canonical chart renderer must skip scheduled renders when no chart canvas is visible.');
 assert.strictEqual(canonical.version, 'pump-performance-canonical-chart.v3', 'Canonical chart runtime must expose the realtime-refresh version.');
 assert.strictEqual(typeof canonical.ensureRuntimeGuards, 'function', 'Canonical chart runtime must expose self-healing realtime guards.');
 const chartModel = canonical.buildChartModel('P-100');

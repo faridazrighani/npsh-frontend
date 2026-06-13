@@ -28,12 +28,16 @@
     "validate:pipe-canvas-hydraulic-label": "node tools/validate-pipe-canvas-hydraulic-label.cjs",
     "validate:pipe-source-confidence-map": "node tools/validate-pipe-source-confidence-map.cjs",
     "validate:analysis-report-live-runtime": "node tools/validate-analysis-report-live-runtime.cjs",
+    "validate:calculation-lifecycle": "node tools/validate-calculation-lifecycle-runtime.cjs",
+    "validate:calculation-progress-overlay": "node tools/validate-calculation-progress-overlay.cjs",
+    "validate:performance-refresh-governor": "node tools/validate-performance-refresh-governor.cjs",
     "test:e2e": "playwright test",
     "test:e2e:desktop-flow-chain": "playwright test tests/e2e/desktop-simulation-flow-chain.spec.cjs",
     "test:e2e:remaining-risks": "playwright test tests/e2e/pipe-moody-defense-export.spec.cjs",
     "test:e2e:browser-issues": "playwright test tests/e2e/browser-issues.spec.cjs",
     "test:e2e:pipe-segments-file": "playwright test tests/e2e/pipe-segments-file.spec.cjs",
-    "test:e2e:formula-defense-ui": "playwright test tests/e2e/formula-defense-ui.spec.cjs"
+    "test:e2e:formula-defense-ui": "playwright test tests/e2e/formula-defense-ui.spec.cjs",
+    "test:e2e:calculation-progress-overlay": "playwright test tests/e2e/calculation-progress-overlay.spec.cjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

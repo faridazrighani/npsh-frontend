@@ -16,6 +16,8 @@
   ];
   const PUMP_CHART_INPUT_PATTERN = /\b(inputMode|optimizationMode|npshrSourceMode|npshAssessmentMode|npshMarginBasis|designFlow|designHead|designEfficiency|designNpshr|bepFlow|porMinPercent|porMaxPercent|aorMinPercent|aorMaxPercent|minNpshMarginRatio|minNpshMargin|speed|curveDataSource|curveSourceNote|curveData|flow|head|eff|npshr|pressure|elevation|density|viscosity|vaporPressure|segments|length|diameter|roughness|fittingType|fittingQuantity|fittingK|minorLoss|additionalK)\b/i;
   let renderGuardTimer = 0;
+  let scheduledRenderTimer = 0;
+  let pendingRenderPumpId = '';
 
   const STYLES = {
     pumpHead: { label: 'Pump Head', color: '#164a7a', width: 2.4 },
@@ -545,13 +547,36 @@
     return rendered[0] || buildChartModel(id);
   }
 
-  function scheduleRender(pumpId) {
-    [0, 40, 120, 260, 520, 900].forEach((delay) => {
-      root.setTimeout?.(() => {
-        ensureRuntimeGuards();
-        render(pumpId);
-      }, delay);
-    });
+  function hasRenderableCanvas() {
+    return canvases().length > 0;
+  }
+
+  function scheduleRender(pumpId, options = {}) {
+    const id = resolvePumpId(pumpId);
+    if (!hasRenderableCanvas() && !options.force) {
+      return false;
+    }
+    pendingRenderPumpId = id || pendingRenderPumpId;
+    const governor = root.EngineeringPerformanceRefreshGovernor;
+    if (governor && typeof governor.schedule === 'function') {
+      return governor.schedule('pump-performance-chart', pendingRenderPumpId, {
+        delayMs: options.delayMs === undefined ? 140 : options.delayMs,
+        reason: options.reason || 'canonical pump chart render',
+        run: () => {
+          ensureRuntimeGuards();
+          return render(pendingRenderPumpId);
+        }
+      });
+    }
+    if (scheduledRenderTimer && root.clearTimeout) {
+      root.clearTimeout(scheduledRenderTimer);
+    }
+    scheduledRenderTimer = root.setTimeout?.(() => {
+      scheduledRenderTimer = 0;
+      ensureRuntimeGuards();
+      render(pendingRenderPumpId);
+    }, options.delayMs === undefined ? 140 : options.delayMs) || 0;
+    return true;
   }
 
   function ensureModal(pumpId) {
@@ -641,10 +666,12 @@
   function installChartEndpoints() {
     let changed = false;
     if (typeof root.updatePumpChart !== 'function' || root.updatePumpChart.__pumpPerformanceCanonicalChartVersion !== VERSION) {
-      root.updatePumpChart = markCanonicalFunction(function updatePumpCanonicalChart(pumpId) {
-        const chartModel = render(pumpId);
-        scheduleRender(pumpId);
-        return chartModel;
+      root.updatePumpChart = markCanonicalFunction(function updatePumpCanonicalChart(pumpId, options = {}) {
+        if (options && options.forceImmediate) {
+          return render(pumpId);
+        }
+        scheduleRender(pumpId, { delayMs: 140, reason: 'updatePumpChart' });
+        return root.__pumpPerformanceCanonicalChartLast || buildChartModel(resolvePumpId(pumpId));
       }, 'updatePumpChart');
       changed = true;
     }
@@ -654,7 +681,7 @@
         const id = resolvePumpId(pumpId);
         ensureModal(id);
         const chartModel = render(id);
-        scheduleRender(id);
+        scheduleRender(id, { force: true, delayMs: 140, reason: 'openPumpPerformanceCurveWindow' });
         return chartModel;
       }, 'openPumpPerformanceCurveWindow');
       changed = true;
@@ -678,7 +705,7 @@
     const onInput = (event) => {
       if (event?.isComposing || !isPumpChartLiveInput(event.target)) return;
       const pumpId = resolvePumpIdFromTarget(event.target);
-      root.setTimeout?.(() => scheduleRender(pumpId), 0);
+      scheduleRender(pumpId, { delayMs: 180, reason: 'pump chart input' });
     };
     document.addEventListener('input', onInput, true);
     document.addEventListener('change', onInput, true);
@@ -694,7 +721,7 @@
       bindRealtimeEvents(),
       bindLiveInputRefresh()
     ].some(Boolean);
-    if (changed) scheduleRender();
+    if (changed) scheduleRender('', { reason: 'runtime guard changed' });
     return changed;
   }
 
@@ -703,7 +730,6 @@
     [0, 80, 220, 500, 900, 1400, 2200, 3600, 5200, 7600].forEach((delay) => {
       root.setTimeout(() => {
         ensureRuntimeGuards();
-        scheduleRender();
       }, delay);
     });
     if (typeof document !== 'undefined' && !renderGuardTimer && root.setInterval) {
@@ -717,7 +743,7 @@
   function install() {
     if (root.__pumpPerformanceCanonicalChartInstalled) {
       ensureRuntimeGuards();
-      scheduleRender();
+      scheduleRender('', { reason: 'canonical chart reinstall' });
       return false;
     }
     root.__pumpPerformanceCanonicalChartInstalled = true;
@@ -731,14 +757,14 @@
           && (node.matches?.('#pumpChart, #captionAuditPumpChartCanvas, .caption-audit-inline-chart-wrap, .modal-chart-wrap')
             || node.querySelector?.('#pumpChart, #captionAuditPumpChartCanvas, .caption-audit-inline-chart-wrap canvas, .modal-chart-wrap canvas'))
         )));
-        if (hasChart) scheduleRender();
+        if (hasChart) scheduleRender('', { force: true, reason: 'chart canvas added' });
       });
       observer.observe(document.documentElement, { childList: true, subtree: true });
       root.__pumpPerformanceCanonicalChartObserver = observer;
     }
 
     startRenderGuardLoop();
-    scheduleRender();
+    scheduleRender('', { reason: 'canonical chart install' });
     return true;
   }
 

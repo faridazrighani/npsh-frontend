@@ -1,9 +1,9 @@
 (function installEngineeringAnalysisReportLiveRuntime(root) {
   'use strict';
 
-  const VERSION = '2026.06-analysis-report-live4';
-  const REFRESH_MS = 1000;
-  const ACTIVE_SELECTOR = '.journal-analysis-task-window, .journal-analysis-report-panel, .task-window';
+  const VERSION = '2026.06-analysis-report-live5';
+  const REFRESH_MS = 3000;
+  const ACTIVE_SELECTOR = '.journal-analysis-task-window, .journal-analysis-report-panel';
   const RESPONSIVE_STYLE_ID = 'engineeringAnalysisReportLiveResponsiveStyle';
 
   root.__npshAnalysisReportLiveBoot = VERSION;
@@ -626,16 +626,30 @@
     return changed;
   };
 
+  const isVisibleElement = (element) => {
+    if (!element) return false;
+    if (document.documentElement?.contains && !document.documentElement.contains(element)) return false;
+    const style = root.getComputedStyle ? root.getComputedStyle(element) : null;
+    if (style && (style.display === 'none' || style.visibility === 'hidden')) return false;
+    if (element.classList?.contains?.('task-window-minimized') || element.classList?.contains?.('minimized')) return false;
+    return element.offsetParent !== null || element.getClientRects?.().length > 0;
+  };
+
+  const activeReportSurfaces = () => Array.from(document.querySelectorAll(ACTIVE_SELECTOR))
+    .filter((element) => isVisibleElement(element)
+      && (element.classList?.contains?.('journal-analysis-task-window')
+        || /analysis report|journal|comparison|application|laporan analisis|jurnal|perbandingan|aplikasi/i.test(element.textContent || '')));
+
+  const hasActiveReportSurface = () => activeReportSurfaces().length > 0;
+
   const refresh = () => {
+    const candidates = activeReportSurfaces();
+    if (!candidates.length) return 0;
     installResponsiveCss();
     const metrics = collectLiveMetrics();
     if (!metrics.size) return 0;
     let changed = 0;
-    const candidates = Array.from(document.querySelectorAll(ACTIVE_SELECTOR))
-      .filter((element) => element.classList?.contains?.('journal-analysis-task-window')
-        || /analysis report|journal|comparison|application|laporan analisis|jurnal|perbandingan|aplikasi/i.test(element.textContent || ''));
-    const roots = candidates.length ? candidates : [document.body];
-    roots.forEach((rootNode) => {
+    candidates.forEach((rootNode) => {
       rootNode.querySelectorAll('table').forEach((table) => {
         changed += updateComparisonTable(table, metrics);
         changed += updateApplicationValueTable(table, metrics);
@@ -652,12 +666,14 @@
   };
 
   let scheduled = 0;
-  const scheduleRefresh = () => {
-    if (scheduled) return;
+  const scheduleRefresh = (delayMs = 120) => {
+    if (!hasActiveReportSurface()) return false;
+    if (scheduled) return true;
     scheduled = root.setTimeout(() => {
       scheduled = 0;
       refresh();
-    }, 60);
+    }, delayMs);
+    return true;
   };
 
   const patchUpdateSimulation = () => {
@@ -681,24 +697,37 @@
     refresh,
     collectLiveMetrics,
     installResponsiveCss,
-    scheduleRefresh
+    scheduleRefresh,
+    hasActiveReportSurface
+  };
+
+  const nodeTouchesReportSurface = (node) => {
+    if (!node) return false;
+    if (node.nodeType === 3) return !!node.parentElement?.closest?.(ACTIVE_SELECTOR);
+    if (node.nodeType !== 1) return false;
+    return !!(node.matches?.(ACTIVE_SELECTOR)
+      || node.closest?.(ACTIVE_SELECTOR)
+      || node.querySelector?.(ACTIVE_SELECTOR));
   };
 
   try {
     if (root.MutationObserver) {
       new MutationObserver((mutations) => {
-        if (mutations.some((mutation) => mutation.addedNodes?.length || mutation.type === 'characterData')) {
+        if (mutations.some((mutation) => (
+          nodeTouchesReportSurface(mutation.target)
+          || Array.from(mutation.addedNodes || []).some(nodeTouchesReportSurface)
+        ))) {
           scheduleRefresh();
         }
-      }).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+      }).observe(document.documentElement, { childList: true, subtree: true });
     }
   } catch (error) {
     console.warn('Analysis Report live runtime observer could not be installed.', error);
   }
 
   try {
-    ['input', 'change', 'click', 'npsh:simulation-updated', 'npsh:backend-response', 'npsh:calculation-state-updated'].forEach((eventName) => {
-      document.addEventListener(eventName, scheduleRefresh, true);
+    ['input', 'change', 'npsh:simulation-updated', 'npsh:backend-response', 'npsh:calculation-state-updated'].forEach((eventName) => {
+      document.addEventListener(eventName, () => scheduleRefresh(), true);
     });
   } catch (error) {
     console.warn('Analysis Report live runtime event hooks could not be installed.', error);
@@ -707,7 +736,7 @@
   try {
     root.setInterval(() => {
       patchUpdateSimulation();
-      refresh();
+      scheduleRefresh(180);
     }, REFRESH_MS);
   } catch (error) {
     console.warn('Analysis Report live runtime interval could not be installed.', error);

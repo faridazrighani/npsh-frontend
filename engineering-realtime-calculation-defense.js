@@ -1,13 +1,26 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-realtime-calculation-defense.v4';
-  const AUTO_SOLVE_DEBOUNCE_MS = 650;
+  const VERSION = 'engineering-realtime-calculation-defense.v6';
+  const AUTO_SOLVE_DEBOUNCE_MS = 800;
+  const USER_INTENT_WINDOW_MS = 8000;
+  const RUN_COMMAND_SELECTOR = [
+    '#btn-solve',
+    '#menu-run-solve',
+    '#menu-refresh-calculations',
+    '[data-i18n-text="menu.runHydraulicNpshEvaluation"]',
+    '[data-i18n-text="menu.refreshCalculationsConnections"]'
+  ].join(',');
+  const SAMPLE_CASE_OPEN_SELECTOR = '[data-simulation-case-action="open"][data-simulation-case-id]';
+  const USER_CALCULATION_INTENT_SELECTOR = `${RUN_COMMAND_SELECTOR}, ${SAMPLE_CASE_OPEN_SELECTOR}`;
   const CALCULATION_FIELD_PATTERN = /\b(inputMode|optimizationMode|npshrSourceMode|npshAssessmentMode|npshMarginBasis|screeningDefaultsApplied|elevation|suctionElevation|dischargeElevation|designFlow|designHead|designEfficiency|designNpshr|bepFlow|porMinPercent|porMaxPercent|aorMinPercent|aorMaxPercent|minNpshMarginRatio|minNpshMargin|speed|curveDataSource|curveSourceNote|curveData|flow|demandFlow|massFlow|flowInputMode|boundaryMode|boundaryDataSource|pressure|pressureInputBasis|pressureBasis|pressureEnergyBasis|sourceType|temperatureMode|temp|temperature|fluidName|density|viscosity|kinematicViscosity|dynViscosity|dynamicViscosity|vaporPressure|specificWeight|vaporPressureHead|routeStyle|elevationProfileMode|startElevation|endElevation|highPointElevation|highPointLocationPercent|roughnessAgingFactor|headLossAllowancePercent|segments|length|diameter|roughness|fittingType|fittingQuantity|fittingK|minorLoss|additionalK|active|liquidLevel|level)\b/i;
 
   let autoSolveTimer = 0;
   let autoSolveSequence = 0;
   let pendingAutoSolve = null;
   let activeAutoSolve = null;
+  let linkedViewRefreshFrame = 0;
+  let linkedViewRefreshTimer = 0;
+  let pendingLinkedViewRefresh = null;
 
   function runtimeModel() {
     try {
@@ -70,6 +83,41 @@
     return event?.isTrusted === true || root.__engineeringRealtimeCalculationDefenseAllowSyntheticAutoSolve === true;
   }
 
+  function markUserCalculationIntent(source = 'user-calculation-intent', target = null) {
+    const now = Date.now();
+    const calculationMode = source === 'manual-command'
+      ? 'manual-solve'
+      : source === 'sample-case-open'
+        ? 'sample-open'
+        : 'realtime-input';
+    root.__engineeringCalculationUserIntentAt = now;
+    root.__engineeringCalculationUserIntent = {
+      source,
+      calculationMode,
+      nodeId: target?.id || target?.dataset?.nodeId || target?.dataset?.pumpNodeId || '',
+      caseId: target?.dataset?.simulationCaseId || '',
+      updatedAt: new Date(now).toISOString()
+    };
+    return root.__engineeringCalculationUserIntent;
+  }
+
+  function currentCalculationMode() {
+    return root.__engineeringCalculationUserIntent?.calculationMode
+      || root.EngineeringCalculationLifecycle?.current?.()?.calculationMode
+      || '';
+  }
+
+  function hasRecentUserCalculationIntent(windowMs = USER_INTENT_WINDOW_MS, allowedModes = ['sample-open', 'manual-solve', 'realtime-input']) {
+    const lifecycle = root.EngineeringCalculationLifecycle;
+    const mode = currentCalculationMode();
+    if (allowedModes.length && !allowedModes.includes(mode)) return false;
+    if (typeof lifecycle?.hasRecentCalculationActivity === 'function') {
+      return lifecycle.hasRecentCalculationActivity(windowMs);
+    }
+    const intentAt = Number(root.__engineeringCalculationUserIntentAt || 0);
+    return Number.isFinite(intentAt) && intentAt > 0 && Date.now() - intentAt <= windowMs;
+  }
+
   function dispatchRealtimeEvent(name, detail = {}) {
     if (typeof document === 'undefined' || typeof root.CustomEvent !== 'function') return;
     try {
@@ -77,6 +125,13 @@
     } catch (error) {
       // Event dispatch is diagnostic only.
     }
+  }
+
+  function dispatchLifecycleApplying(detail = {}) {
+    dispatchRealtimeEvent('npsh:calculation-applying-results', {
+      version: VERSION,
+      ...detail
+    });
   }
 
   function finiteNumber(value) {
@@ -411,6 +466,25 @@
     return state;
   }
 
+  function publishCalculationStatusState(reason = 'calculation-status-refresh', nodeId = '', status = 'Stale') {
+    const previous = root.__npshCanonicalCalculationState || {};
+    const state = {
+      ...previous,
+      version: VERSION,
+      source: 'engineering-realtime-calculation-defense',
+      generatedAt: new Date().toISOString(),
+      reason,
+      nodeId,
+      statusOnly: true,
+      calculationFreshness: status,
+      pipes: previous.pipes || {},
+      pumps: previous.pumps || {}
+    };
+    root.__npshCanonicalCalculationState = state;
+    dispatchRealtimeEvent('npsh:calculation-state-updated', state);
+    return state;
+  }
+
   function markResultObjectStale(results, reason) {
     if (!results || typeof results !== 'object') return false;
     results.calculationFreshness = 'Stale';
@@ -484,6 +558,38 @@
     return [...ids];
   }
 
+  function scheduleUiRefresh(type, nodeId, run, delayMs = 220, reason = 'calculation refresh') {
+    const governor = root.EngineeringPerformanceRefreshGovernor;
+    if (governor && typeof governor.schedule === 'function') {
+      return governor.schedule(type, nodeId || '', {
+        delayMs,
+        reason,
+        run
+      });
+    }
+    root.setTimeout(run, delayMs);
+    return true;
+  }
+
+  function schedulePumpChartRefresh(nodeId = '', reason = 'calculation refresh') {
+    const model = runtimeModel();
+    const ids = calculationAffectedNodeIds(model, nodeId);
+    const pumpId = ids.find((id) => model[id]?.type === 'pump') || nodeId || ids[0] || '';
+    const governor = root.EngineeringPerformanceRefreshGovernor;
+    if (typeof governor?.hasVisiblePumpChart === 'function' && !governor.hasVisiblePumpChart(pumpId)) {
+      return false;
+    }
+    return scheduleUiRefresh('pump-performance-chart', pumpId, () => {
+      try {
+        if (typeof root.updatePumpChart === 'function') {
+          root.updatePumpChart(pumpId, { forceImmediate: true, reason });
+        }
+      } catch (error) {
+        // Chart refresh is best-effort; backend apply will redraw again.
+      }
+    }, 140, reason);
+  }
+
   function markStale(nodeId = '', reason = 'Input changed; waiting for backend recalculation.') {
     const model = runtimeModel();
     const ids = calculationAffectedNodeIds(model, nodeId);
@@ -501,12 +607,7 @@
       nodeIds: ids,
       markedAt: new Date().toISOString()
     };
-    publishCanonicalCalculationState('mark-stale', nodeId, model);
-    try {
-      if (typeof root.updatePumpChart === 'function') root.updatePumpChart(nodeId || ids[0] || '');
-    } catch (error) {
-      // Chart refresh is best-effort; autosolve will recalculate.
-    }
+    publishCalculationStatusState('mark-stale', nodeId, 'Stale');
     dispatchRealtimeEvent('npsh:calculation-stale', root.__engineeringCalculationDefenseRealtimeState);
     return root.__engineeringCalculationDefenseRealtimeState;
   }
@@ -528,12 +629,7 @@
       nodeIds: ids,
       startedAt: new Date().toISOString()
     };
-    publishCanonicalCalculationState('mark-calculating', nodeId, model);
-    try {
-      if (typeof root.updatePumpChart === 'function') root.updatePumpChart(nodeId || ids[0] || '');
-    } catch (error) {
-      // Chart refresh is best-effort; backend apply will redraw again.
-    }
+    publishCalculationStatusState('mark-calculating', nodeId, 'Calculating');
     dispatchRealtimeEvent('npsh:calculation-calculating', root.__engineeringCalculationDefenseRealtimeState);
     return root.__engineeringCalculationDefenseRealtimeState;
   }
@@ -569,6 +665,7 @@
   function refreshLinkedViews(nodeId = '', reason = 'calculation refresh') {
     let refreshed = 0;
     publishCanonicalCalculationState(reason, nodeId);
+    refreshed += schedulePumpChartRefresh(nodeId, reason) ? 1 : 0;
     try {
       refreshed += root.CanvasContextDock?.refresh?.() ? 1 : 0;
     } catch (error) {
@@ -576,7 +673,6 @@
     }
     try {
       root.EngineeringAnalysisReportLiveRuntime?.scheduleRefresh?.();
-      refreshed += root.EngineeringAnalysisReportLiveRuntime?.refresh?.() || 0;
     } catch (error) {
       console.warn('Analysis Report live refresh failed after realtime solve.', error);
     }
@@ -595,15 +691,29 @@
       console.warn('Parameter task window refresh failed after realtime solve.', error);
     }
     try {
-      if (nodeId && typeof root.EngineeringPumpFormulaDefenseLiveAudit?.refresh === 'function') {
-        root.EngineeringPumpFormulaDefenseLiveAudit.refresh(nodeId);
+      if (nodeId && typeof root.EngineeringPumpFormulaDefenseLiveAudit?.scheduleRefresh === 'function') {
+        root.EngineeringPumpFormulaDefenseLiveAudit.scheduleRefresh(nodeId, { reason, delayMs: 180 });
+        refreshed += 1;
+      } else if (nodeId && typeof root.EngineeringPumpFormulaDefenseLiveAudit?.refresh === 'function') {
+        scheduleUiRefresh('pump-formula-audit', nodeId, () => root.EngineeringPumpFormulaDefenseLiveAudit.refresh(nodeId), 180, reason);
         refreshed += 1;
       }
     } catch (error) {
       console.warn('Pump formula defense refresh failed after realtime solve.', error);
     }
     try {
-      root.EngineeringFormulaDefenseUI?.enhanceDocument?.(document);
+      if (typeof root.refreshOpenRealtimeSecondaryTaskWindows === 'function') {
+        root.refreshOpenRealtimeSecondaryTaskWindows({ nodeId, reason, delayMs: 220 });
+      }
+    } catch (error) {
+      console.warn('Realtime secondary task window refresh failed after realtime solve.', error);
+    }
+    try {
+      if (typeof root.EngineeringPerformanceRefreshGovernor?.scheduleEnhance === 'function') {
+        root.EngineeringPerformanceRefreshGovernor.scheduleEnhance(document, { nodeId, reason, delayMs: 220 });
+      } else {
+        root.EngineeringFormulaDefenseUI?.enhanceDocument?.(document);
+      }
     } catch (error) {
       // Enhancement is cosmetic; keep calculation flow alive.
     }
@@ -615,6 +725,28 @@
       refreshedAt: new Date().toISOString()
     });
     return refreshed;
+  }
+
+  function scheduleLinkedViewRefresh(nodeId = '', reason = 'calculation refresh') {
+    pendingLinkedViewRefresh = { nodeId, reason };
+    if (linkedViewRefreshFrame || linkedViewRefreshTimer) return true;
+    const run = () => {
+      linkedViewRefreshFrame = 0;
+      linkedViewRefreshTimer = 0;
+      const pending = pendingLinkedViewRefresh || { nodeId, reason };
+      pendingLinkedViewRefresh = null;
+      refreshLinkedViews(pending.nodeId, pending.reason);
+    };
+    const delayMs = 360;
+    if (typeof root.requestAnimationFrame === 'function') {
+      linkedViewRefreshFrame = root.requestAnimationFrame(() => {
+        linkedViewRefreshFrame = 0;
+        linkedViewRefreshTimer = root.setTimeout(run, delayMs);
+      });
+    } else {
+      linkedViewRefreshFrame = root.setTimeout(run, delayMs);
+    }
+    return true;
   }
 
   function cancelAutoSolve(reason = 'cancelled') {
@@ -653,10 +785,18 @@
       const result = current.apply(this, args);
       const nodeId = options.selectedNodeId || options.nodeId || resolveNodeId(null);
       const after = () => refreshLinkedViews(nodeId, options.refreshReason || options.trigger || 'updateSimulation');
+      const shouldRefreshAfterUpdate = !options.__engineeringRealtimeAutoSolve && hasRecentUserCalculationIntent(10000);
       if (result && typeof result.then === 'function') {
-        result.then(after, after);
+        result.then((value) => {
+          dispatchLifecycleApplying({ nodeId, reason: options.refreshReason || options.trigger || 'updateSimulation' });
+          if (shouldRefreshAfterUpdate) after();
+          return value;
+        }, (error) => {
+          if (shouldRefreshAfterUpdate) after();
+          return error;
+        });
       } else {
-        root.setTimeout(after, 0);
+        if (shouldRefreshAfterUpdate) root.setTimeout(after, 0);
       }
       return result;
     };
@@ -691,7 +831,7 @@
     activeAutoSolve = Promise.resolve()
       .then(() => root.updateSimulation(autoSolveOptions(resolvedNodeId, reason)))
       .then((result) => {
-        refreshLinkedViews(resolvedNodeId, 'realtime autosolve complete');
+        scheduleLinkedViewRefresh(resolvedNodeId, 'realtime autosolve complete');
         dispatchRealtimeEvent('npsh:realtime-autosolve-complete', {
           version: VERSION,
           nodeId: resolvedNodeId,
@@ -758,14 +898,22 @@
         if (!isCalculationInput(event.target) || event.isComposing) return;
         const nodeId = resolveNodeId(event.target);
         const reason = 'Input changed; waiting for protected backend recalculation.';
+        if (isTrustedUserEdit(event)) {
+          markUserCalculationIntent('trusted-input', event.target);
+        }
         markStale(nodeId, reason);
-        refreshLinkedViews(nodeId, 'input changed');
         if (isTrustedUserEdit(event)) {
           requestAutoSolve(nodeId, reason, { sourceEvent: event.type });
         }
       };
+      const onCalculationIntentClick = (event) => {
+        const target = event?.target?.closest?.(USER_CALCULATION_INTENT_SELECTOR);
+        if (!target) return;
+        markUserCalculationIntent(target.matches?.(SAMPLE_CASE_OPEN_SELECTOR) ? 'sample-case-open' : 'manual-command', target);
+      };
       document.addEventListener('input', onInput, true);
       document.addEventListener('change', onInput, true);
+      document.addEventListener('click', onCalculationIntentClick, true);
     }
 
     patchUpdateSimulation();
@@ -788,7 +936,9 @@
     const originalRunBackend = root.runBackendSimulationShadow;
     if (typeof originalRunBackend === 'function' && !originalRunBackend.__engineeringRealtimeCalculationDefenseCalculatingPatched) {
       root.runBackendSimulationShadow = function realtimeDefenseRunBackendWrapper(nodeId = '', options = {}, ...rest) {
-        markCalculating(nodeId, options?.realtimeReason || 'Backend recalculation in progress.');
+        if (options?.__engineeringRealtimeAutoSolve || hasRecentUserCalculationIntent()) {
+          markCalculating(nodeId, options?.realtimeReason || 'Backend recalculation in progress.');
+        }
         return originalRunBackend.call(this, nodeId, options, ...rest);
       };
       root.runBackendSimulationShadow.__engineeringRealtimeCalculationDefenseCalculatingPatched = true;
@@ -807,6 +957,7 @@
     flushAutoSolve,
     cancelAutoSolve,
     refreshLinkedViews,
+    scheduleLinkedViewRefresh,
     patchUpdateSimulation,
     buildPipeSegmentRows,
     enrichPipeCalculationTrace,

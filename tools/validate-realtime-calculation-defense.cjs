@@ -74,6 +74,18 @@ let pumpChartRefreshes = 0;
 globalThis.updatePumpChart = () => {
   pumpChartRefreshes += 1;
 };
+let governedRefreshes = 0;
+globalThis.EngineeringPerformanceRefreshGovernor = {
+  schedule: (type, nodeId, options = {}) => {
+    governedRefreshes += 1;
+    if (typeof options.run === 'function') options.run();
+    return true;
+  },
+  scheduleEnhance: () => {
+    governedRefreshes += 1;
+    return true;
+  }
+};
 globalThis.applyBackendSimulationPrimaryResults = (pumpNode, backendResult, response) => {
   pumpNode.results.calculationAudit = response.calculationAudit;
   pumpNode.results.dependencyManifest = response.dependencyManifest;
@@ -98,7 +110,10 @@ globalThis.EngineeringAnalysisReportLiveRuntime = {
     reportRefreshes += 1;
     return 1;
   },
-  scheduleRefresh: () => {}
+  scheduleRefresh: () => {
+    reportRefreshes += 1;
+    return true;
+  }
 };
 globalThis.EngineeringParameterTaskRuntime = {
   refreshOpenWindows: () => {
@@ -108,9 +123,28 @@ globalThis.EngineeringParameterTaskRuntime = {
 };
 
 const runtime = require(runtimePath);
-assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v4', 'Realtime defense runtime should expose v4.');
+assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v6', 'Realtime defense runtime should expose v6.');
 assert.equal(typeof runtime.buildPipeSegmentRows, 'function', 'Realtime defense runtime should expose canonical pipe segment row builder.');
 assert.equal(typeof runtime.publishCanonicalCalculationState, 'function', 'Realtime defense runtime should expose canonical calculation state publisher.');
+assert.equal(typeof runtime.scheduleLinkedViewRefresh, 'function', 'Realtime defense runtime should expose frame-batched linked view refresh.');
+
+const realtimeSource = fs.readFileSync(runtimePath, 'utf8');
+assert(
+  realtimeSource.includes('requestAnimationFrame(() =>') && realtimeSource.includes('const delayMs = 360'),
+  'Linked view refresh must be debounced after an animation frame and delayed enough to protect input typing.'
+);
+assert(realtimeSource.includes('AUTO_SOLVE_DEBOUNCE_MS = 800'), 'Autosolve debounce must leave enough room for responsive numeric typing.');
+assert(realtimeSource.includes('USER_CALCULATION_INTENT_SELECTOR'), 'Realtime defense must distinguish user calculation intent from sample-menu browsing.');
+assert(realtimeSource.includes('SAMPLE_CASE_OPEN_SELECTOR'), 'Realtime defense must treat only Open Sample Case clicks as sample calculation intent.');
+assert(realtimeSource.includes('calculationMode'), 'Realtime defense must share calculation mode with lifecycle and overlay runtimes.');
+assert(realtimeSource.includes('sample-open'), 'Realtime defense must mark Open Sample Case as sample-open mode.');
+assert(realtimeSource.includes('manual-solve'), 'Realtime defense must mark Run/Solve commands as manual-solve mode.');
+assert(realtimeSource.includes('realtime-input'), 'Realtime defense must mark input autosolve as realtime-input mode.');
+assert(realtimeSource.includes('hasRecentUserCalculationIntent'), 'Realtime defense must suppress bootstrap Calculating status without recent user intent.');
+assert(realtimeSource.includes('scheduleUiRefresh'), 'Realtime defense must route UI repaint work through a scheduler.');
+assert(realtimeSource.includes('EngineeringPerformanceRefreshGovernor'), 'Realtime defense must use the performance refresh governor when available.');
+assert(realtimeSource.includes('publishCalculationStatusState'), 'Realtime defense must use a lightweight stale/calculating publisher before backend results are current.');
+assert(realtimeSource.includes('statusOnly: true'), 'Stale/calculating calculation-state events must avoid rebuilding full canonical trace rows.');
 
 const segmentRows = runtime.buildPipeSegmentRows('PIPE-1', globalThis.__npshGlobalModel['PIPE-1'], globalThis.__npshGlobalModel);
 assert.equal(segmentRows.length, 2, 'Canonical segment builder should keep one row per configured pipe segment.');
@@ -135,7 +169,8 @@ assert(results.performanceChartData.warnings.some((warning) => /Unit test input 
 assert.equal(results.routeTrace.lossFreshness, 'Stale - input changed before backend refresh', 'Route trace freshness should become stale.');
 assert.equal(results.actionReadinessBackend.stale, true, 'Action readiness should be marked stale.');
 assert.equal(results.npshEvaluation.calculationFreshness, 'Stale', 'NPSH evaluation should be marked stale.');
-assert.equal(pumpChartRefreshes, 1, 'Chart refresh should be requested after stale marking.');
+assert.equal(pumpChartRefreshes, 0, 'Stale marking must not force chart refresh while the user is typing.');
+assert.equal(governedRefreshes, 0, 'Stale marking must not schedule heavy UI refresh work through the governor.');
 
 const sinkState = runtime.markStale('SNK-100', 'Sink boundary mode changed.');
 const sinkResults = globalThis.__npshGlobalModel['SNK-100'].results;
@@ -143,7 +178,7 @@ assert.deepEqual(new Set(sinkState.nodeIds), new Set(['SNK-100', 'P-100']), 'A c
 assert.equal(sinkResults.calculationFreshness, 'Stale', 'Sink results should be marked stale immediately after boundary mode change.');
 assert.equal(results.calculationFreshness, 'Stale', 'Dependent pump calculation should remain stale after SNK boundary mode change.');
 assert.equal(results.actionReadinessBackend.stale, true, 'Pump action readiness should not remain Current after SNK boundary mode change.');
-assert.equal(pumpChartRefreshes, 2, 'Chart refresh should also be requested after dependent SNK stale marking.');
+assert.equal(pumpChartRefreshes, 0, 'Dependent SNK stale marking must also avoid heavy chart refresh while input is settling.');
 
 const current = runtime.markCurrentFromBackend({
   calculationId: 'calc-1',
@@ -159,12 +194,31 @@ assert.equal(results.calculationFreshness, 'Calculating', 'Pump results should b
 assert.equal(results.backendValidationStatus, 'Calculating', 'Backend validation status should show calculating while the request is pending.');
 assert.equal(results.routeTrace.lossFreshness, 'Calculating - backend refresh in progress', 'Route trace freshness should show pending backend refresh.');
 
+globalThis.__engineeringCalculationDefenseRealtimeState = { status: 'BeforeBackendNoIntent' };
 globalThis.runBackendSimulationShadow('P-100');
 assert.equal(backendRefreshes, 1, 'Wrapped backend refresh should still call the original backend runner.');
 assert.equal(
   globalThis.__engineeringCalculationDefenseRealtimeState.status,
+  'BeforeBackendNoIntent',
+  'Wrapped backend runner must not mark Calculating for bootstrap/sample-menu refresh without user intent.'
+);
+globalThis.__engineeringCalculationUserIntentAt = Date.now();
+globalThis.__engineeringCalculationUserIntent = { calculationMode: 'menu-browse', source: 'simulation-menu-browse' };
+globalThis.runBackendSimulationShadow('P-100');
+assert.equal(backendRefreshes, 2, 'Menu-browse backend wrapper should still call the original backend runner.');
+assert.equal(
+  globalThis.__engineeringCalculationDefenseRealtimeState.status,
+  'BeforeBackendNoIntent',
+  'Menu-browse mode must not mark realtime state Calculating.'
+);
+globalThis.__engineeringCalculationUserIntentAt = Date.now();
+globalThis.__engineeringCalculationUserIntent = { calculationMode: 'manual-solve', source: 'manual-command' };
+globalThis.runBackendSimulationShadow('P-100');
+assert.equal(backendRefreshes, 3, 'Wrapped backend refresh should continue to call the original backend runner after user intent.');
+assert.equal(
+  globalThis.__engineeringCalculationDefenseRealtimeState.status,
   'Calculating',
-  'Wrapped backend runner should mark realtime state calculating before fetch.'
+  'Wrapped backend runner should mark Calculating when user intent is recent.'
 );
 
 globalThis.applyBackendSimulationPrimaryResults(globalThis.__npshGlobalModel['P-100'], { flow: 50 }, {
@@ -177,7 +231,8 @@ assert.equal(globalThis.__engineeringCalculationDefenseRealtimeState.dependencyF
 assert.equal(globalThis.__engineeringCalculationDefenseRealtimeState.calculationDefenseStatus, 'Ready', 'Wrapped backend apply should retain calculation defense status.');
 
 runtime.requestAutoSolve('P-100', 'Autosolve unit test.', { delayMs: 0 });
-runtime.flushAutoSolve().then(() => {
+runtime.flushAutoSolve().then(async () => {
+  await new Promise((resolve) => setTimeout(resolve, 430));
   const autoCall = updateSimulationCalls.find((call) => call.__engineeringRealtimeAutoSolve);
   assert(autoCall, 'requestAutoSolve should call updateSimulation through the realtime autosolve path.');
   assert.equal(autoCall.forceBackend, true, 'Autosolve should force the protected backend refresh.');
@@ -188,11 +243,11 @@ runtime.flushAutoSolve().then(() => {
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(
-  index.includes('engineering-realtime-calculation-defense.js?v=20260611-realtime-global1'),
+  index.includes('engineering-realtime-calculation-defense.js?v=20260613-realtime-global6'),
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
-  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260611-realtime-global1'),
+  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260613-realtime-global6'),
   'Manifest must document the realtime calculation defense cache key.'
 );
 assert(

@@ -277,19 +277,33 @@
     if (!root.setTimeout || !root.clearTimeout) {
       return refreshOpenFormulaDefenseWindows(pumpId, options);
     }
+    const delayMs = Number.isFinite(Number(options.delayMs)) ? Math.max(0, Number(options.delayMs)) : 180;
+    const governedDelayMs = options.forceImmediate ? delayMs : Math.max(140, delayMs);
+    const governor = root.EngineeringPerformanceRefreshGovernor;
+    if (governor && typeof governor.schedule === 'function') {
+      return governor.schedule('pump-formula-defense-window', pumpId || '', {
+        delayMs: governedDelayMs,
+        reason: options.reason || 'pump formula defense refresh',
+        run: () => refreshOpenFormulaDefenseWindows(pumpId, options)
+      });
+    }
     root.clearTimeout(windowRefreshTimer);
-    const delayMs = Number.isFinite(Number(options.delayMs)) ? Math.max(0, Number(options.delayMs)) : 40;
     windowRefreshTimer = root.setTimeout(() => {
       refreshOpenFormulaDefenseWindows(pumpId, options);
-    }, delayMs);
+    }, governedDelayMs);
     return true;
+  }
+
+  function visibleFormulaDefenseWindows() {
+    if (!hasDocument()) return [];
+    return Array.from(document.querySelectorAll(WINDOW_SELECTOR))
+      .filter((windowNode) => windowNode.offsetParent !== null || windowNode.getClientRects().length);
   }
 
   function visibleFormulaDefensePumpIds(pumpId) {
     if (!hasDocument()) return pumpId ? [resolvePumpId(pumpId)].filter(Boolean) : [];
-    const windows = Array.from(document.querySelectorAll(WINDOW_SELECTOR))
-      .filter((windowNode) => windowNode.offsetParent !== null || windowNode.getClientRects().length);
-    if (!windows.length) return pumpId ? [resolvePumpId(pumpId)].filter(Boolean) : [];
+    const windows = visibleFormulaDefenseWindows();
+    if (!windows.length) return [];
     const ids = windows
       .map((windowNode) => resolvePumpId(pumpId || windowNode.dataset?.pumpId))
       .filter(Boolean);
@@ -344,7 +358,7 @@
       scheduleOpenFormulaDefenseWindowRefresh(detail.nodeId || detail.pumpId || detail.selectedNodeId || '', {
         reason: event.type,
         rebuild: shouldRebuild,
-        delayMs: event.type === 'npsh:calculation-current' || event.type === 'npsh:linked-views-refreshed' ? 0 : 40
+        delayMs: event.type === 'npsh:calculation-current' || event.type === 'npsh:linked-views-refreshed' ? 180 : 220
       });
     };
     REALTIME_EVENTS.forEach((name) => document.addEventListener(name, onRealtimeEvent));
@@ -359,7 +373,7 @@
       scheduleOpenFormulaDefenseWindowRefresh(resolvePumpIdFromTarget(event.target), {
         reason: 'live-input',
         rebuild: false,
-        delayMs: 0
+        delayMs: 180
       });
     };
     document.addEventListener('input', onInput, true);
@@ -520,19 +534,19 @@
     const changed = [
       patchLocalBackendSkipGuard(),
       wrapFunction('openPumpFormulaDefenseTaskWindow', (pumpId) => {
-        scheduleOpenFormulaDefenseWindowRefresh(pumpId, { reason: 'open-window', rebuild: false, delayMs: 0 });
+        scheduleOpenFormulaDefenseWindowRefresh(pumpId, { reason: 'open-window', rebuild: false, delayMs: 120 });
       }),
       wrapFunction('refreshPumpFormulaDefenseWindowContent', (pumpId) => {
         refreshPumpFormulaDefenseAudit(pumpId);
       }),
       wrapFunction('updateSimulation', (options = {}) => {
         const nodeId = options?.selectedNodeId || options?.nodeId || '';
-        scheduleOpenFormulaDefenseWindowRefresh(nodeId, { reason: options?.refreshReason || options?.trigger || 'updateSimulation', delayMs: 0 });
+        scheduleOpenFormulaDefenseWindowRefresh(nodeId, { reason: options?.refreshReason || options?.trigger || 'updateSimulation', delayMs: 180 });
       }),
       bindRealtimeEvents(),
       bindLiveInputRefresh()
     ].some(Boolean);
-    if (changed) scheduleOpenFormulaDefenseWindowRefresh('', { reason: 'runtime-guards', rebuild: false, delayMs: 0 });
+    if (changed) scheduleOpenFormulaDefenseWindowRefresh('', { reason: 'runtime-guards', rebuild: false, delayMs: 180 });
     return changed;
   }
 
@@ -542,7 +556,6 @@
     [0, 80, 220, 500, 900, 1400, 2200, 3600, 5200, 7600].forEach((delay) => {
       root.setTimeout(() => {
         ensureRuntimeGuards();
-        scheduleOpenFormulaDefenseWindowRefresh('', { reason: 'guard-loop', rebuild: false, delayMs: 0 });
       }, delay);
     });
     if (typeof document !== 'undefined' && !runtimeGuardTimer && root.setInterval) {
