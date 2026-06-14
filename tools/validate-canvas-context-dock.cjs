@@ -207,8 +207,9 @@ assert.equal(runtime.isCanvasSelectionOnlyActive(), true, 'Canvas select-only st
 runtime.allowCanvasPropertiesCommandOpen();
 assert.equal(runtime.isCanvasSelectionOnlyActive(), false, 'Canvas select-only state should clear only when the explicit User Task Object Properties command is invoked.');
 
-const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
-const bundleSource = fs.readFileSync(bundlePath, 'utf8');
+const normalizeLineEndings = (source) => source.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+const runtimeSource = normalizeLineEndings(fs.readFileSync(runtimePath, 'utf8'));
+const bundleSource = normalizeLineEndings(fs.readFileSync(bundlePath, 'utf8'));
 assert(runtimeSource.includes('@media (max-width: 639px)'), 'Runtime CSS must include a cellular breakpoint.');
 assert(runtimeSource.includes('position: sticky'), 'Fluid Basis dock should stay pinned to the canvas viewport while the canvas is panned.');
 assert(runtimeSource.includes('width: min(940px, calc(100% - 182px));'), 'Desktop dock width should preserve the existing left/right visual footprint.');
