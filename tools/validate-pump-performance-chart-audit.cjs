@@ -47,7 +47,7 @@ function setModel(pump, extras = {}) {
 
 setModel({ props: {}, results: {} });
 let result = audit.compute('P-100');
-assert.strictEqual(result.version, 'pump-performance-chart-audit.v11');
+assert.strictEqual(result.version, 'pump-performance-chart-audit.v12');
 assert.strictEqual(result.axisMode, 'log-log');
 assert.strictEqual(result.chartHasDrawableCurve, false);
 assert.strictEqual(result.status, 'Curve Data Unavailable');
@@ -255,18 +255,18 @@ globalThis.updatePumpChart = function lateCaptionChartOverride() {
 audit.ensureRuntimeGuards();
 assert.strictEqual(
   globalThis.updatePumpChart.__pumpPerformanceChartAuditVersion,
-  'pump-performance-chart-audit.v11',
+  'pump-performance-chart-audit.v12',
   'Audit runtime must rewrap late caption chart overrides.'
 );
 globalThis.updatePumpChart('P-100');
 assert.strictEqual(lateRendererCalls, 0, 'Audit chart draw must not call the old fallback renderer.');
 
 assert(
-  index.includes('engineering-pump-performance-chart-audit.js?v=20260614-pump-chart-audit13'),
+  index.includes('engineering-pump-performance-chart-audit.js?v=20260614-pump-chart-audit14'),
   'Index must cache-bust the pump performance chart audit runtime.'
 );
 assert(
-  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260614-canonical-chart7'),
+  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260614-canonical-chart8'),
   'Audit runtime must load the canonical operational chart renderer after audit guards.'
 );
 assert.strictEqual(typeof audit.loadCanonicalChartRenderer, 'function', 'Audit runtime must expose canonical renderer loader.');
@@ -287,7 +287,7 @@ globalThis.document = {
 assert.doesNotThrow(() => audit.refresh('P-100'), 'Audit refresh must not draw over the canonical chart renderer.');
 assert.strictEqual(
   globalThis.__pumpPerformanceChartAuditLast?.version,
-  'pump-performance-chart-audit.v11',
+  'pump-performance-chart-audit.v12',
   'Audit refresh should still retain the latest computed audit model.'
 );
 if (previousDocument === undefined) delete globalThis.document;
@@ -302,7 +302,7 @@ assert(canonicalSource.includes('hasRenderableCanvas'), 'Canonical chart rendere
 assert(canonicalSource.includes('buildFastLanePreviewModel'), 'Canonical chart renderer must build a local pump-edit preview model.');
 assert(canonicalSource.includes('Local Pump Edit Preview'), 'Canonical chart renderer must label local pump-edit chart previews.');
 assert(canonicalSource.includes('options.force && delayMs <= 32'), 'Canonical chart renderer must bypass governed latency for fast-lane preview frames.');
-assert.strictEqual(canonical.version, 'pump-performance-canonical-chart.v5', 'Canonical chart runtime must expose the realtime-refresh version.');
+assert.strictEqual(canonical.version, 'pump-performance-canonical-chart.v6', 'Canonical chart runtime must expose the realtime-refresh version.');
 assert.strictEqual(typeof canonical.ensureRuntimeGuards, 'function', 'Canonical chart runtime must expose self-healing realtime guards.');
 assert(
   canonicalSource.includes('__pumpFormulaDefenseLiveAuditVersion')
@@ -321,7 +321,7 @@ globalThis.updatePumpChart = function overwrittenPumpChartRenderer() {
 canonical.ensureRuntimeGuards();
 assert.strictEqual(
   globalThis.updatePumpChart.__pumpPerformanceCanonicalChartVersion,
-  'pump-performance-canonical-chart.v5',
+  'pump-performance-canonical-chart.v6',
   'Canonical renderer must reclaim updatePumpChart after any late override.'
 );
 
@@ -384,12 +384,120 @@ globalThis.__npshGlobalModel['P-100'].results.npshEvaluation = {
   calculationFreshness: 'Local preview'
 };
 const previewChartModel = canonical.buildChartModel('P-100');
+const previewDutyPumpPoint = previewChartModel.series.pumpHead.find((point) => point.flow === 50);
 assert.strictEqual(previewChartModel.preview, true, 'Pump chart must use local preview while pump fast lane is active.');
 assert.strictEqual(previewChartModel.sourceMode, 'Local Pump Edit Preview', 'Pump chart preview must declare its local source mode.');
 assert.strictEqual(previewChartModel.dutyPoint.head, 30, 'Pump chart preview must read the edited design head immediately.');
-assert.strictEqual(previewChartModel.series.pumpHead[1].value, 30, 'Pump chart preview curve must scale away from stale backend head.');
-assert.strictEqual(previewChartModel.series.pumpHead[1].flow, 50, 'Pump chart preview curve must scale away from stale backend flow.');
+assert.strictEqual(previewDutyPumpPoint?.value, 30, 'Pump chart preview curve must follow the edited duty head.');
+assert.strictEqual(previewDutyPumpPoint?.flow, 50, 'Pump chart preview curve must retain the edited duty flow.');
 delete globalThis.__engineeringPumpEditFastLane;
+
+let chartRebuildCalls = 0;
+globalThis.getPumpPerformanceChartDataFreshness = () => ({ isFresh: false, freshness: 'Stale' });
+globalThis.buildPumpPerformanceChartData = (pumpId, model) => {
+  chartRebuildCalls += 1;
+  const pump = model[pumpId] || {};
+  const props = pump.props || {};
+  const results = pump.results || {};
+  const flow = Number(props.designFlow || results.flow || 50);
+  const head = Number(props.designHead || results.head || 24);
+  const npshr = Number(props.designNpshr || results.npshr || 2.4);
+  const npsha = Number(results.npsha || 6.47);
+  return {
+    schemaVersion: 'pump-performance-chart-data.v1',
+    sourceMode: 'Frontend formula engine',
+    freshness: 'Current',
+    sourceAudit: {
+      curveDataSource: 'Frontend formula engine',
+      curveDataConfidence: 'Current formula inputs'
+    },
+    dutyPoint: { flow, head, npsha, npshr, margin: npsha - npshr },
+    series: {
+      pumpHead: [
+        { flow: flow * 0.5, value: head * 1.12 },
+        { flow, value: head },
+        { flow: flow * 1.5, value: head * 0.62 }
+      ],
+      systemHead: [
+        { flow: flow * 0.5, value: head * 0.62 },
+        { flow, value: head },
+        { flow: flow * 1.5, value: head * 1.48 }
+      ],
+      npsha: [
+        { flow: flow * 0.5, value: npsha * 1.08 },
+        { flow, value: npsha },
+        { flow: flow * 1.5, value: npsha * 0.72 }
+      ],
+      npshr: [
+        { flow: flow * 0.5, value: npshr * 0.82 },
+        { flow, value: npshr },
+        { flow: flow * 1.5, value: npshr * 1.36 }
+      ]
+    }
+  };
+};
+
+setModel({
+  props: {
+    designFlow: 50,
+    designHead: 33,
+    designEfficiency: 62,
+    designNpshr: 2.4,
+    bepFlow: 50
+  },
+  results: {
+    flow: 50,
+    head: 33,
+    npsha: 6.47,
+    npshr: 2.4,
+    performanceChartData: {
+      schemaVersion: 'pump-performance-chart-data.v1',
+      sourceMode: 'Old backend chart',
+      freshness: 'Current',
+      inputFingerprint: { value: 'old-fingerprint' },
+      sourceAudit: {
+        curveDataSource: 'Old backend chart',
+        curveDataConfidence: 'Stale test'
+      },
+      dutyPoint: { flow: 50, head: 24, npsha: 6.47, npshr: 2.4 },
+      series: {
+        pumpHead: [{ flow: 25, value: 26 }, { flow: 50, value: 24 }],
+        systemHead: [{ flow: 25, value: 12 }, { flow: 50, value: 24 }],
+        npsha: [{ flow: 25, value: 7 }, { flow: 50, value: 6.47 }],
+        npshr: [{ flow: 25, value: 2 }, { flow: 50, value: 2.4 }]
+      }
+    }
+  }
+});
+const staleRebuiltChartModel = canonical.buildChartModel('P-100');
+assert.strictEqual(staleRebuiltChartModel.rebuilt, true, 'Stale performanceChartData must be rebuilt from current formula inputs.');
+assert.strictEqual(staleRebuiltChartModel.dutyPoint.head, 33, 'Rebuilt chart duty head must follow edited pump input.');
+assert.strictEqual(staleRebuiltChartModel.series.pumpHead[1].value, 33, 'Rebuilt pump head curve must replace stale stored values.');
+assert.strictEqual(staleRebuiltChartModel.sourceAudit.frontendChartRebuilt, true, 'Rebuilt chart must retain audit evidence.');
+
+globalThis.__engineeringPumpEditFastLane = {
+  version: 'engineering-pump-edit-fast-lane.v1',
+  mode: 'chart',
+  field: 'designHead',
+  pumpId: 'P-100',
+  backend: 'defer',
+  activeUntil: Date.now() + 2000
+};
+globalThis.__npshGlobalModel['P-100'].props.designHead = 36;
+globalThis.__npshGlobalModel['P-100'].results.head = 36;
+globalThis.__npshGlobalModel['P-100'].results.pumpHeadAtFlow = 36;
+globalThis.__npshGlobalModel['P-100'].results.calculationFreshness = 'Local preview';
+const enginePreviewChartModel = canonical.buildChartModel('P-100');
+assert.strictEqual(enginePreviewChartModel.preview, true, 'Fast-lane chart must expose preview state.');
+assert.strictEqual(enginePreviewChartModel.canonical, true, 'Fast-lane chart should prefer the formula-engine chart payload when available.');
+assert.strictEqual(enginePreviewChartModel.sourceMode, 'Local Pump Edit Preview', 'Fast-lane formula preview must use the local preview source label.');
+assert.strictEqual(enginePreviewChartModel.dutyPoint.head, 36, 'Fast-lane formula preview must follow the newest edited head.');
+assert.strictEqual(enginePreviewChartModel.series.pumpHead[1].value, 36, 'Fast-lane formula preview must not reuse stale backend curve values.');
+assert.strictEqual(enginePreviewChartModel.sourceAudit.localPumpEditPreview, true, 'Fast-lane formula preview must retain local preview audit evidence.');
+assert(chartRebuildCalls >= 2, 'Stale and fast-lane paths must call the formula-engine chart builder.');
+delete globalThis.__engineeringPumpEditFastLane;
+delete globalThis.getPumpPerformanceChartDataFreshness;
+delete globalThis.buildPumpPerformanceChartData;
 
 setModel({
   props: {

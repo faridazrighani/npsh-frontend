@@ -146,8 +146,8 @@ Runtime API config: same-origin /api/simulate
 NPSH margin runtime cache key: engineering-npsh-margin-runtime.js?v=20260602-npsh-margin1
 Pump readiness visibility cache key: engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3
 Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260614-pump-defense-live18
-Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260614-pump-chart-audit13
-Pump performance canonical chart cache key: engineering-pump-performance-canonical-chart.js?v=20260614-canonical-chart7
+Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260614-pump-chart-audit14
+Pump performance canonical chart cache key: engineering-pump-performance-canonical-chart.js?v=20260614-canonical-chart8
 Google auth runtime cache key: engineering-google-auth-runtime.js?v=20260612-google-access8
 Literature PDF viewer cache key: engineering-literature-pdf-viewer.js?v=20260609-literature-access3
 Live parameter repaint lock cache key: engineering-live-parameter-repaint-lock.css?v=20260605-live-param-repaint-lock1

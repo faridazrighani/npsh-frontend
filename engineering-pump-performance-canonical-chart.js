@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-performance-canonical-chart.v5';
+  const VERSION = 'pump-performance-canonical-chart.v6';
   const CANVAS_SELECTORS = [
     '#pumpChart',
     '#captionAuditPumpChartCanvas',
@@ -53,6 +53,27 @@
       // Fall through to aliases.
     }
     return root.__npshGlobalModel || root.globalModel || {};
+  }
+
+  function connectionList() {
+    try {
+      if (typeof connections !== 'undefined' && Array.isArray(connections)) return connections;
+    } catch (error) {
+      // Protected builds can hide direct globals.
+    }
+    try {
+      const state = typeof root.getSimulationState === 'function'
+        ? JSON.parse(root.getSimulationState())
+        : null;
+      if (Array.isArray(state?.connections)) return state.connections;
+    } catch (error) {
+      // Fall through to aliases.
+    }
+    return root.connections || root.__npshConnections || [];
+  }
+
+  function runtimeFunction(name) {
+    return typeof root[name] === 'function' ? root[name] : null;
   }
 
   function firstPumpId(model = runtimeModel()) {
@@ -175,6 +196,266 @@
 
   function canonicalSeries(chartData, key) {
     return normalizePoints(chartData?.series?.[key], ['value']);
+  }
+
+  function chartDataFreshness(pumpId, chartData) {
+    if (!chartData) return { isFresh: false, freshness: 'Unavailable' };
+    const freshness = runtimeFunction('getPumpPerformanceChartDataFreshness');
+    if (freshness) {
+      try {
+        const result = freshness(pumpId, runtimeModel(), connectionList(), chartData);
+        if (typeof result?.isFresh === 'boolean') return result;
+      } catch (error) {
+        root.__pumpPerformanceCanonicalChartFreshnessError = {
+          version: VERSION,
+          pumpId,
+          message: error?.message || String(error)
+        };
+      }
+    }
+
+    const fingerprint = runtimeFunction('buildPumpPerformanceChartInputFingerprint');
+    if (fingerprint && chartData?.inputFingerprint?.value) {
+      try {
+        const current = fingerprint(pumpId, runtimeModel(), connectionList());
+        const isFresh = !!current?.value && current.value === chartData.inputFingerprint.value;
+        return {
+          isFresh,
+          freshness: isFresh ? 'Current' : 'Stale',
+          currentFingerprint: current,
+          storedFingerprint: chartData.inputFingerprint
+        };
+      } catch (error) {
+        root.__pumpPerformanceCanonicalChartFreshnessError = {
+          version: VERSION,
+          pumpId,
+          message: error?.message || String(error)
+        };
+      }
+    }
+
+    return { isFresh: true, freshness: chartData.freshness || 'Current' };
+  }
+
+  function buildCurrentEngineChartData(pumpId, options = {}) {
+    const buildChartData = runtimeFunction('buildPumpPerformanceChartData');
+    if (!buildChartData) {
+      return buildLightweightCurrentChartData(resolvePumpId(pumpId), options.chartData || null, options);
+    }
+    const model = runtimeModel();
+    const id = resolvePumpId(pumpId);
+    try {
+      const chartData = buildChartData(id, model, connectionList(), {
+        pointCount: options.pointCount || 18
+      });
+      if (chartData?.schemaVersion !== 'pump-performance-chart-data.v1') {
+        return buildLightweightCurrentChartData(id, options.chartData || null, options);
+      }
+      const sourceAudit = {
+        ...(chartData.sourceAudit || {}),
+        frontendChartRebuilt: true,
+        rebuildReason: options.reason || 'current pump chart input'
+      };
+      if (options.preview) sourceAudit.localPumpEditPreview = true;
+      return {
+        ...chartData,
+        freshness: options.freshness || chartData.freshness || 'Current',
+        sourceAudit
+      };
+    } catch (error) {
+      root.__pumpPerformanceCanonicalChartLastError = {
+        version: VERSION,
+        pumpId: id,
+        message: error?.message || String(error),
+        reason: options.reason || 'build current engine chart data'
+      };
+      return null;
+    }
+  }
+
+  function buildCanonicalModelFromChartData(pumpId, chartData, options = {}) {
+    const sourceAudit = { ...(chartData.sourceAudit || {}) };
+    if (options.preview) sourceAudit.localPumpEditPreview = true;
+    if (options.rebuilt) sourceAudit.frontendChartRebuilt = true;
+    if (options.stale) sourceAudit.staleInputFingerprint = true;
+    return {
+      pumpId,
+      sourceMode: options.sourceMode || chartData.sourceMode || '-',
+      sourceAudit,
+      freshness: options.freshness || chartData.freshness || 'Current',
+      warnings: Array.isArray(chartData.warnings) ? chartData.warnings : [],
+      ranges: chartData.ranges || {},
+      dutyPoint: chartData.dutyPoint || {},
+      series: {
+        pumpHead: canonicalSeries(chartData, 'pumpHead'),
+        systemHead: canonicalSeries(chartData, 'systemHead'),
+        npsha: canonicalSeries(chartData, 'npsha'),
+        npshr: canonicalSeries(chartData, 'npshr')
+      },
+      canonical: true,
+      preview: !!options.preview,
+      rebuilt: !!options.rebuilt,
+      stale: !!options.stale
+    };
+  }
+
+  function roundChartNumber(value, digits = 6) {
+    const number = toNumber(value);
+    return number === null ? null : Number(number.toFixed(digits));
+  }
+
+  function canonicalPoint(flow, value) {
+    const x = roundChartNumber(flow);
+    const y = roundChartNumber(value);
+    return x !== null && y !== null ? { flow: x, value: y } : null;
+  }
+
+  function interpolateSeriesValue(points, flow) {
+    const q = toNumber(flow);
+    const normalized = normalizePoints(points, ['head', 'pumpHead', 'npshr', 'value']);
+    if (q === null || !normalized.length) return null;
+    if (q <= normalized[0].flow) return normalized[0].value;
+    if (q >= normalized[normalized.length - 1].flow) return normalized[normalized.length - 1].value;
+    for (let index = 0; index < normalized.length - 1; index += 1) {
+      const left = normalized[index];
+      const right = normalized[index + 1];
+      if (q >= left.flow && q <= right.flow) {
+        const span = right.flow - left.flow;
+        const ratio = span === 0 ? 0 : (q - left.flow) / span;
+        return left.value + (right.value - left.value) * ratio;
+      }
+    }
+    return null;
+  }
+
+  function engineeringFitHead(flow, designFlow, designHead) {
+    const q = toNumber(flow);
+    const qd = toNumber(designFlow);
+    const hd = toNumber(designHead);
+    if (q === null || qd === null || hd === null || qd <= 0 || hd <= 0) return null;
+    const shutoffHead = 1.15 * hd;
+    const curveA = (shutoffHead - hd) / Math.pow(qd, 2);
+    return Math.max(0.1 * hd, shutoffHead - curveA * Math.pow(q, 2));
+  }
+
+  function engineeringFitNpshr(flow, designFlow, designNpshr) {
+    const q = toNumber(flow);
+    const qd = toNumber(designFlow);
+    const npshr = toNumber(designNpshr);
+    if (q === null || qd === null || npshr === null || qd <= 0 || npshr <= 0) return null;
+    const fraction = Math.max(0, q / qd);
+    return Math.max(0.01, npshr * (0.72 + 0.28 * Math.pow(fraction, 2.2)));
+  }
+
+  function buildFlowGrid(pump, chartData = null) {
+    const props = pump.props || {};
+    const results = pump.results || {};
+    const duty = chartData?.dutyPoint || {};
+    const designFlow = toNumber(props.designFlow);
+    const bepFlow = toNumber(props.bepFlow);
+    const dutyFlow = toNumber(results.npshEvaluation?.flow ?? results.flow ?? results.fixedFlow ?? duty.flow ?? props.designFlow);
+    const maxFlow = Math.max(
+      1,
+      toNumber(props.aorMaxPercent) !== null && (bepFlow || designFlow)
+        ? (bepFlow || designFlow) * toNumber(props.aorMaxPercent) / 100
+        : 0,
+      dutyFlow || 0,
+      designFlow || 0,
+      bepFlow || 0
+    );
+    const flows = new Set();
+    for (let index = 0; index <= 12; index += 1) {
+      flows.add(roundChartNumber(maxFlow * index / 12));
+    }
+    [dutyFlow, designFlow, bepFlow].forEach((value) => {
+      const flow = roundChartNumber(value);
+      if (flow !== null && flow >= 0 && flow <= maxFlow * 1.001) flows.add(flow);
+    });
+    return Array.from(flows).filter((value) => value !== null).sort((left, right) => left - right);
+  }
+
+  function buildLightweightCurrentChartData(pumpId, chartData = null, options = {}) {
+    const model = runtimeModel();
+    const pump = model[pumpId];
+    if (!pump || pump.type !== 'pump') return null;
+    const props = pump.props || {};
+    const results = pump.results || {};
+    const evaluation = npshEvaluation(pump);
+    const duty = chartData?.dutyPoint || {};
+    const designFlow = toNumber(props.designFlow ?? props.bepFlow);
+    const designHead = toNumber(props.designHead);
+    const designNpshr = toNumber(props.designNpshr ?? props.manualNpshr);
+    const flow = toNumber(evaluation.flow ?? results.flow ?? results.fixedFlow ?? duty.flow ?? designFlow);
+    const head = toNumber(evaluation.pumpHead ?? results.head ?? results.pumpHeadAtFlow ?? duty.head ?? designHead);
+    const npsha = toNumber(evaluation.npsha ?? results.npsha ?? duty.npsha);
+    const npshr = toNumber(evaluation.npshr ?? results.npshr ?? duty.npshr ?? designNpshr);
+    if (flow === null || head === null) return null;
+
+    const propsCurveIsDefault = isDefaultPumpCurve(props.curveData || []);
+    const propsPumpHead = propsCurveIsDefault ? [] : normalizePoints(props.curveData, ['head', 'pumpHead', 'value']);
+    const propsNpshr = propsCurveIsDefault ? [] : normalizePoints(props.curveData, ['npshr', 'requiredNpsh', 'value']);
+    const baseSystemHead = canonicalSeries(chartData, 'systemHead');
+    const baseNpsha = canonicalSeries(chartData, 'npsha');
+    const systemPoints = normalizePoints(results.systemCurvePoints || results.sysCurve, ['head', 'systemHead', 'requiredHead']);
+    const npshPoints = Array.isArray(results.npshCurvePoints) ? results.npshCurvePoints : [];
+    const resultNpsha = normalizePoints(npshPoints, ['npsha', 'availableNpsh']);
+    const flows = buildFlowGrid(pump, chartData);
+    const pumpHeadSeries = flows.map((q) => {
+      const fromCurve = propsPumpHead.length ? interpolateSeriesValue(propsPumpHead, q) : null;
+      return canonicalPoint(q, fromCurve ?? engineeringFitHead(q, designFlow || flow, designHead || head));
+    }).filter(Boolean);
+    const npshrSeries = flows.map((q) => {
+      const fromCurve = propsNpshr.length ? interpolateSeriesValue(propsNpshr, q) : null;
+      const fallback = /manual/i.test(String(props.npshrSourceMode || ''))
+        ? npshr
+        : engineeringFitNpshr(q, designFlow || flow, designNpshr || npshr);
+      return canonicalPoint(q, fromCurve ?? fallback);
+    }).filter(Boolean);
+    const systemHeadSeries = systemPoints.length
+      ? systemPoints
+      : (baseSystemHead.length ? scaleSeriesToDuty(baseSystemHead, head, duty.head, flow, duty.flow) : previewSystemSeries(flow, head));
+    const npshaSeries = resultNpsha.length
+      ? resultNpsha
+      : (baseNpsha.length ? scaleSeriesToDuty(baseNpsha, npsha, duty.npsha, flow, duty.flow) : previewFlatSeries(flow, npsha));
+
+    return {
+      schemaVersion: 'pump-performance-chart-data.v1',
+      pumpId,
+      sourceMode: options.preview ? 'Local Pump Edit Preview' : 'Frontend current model',
+      freshness: options.freshness || (options.preview ? 'Local preview' : 'Current'),
+      sourceAudit: {
+        ...(chartData?.sourceAudit || {}),
+        curveDataSource: propsCurveIsDefault ? 'Engineering fit from Pump Properties' : (results.curveDataSource || props.curveDataSource || 'Pump Properties curve data'),
+        curveDataConfidence: results.curveDataConfidence || results.dataConfidence || props.curveDataConfidence || 'Current frontend model',
+        frontendChartRebuilt: true,
+        lightweightFormulaPreview: true,
+        rebuildReason: options.reason || 'current pump chart input'
+      },
+      ranges: {
+        bepFlow: roundChartNumber(props.bepFlow ?? props.designFlow),
+        porMinPercent: roundChartNumber(props.porMinPercent, 3),
+        porMaxPercent: roundChartNumber(props.porMaxPercent, 3),
+        aorMinPercent: roundChartNumber(props.aorMinPercent, 3),
+        aorMaxPercent: roundChartNumber(props.aorMaxPercent, 3)
+      },
+      dutyPoint: {
+        flow: roundChartNumber(flow),
+        head: roundChartNumber(head),
+        npsha: roundChartNumber(npsha),
+        npshr: roundChartNumber(npshr),
+        margin: roundChartNumber(toNumber(evaluation.npshMargin ?? results.npshMargin) ?? (npsha !== null && npshr !== null ? npsha - npshr : null))
+      },
+      series: {
+        pumpHead: pumpHeadSeries,
+        systemHead: systemHeadSeries,
+        npsha: npshaSeries,
+        npshr: npshrSeries
+      },
+      warnings: [
+        ...(Array.isArray(chartData?.warnings) ? chartData.warnings : []),
+        'Pump chart rebuilt from current frontend model; backend autosolve will replace it with protected canonical data when available.'
+      ]
+    };
   }
 
   function npshEvaluation(pump = {}) {
@@ -471,15 +752,30 @@
     const id = resolvePumpId(pumpId);
     const pump = model[id] || {};
     const results = pump.results || {};
-    const chartData = results.performanceChartData?.schemaVersion === 'pump-performance-chart-data.v1'
+    let chartData = results.performanceChartData?.schemaVersion === 'pump-performance-chart-data.v1'
       ? results.performanceChartData
       : null;
-    const chartDataAllowed = chartData ? storedChartDataIsAllowed(pump, chartData) : false;
     if (isPumpFastLanePreviewActive(id, pump)) {
+      const currentChartData = buildCurrentEngineChartData(id, {
+        preview: true,
+        freshness: 'Local preview',
+        reason: 'pump fast-lane input preview',
+        chartData,
+        pointCount: 18
+      });
+      if (currentChartData && storedChartDataIsAllowed(pump, currentChartData)) {
+        return buildCanonicalModelFromChartData(id, currentChartData, {
+          preview: true,
+          rebuilt: true,
+          sourceMode: 'Local Pump Edit Preview',
+          freshness: 'Local preview'
+        });
+      }
+      const chartDataAllowed = chartData ? storedChartDataIsAllowed(pump, chartData) : false;
       return buildFastLanePreviewModel(id, pump, chartDataAllowed ? chartData : null);
     }
     if (chartData) {
-      if (!chartDataAllowed) {
+      if (!storedChartDataIsAllowed(pump, chartData)) {
         return buildBlockedChartModel(
           id,
           pump,
@@ -487,22 +783,33 @@
           'Stored pump performance chart data ignored: complete pump duty inputs or non-default sourced curve data are required.'
         );
       }
-      return {
-        pumpId: id,
-        sourceMode: chartData.sourceMode || '-',
-        sourceAudit: chartData.sourceAudit || {},
-        freshness: chartData.freshness || 'Current',
-        warnings: chartData.warnings || [],
-        ranges: chartData.ranges || {},
-        dutyPoint: chartData.dutyPoint || {},
-        series: {
-          pumpHead: canonicalSeries(chartData, 'pumpHead'),
-          systemHead: canonicalSeries(chartData, 'systemHead'),
-          npsha: canonicalSeries(chartData, 'npsha'),
-          npshr: canonicalSeries(chartData, 'npshr')
-        },
-        canonical: true
-      };
+      const freshness = chartDataFreshness(id, chartData);
+      if (!freshness.isFresh) {
+        const currentChartData = buildCurrentEngineChartData(id, {
+          reason: 'stale performance chart fingerprint',
+          chartData,
+          pointCount: 18
+        });
+        if (currentChartData && storedChartDataIsAllowed(pump, currentChartData)) {
+          return buildCanonicalModelFromChartData(id, currentChartData, {
+            rebuilt: true,
+            freshness: currentChartData.freshness || 'Current'
+          });
+        }
+        chartData = {
+          ...chartData,
+          freshness: freshness.freshness || 'Stale',
+          sourceAudit: {
+            ...(chartData.sourceAudit || {}),
+            staleInputFingerprint: true
+          }
+        };
+        return buildCanonicalModelFromChartData(id, chartData, {
+          stale: true,
+          freshness: chartData.freshness
+        });
+      }
+      return buildCanonicalModelFromChartData(id, chartData);
     }
     return buildFallbackModel(id, pump);
   }

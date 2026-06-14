@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-performance-chart-audit.v11';
+  const VERSION = 'pump-performance-chart-audit.v12';
   const MIN_CURVE_POINTS = 3;
   const PANEL_SELECTOR = '[data-pump-performance-chart-audit-panel]';
   const CHART_CANVAS_SELECTORS = [
@@ -796,7 +796,7 @@
     try {
       const script = document.createElement('script');
       script.id = 'pump-performance-canonical-chart-runtime';
-      script.src = 'engineering-pump-performance-canonical-chart.js?v=20260614-canonical-chart7';
+      script.src = 'engineering-pump-performance-canonical-chart.js?v=20260614-canonical-chart8';
       script.async = false;
       document.body.appendChild(script);
       return true;
