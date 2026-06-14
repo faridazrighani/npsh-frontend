@@ -120,7 +120,7 @@ assert(source.includes('forceImmediate'), 'Governor must preserve an immediate r
 assert(
   index.includes('engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock8')
     && index.includes('engineering-performance-refresh-governor.js?v=20260614-refresh-governor4')
-    && index.includes('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane1')
+    && index.includes('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
     && index.includes('engineering-realtime-calculation-defense.js?v=20260614-realtime-global8'),
   'index.html must load route audit, governor, then realtime defense.'
 );
@@ -131,8 +131,8 @@ assert(
   index.indexOf('engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock8')
     < index.indexOf('engineering-performance-refresh-governor.js?v=20260614-refresh-governor4')
     && index.indexOf('engineering-performance-refresh-governor.js?v=20260614-refresh-governor4')
-      < index.indexOf('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane1')
-    && index.indexOf('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane1')
+      < index.indexOf('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
+    && index.indexOf('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
       < index.indexOf('engineering-realtime-calculation-defense.js?v=20260614-realtime-global8'),
   'Performance Refresh Governor and Pump edit fast lane must load before realtime defense starts scheduling linked view refreshes.'
 );

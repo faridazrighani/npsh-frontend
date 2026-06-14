@@ -1,11 +1,12 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-performance-canonical-chart.v6';
+  const VERSION = 'pump-performance-canonical-chart.v13';
   const CANVAS_SELECTORS = [
     '#pumpChart',
     '#captionAuditPumpChartCanvas',
     '.caption-audit-inline-chart-wrap canvas',
-    '.modal-chart-wrap canvas'
+    '.modal-chart-wrap canvas',
+    '.pump-performance-chart-task-window canvas'
   ];
   const REALTIME_EVENTS = [
     'npsh:calculation-stale',
@@ -30,6 +31,8 @@
   let renderGuardTimer = 0;
   let scheduledRenderTimer = 0;
   let pendingRenderPumpId = '';
+  let chartTaskWindowCounter = 0;
+  let lastPumpContextMenuId = '';
 
   const STYLES = {
     pumpHead: { label: 'Pump Head', color: '#164a7a', width: 2.4 },
@@ -154,6 +157,121 @@
     return Number.isFinite(number) ? number : null;
   }
 
+  function firstNumber(...values) {
+    for (const value of values) {
+      const number = toNumber(value);
+      if (number !== null) return number;
+    }
+    return null;
+  }
+
+  function numbersDiffer(left, right, tolerance = 1e-5) {
+    const a = toNumber(left);
+    const b = toNumber(right);
+    return a !== null && b !== null && Math.abs(a - b) > tolerance;
+  }
+
+  function normalizeMode(value) {
+    return String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  function isVendorSourceText(value) {
+    return /vendor|manufacturer|factory|datasheet|certified|tested|test\s*curve|oem/i.test(String(value || ''));
+  }
+
+  function isVendorChartData(chartData = null) {
+    const audit = chartData?.sourceAudit || {};
+    return !!(
+      audit.vendorCurve
+      || audit.manufacturerCurve
+      || isVendorSourceText(chartData?.sourceMode)
+      || isVendorSourceText(audit.pumpCurveSource)
+      || isVendorSourceText(audit.curveDataSource)
+      || isVendorSourceText(audit.curveDataConfidence)
+    );
+  }
+
+  function livePumpChartInputs(pump = {}) {
+    const props = pump.props || {};
+    const sourceMode = String(props.npshrSourceMode || '');
+    const designFlow = toNumber(props.designFlow);
+    const designHead = toNumber(props.designHead);
+    const bepFlow = firstNumber(props.bepFlow, props.designFlow);
+    const designNpshr = firstNumber(props.designNpshr, props.manualNpshr);
+    const manualNpshr = firstNumber(props.manualNpshr, props.designNpshr);
+    const manualNpshrMode = /manual/i.test(sourceMode);
+    return {
+      designFlow,
+      designHead,
+      bepFlow,
+      designNpshr,
+      manualNpshr,
+      npshrSourceMode: sourceMode,
+      manualNpshrMode,
+      npshrBasis: manualNpshrMode ? manualNpshr : designNpshr
+    };
+  }
+
+  function livePumpInputFingerprint(pump = {}) {
+    const live = livePumpChartInputs(pump);
+    const encode = value => {
+      const number = toNumber(value);
+      return number === null ? '-' : Number(number.toFixed(6)).toString();
+    };
+    return [
+      `designFlow=${encode(live.designFlow)}`,
+      `designHead=${encode(live.designHead)}`,
+      `bepFlow=${encode(live.bepFlow)}`,
+      `designNpshr=${encode(live.designNpshr)}`,
+      `manualNpshr=${encode(live.manualNpshr)}`,
+      `npshrSourceMode=${normalizeMode(live.npshrSourceMode) || '-'}`
+    ].join('|');
+  }
+
+  function designTargetFromPump(pump = {}) {
+    const live = livePumpChartInputs(pump);
+    return {
+      flow: roundChartNumber(live.designFlow),
+      head: roundChartNumber(live.designHead),
+      npshr: roundChartNumber(live.manualNpshrMode ? live.manualNpshr : live.designNpshr),
+      bepFlow: roundChartNumber(live.bepFlow),
+      npshrSourceMode: live.npshrSourceMode || ''
+    };
+  }
+
+  function markerPointsDiffer(left = {}, right = {}) {
+    return numbersDiffer(left.flow, right.flow, 1e-4) || numbersDiffer(left.head, right.head, 1e-4);
+  }
+
+  function chartDataLiveInputMismatch(pump = {}, chartData = null) {
+    const reasons = [];
+    if (!chartData) return { mismatch: false, reasons };
+    const live = livePumpChartInputs(pump);
+    const duty = chartData.dutyPoint || {};
+    const ranges = chartData.ranges || {};
+    const audit = chartData.sourceAudit || {};
+    const compare = (label, liveValue, storedValue) => {
+      if (numbersDiffer(liveValue, storedValue)) reasons.push(`${label} changed`);
+    };
+    compare('Design Flow', live.designFlow, duty.flow);
+    compare('Design Head', live.designHead, duty.head);
+    compare('BEP Flow', live.bepFlow, ranges.bepFlow);
+    if (live.manualNpshrMode) compare('Manual NPSHr', live.manualNpshr, duty.npshr);
+    if (audit.staleBecausePumpFastLaneInputChanged) reasons.push('pump fast-lane input changed');
+    if (
+      live.npshrSourceMode
+      && audit.npshrSourceMode
+      && normalizeMode(live.npshrSourceMode) !== normalizeMode(audit.npshrSourceMode)
+    ) {
+      reasons.push('NPSHr Source changed');
+    }
+    return {
+      mismatch: reasons.length > 0,
+      reasons,
+      fingerprint: livePumpInputFingerprint(pump)
+    };
+  }
+
   function pointValue(point, keys) {
     if (!point || typeof point !== 'object') return null;
     for (const key of keys) {
@@ -200,6 +318,9 @@
 
   function chartDataFreshness(pumpId, chartData) {
     if (!chartData) return { isFresh: false, freshness: 'Unavailable' };
+    if (/stale/i.test(String(chartData.freshness || ''))) {
+      return { isFresh: false, freshness: chartData.freshness || 'Stale' };
+    }
     const freshness = runtimeFunction('getPumpPerformanceChartDataFreshness');
     if (freshness) {
       try {
@@ -254,6 +375,8 @@
       const sourceAudit = {
         ...(chartData.sourceAudit || {}),
         frontendChartRebuilt: true,
+        smartEngineeringChart: true,
+        liveInputFingerprint: livePumpInputFingerprint(model[id] || {}),
         rebuildReason: options.reason || 'current pump chart input'
       };
       if (options.preview) sourceAudit.localPumpEditPreview = true;
@@ -273,25 +396,85 @@
     }
   }
 
+  function buildSmartCurrentChartData(pumpId, pump, chartData = null, options = {}) {
+    const id = resolvePumpId(pumpId);
+    const engineData = buildCurrentEngineChartData(id, {
+      ...options,
+      chartData
+    });
+    if (engineData) {
+      const mismatch = chartDataLiveInputMismatch(pump, engineData);
+      if (!mismatch.mismatch) return engineData;
+      const lightweight = buildLightweightCurrentChartData(id, chartData, {
+        ...options,
+        reason: options.reason || `live pump input mismatch: ${mismatch.reasons.join(', ')}`
+      });
+      if (lightweight) return lightweight;
+      return {
+        ...engineData,
+        freshness: options.freshness || engineData.freshness || 'Current',
+        sourceAudit: {
+          ...(engineData.sourceAudit || {}),
+          frontendChartRebuilt: true,
+          smartEngineeringChart: true,
+          liveInputMismatch: mismatch.reasons.join(', '),
+          liveInputFingerprint: mismatch.fingerprint
+        }
+      };
+    }
+    return buildLightweightCurrentChartData(id, chartData, options);
+  }
+
   function buildCanonicalModelFromChartData(pumpId, chartData, options = {}) {
     const sourceAudit = { ...(chartData.sourceAudit || {}) };
     if (options.preview) sourceAudit.localPumpEditPreview = true;
     if (options.rebuilt) sourceAudit.frontendChartRebuilt = true;
     if (options.stale) sourceAudit.staleInputFingerprint = true;
+    const series = {
+      pumpHead: canonicalSeries(chartData, 'pumpHead'),
+      systemHead: canonicalSeries(chartData, 'systemHead'),
+      npsha: canonicalSeries(chartData, 'npsha'),
+      npshr: canonicalSeries(chartData, 'npshr')
+    };
+    const chartMode = sourceAudit.chartMode
+      || (options.preview || sourceAudit.lightweightFormulaPreview || /preview/i.test(String(chartData.sourceMode || '')) ? 'Preview' : (isVendorChartData(chartData) ? 'Vendor' : 'Solved'));
+    const designTarget = options.designTarget || chartData.designTarget || null;
+    const intersection = findSeriesIntersection(series.pumpHead, series.systemHead);
+    const operatingPoint = {
+      ...(chartData.operatingPoint || intersection || chartData.dutyPoint || {}),
+      npsha: chartData.operatingPoint?.npsha ?? chartData.dutyPoint?.npsha,
+      npshr: chartData.operatingPoint?.npshr ?? chartData.dutyPoint?.npshr,
+      margin: chartData.operatingPoint?.margin ?? chartData.dutyPoint?.margin
+    };
+    const previewMarker = chartData.dutyPoint || designTarget || {};
+    const primaryMarker = /^preview$/i.test(chartMode)
+      ? previewMarker
+      : operatingPoint;
+    const markerLabel = sourceAudit.markerLabel
+      || (/^preview$/i.test(chartMode) ? 'Design Duty Target' : 'Operating Point');
+    const showDesignTarget = designTarget
+      && !/^preview$/i.test(chartMode)
+      && markerPointsDiffer(designTarget, primaryMarker);
     return {
       pumpId,
       sourceMode: options.sourceMode || chartData.sourceMode || '-',
-      sourceAudit,
+      sourceAudit: {
+        ...sourceAudit,
+        chartMode,
+        chartBasis: sourceAudit.chartBasis || (/^preview$/i.test(chartMode) ? 'Design Duty Target' : 'Operating Point'),
+        markerLabel
+      },
       freshness: options.freshness || chartData.freshness || 'Current',
       warnings: Array.isArray(chartData.warnings) ? chartData.warnings : [],
       ranges: chartData.ranges || {},
       dutyPoint: chartData.dutyPoint || {},
-      series: {
-        pumpHead: canonicalSeries(chartData, 'pumpHead'),
-        systemHead: canonicalSeries(chartData, 'systemHead'),
-        npsha: canonicalSeries(chartData, 'npsha'),
-        npshr: canonicalSeries(chartData, 'npshr')
-      },
+      designTarget,
+      operatingPoint,
+      primaryMarker,
+      markerLabel,
+      showDesignTarget,
+      chartMode,
+      series,
       canonical: true,
       preview: !!options.preview,
       rebuilt: !!options.rebuilt,
@@ -328,37 +511,171 @@
     return null;
   }
 
-  function engineeringFitHead(flow, designFlow, designHead) {
+  function valueAtSeries(points, flow) {
+    return interpolateSeriesValue(points, flow);
+  }
+
+  function findSeriesIntersection(leftPoints, rightPoints) {
+    const left = normalizePoints(leftPoints || [], ['value']);
+    const right = normalizePoints(rightPoints || [], ['value']);
+    if (left.length < 2 || right.length < 2) return null;
+    const flows = Array.from(new Set([
+      ...left.map(point => roundChartNumber(point.flow)),
+      ...right.map(point => roundChartNumber(point.flow))
+    ])).filter((value) => value !== null).sort((a, b) => a - b);
+    for (let index = 0; index < flows.length - 1; index += 1) {
+      const q1 = flows[index];
+      const q2 = flows[index + 1];
+      const l1 = valueAtSeries(left, q1);
+      const r1 = valueAtSeries(right, q1);
+      const l2 = valueAtSeries(left, q2);
+      const r2 = valueAtSeries(right, q2);
+      if ([l1, r1, l2, r2].some((value) => value === null)) continue;
+      const d1 = l1 - r1;
+      const d2 = l2 - r2;
+      if (Math.abs(d1) <= 1e-6) return { flow: roundChartNumber(q1), head: roundChartNumber(l1) };
+      if (d1 * d2 > 0) continue;
+      const ratio = d1 === d2 ? 0 : d1 / (d1 - d2);
+      const flow = q1 + (q2 - q1) * Math.max(0, Math.min(1, ratio));
+      const head = valueAtSeries(left, flow);
+      if (head !== null) return { flow: roundChartNumber(flow), head: roundChartNumber(head) };
+    }
+    const lastFlow = flows[flows.length - 1];
+    const lastLeft = valueAtSeries(left, lastFlow);
+    const lastRight = valueAtSeries(right, lastFlow);
+    if (lastLeft !== null && lastRight !== null && Math.abs(lastLeft - lastRight) <= 1e-6) {
+      return { flow: roundChartNumber(lastFlow), head: roundChartNumber(lastLeft) };
+    }
+    return null;
+  }
+
+  function engineeringFitHead(flow, bepFlow, designHead, designFlow = null) {
+    const q = toNumber(flow);
+    const qbep = toNumber(bepFlow);
+    const qd = firstNumber(designFlow, bepFlow);
+    const hd = toNumber(designHead);
+    if (q === null || qd === null || hd === null || qd <= 0 || hd <= 0) return null;
+    const shapeBasis = Math.max(0.001, qbep || qd);
+    const bepRatio = qbep && qd ? Math.max(0.3, Math.min(2.2, qbep / qd)) : 1;
+    const riseFraction = Math.max(0.14, Math.min(0.34, 0.22 + (1 - bepRatio) * 0.05));
+    const curvature = hd * riseFraction / Math.pow(shapeBasis, 2);
+    return Math.max(0.001, hd + curvature * (Math.pow(qd, 2) - Math.pow(q, 2)));
+  }
+
+  function sumHeadLoss(...values) {
+    return values.reduce((sum, value) => {
+      const number = toNumber(value);
+      return number !== null && number > 0 ? sum + number : sum;
+    }, 0);
+  }
+
+  function previewSystemBasis(pump, flow, head) {
+    const q = toNumber(flow);
+    const h = toNumber(head);
+    const results = pump?.results || {};
+    const evaluation = npshEvaluation(pump);
+    const trace = results.routeTrace || evaluation.routeTrace || {};
+    const traceSuction = trace.suctionLoss || {};
+    const traceDischarge = trace.dischargeLoss || {};
+    const knownLoss = sumHeadLoss(
+      evaluation.suctionLoss,
+      evaluation.dischargeLoss,
+      results.suctionLoss,
+      results.dischargeLoss,
+      results.suctionHeadLoss,
+      results.dischargeHeadLoss,
+      traceSuction.headLoss,
+      traceDischarge.headLoss
+    );
+    if (q === null || h === null || q <= 0 || h <= 0) {
+      return { staticHead: null, lossAtDuty: null, exponent: 2, source: 'unavailable' };
+    }
+    if (knownLoss > 0 && knownLoss < h * 0.98) {
+      return {
+        staticHead: roundChartNumber(h - knownLoss),
+        lossAtDuty: roundChartNumber(knownLoss),
+        exponent: 2,
+        source: 'PFV/network head loss scaled as Q^2'
+      };
+    }
+    const staticHead = h * 0.25;
+    return {
+      staticHead: roundChartNumber(staticHead),
+      lossAtDuty: roundChartNumber(h - staticHead),
+      exponent: 2,
+      source: 'estimated static head fraction'
+    };
+  }
+
+  function engineeringSystemHead(flow, designFlow, designHead, basis = {}) {
     const q = toNumber(flow);
     const qd = toNumber(designFlow);
     const hd = toNumber(designHead);
     if (q === null || qd === null || hd === null || qd <= 0 || hd <= 0) return null;
-    const shutoffHead = 1.15 * hd;
-    const curveA = (shutoffHead - hd) / Math.pow(qd, 2);
-    return Math.max(0.1 * hd, shutoffHead - curveA * Math.pow(q, 2));
+    const staticHead = Math.max(0, Math.min(hd * 0.98, firstNumber(basis.staticHead, hd * 0.25)));
+    const lossAtDuty = Math.max(0.001, firstNumber(basis.lossAtDuty, hd - staticHead));
+    const exponent = firstNumber(basis.exponent, 2) || 2;
+    return Math.max(0.001, staticHead + lossAtDuty * Math.pow(Math.max(q, 0) / qd, exponent));
   }
 
-  function engineeringFitNpshr(flow, designFlow, designNpshr) {
-    const q = toNumber(flow);
+  function previewSystemSeriesFromFlows(flows, designFlow, designHead, basis = {}) {
+    return (flows || []).map((flow) => canonicalPoint(
+      flow,
+      engineeringSystemHead(flow, designFlow, designHead, basis)
+    )).filter(Boolean);
+  }
+
+  function suctionLossAtDuty(pump = {}) {
+    const results = pump.results || {};
+    const evaluation = npshEvaluation(pump);
+    const trace = results.routeTrace || evaluation.routeTrace || {};
+    return firstNumber(
+      evaluation.suctionLoss,
+      results.suctionLoss,
+      results.suctionHeadLoss,
+      trace.suctionLoss?.headLoss
+    );
+  }
+
+  function previewNpshaSeriesFromFlows(flows, designFlow, npsha, suctionLoss) {
     const qd = toNumber(designFlow);
+    const available = toNumber(npsha);
+    const loss = toNumber(suctionLoss);
+    if (qd === null || qd <= 0 || available === null || available <= 0) return [];
+    if (loss === null || loss <= 0) {
+      return (flows || []).map((flow) => canonicalPoint(flow, available)).filter(Boolean);
+    }
+    const suctionEnergy = available + loss;
+    return (flows || []).map((flow) => {
+      const q = Math.max(0, toNumber(flow) || 0);
+      return canonicalPoint(flow, Math.max(0.001, suctionEnergy - loss * Math.pow(q / qd, 2)));
+    }).filter(Boolean);
+  }
+
+  function engineeringFitNpshr(flow, bepFlow, designNpshr) {
+    const q = toNumber(flow);
+    const qd = toNumber(bepFlow);
     const npshr = toNumber(designNpshr);
     if (q === null || qd === null || npshr === null || qd <= 0 || npshr <= 0) return null;
     const fraction = Math.max(0, q / qd);
-    return Math.max(0.01, npshr * (0.72 + 0.28 * Math.pow(fraction, 2.2)));
+    return Math.max(0.01, npshr * (0.65 + 0.35 * Math.pow(fraction, 2.2)));
   }
 
   function buildFlowGrid(pump, chartData = null) {
     const props = pump.props || {};
     const results = pump.results || {};
+    const live = livePumpChartInputs(pump);
     const duty = chartData?.dutyPoint || {};
-    const designFlow = toNumber(props.designFlow);
-    const bepFlow = toNumber(props.bepFlow);
-    const dutyFlow = toNumber(results.npshEvaluation?.flow ?? results.flow ?? results.fixedFlow ?? duty.flow ?? props.designFlow);
+    const designFlow = live.designFlow;
+    const bepFlow = live.bepFlow;
+    const dutyFlow = firstNumber(designFlow, results.npshEvaluation?.flow, results.flow, results.fixedFlow, duty.flow);
+    const curveFlowBasis = bepFlow || designFlow || dutyFlow;
     const maxFlow = Math.max(
       1,
       toNumber(props.aorMaxPercent) !== null && (bepFlow || designFlow)
         ? (bepFlow || designFlow) * toNumber(props.aorMaxPercent) / 100
         : 0,
+      curveFlowBasis ? curveFlowBasis * 1.7 : 0,
       dutyFlow || 0,
       designFlow || 0,
       bepFlow || 0
@@ -367,7 +684,7 @@
     for (let index = 0; index <= 12; index += 1) {
       flows.add(roundChartNumber(maxFlow * index / 12));
     }
-    [dutyFlow, designFlow, bepFlow].forEach((value) => {
+    [dutyFlow, designFlow, bepFlow, curveFlowBasis ? curveFlowBasis * 1.7 : null].forEach((value) => {
       const flow = roundChartNumber(value);
       if (flow !== null && flow >= 0 && flow <= maxFlow * 1.001) flows.add(flow);
     });
@@ -381,55 +698,75 @@
     const props = pump.props || {};
     const results = pump.results || {};
     const evaluation = npshEvaluation(pump);
+    const live = livePumpChartInputs(pump);
     const duty = chartData?.dutyPoint || {};
-    const designFlow = toNumber(props.designFlow ?? props.bepFlow);
-    const designHead = toNumber(props.designHead);
-    const designNpshr = toNumber(props.designNpshr ?? props.manualNpshr);
-    const flow = toNumber(evaluation.flow ?? results.flow ?? results.fixedFlow ?? duty.flow ?? designFlow);
-    const head = toNumber(evaluation.pumpHead ?? results.head ?? results.pumpHeadAtFlow ?? duty.head ?? designHead);
-    const npsha = toNumber(evaluation.npsha ?? results.npsha ?? duty.npsha);
-    const npshr = toNumber(evaluation.npshr ?? results.npshr ?? duty.npshr ?? designNpshr);
+    const designFlow = live.designFlow;
+    const bepFlow = live.bepFlow;
+    const designHead = live.designHead;
+    const designNpshr = live.designNpshr;
+    const flow = firstNumber(designFlow, evaluation.flow, results.flow, results.fixedFlow, duty.flow);
+    const head = firstNumber(designHead, evaluation.pumpHead, results.head, results.pumpHeadAtFlow, duty.head);
+    const npsha = firstNumber(evaluation.npsha, results.npsha, duty.npsha);
     if (flow === null || head === null) return null;
 
     const propsCurveIsDefault = isDefaultPumpCurve(props.curveData || []);
     const propsPumpHead = propsCurveIsDefault ? [] : normalizePoints(props.curveData, ['head', 'pumpHead', 'value']);
     const propsNpshr = propsCurveIsDefault ? [] : normalizePoints(props.curveData, ['npshr', 'requiredNpsh', 'value']);
-    const baseSystemHead = canonicalSeries(chartData, 'systemHead');
-    const baseNpsha = canonicalSeries(chartData, 'npsha');
-    const systemPoints = normalizePoints(results.systemCurvePoints || results.sysCurve, ['head', 'systemHead', 'requiredHead']);
-    const npshPoints = Array.isArray(results.npshCurvePoints) ? results.npshCurvePoints : [];
-    const resultNpsha = normalizePoints(npshPoints, ['npsha', 'availableNpsh']);
+    const propsCurveIsVendor = isVendorSourceText(results.curveDataSource || props.curveDataSource || props.curveSourceNote);
+    const curveFlowBasis = bepFlow || designFlow || flow;
+    const manualNpshrMode = live.manualNpshrMode;
+    const estimatedDutyNpshr = engineeringFitNpshr(flow, curveFlowBasis, designNpshr ?? live.manualNpshr);
+    const npshr = manualNpshrMode
+      ? firstNumber(live.manualNpshr, designNpshr, evaluation.npshr, results.npshr, duty.npshr)
+      : firstNumber(estimatedDutyNpshr, evaluation.npshr, results.npshr, duty.npshr, designNpshr);
     const flows = buildFlowGrid(pump, chartData);
+    const systemBasis = previewSystemBasis(pump, flow, head);
+    const designTarget = designTargetFromPump(pump);
     const pumpHeadSeries = flows.map((q) => {
-      const fromCurve = propsPumpHead.length ? interpolateSeriesValue(propsPumpHead, q) : null;
-      return canonicalPoint(q, fromCurve ?? engineeringFitHead(q, designFlow || flow, designHead || head));
+      const fromCurve = propsCurveIsVendor && propsPumpHead.length ? interpolateSeriesValue(propsPumpHead, q) : null;
+      return canonicalPoint(q, fromCurve ?? engineeringFitHead(q, curveFlowBasis, head, flow));
     }).filter(Boolean);
     const npshrSeries = flows.map((q) => {
-      const fromCurve = propsNpshr.length ? interpolateSeriesValue(propsNpshr, q) : null;
-      const fallback = /manual/i.test(String(props.npshrSourceMode || ''))
+      const fromCurve = !manualNpshrMode && propsNpshr.length ? interpolateSeriesValue(propsNpshr, q) : null;
+      const fallback = manualNpshrMode
         ? npshr
-        : engineeringFitNpshr(q, designFlow || flow, designNpshr || npshr);
+        : engineeringFitNpshr(q, curveFlowBasis, designNpshr || npshr);
       return canonicalPoint(q, fromCurve ?? fallback);
     }).filter(Boolean);
-    const systemHeadSeries = systemPoints.length
-      ? systemPoints
-      : (baseSystemHead.length ? scaleSeriesToDuty(baseSystemHead, head, duty.head, flow, duty.flow) : previewSystemSeries(flow, head));
-    const npshaSeries = resultNpsha.length
-      ? resultNpsha
-      : (baseNpsha.length ? scaleSeriesToDuty(baseNpsha, npsha, duty.npsha, flow, duty.flow) : previewFlatSeries(flow, npsha));
+    const systemHeadSeries = previewSystemSeriesFromFlows(flows, flow, head, systemBasis);
+    const npshaSeries = previewNpshaSeriesFromFlows(flows, flow, npsha, suctionLossAtDuty(pump));
 
     return {
       schemaVersion: 'pump-performance-chart-data.v1',
       pumpId,
-      sourceMode: options.preview ? 'Local Pump Edit Preview' : 'Frontend current model',
+      sourceMode: 'Engineering Fit Preview',
       freshness: options.freshness || (options.preview ? 'Local preview' : 'Current'),
       sourceAudit: {
         ...(chartData?.sourceAudit || {}),
-        curveDataSource: propsCurveIsDefault ? 'Engineering fit from Pump Properties' : (results.curveDataSource || props.curveDataSource || 'Pump Properties curve data'),
-        curveDataConfidence: results.curveDataConfidence || results.dataConfidence || props.curveDataConfidence || 'Current frontend model',
+        curveDataSource: propsCurveIsVendor ? (results.curveDataSource || props.curveDataSource || 'Vendor Pump Properties curve data') : 'Engineering fit from Pump Properties',
+        curveDataConfidence: propsCurveIsVendor ? (results.curveDataConfidence || props.curveDataConfidence || 'Vendor/manufacturer curve protected') : 'Estimated, not vendor-certified',
+        chartMode: propsCurveIsVendor ? 'Vendor' : 'Preview',
+        chartBasis: propsCurveIsVendor ? 'Vendor curve with design target overlay' : 'Design Duty Target',
+        markerLabel: propsCurveIsVendor ? 'Operating Point' : 'Design Duty Target',
         frontendChartRebuilt: true,
         lightweightFormulaPreview: true,
+        smartEngineeringChart: true,
+        vendorCurveProtected: propsCurveIsVendor,
+        npshrSourceMode: props.npshrSourceMode || '-',
+        curveFlowBasis,
+        pumpCurveFormula: propsCurveIsVendor ? 'Vendor/manufacturer H-Q data, not forced through design point' : 'Hpump(Q) = H0 - A*Q^2, constrained by Hpump(Qd)=Hd',
+        systemCurveFormula: 'Hsystem(Q) = Hstatic + R*Q^2, constrained by Hsystem(Qd)=Hd',
+        npshaCurveFormula: 'NPSHa(Q) = suction energy - suction loss at duty*(Q/Qd)^2',
+        systemStaticHead: systemBasis.staticHead,
+        systemLossAtDuty: systemBasis.lossAtDuty,
+        systemCurveBasis: systemBasis.source,
+        liveInputFingerprint: livePumpInputFingerprint(pump),
         rebuildReason: options.reason || 'current pump chart input'
+      },
+      designTarget,
+      inputFingerprint: {
+        value: livePumpInputFingerprint(pump),
+        source: 'frontend-live-pump-properties'
       },
       ranges: {
         bepFlow: roundChartNumber(props.bepFlow ?? props.designFlow),
@@ -453,7 +790,9 @@
       },
       warnings: [
         ...(Array.isArray(chartData?.warnings) ? chartData.warnings : []),
-        'Pump chart rebuilt from current frontend model; backend autosolve will replace it with protected canonical data when available.'
+        options.preview
+          ? 'Preview curve follows current Pump Properties input; backend autosolve will replace it with protected canonical data when available.'
+          : 'Pump chart rebuilt from current frontend model; backend autosolve will replace it with protected canonical data when available.'
       ]
     };
   }
@@ -682,21 +1021,52 @@
   }
 
   function buildFastLanePreviewModel(pumpId, pump, chartData) {
+    const currentChartData = buildLightweightCurrentChartData(pumpId, chartData, {
+      preview: true,
+      freshness: 'Local preview',
+      reason: 'pump fast-lane fallback preview'
+    });
+    if (currentChartData) {
+      return buildCanonicalModelFromChartData(pumpId, currentChartData, {
+        preview: true,
+        rebuilt: true,
+        sourceMode: 'Local Pump Edit Preview',
+        freshness: 'Local preview'
+      });
+    }
     const results = pump.results || {};
     const props = pump.props || {};
     const evaluation = npshEvaluation(pump);
+    const live = livePumpChartInputs(pump);
     const baseRanges = chartData?.ranges || {};
     const baseDuty = chartData?.dutyPoint || {};
-    const localFlow = toNumber(evaluation.flow ?? results.flow ?? results.fixedFlow ?? props.designFlow ?? baseDuty.flow);
-    const localHead = toNumber(evaluation.pumpHead ?? results.head ?? results.pumpHeadAtFlow ?? props.designHead ?? baseDuty.head);
-    const localNpsha = toNumber(evaluation.npsha ?? results.npsha ?? results.npshAvailable ?? baseDuty.npsha);
-    const localNpshr = toNumber(evaluation.npshr ?? results.npshr ?? results.npshRequired ?? props.designNpshr ?? baseDuty.npshr);
-    const localMargin = localNpsha !== null && localNpshr !== null
-      ? localNpsha - localNpshr
-      : toNumber(evaluation.npshMargin ?? results.npshMargin ?? baseDuty.margin);
+    const localFlow = firstNumber(live.designFlow, evaluation.flow, results.flow, results.fixedFlow, baseDuty.flow);
+    const localHead = firstNumber(live.designHead, evaluation.pumpHead, results.head, results.pumpHeadAtFlow, baseDuty.head);
+    const localNpsha = firstNumber(evaluation.npsha, results.npsha, results.npshAvailable, baseDuty.npsha);
     const propsCurveIsDefault = isDefaultPumpCurve(props.curveData || []);
     const propsPumpHead = propsCurveIsDefault ? [] : normalizePoints(props.curveData, ['head', 'pumpHead', 'value']);
     const propsNpshr = propsCurveIsDefault ? [] : normalizePoints(props.curveData, ['npshr', 'requiredNpsh']);
+    const manualNpshrMode = live.manualNpshrMode;
+    const curveFlowBasis = firstNumber(live.bepFlow, live.designFlow, localFlow);
+    const estimatedLocalNpshr = engineeringFitNpshr(localFlow, curveFlowBasis, live.designNpshr ?? live.manualNpshr);
+    const localNpshr = manualNpshrMode
+      ? firstNumber(live.manualNpshr, live.designNpshr, evaluation.npshr, results.npshr, results.npshRequired, baseDuty.npshr)
+      : firstNumber(estimatedLocalNpshr, evaluation.npshr, results.npshr, results.npshRequired, baseDuty.npshr, live.designNpshr);
+    const localMargin = localNpsha !== null && localNpshr !== null
+      ? localNpsha - localNpshr
+      : toNumber(evaluation.npshMargin ?? results.npshMargin ?? baseDuty.margin);
+    const fallbackFlows = buildFlowGrid(pump, chartData);
+    const fallbackPumpHead = fallbackFlows.map((flow) => {
+      const fromCurve = propsPumpHead.length ? interpolateSeriesValue(propsPumpHead, flow) : null;
+      return canonicalPoint(flow, fromCurve ?? engineeringFitHead(flow, curveFlowBasis, localHead, localFlow));
+    }).filter(Boolean);
+    const fallbackNpshr = fallbackFlows.map((flow) => {
+      const fromCurve = !manualNpshrMode && propsNpshr.length ? interpolateSeriesValue(propsNpshr, flow) : null;
+      const fallback = manualNpshrMode
+        ? localNpshr
+        : engineeringFitNpshr(flow, curveFlowBasis, firstNumber(live.designNpshr, live.manualNpshr, localNpshr));
+      return canonicalPoint(flow, fromCurve ?? fallback);
+    }).filter(Boolean);
     const basePumpHead = canonicalSeries(chartData, 'pumpHead');
     const baseNpshr = canonicalSeries(chartData, 'npshr');
     const baseNpsha = canonicalSeries(chartData, 'npsha');
@@ -709,7 +1079,11 @@
       sourceAudit: {
         ...(chartData?.sourceAudit || {}),
         localPumpEditPreview: true,
-        backendChartSourceMode: chartData?.sourceMode || ''
+        backendChartSourceMode: chartData?.sourceMode || '',
+        curveFlowBasis,
+        npshrSourceMode: props.npshrSourceMode || '-',
+        smartEngineeringChart: true,
+        liveInputFingerprint: livePumpInputFingerprint(pump)
       },
       freshness: 'Local preview',
       warnings: [
@@ -733,14 +1107,14 @@
       series: {
         pumpHead: propsPumpHead.length
           ? propsPumpHead
-          : (basePumpHead.length ? scaleSeriesToDuty(basePumpHead, localHead, baseDuty.head, localFlow, baseDuty.flow) : previewHeadSeries(localFlow, localHead)),
+          : (fallbackPumpHead.length ? fallbackPumpHead : (basePumpHead.length ? scaleSeriesToDuty(basePumpHead, localHead, baseDuty.head, localFlow, baseDuty.flow) : previewHeadSeries(localFlow, localHead))),
         systemHead: baseSystemHead.length
           ? scaleSeriesToDuty(baseSystemHead, localHead, baseDuty.head, localFlow, baseDuty.flow)
           : (fallbackSystemHead.length ? fallbackSystemHead : previewSystemSeries(localFlow, localHead)),
         npsha: baseNpsha.length ? scaleSeriesToDuty(baseNpsha, localNpsha, baseDuty.npsha, localFlow, baseDuty.flow) : previewFlatSeries(localFlow, localNpsha),
-        npshr: propsNpshr.length
+        npshr: !manualNpshrMode && propsNpshr.length
           ? propsNpshr
-          : (baseNpshr.length ? scaleSeriesToDuty(baseNpshr, localNpshr, baseDuty.npshr, localFlow, baseDuty.flow) : previewFlatSeries(localFlow, localNpshr))
+          : (fallbackNpshr.length ? fallbackNpshr : (baseNpshr.length ? scaleSeriesToDuty(baseNpshr, localNpshr, baseDuty.npshr, localFlow, baseDuty.flow) : previewFlatSeries(localFlow, localNpshr)))
       },
       canonical: false,
       preview: true
@@ -755,12 +1129,12 @@
     let chartData = results.performanceChartData?.schemaVersion === 'pump-performance-chart-data.v1'
       ? results.performanceChartData
       : null;
+    const designTarget = designTargetFromPump(pump);
     if (isPumpFastLanePreviewActive(id, pump)) {
-      const currentChartData = buildCurrentEngineChartData(id, {
+      const currentChartData = buildSmartCurrentChartData(id, pump, chartData, {
         preview: true,
         freshness: 'Local preview',
         reason: 'pump fast-lane input preview',
-        chartData,
         pointCount: 18
       });
       if (currentChartData && storedChartDataIsAllowed(pump, currentChartData)) {
@@ -768,7 +1142,8 @@
           preview: true,
           rebuilt: true,
           sourceMode: 'Local Pump Edit Preview',
-          freshness: 'Local preview'
+          freshness: 'Local preview',
+          designTarget
         });
       }
       const chartDataAllowed = chartData ? storedChartDataIsAllowed(pump, chartData) : false;
@@ -783,17 +1158,54 @@
           'Stored pump performance chart data ignored: complete pump duty inputs or non-default sourced curve data are required.'
         );
       }
-      const freshness = chartDataFreshness(id, chartData);
-      if (!freshness.isFresh) {
-        const currentChartData = buildCurrentEngineChartData(id, {
-          reason: 'stale performance chart fingerprint',
-          chartData,
+      const liveMismatch = chartDataLiveInputMismatch(pump, chartData);
+      if (liveMismatch.mismatch) {
+        if (isVendorChartData(chartData)) {
+          const vendorModel = buildCanonicalModelFromChartData(id, {
+            ...chartData,
+            sourceAudit: {
+              ...(chartData.sourceAudit || {}),
+              chartMode: 'Vendor',
+              chartBasis: 'Vendor curve protected; design target is not forced',
+              markerLabel: 'Operating Point',
+              vendorCurveProtected: true,
+              liveInputMismatch: liveMismatch.reasons.join(', ')
+            },
+            warnings: [
+              ...(Array.isArray(chartData.warnings) ? chartData.warnings : []),
+              'Vendor/manufacturer pump curve is protected; design target is shown separately when it does not match the operating point.'
+            ]
+          }, {
+            designTarget
+          });
+          return {
+            ...vendorModel,
+            vendorProtected: true
+          };
+        }
+        const currentChartData = buildSmartCurrentChartData(id, pump, chartData, {
+          reason: `live pump input changed: ${liveMismatch.reasons.join(', ')}`,
           pointCount: 18
         });
         if (currentChartData && storedChartDataIsAllowed(pump, currentChartData)) {
           return buildCanonicalModelFromChartData(id, currentChartData, {
             rebuilt: true,
-            freshness: currentChartData.freshness || 'Current'
+            freshness: currentChartData.freshness || 'Current',
+            designTarget
+          });
+        }
+      }
+      const freshness = chartDataFreshness(id, chartData);
+      if (!freshness.isFresh) {
+        const currentChartData = buildSmartCurrentChartData(id, pump, chartData, {
+          reason: 'stale performance chart fingerprint',
+          pointCount: 18
+        });
+        if (currentChartData && storedChartDataIsAllowed(pump, currentChartData)) {
+          return buildCanonicalModelFromChartData(id, currentChartData, {
+            rebuilt: true,
+            freshness: currentChartData.freshness || 'Current',
+            designTarget
           });
         }
         chartData = {
@@ -806,10 +1218,11 @@
         };
         return buildCanonicalModelFromChartData(id, chartData, {
           stale: true,
-          freshness: chartData.freshness
+          freshness: chartData.freshness,
+          designTarget
         });
       }
-      return buildCanonicalModelFromChartData(id, chartData);
+      return buildCanonicalModelFromChartData(id, chartData, { designTarget });
     }
     return buildFallbackModel(id, pump);
   }
@@ -819,10 +1232,19 @@
     return [...new Set(CANVAS_SELECTORS.flatMap((selector) => Array.from(document.querySelectorAll(selector))))];
   }
 
+  function isChartTaskWindowCanvas(canvas) {
+    return !!canvas?.closest?.('.pump-performance-chart-task-window');
+  }
+
   function setupCanvas(canvas) {
     const shell = canvas.parentElement;
-    const cssWidth = Math.max(560, Math.floor(shell?.clientWidth || canvas.clientWidth || 760));
-    const cssHeight = Math.max(380, Math.floor(shell?.clientHeight || canvas.clientHeight || 440));
+    const compactTaskWindow = isChartTaskWindowCanvas(canvas);
+    const minWidth = compactTaskWindow ? 300 : 560;
+    const minHeight = compactTaskWindow ? 240 : 380;
+    const fallbackWidth = compactTaskWindow ? 420 : 760;
+    const fallbackHeight = compactTaskWindow ? 300 : 440;
+    const cssWidth = Math.max(minWidth, Math.floor(shell?.clientWidth || canvas.clientWidth || fallbackWidth));
+    const cssHeight = Math.max(minHeight, Math.floor(shell?.clientHeight || canvas.clientHeight || fallbackHeight));
     const ratio = Math.max(1, Math.min(2, root.devicePixelRatio || 1));
     canvas.style.width = `${cssWidth}px`;
     canvas.style.height = `${cssHeight}px`;
@@ -835,19 +1257,33 @@
 
   function axisBounds(chartModel) {
     const points = Object.values(chartModel.series || {}).flat();
-    const duty = chartModel.dutyPoint || {};
-    if (toNumber(duty.flow) !== null && toNumber(duty.head) !== null) {
-      points.push({ flow: toNumber(duty.flow), value: toNumber(duty.head) });
-    }
+    [chartModel.primaryMarker, chartModel.dutyPoint, chartModel.designTarget, chartModel.operatingPoint]
+      .filter(Boolean)
+      .forEach((marker) => {
+        if (toNumber(marker.flow) !== null && toNumber(marker.head) !== null) {
+          points.push({ flow: toNumber(marker.flow), value: toNumber(marker.head) });
+        }
+        if (toNumber(marker.flow) !== null && toNumber(marker.npsha) !== null) {
+          points.push({ flow: toNumber(marker.flow), value: toNumber(marker.npsha) });
+        }
+        if (toNumber(marker.flow) !== null && toNumber(marker.npshr) !== null) {
+          points.push({ flow: toNumber(marker.flow), value: toNumber(marker.npshr) });
+        }
+      });
+    const ranges = chartModel.ranges || {};
+    ['porMinPercent', 'porMaxPercent', 'aorMinPercent', 'aorMaxPercent'].forEach((key) => {
+      const flow = rangeFlow(ranges, key);
+      if (flow !== null) points.push({ flow, value: 0 });
+    });
     const flows = points.map((point) => toNumber(point.flow)).filter((value) => value !== null && value >= 0);
     const values = points.map((point) => toNumber(point.value)).filter((value) => value !== null && value >= 0);
     const maxFlow = Math.max(1, ...flows);
     const maxValue = Math.max(1, ...values);
     return {
       xMin: 0,
-      xMax: maxFlow * 1.08,
+      xMax: maxFlow * 1.14,
       yMin: 0,
-      yMax: maxValue * 1.12
+      yMax: maxValue * 1.18
     };
   }
 
@@ -911,44 +1347,100 @@
     context.restore();
   }
 
-  function drawLegend(context, chartModel, chart) {
+  function drawLegend(context, chartModel, chart, width) {
     const entries = Object.entries(STYLES);
-    let x = chart.left + 370;
-    let y = 26;
+    const compact = width < 620;
+    let x = compact ? chart.left : chart.left + 370;
+    let y = compact ? 42 : 26;
     context.save();
-    context.font = '11px Arial, sans-serif';
+    context.font = `${compact ? 10 : 11}px Arial, sans-serif`;
     entries.forEach(([key, style], index) => {
-      if (index === 2) {
-        x = chart.left + 370;
-        y += 20;
-      }
-      const itemX = x + (index % 2) * 108;
+      if (index === 2) y += compact ? 15 : 20;
+      const itemX = x + (index % 2) * (compact ? 132 : 108);
       context.strokeStyle = style.color;
       context.lineWidth = 2;
       context.setLineDash(style.dash || []);
       context.beginPath();
       context.moveTo(itemX, y - 4);
-      context.lineTo(itemX + 22, y - 4);
+      context.lineTo(itemX + (compact ? 18 : 22), y - 4);
       context.stroke();
       context.setLineDash([]);
       context.fillStyle = '#334155';
-      context.fillText(style.label, itemX + 28, y);
+      context.fillText(style.label, itemX + (compact ? 23 : 28), y);
     });
     context.fillStyle = '#123b5a';
-    context.font = 'bold 12px Arial, sans-serif';
+    context.font = `bold ${compact ? 11 : 12}px Arial, sans-serif`;
     context.fillText(`Pump Performance Chart - ${chartModel.pumpId || '-'}`, chart.left, 28);
+    context.restore();
+  }
+
+  function truncateCanvasText(context, text, maxWidth) {
+    const value = String(text || '');
+    if (!Number.isFinite(maxWidth) || maxWidth <= 0 || context.measureText(value).width <= maxWidth) return value;
+    const ellipsis = '...';
+    let low = 0;
+    let high = value.length;
+    while (low < high) {
+      const mid = Math.ceil((low + high) / 2);
+      if (context.measureText(`${value.slice(0, mid)}${ellipsis}`).width <= maxWidth) low = mid;
+      else high = mid - 1;
+    }
+    return `${value.slice(0, Math.max(0, low))}${ellipsis}`;
+  }
+
+  function buildFooterMetadataLines(chartModel) {
+    const audit = chartModel.sourceAudit || {};
+    const source = audit.curveDataSource || audit.pumpCurveSource || chartModel.sourceMode || '-';
+    const confidence = audit.curveDataConfidence || audit.npshrDataConfidence || '-';
+    return [
+      `Source: ${source}`,
+      `Confidence: ${confidence}`,
+      `Freshness: ${chartModel.freshness || '-'}`,
+      `Chart Basis: ${audit.chartBasis || chartModel.markerLabel || '-'}`,
+      `Curve Mode: ${audit.chartMode || chartModel.chartMode || '-'}`,
+      ...(audit.isDefaultCurveData ? ['Review: Default curve template ignored.'] : [])
+    ];
+  }
+
+  function footerMetadataLinesForLayout(lines, compact) {
+    if (compact) {
+      return [
+        lines.slice(0, 2).join(' | '),
+        lines.slice(2).join(' | ')
+      ].filter(Boolean);
+    }
+    return lines.slice(0, 6);
+  }
+
+  function drawFooterMetadata(context, lines, chart, compact) {
+    const maxWidth = Math.max(80, chart.right - chart.left);
+    const lineHeight = compact ? 10 : 11;
+    const startY = compact ? chart.bottom + 58 : chart.bottom + 64;
+    context.save();
+    context.fillStyle = '#334155';
+    context.font = `${compact ? 9 : 10}px Arial, sans-serif`;
+    lines.forEach((line, index) => {
+      context.fillText(truncateCanvasText(context, line, maxWidth), chart.left, startY + index * lineHeight);
+    });
     context.restore();
   }
 
   function renderCanvas(canvas, pumpId) {
     if (!canvas || canvas.tagName !== 'CANVAS') return null;
-    const chartModel = buildChartModel(pumpId);
+    const canvasPumpId = canvas.dataset?.pumpId || pumpId;
+    const chartModel = buildChartModel(canvasPumpId);
     const { context, width, height } = setupCanvas(canvas);
+    const compact = width < 620 || height < 360;
+    const footerLines = footerMetadataLinesForLayout(buildFooterMetadataLines(chartModel), compact);
+    const footerLineHeight = compact ? 10 : 11;
+    const bottomMargin = compact
+      ? Math.max(80, 60 + footerLines.length * footerLineHeight)
+      : Math.max(92, 70 + footerLines.length * footerLineHeight);
     const chart = {
-      left: 72,
-      top: 72,
-      right: width - 42,
-      bottom: height - 72
+      left: compact ? 54 : 72,
+      top: compact ? 66 : 72,
+      right: width - (compact ? 18 : 42),
+      bottom: height - bottomMargin
     };
     const bounds = axisBounds(chartModel);
     const xScale = value => chart.left + ((toNumber(value) || 0) - bounds.xMin) / (bounds.xMax - bounds.xMin || 1) * (chart.right - chart.left);
@@ -972,16 +1464,16 @@
     context.strokeStyle = '#dbe5ef';
     context.fillStyle = '#64748b';
     context.lineWidth = 1;
-    context.font = '11px Arial, sans-serif';
-    ticks(bounds.xMax, 5).forEach((tick) => {
+    context.font = `${compact ? 10 : 11}px Arial, sans-serif`;
+    ticks(bounds.xMax, compact ? 4 : 5).forEach((tick) => {
       const x = xScale(tick);
       context.beginPath();
       context.moveTo(x, chart.top);
       context.lineTo(x, chart.bottom);
       context.stroke();
-      context.fillText(Number(tick.toFixed(1)).toString(), x - 8, chart.bottom + 22);
+      context.fillText(Number(tick.toFixed(1)).toString(), x - 8, chart.bottom + (compact ? 18 : 22));
     });
-    ticks(bounds.yMax, 5).forEach((tick) => {
+    ticks(bounds.yMax, compact ? 4 : 5).forEach((tick) => {
       const y = yScale(tick);
       context.beginPath();
       context.moveTo(chart.left, y);
@@ -992,7 +1484,7 @@
     context.strokeStyle = '#cbd5e1';
     context.strokeRect(chart.left, chart.top, chart.right - chart.left, chart.bottom - chart.top);
     context.fillStyle = '#334155';
-    context.fillText('Flow (m3/h)', chart.left + (chart.right - chart.left) / 2 - 28, height - 28);
+    context.fillText('Flow (m3/h)', chart.left + (chart.right - chart.left) / 2 - 28, chart.bottom + (compact ? 38 : 44));
     context.save();
     context.translate(28, chart.top + (chart.bottom - chart.top) / 2 + 38);
     context.rotate(-Math.PI / 2);
@@ -1004,39 +1496,48 @@
       drawSeries(context, chartModel.series?.[key], style, xScale, yScale);
     });
 
-    const duty = chartModel.dutyPoint || {};
-    const dutyFlow = toNumber(duty.flow);
-    const dutyHead = toNumber(duty.head);
-    if (dutyFlow !== null && dutyHead !== null) {
-      const x = xScale(dutyFlow);
-      const y = yScale(dutyHead);
+    const primaryMarker = chartModel.primaryMarker || chartModel.dutyPoint || {};
+    const markerFlow = toNumber(primaryMarker.flow);
+    const markerHead = toNumber(primaryMarker.head);
+    if (markerFlow !== null && markerHead !== null) {
+      const x = xScale(markerFlow);
+      const y = yScale(markerHead);
       context.save();
       context.fillStyle = '#12a56b';
       context.beginPath();
       context.arc(x, y, 5, 0, Math.PI * 2);
       context.fill();
       context.font = 'bold 11px Arial, sans-serif';
-      context.fillText('Duty Point', x + 9, y - 8);
+      const label = chartModel.markerLabel || chartModel.sourceAudit?.markerLabel || 'Operating Point';
+      const labelWidth = context.measureText(label).width;
+      const labelX = x + labelWidth + 12 > chart.right ? x - labelWidth - 9 : x + 9;
+      const labelY = y - 10 < chart.top ? y + 16 : y - 8;
+      context.fillText(label, Math.max(chart.left + 2, labelX), Math.min(chart.bottom - 4, labelY));
       context.restore();
     }
 
-    drawLegend(context, chartModel, chart);
-    context.save();
-    context.fillStyle = '#334155';
-    context.font = '10px Arial, sans-serif';
-    const audit = chartModel.sourceAudit || {};
-    const source = audit.curveDataSource || audit.pumpCurveSource || chartModel.sourceMode || '-';
-    const confidence = audit.curveDataConfidence || audit.npshrDataConfidence || '-';
-    const lines = [
-      `Source: ${source}`,
-      `Confidence: ${confidence}`,
-      `Freshness: ${chartModel.freshness || '-'}`,
-      ...(audit.isDefaultCurveData ? ['Review: Default curve template ignored.'] : [])
-    ];
-    lines.slice(0, 5).forEach((line, index) => {
-      context.fillText(line, chart.left, height - 44 + index * 11);
-    });
-    context.restore();
+    const target = chartModel.showDesignTarget ? chartModel.designTarget : null;
+    const targetFlow = toNumber(target?.flow);
+    const targetHead = toNumber(target?.head);
+    if (targetFlow !== null && targetHead !== null) {
+      const x = xScale(targetFlow);
+      const y = yScale(targetHead);
+      context.save();
+      context.strokeStyle = '#7c3aed';
+      context.fillStyle = '#7c3aed';
+      context.lineWidth = 2;
+      context.strokeRect(x - 5, y - 5, 10, 10);
+      context.font = 'bold 10px Arial, sans-serif';
+      const label = 'Design Target';
+      const labelWidth = context.measureText(label).width;
+      const labelX = x + labelWidth + 12 > chart.right ? x - labelWidth - 9 : x + 9;
+      const labelY = y + 18 > chart.bottom ? y - 10 : y + 16;
+      context.fillText(label, Math.max(chart.left + 2, labelX), Math.min(chart.bottom - 4, labelY));
+      context.restore();
+    }
+
+    drawLegend(context, chartModel, chart, width);
+    drawFooterMetadata(context, footerLines, chart, compact);
 
     canvas.dataset.pumpPerformanceCanonicalChartVersion = VERSION;
     canvas.dataset.pumpPerformanceCanonicalChartSource = chartModel.preview
@@ -1145,6 +1646,360 @@
     return canvas;
   }
 
+  function cssEscape(value) {
+    const text = String(value || '');
+    if (typeof root.CSS !== 'undefined' && typeof root.CSS.escape === 'function') {
+      return root.CSS.escape(text);
+    }
+    return text.replace(/["\\]/g, '\\$&');
+  }
+
+  function installChartTaskWindowStyles() {
+    if (typeof document === 'undefined' || document.getElementById('pump-performance-chart-task-window-style')) return false;
+    const style = document.createElement('style');
+    style.id = 'pump-performance-chart-task-window-style';
+    style.textContent = `
+.pump-performance-chart-task-window {
+  width: min(840px, calc(100vw - 24px));
+  min-width: min(320px, calc(100vw - 24px));
+  height: min(620px, calc(100vh - 32px));
+  min-height: 300px;
+  resize: both;
+  overflow: hidden;
+}
+.pump-performance-chart-task-window .task-window-header {
+  cursor: move;
+}
+.pump-performance-chart-task-body {
+  height: calc(100% - 42px);
+  overflow: auto;
+  padding: 10px;
+}
+.pump-performance-chart-task-wrap {
+  width: 100%;
+  min-width: 0;
+  height: calc(100% - 2px);
+  min-height: 240px;
+  border: 1px solid #d9e8f6;
+  border-radius: 6px;
+  background: #ffffff;
+  overflow: hidden;
+}
+.pump-performance-chart-task-wrap canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+}
+.pump-performance-chart-task-window.task-window-minimized {
+  height: auto !important;
+  min-height: 0;
+  resize: none;
+}
+.pump-performance-chart-task-window.task-window-minimized .task-window-body {
+  display: none;
+}
+@media (max-width: 760px) {
+  .pump-performance-chart-task-window {
+    left: 8px !important;
+    right: 8px !important;
+    width: calc(100vw - 16px);
+    min-width: 0;
+    height: min(560px, calc(100vh - 24px));
+  }
+}
+`;
+    document.head?.appendChild(style);
+    return true;
+  }
+
+  function bringChartTaskWindowToFront(windowNode) {
+    if (!windowNode) return;
+    if (typeof root.bringTaskWindowToFront === 'function') {
+      root.bringTaskWindowToFront(windowNode);
+      return;
+    }
+    const nextZ = (Number(root.__pumpPerformanceChartTaskWindowZ || 1300) + 1);
+    root.__pumpPerformanceChartTaskWindowZ = nextZ;
+    windowNode.style.zIndex = String(nextZ);
+  }
+
+  function clampChartTaskWindowToViewport(windowNode) {
+    if (!windowNode || typeof window === 'undefined') return;
+    const rect = windowNode.getBoundingClientRect();
+    const maxLeft = Math.max(8, window.innerWidth - Math.min(rect.width || 0, window.innerWidth - 16) - 8);
+    const maxTop = Math.max(8, window.innerHeight - Math.min(rect.height || 0, window.innerHeight - 16) - 8);
+    const left = Math.max(8, Math.min(parseFloat(windowNode.style.left) || rect.left || 8, maxLeft));
+    const top = Math.max(8, Math.min(parseFloat(windowNode.style.top) || rect.top || 8, maxTop));
+    windowNode.style.left = `${left}px`;
+    windowNode.style.top = `${top}px`;
+    windowNode.style.right = 'auto';
+  }
+
+  function initializeChartTaskWindowDrag(windowNode, header) {
+    if (!windowNode || !header || windowNode.dataset.pumpPerformanceChartDragBound === 'true') return false;
+    windowNode.dataset.pumpPerformanceChartDragBound = 'true';
+    let drag = null;
+    header.addEventListener('pointerdown', (event) => {
+      if (event.target?.closest?.('button, input, select, textarea, a')) return;
+      const rect = windowNode.getBoundingClientRect();
+      drag = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        left: rect.left,
+        top: rect.top
+      };
+      header.setPointerCapture?.(event.pointerId);
+      bringChartTaskWindowToFront(windowNode);
+      event.preventDefault?.();
+    });
+    header.addEventListener('pointermove', (event) => {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      windowNode.style.left = `${drag.left + event.clientX - drag.startX}px`;
+      windowNode.style.top = `${drag.top + event.clientY - drag.startY}px`;
+      windowNode.style.right = 'auto';
+      clampChartTaskWindowToViewport(windowNode);
+    });
+    const stopDrag = (event) => {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      header.releasePointerCapture?.(event.pointerId);
+      drag = null;
+      clampChartTaskWindowToViewport(windowNode);
+    };
+    header.addEventListener('pointerup', stopDrag);
+    header.addEventListener('pointercancel', stopDrag);
+    return true;
+  }
+
+  function updateChartTaskWindowMinimizeButton(windowNode) {
+    const button = windowNode?.querySelector?.('.task-window-minimize');
+    if (!button) return;
+    const minimized = windowNode.classList.contains('task-window-minimized');
+    button.textContent = minimized ? '□' : '_';
+    button.setAttribute('aria-label', minimized ? 'Restore pump performance chart window' : 'Minimize pump performance chart window');
+  }
+
+  function bindChartTaskWindowResizeObserver(windowNode, pumpId) {
+    if (!windowNode || windowNode.dataset.pumpPerformanceChartResizeObserverBound === 'true') return false;
+    windowNode.dataset.pumpPerformanceChartResizeObserverBound = 'true';
+    let pending = 0;
+    const renderAfterResize = () => {
+      if (pending) root.cancelAnimationFrame?.(pending);
+      const run = () => {
+        pending = 0;
+        scheduleRender(pumpId, { force: true, delayMs: 16, reason: 'pump performance chart task window element resize' });
+      };
+      if (typeof root.requestAnimationFrame === 'function') pending = root.requestAnimationFrame(run);
+      else pending = root.setTimeout?.(run, 16) || 0;
+    };
+    if (typeof root.ResizeObserver === 'function') {
+      const observer = new root.ResizeObserver(renderAfterResize);
+      observer.observe(windowNode);
+      const body = windowNode.querySelector?.('.pump-performance-chart-task-body');
+      const wrap = windowNode.querySelector?.('.pump-performance-chart-task-wrap');
+      if (body) observer.observe(body);
+      if (wrap) observer.observe(wrap);
+      windowNode.__pumpPerformanceChartResizeObserver = observer;
+      return true;
+    }
+    const interval = root.setInterval?.(renderAfterResize, 500) || 0;
+    windowNode.__pumpPerformanceChartResizeInterval = interval;
+    return !!interval;
+  }
+
+  function disconnectChartTaskWindowResizeObserver(windowNode) {
+    windowNode?.__pumpPerformanceChartResizeObserver?.disconnect?.();
+    if (windowNode?.__pumpPerformanceChartResizeInterval && root.clearInterval) {
+      root.clearInterval(windowNode.__pumpPerformanceChartResizeInterval);
+    }
+  }
+
+  function ensureTaskWindow(pumpId) {
+    if (typeof document === 'undefined') return null;
+    installChartTaskWindowStyles();
+    const id = resolvePumpId(pumpId);
+    const selector = `.pump-performance-chart-task-window[data-pump-node-id="${cssEscape(id)}"]`;
+    const existing = document.querySelector(selector);
+    if (existing) {
+      existing.classList.remove('task-window-minimized');
+      updateChartTaskWindowMinimizeButton(existing);
+      bringChartTaskWindowToFront(existing);
+      clampChartTaskWindowToViewport(existing);
+      const existingCanvas = existing.querySelector('canvas');
+      if (existingCanvas) existingCanvas.dataset.pumpId = id;
+      bindChartTaskWindowResizeObserver(existing, id);
+      render(id);
+      scheduleRender(id, { force: true, delayMs: 16, reason: 'open pump performance chart task window' });
+      existing.focus?.({ preventScroll: true });
+      return existingCanvas;
+    }
+
+    chartTaskWindowCounter += 1;
+    const offset = (chartTaskWindowCounter - 1) % 4 * 24;
+    const taskWindow = document.createElement('section');
+    taskWindow.className = 'task-window pump-performance-chart-task-window task-window-user-positioned';
+    taskWindow.dataset.kind = 'pump-performance-chart';
+    taskWindow.dataset.pumpNodeId = id;
+    taskWindow.setAttribute('role', 'dialog');
+    taskWindow.setAttribute('aria-modal', 'false');
+    taskWindow.setAttribute('aria-label', 'Pump Performance Chart');
+    taskWindow.setAttribute('tabindex', '-1');
+
+    const pumpProperties = document.getElementById('taskWindow');
+    const anchor = pumpProperties && !pumpProperties.hidden ? pumpProperties.getBoundingClientRect() : null;
+    const width = Math.min(840, Math.max(540, window.innerWidth - 24));
+    const fallbackLeft = window.innerWidth <= 760 ? 8 : 70 + offset;
+    const left = anchor ? anchor.left - width - 14 : fallbackLeft;
+    taskWindow.style.left = `${Math.max(8, left > 8 ? left : fallbackLeft)}px`;
+    taskWindow.style.top = `${Math.max(8, (anchor?.top || 112) + offset)}px`;
+    taskWindow.style.right = 'auto';
+
+    const header = document.createElement('div');
+    header.className = 'task-window-header pump-performance-chart-window-header';
+    const title = document.createElement('span');
+    title.textContent = `Pump Performance Chart - ${id || '-'}`;
+    const actions = document.createElement('div');
+    actions.className = 'task-window-actions';
+    const minimize = document.createElement('button');
+    minimize.type = 'button';
+    minimize.className = 'task-window-minimize';
+    minimize.textContent = '_';
+    minimize.setAttribute('aria-label', 'Minimize pump performance chart window');
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'task-window-close';
+    close.textContent = 'X';
+    close.setAttribute('aria-label', 'Close pump performance chart window');
+    actions.append(minimize, close);
+    header.append(title, actions);
+
+    const body = document.createElement('div');
+    body.className = 'task-window-body pump-performance-chart-task-body';
+    const wrap = document.createElement('div');
+    wrap.className = 'pump-performance-chart-task-wrap';
+    const canvas = document.createElement('canvas');
+    canvas.dataset.pumpId = id;
+    canvas.setAttribute('aria-label', `Pump Performance Chart - ${id || '-'}`);
+    wrap.appendChild(canvas);
+    body.appendChild(wrap);
+
+    const onResize = () => {
+      clampChartTaskWindowToViewport(taskWindow);
+      scheduleRender(id, { force: true, delayMs: 16, reason: 'pump performance chart task window resize' });
+    };
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    minimize.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      taskWindow.classList.toggle('task-window-minimized');
+      updateChartTaskWindowMinimizeButton(taskWindow);
+      if (!taskWindow.classList.contains('task-window-minimized')) {
+        scheduleRender(id, { force: true, delayMs: 16, reason: 'restore pump performance chart task window' });
+      }
+    });
+    close.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+      disconnectChartTaskWindowResizeObserver(taskWindow);
+      taskWindow.remove();
+    });
+
+    taskWindow.append(header, body);
+    document.body.appendChild(taskWindow);
+    initializeChartTaskWindowDrag(taskWindow, header);
+    bindChartTaskWindowResizeObserver(taskWindow, id);
+    bringChartTaskWindowToFront(taskWindow);
+    clampChartTaskWindowToViewport(taskWindow);
+    render(id);
+    scheduleRender(id, { force: true, delayMs: 16, reason: 'open pump performance chart task window' });
+    taskWindow.focus?.({ preventScroll: true });
+    return canvas;
+  }
+
+  function hideCanvasContextMenu() {
+    const menu = document.getElementById('canvasContextMenu');
+    if (!menu) return;
+    menu.style.display = 'none';
+    menu.setAttribute('aria-hidden', 'true');
+    document.body?.classList?.remove('context-menu-open');
+  }
+
+  function capturePumpContextMenuTarget(event) {
+    const holder = event.target?.closest?.('.pfd-object[data-id], [data-id]');
+    const id = holder?.dataset?.id || holder?.dataset?.nodeId || '';
+    lastPumpContextMenuId = runtimeModel()?.[id]?.type === 'pump' ? id : '';
+  }
+
+  function createChartMenuButton(pumpId) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.setAttribute('role', 'menuitem');
+    button.tabIndex = -1;
+    button.textContent = 'Pump Performance Chart';
+    button.dataset.pumpPerformanceChartTaskMenu = 'true';
+    button.dataset.pumpNodeId = pumpId;
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      hideCanvasContextMenu();
+      root.openPumpPerformanceChartTaskWindow?.(pumpId);
+    });
+    return button;
+  }
+
+  function injectPumpContextMenuChartButton() {
+    if (typeof document === 'undefined') return false;
+    if (!lastPumpContextMenuId) return false;
+    const pumpId = resolvePumpId(lastPumpContextMenuId);
+    if (!pumpId || runtimeModel()?.[pumpId]?.type !== 'pump') return false;
+    const menu = document.getElementById('canvasContextMenu');
+    if (!menu || menu.getAttribute('aria-hidden') === 'true' || menu.style.display === 'none') return false;
+    if (menu.querySelector('[data-pump-performance-chart-task-menu="true"]')) return false;
+    const button = createChartMenuButton(pumpId);
+    const buttons = Array.from(menu.querySelectorAll('button[role="menuitem"]'));
+    const propertiesButton = buttons.find((item) => /User Task Object Properties/i.test(item.textContent || ''));
+    if (propertiesButton?.nextSibling) menu.insertBefore(button, propertiesButton.nextSibling);
+    else menu.appendChild(button);
+    return true;
+  }
+
+  function syncPumpPerformanceChartEntryPoints() {
+    installChartTaskWindowStyles();
+    return injectPumpContextMenuChartButton();
+  }
+
+  function bindChartTaskEntryPoints() {
+    if (typeof document === 'undefined' || root.__pumpPerformanceChartTaskEntryPointsBound) return false;
+    document.addEventListener('contextmenu', capturePumpContextMenuTarget, true);
+    document.addEventListener('click', () => {
+      lastPumpContextMenuId = '';
+    }, true);
+    let pending = 0;
+    const scheduleSync = () => {
+      if (pending) root.clearTimeout?.(pending);
+      pending = root.setTimeout?.(() => {
+        pending = 0;
+        syncPumpPerformanceChartEntryPoints();
+      }, 20) || 0;
+    };
+    const observer = new MutationObserver((records) => {
+      const shouldSync = records.some((record) => Array.from(record.addedNodes || []).some((node) => (
+        node.nodeType === 1
+        && (node.matches?.('#canvasContextMenu')
+          || node.querySelector?.('#canvasContextMenu'))
+      )));
+      if (shouldSync) scheduleSync();
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    root.__pumpPerformanceChartTaskEntryObserver = observer;
+    root.__pumpPerformanceChartTaskEntryPointsBound = true;
+    scheduleSync();
+    return true;
+  }
+
   function markCanonicalFunction(fn, role) {
     fn.__pumpPerformanceCanonicalChartVersion = VERSION;
     fn.__pumpPerformanceCanonicalChartRole = role;
@@ -1199,6 +2054,17 @@
       }, 'openPumpPerformanceCurveWindow');
       changed = true;
     }
+
+    if (typeof root.openPumpPerformanceChartTaskWindow !== 'function' || root.openPumpPerformanceChartTaskWindow.__pumpPerformanceCanonicalChartVersion !== VERSION) {
+      root.openPumpPerformanceChartTaskWindow = markCanonicalFunction(function openPumpCanonicalPerformanceChartTaskWindow(pumpId) {
+        const id = resolvePumpId(pumpId);
+        ensureTaskWindow(id);
+        const chartModel = render(id);
+        scheduleRender(id, { force: true, delayMs: 16, reason: 'openPumpPerformanceChartTaskWindow' });
+        return chartModel;
+      }, 'openPumpPerformanceChartTaskWindow');
+      changed = true;
+    }
     return changed;
   }
 
@@ -1244,8 +2110,10 @@
       wrapFunctionAfter('updatePumpResultReadouts', () => scheduleRender(), 'updatePumpResultReadouts'),
       installChartEndpoints(),
       bindRealtimeEvents(),
-      bindLiveInputRefresh()
+      bindLiveInputRefresh(),
+      bindChartTaskEntryPoints()
     ].some(Boolean);
+    syncPumpPerformanceChartEntryPoints();
     if (changed) scheduleRender('', { reason: 'runtime guard changed' });
     return changed;
   }
@@ -1280,9 +2148,10 @@
         const hasChart = records.some((record) => Array.from(record.addedNodes || []).some((node) => (
           node.nodeType === 1
           && (node.matches?.('#pumpChart, #captionAuditPumpChartCanvas, .caption-audit-inline-chart-wrap, .modal-chart-wrap')
-            || node.querySelector?.('#pumpChart, #captionAuditPumpChartCanvas, .caption-audit-inline-chart-wrap canvas, .modal-chart-wrap canvas'))
+            || node.querySelector?.('#pumpChart, #captionAuditPumpChartCanvas, .caption-audit-inline-chart-wrap canvas, .modal-chart-wrap canvas, .pump-performance-chart-task-window canvas'))
         )));
         if (hasChart) scheduleRender('', { force: true, reason: 'chart canvas added' });
+        syncPumpPerformanceChartEntryPoints();
       });
       observer.observe(document.documentElement, { childList: true, subtree: true });
       root.__pumpPerformanceCanonicalChartObserver = observer;
@@ -1299,7 +2168,9 @@
     render,
     buildChartModel,
     scheduleRender,
-    ensureRuntimeGuards
+    ensureRuntimeGuards,
+    openTaskWindow: ensureTaskWindow,
+    syncEntryPoints: syncPumpPerformanceChartEntryPoints
   };
 
   root.EngineeringPumpPerformanceCanonicalChart = api;

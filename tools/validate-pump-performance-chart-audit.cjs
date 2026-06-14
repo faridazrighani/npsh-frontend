@@ -47,7 +47,7 @@ function setModel(pump, extras = {}) {
 
 setModel({ props: {}, results: {} });
 let result = audit.compute('P-100');
-assert.strictEqual(result.version, 'pump-performance-chart-audit.v12');
+assert.strictEqual(result.version, 'pump-performance-chart-audit.v19');
 assert.strictEqual(result.axisMode, 'log-log');
 assert.strictEqual(result.chartHasDrawableCurve, false);
 assert.strictEqual(result.status, 'Curve Data Unavailable');
@@ -255,18 +255,18 @@ globalThis.updatePumpChart = function lateCaptionChartOverride() {
 audit.ensureRuntimeGuards();
 assert.strictEqual(
   globalThis.updatePumpChart.__pumpPerformanceChartAuditVersion,
-  'pump-performance-chart-audit.v12',
+  'pump-performance-chart-audit.v19',
   'Audit runtime must rewrap late caption chart overrides.'
 );
 globalThis.updatePumpChart('P-100');
 assert.strictEqual(lateRendererCalls, 0, 'Audit chart draw must not call the old fallback renderer.');
 
 assert(
-  index.includes('engineering-pump-performance-chart-audit.js?v=20260614-pump-chart-audit14'),
+  index.includes('engineering-pump-performance-chart-audit.js?v=20260614-pump-chart-audit21'),
   'Index must cache-bust the pump performance chart audit runtime.'
 );
 assert(
-  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260614-canonical-chart8'),
+  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260614-canonical-chart15'),
   'Audit runtime must load the canonical operational chart renderer after audit guards.'
 );
 assert.strictEqual(typeof audit.loadCanonicalChartRenderer, 'function', 'Audit runtime must expose canonical renderer loader.');
@@ -287,7 +287,7 @@ globalThis.document = {
 assert.doesNotThrow(() => audit.refresh('P-100'), 'Audit refresh must not draw over the canonical chart renderer.');
 assert.strictEqual(
   globalThis.__pumpPerformanceChartAuditLast?.version,
-  'pump-performance-chart-audit.v12',
+  'pump-performance-chart-audit.v19',
   'Audit refresh should still retain the latest computed audit model.'
 );
 if (previousDocument === undefined) delete globalThis.document;
@@ -302,8 +302,28 @@ assert(canonicalSource.includes('hasRenderableCanvas'), 'Canonical chart rendere
 assert(canonicalSource.includes('buildFastLanePreviewModel'), 'Canonical chart renderer must build a local pump-edit preview model.');
 assert(canonicalSource.includes('Local Pump Edit Preview'), 'Canonical chart renderer must label local pump-edit chart previews.');
 assert(canonicalSource.includes('options.force && delayMs <= 32'), 'Canonical chart renderer must bypass governed latency for fast-lane preview frames.');
-assert.strictEqual(canonical.version, 'pump-performance-canonical-chart.v6', 'Canonical chart runtime must expose the realtime-refresh version.');
+assert(canonicalSource.includes('.pump-performance-chart-task-window canvas'), 'Canonical chart renderer must render canvases inside the separate Pump Performance Chart task window.');
+assert(canonicalSource.includes('openPumpPerformanceChartTaskWindow'), 'Canonical chart renderer must expose a Pump Performance Chart task-window opener.');
+assert(canonicalSource.includes('data-pump-performance-chart-task-menu'), 'Pump context menu must gain a Pump Performance Chart task-window menu item.');
+assert(!canonicalSource.includes('pump-performance-chart-task-btn'), 'Pump Object Properties must not show a duplicate Pump Performance Chart button.');
+assert(!canonicalSource.includes('injectPumpPropertiesChartButtons'), 'Pump Properties chart-button injection must stay removed.');
+assert(!canonicalSource.includes('data-pump-performance-chart-task-button'), 'Pump Properties must not carry a duplicate chart button data hook.');
+assert(canonicalSource.includes('const canvasPumpId = canvas.dataset?.pumpId || pumpId'), 'Each chart canvas must keep its own pump id when multiple chart windows are visible.');
+assert(canonicalSource.includes('function isChartTaskWindowCanvas'), 'Canonical chart renderer must detect compact chart task-window canvases.');
+assert(canonicalSource.includes('const minWidth = compactTaskWindow ? 300 : 560'), 'Task-window charts must be allowed to shrink below the legacy 560px canvas width.');
+assert(canonicalSource.includes('ResizeObserver'), 'Task-window charts must redraw from element resize events, not only window resize.');
+assert(canonicalSource.includes('min-width: min(320px'), 'Pump Performance Chart task window must allow compact resizing.');
+assert(canonicalSource.includes('min-width: 0'), 'Pump Performance Chart wrapper must not force horizontal width while resizing.');
+assert(canonicalSource.includes('function drawFooterMetadata'), 'Canonical chart renderer must draw source/freshness metadata through the footer layout helper.');
+assert(canonicalSource.includes('Chart Basis:'), 'Canonical footer metadata must include chart basis.');
+assert(canonicalSource.includes('Curve Mode:'), 'Canonical footer metadata must include curve mode.');
+assert(canonicalSource.includes('chart.bottom + (compact ? 38 : 44)'), 'X-axis label must be positioned from the plot footer, not absolute canvas bottom.');
+assert(canonicalSource.includes('chart.bottom + 58'), 'Compact footer metadata must be below the x-axis label.');
+assert(!canonicalSource.includes('height - 44 + index * 11'), 'Footer metadata must not return to the old axis-overlap position.');
+assert.strictEqual(canonical.version, 'pump-performance-canonical-chart.v13', 'Canonical chart runtime must expose the smart engineering chart version.');
 assert.strictEqual(typeof canonical.ensureRuntimeGuards, 'function', 'Canonical chart runtime must expose self-healing realtime guards.');
+assert.strictEqual(typeof canonical.openTaskWindow, 'function', 'Canonical chart runtime must expose task-window creation for Pump Performance Chart.');
+assert.strictEqual(typeof canonical.syncEntryPoints, 'function', 'Canonical chart runtime must expose entry-point synchronization for menu/buttons.');
 assert(
   canonicalSource.includes('__pumpFormulaDefenseLiveAuditVersion')
     && canonicalSource.includes('__pumpPerformanceChartAuditVersion'),
@@ -321,7 +341,7 @@ globalThis.updatePumpChart = function overwrittenPumpChartRenderer() {
 canonical.ensureRuntimeGuards();
 assert.strictEqual(
   globalThis.updatePumpChart.__pumpPerformanceCanonicalChartVersion,
-  'pump-performance-canonical-chart.v6',
+  'pump-performance-canonical-chart.v13',
   'Canonical renderer must reclaim updatePumpChart after any late override.'
 );
 
@@ -360,11 +380,23 @@ globalThis.__npshGlobalModel['P-100'].results.performanceChartData.series.pumpHe
 globalThis.__npshGlobalModel['P-100'].results.performanceChartData.series.pumpHead[1].value = 31;
 const liveAfter = globalThis.updatePumpChart('P-100');
 assert.strictEqual(liveBeforeFlow, 50, 'Initial chart render should read current backend duty flow.');
-assert.strictEqual(liveAfter.dutyPoint.flow, 72, 'Pump chart render must refresh duty flow from the latest model data.');
-assert.strictEqual(liveAfter.series.pumpHead[1].value, 31, 'Pump chart curve numbers must refresh from the latest model data.');
+assert.strictEqual(liveAfter.dutyPoint.flow, 50, 'Mismatched backend chart data must not override Pump Properties design flow.');
+assert.strictEqual(liveAfter.dutyPoint.head, 24, 'Mismatched backend chart data must not override Pump Properties design head.');
+assert.strictEqual(liveAfter.rebuilt, true, 'Mismatched backend chart data must rebuild from live Pump Properties.');
+globalThis.__npshGlobalModel['P-100'].props.designFlow = 72;
+globalThis.__npshGlobalModel['P-100'].props.designHead = 31;
+globalThis.__npshGlobalModel['P-100'].props.bepFlow = 72;
+const liveAligned = globalThis.updatePumpChart('P-100');
+assert.strictEqual(liveAligned.dutyPoint.flow, 72, 'Aligned backend chart data may follow the latest Pump Properties design flow.');
+assert.strictEqual(liveAligned.series.pumpHead[1].value, 31, 'Aligned backend chart curve numbers may be reused.');
+globalThis.__npshGlobalModel['P-100'].props.designFlow = 50;
+globalThis.__npshGlobalModel['P-100'].props.designHead = 24;
+globalThis.__npshGlobalModel['P-100'].props.bepFlow = 50;
+globalThis.__npshGlobalModel['P-100'].results.flow = 50;
+globalThis.__npshGlobalModel['P-100'].results.head = 24;
 
 globalThis.__engineeringPumpEditFastLane = {
-  version: 'engineering-pump-edit-fast-lane.v1',
+  version: 'engineering-pump-edit-fast-lane.v2',
   mode: 'chart',
   field: 'designHead',
   pumpId: 'P-100',
@@ -476,7 +508,7 @@ assert.strictEqual(staleRebuiltChartModel.series.pumpHead[1].value, 33, 'Rebuilt
 assert.strictEqual(staleRebuiltChartModel.sourceAudit.frontendChartRebuilt, true, 'Rebuilt chart must retain audit evidence.');
 
 globalThis.__engineeringPumpEditFastLane = {
-  version: 'engineering-pump-edit-fast-lane.v1',
+  version: 'engineering-pump-edit-fast-lane.v2',
   mode: 'chart',
   field: 'designHead',
   pumpId: 'P-100',
@@ -498,6 +530,248 @@ assert(chartRebuildCalls >= 2, 'Stale and fast-lane paths must call the formula-
 delete globalThis.__engineeringPumpEditFastLane;
 delete globalThis.getPumpPerformanceChartDataFreshness;
 delete globalThis.buildPumpPerformanceChartData;
+
+setModel({
+  props: {
+    designFlow: 50,
+    designHead: 24,
+    designEfficiency: 62,
+    designNpshr: 2.4,
+    bepFlow: 50,
+    npshrSourceMode: 'Estimated'
+  },
+  results: {
+    flow: 50,
+    head: 24,
+    npsha: 7,
+    npshr: 2.4,
+    npshEvaluation: {
+      flow: 50,
+      pumpHead: 24,
+      npsha: 7,
+      npshr: 2.4,
+      calculationFreshness: 'Local preview'
+    }
+  }
+});
+globalThis.__engineeringPumpEditFastLane = {
+  version: 'engineering-pump-edit-fast-lane.v2',
+  mode: 'chart',
+  field: 'bepFlow',
+  pumpId: 'P-100',
+  backend: 'defer',
+  activeUntil: Date.now() + 2000
+};
+const bep50Preview = canonical.buildChartModel('P-100');
+const bep50HighFlowHead = bep50Preview.series.pumpHead.at(-1)?.value;
+globalThis.__npshGlobalModel['P-100'].props.bepFlow = 80;
+const bep80Preview = canonical.buildChartModel('P-100');
+const bep80HighFlowHead = bep80Preview.series.pumpHead.at(-1)?.value;
+assert.notStrictEqual(bep50HighFlowHead, bep80HighFlowHead, 'BEP Flow edit must reshape the local pump head curve away from the duty point immediately.');
+assert.strictEqual(bep80Preview.series.pumpHead.find((point) => point.flow === 50)?.value, 24, 'BEP Flow edit must not move the design-flow/design-head duty anchor.');
+assert.strictEqual(bep80Preview.ranges.bepFlow, 80, 'BEP Flow edit must update POR/AOR range basis immediately.');
+
+globalThis.__engineeringPumpEditFastLane.field = 'designFlow';
+globalThis.__npshGlobalModel['P-100'].props.designFlow = 70;
+globalThis.__npshGlobalModel['P-100'].results.flow = 70;
+globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.flow = 70;
+const designFlowPreview = canonical.buildChartModel('P-100');
+assert.strictEqual(designFlowPreview.dutyPoint.flow, 70, 'Design Flow edit must move the duty point immediately.');
+assert(designFlowPreview.series.pumpHead.some((point) => point.flow === 70), 'Design Flow edit must add the edited duty flow to the chart grid.');
+
+globalThis.__engineeringPumpEditFastLane.field = 'designHead';
+globalThis.__npshGlobalModel['P-100'].props.designHead = 30;
+globalThis.__npshGlobalModel['P-100'].results.head = 30;
+globalThis.__npshGlobalModel['P-100'].results.pumpHeadAtFlow = 30;
+globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.pumpHead = 30;
+const designHeadPreview = canonical.buildChartModel('P-100');
+const designHeadPoint = designHeadPreview.series.pumpHead.find((point) => point.flow === 70);
+assert(designHeadPoint?.value > designFlowPreview.series.pumpHead.find((point) => point.flow === 70)?.value, 'Design Head edit must raise/lower the local pump head curve immediately.');
+
+globalThis.__engineeringPumpEditFastLane.field = 'npshrSourceMode';
+globalThis.__npshGlobalModel['P-100'].props.designNpshr = 3;
+globalThis.__npshGlobalModel['P-100'].props.manualNpshr = 3;
+globalThis.__npshGlobalModel['P-100'].props.npshrSourceMode = 'Manual';
+globalThis.__npshGlobalModel['P-100'].results.npshr = 3;
+globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.npshr = 3;
+const manualNpshrPreview = canonical.buildChartModel('P-100');
+assert(
+  manualNpshrPreview.series.npshr.every((point) => point.value === 3),
+  'Manual NPSHr source must render a flat local NPSHr curve.'
+);
+globalThis.__npshGlobalModel['P-100'].props.npshrSourceMode = 'Estimated';
+const estimatedNpshrPreview = canonical.buildChartModel('P-100');
+assert(
+  estimatedNpshrPreview.series.npshr.some((point) => point.value !== 3),
+  'Estimated NPSHr source must render a shaped local NPSHr curve.'
+);
+delete globalThis.__engineeringPumpEditFastLane;
+
+setModel({
+  props: {
+    designFlow: 70,
+    designHead: 35,
+    designEfficiency: 62,
+    designNpshr: 4,
+    manualNpshr: 4,
+    npshrSourceMode: 'Manual',
+    bepFlow: 57,
+    porMinPercent: 70,
+    porMaxPercent: 120,
+    aorMinPercent: 50,
+    aorMaxPercent: 130
+  },
+  results: {
+    flow: 50,
+    head: 24,
+    npsha: 6.4566,
+    npshr: 2.4,
+    npshEvaluation: {
+      flow: 50,
+      pumpHead: 24,
+      npsha: 6.4566,
+      npshr: 2.4,
+      calculationFreshness: 'Current'
+    },
+    performanceChartData: {
+      schemaVersion: 'pump-performance-chart-data.v1',
+      sourceMode: 'Old backend chart',
+      freshness: 'Current',
+      sourceAudit: {
+        curveDataSource: 'Old backend chart',
+        curveDataConfidence: 'Protected backend',
+        npshrSourceMode: 'Estimated'
+      },
+      ranges: { bepFlow: 50 },
+      dutyPoint: { flow: 50, head: 24, npsha: 6.4566, npshr: 2.4 },
+      series: {
+        pumpHead: [{ flow: 5, value: 30 }, { flow: 50, value: 24 }, { flow: 85, value: 12 }],
+        systemHead: [{ flow: 5, value: 8.8 }, { flow: 50, value: 24 }, { flow: 85, value: 52 }],
+        npsha: [{ flow: 5, value: 9 }, { flow: 50, value: 6.4566 }, { flow: 85, value: 2.1 }],
+        npshr: [{ flow: 5, value: 2.4 }, { flow: 50, value: 2.4 }, { flow: 85, value: 2.4 }]
+      }
+    }
+  }
+});
+const smartEngineeringChartModel = canonical.buildChartModel('P-100');
+assert.strictEqual(smartEngineeringChartModel.rebuilt, true, 'Smart chart must rebuild when old chart data conflicts with Pump Properties.');
+assert.strictEqual(smartEngineeringChartModel.dutyPoint.flow, 70, 'Smart chart duty point must follow current Design Flow.');
+assert.strictEqual(smartEngineeringChartModel.dutyPoint.head, 35, 'Smart chart duty point must follow current Design Head.');
+assert.strictEqual(smartEngineeringChartModel.dutyPoint.npshr, 4, 'Smart chart duty NPSHr must follow current Manual NPSHr.');
+assert.strictEqual(smartEngineeringChartModel.ranges.bepFlow, 57, 'Smart chart range basis must follow current BEP Flow.');
+assert.strictEqual(
+  smartEngineeringChartModel.series.pumpHead.find((point) => point.flow === 70)?.value,
+  35,
+  'Smart chart pump head curve must pass through the current design-flow/design-head anchor.'
+);
+assert.strictEqual(
+  smartEngineeringChartModel.series.systemHead.find((point) => point.flow === 70)?.value,
+  35,
+  'Smart chart system curve must pass through the current design-flow/design-head target in preview mode.'
+);
+assert.strictEqual(smartEngineeringChartModel.primaryMarker.flow, 70, 'Preview primary marker must use current Design Flow.');
+assert.strictEqual(smartEngineeringChartModel.primaryMarker.head, 35, 'Preview primary marker must use current Design Head.');
+assert.strictEqual(smartEngineeringChartModel.markerLabel, 'Design Duty Target', 'Preview marker must clearly label the design-duty target.');
+assert.strictEqual(smartEngineeringChartModel.chartMode, 'Preview', 'Mismatched non-vendor chart data must enter Preview mode.');
+assert.strictEqual(smartEngineeringChartModel.sourceAudit.chartBasis, 'Design Duty Target', 'Preview chart basis must be auditable.');
+assert.strictEqual(smartEngineeringChartModel.sourceAudit.systemCurveFormula, 'Hsystem(Q) = Hstatic + R*Q^2, constrained by Hsystem(Qd)=Hd');
+assert.strictEqual(smartEngineeringChartModel.sourceAudit.npshaCurveFormula, 'NPSHa(Q) = suction energy - suction loss at duty*(Q/Qd)^2');
+assert(
+  smartEngineeringChartModel.series.npshr.every((point) => point.value === 4),
+  'Smart chart Manual NPSHr mode must render a flat current manual NPSHr curve.'
+);
+assert.strictEqual(
+  smartEngineeringChartModel.sourceAudit.smartEngineeringChart,
+  true,
+  'Smart chart must retain auditable smart-engineering metadata.'
+);
+
+setModel({
+  props: {
+    designFlow: 65,
+    designHead: 43,
+    designEfficiency: 69,
+    designNpshr: 6,
+    manualNpshr: 6,
+    npshrSourceMode: 'Manual',
+    bepFlow: 65
+  },
+  results: {
+    flow: 50,
+    head: 24,
+    npsha: 6.4566,
+    npshr: 2.4,
+    performanceChartData: {
+      schemaVersion: 'pump-performance-chart-data.v1',
+      sourceMode: 'Manufacturer datasheet curve',
+      freshness: 'Current',
+      sourceAudit: {
+        curveDataSource: 'Manufacturer datasheet curve',
+        curveDataConfidence: 'Manufacturer test',
+        chartMode: 'Vendor'
+      },
+      dutyPoint: { flow: 50, head: 24, npsha: 6.4566, npshr: 2.4 },
+      series: {
+        pumpHead: [{ flow: 30, value: 29 }, { flow: 50, value: 24 }, { flow: 80, value: 20 }],
+        systemHead: [{ flow: 30, value: 12 }, { flow: 50, value: 24 }, { flow: 80, value: 48 }],
+        npsha: [{ flow: 30, value: 7.2 }, { flow: 50, value: 6.4566 }, { flow: 80, value: 4.8 }],
+        npshr: [{ flow: 30, value: 1.8 }, { flow: 50, value: 2.4 }, { flow: 80, value: 3.2 }]
+      }
+    }
+  }
+});
+const vendorProtectedChartModel = canonical.buildChartModel('P-100');
+assert.strictEqual(vendorProtectedChartModel.vendorProtected, true, 'Vendor chart data must be protected when live pump inputs no longer match.');
+assert.strictEqual(vendorProtectedChartModel.chartMode, 'Vendor', 'Vendor curve protection must keep Vendor mode.');
+assert.strictEqual(vendorProtectedChartModel.markerLabel, 'Operating Point', 'Vendor mode must keep the operating-point marker label.');
+assert.strictEqual(vendorProtectedChartModel.showDesignTarget, true, 'Vendor mode must show the edited design target separately when it differs from the vendor operating point.');
+assert.strictEqual(vendorProtectedChartModel.designTarget.flow, 65, 'Vendor mode design target overlay must read current Design Flow.');
+assert.strictEqual(vendorProtectedChartModel.designTarget.head, 43, 'Vendor mode design target overlay must read current Design Head.');
+assert.notStrictEqual(
+  vendorProtectedChartModel.series.pumpHead.find((point) => point.flow === 65)?.value,
+  43,
+  'Vendor pump curve must not be forced through a changed design target.'
+);
+assert.strictEqual(vendorProtectedChartModel.sourceAudit.vendorCurveProtected, true, 'Vendor protection must be visible in source audit metadata.');
+
+setModel({
+  props: {
+    designFlow: 60,
+    designHead: 30,
+    designEfficiency: 70,
+    designNpshr: 3,
+    bepFlow: 60
+  },
+  results: {
+    flow: 60,
+    head: 30,
+    npsha: 6,
+    npshr: 3,
+    performanceChartData: {
+      schemaVersion: 'pump-performance-chart-data.v1',
+      sourceMode: 'Backend solved chart',
+      freshness: 'Current',
+      sourceAudit: {
+        curveDataSource: 'Backend solved chart',
+        curveDataConfidence: 'Solver output',
+        chartMode: 'Solved'
+      },
+      dutyPoint: { flow: 60, head: 30, npsha: 6, npshr: 3 },
+      series: {
+        pumpHead: [{ flow: 40, value: 40 }, { flow: 60, value: 30 }, { flow: 80, value: 20 }],
+        systemHead: [{ flow: 40, value: 20 }, { flow: 60, value: 30 }, { flow: 80, value: 45 }],
+        npsha: [{ flow: 40, value: 7 }, { flow: 60, value: 6 }, { flow: 80, value: 4.8 }],
+        npshr: [{ flow: 40, value: 2.5 }, { flow: 60, value: 3 }, { flow: 80, value: 3.8 }]
+      }
+    }
+  }
+});
+const solvedChartModel = canonical.buildChartModel('P-100');
+assert.strictEqual(solvedChartModel.chartMode, 'Solved', 'Fresh backend solved chart must remain in Solved mode.');
+assert.strictEqual(solvedChartModel.operatingPoint.flow, 60, 'Solved mode operating point must come from pump/system curve intersection.');
+assert.strictEqual(solvedChartModel.operatingPoint.head, 30, 'Solved mode operating head must come from pump/system curve intersection.');
+assert.strictEqual(solvedChartModel.markerLabel, 'Operating Point', 'Solved mode marker must label the true operating point.');
+assert.strictEqual(solvedChartModel.showDesignTarget, false, 'Solved mode must not duplicate the design target when it matches the operating point.');
 
 setModel({
   props: {

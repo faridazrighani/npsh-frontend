@@ -1,7 +1,7 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-pump-edit-fast-lane.v1';
-  const CACHE_KEY = '20260614-pump-edit-fast-lane1';
+  const VERSION = 'engineering-pump-edit-fast-lane.v2';
+  const CACHE_KEY = '20260614-pump-edit-fast-lane2';
   const PUMP_WINDOW_SELECTOR = [
     '.persistent-object-properties-task-window',
     '#taskWindow',
@@ -38,6 +38,7 @@
   ]);
   let chartTimer = 0;
   let readoutTimer = 0;
+  let previewSequence = 0;
 
   function runtimeModel() {
     try {
@@ -202,17 +203,55 @@
     };
   }
 
-  function applyLocalNpsh(pump) {
+  function estimatedNpshrAtFlow(flow, bepFlow, designNpshr) {
+    const q = finiteNumber(flow);
+    const qbep = firstFinite(bepFlow, flow);
+    const npshr = finiteNumber(designNpshr);
+    if (q === null || qbep === null || npshr === null || qbep <= 0 || npshr <= 0) return npshr;
+    const ratio = Math.max(0, q / qbep);
+    return Math.max(0.01, npshr * (0.65 + 0.35 * Math.pow(ratio, 2.2)));
+  }
+
+  function resolvePreviewFlow(pump, evaluation, field) {
+    if (field === 'designFlow') return firstFinite(pump.props?.designFlow, evaluation.flow, pump.results?.flow);
+    return firstFinite(evaluation.flow, pump.results?.fixedFlow, pump.results?.flow, pump.props?.designFlow);
+  }
+
+  function resolvePreviewNpshr(pump, evaluation, flow, field) {
+    const manualBasis = firstFinite(pump.props?.manualNpshr, pump.props?.designNpshr, evaluation.npshr, pump.results?.npshr);
+    const designBasis = firstFinite(pump.props?.designNpshr, pump.props?.manualNpshr, evaluation.npshr, pump.results?.npshr);
+    const source = String(pump.props?.npshrSourceMode || '').toLowerCase();
+    if (field === 'manualNpshr' || field === 'npshr' || source.includes('manual')) return manualBasis;
+    return estimatedNpshrAtFlow(flow, pump.props?.bepFlow || pump.props?.designFlow, designBasis);
+  }
+
+  function markPreviewMetadata(pump, field) {
+    if (!pump.results || typeof pump.results !== 'object') return;
+    previewSequence += 1;
+    pump.results.calculationFreshness = 'Local preview';
+    pump.results.chartPreviewSource = 'Pump Properties fast lane';
+    pump.results.chartPreviewField = field || '';
+    pump.results.chartPreviewSequence = previewSequence;
+    if (pump.results.performanceChartData?.schemaVersion === 'pump-performance-chart-data.v1') {
+      pump.results.performanceChartData = {
+        ...pump.results.performanceChartData,
+        freshness: 'Stale - local preview active',
+        sourceAudit: {
+          ...(pump.results.performanceChartData.sourceAudit || {}),
+          staleBecausePumpFastLaneInputChanged: true,
+          localPreviewField: field || ''
+        }
+      };
+    }
+  }
+
+  function applyLocalNpsh(pump, options = {}) {
+    const field = options.field || '';
     const evaluation = ensurePumpResults(pump);
     const criteria = marginCriteria(pump, evaluation);
+    const flow = resolvePreviewFlow(pump, evaluation, field);
     const npsha = firstFinite(recalcNpsha(pump, evaluation), evaluation.npsha, pump.results.npsha);
-    const npshr = firstFinite(
-      pump.props?.designNpshr,
-      pump.props?.manualNpshr,
-      evaluation.npshr,
-      pump.results.npshr,
-      pump.results.npshRequired
-    );
+    const npshr = resolvePreviewNpshr(pump, evaluation, flow, field);
     if (npsha !== null) {
       evaluation.npsha = round(npsha, 6);
       pump.results.npsha = evaluation.npsha;
@@ -245,7 +284,6 @@
       pump.results.engineeringStatus = status;
       pump.results.cavitationStatus = status;
     }
-    const flow = firstFinite(evaluation.flow, pump.results.fixedFlow, pump.results.flow, pump.props?.designFlow);
     const head = firstFinite(pump.props?.designHead, evaluation.pumpHead, pump.results.pumpHeadAtFlow, pump.results.head);
     if (flow !== null) {
       evaluation.flow = round(flow, 6);
@@ -257,8 +295,8 @@
       pump.results.pumpHeadAtFlow = evaluation.pumpHead;
     }
     pump.results.efficiency = firstFinite(pump.props?.designEfficiency, pump.results.efficiency);
-    pump.results.calculationFreshness = 'Local preview';
     evaluation.calculationFreshness = 'Local preview';
+    markPreviewMetadata(pump, field);
     return evaluation;
   }
 
@@ -280,7 +318,7 @@
     } else {
       pump.props[field] = value;
     }
-    const evaluation = applyLocalNpsh(pump);
+    const evaluation = applyLocalNpsh(pump, { field });
     return { pumpId, pump, evaluation };
   }
 
