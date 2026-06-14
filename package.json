@@ -28,6 +28,7 @@
     "validate:pipe-canvas-hydraulic-label": "node tools/validate-pipe-canvas-hydraulic-label.cjs",
     "validate:pipe-source-confidence-map": "node tools/validate-pipe-source-confidence-map.cjs",
     "validate:analysis-report-live-runtime": "node tools/validate-analysis-report-live-runtime.cjs",
+    "validate:pump-nozzle-simplify": "node tools/validate-pump-nozzle-simplify-runtime.cjs",
     "validate:calculation-lifecycle": "node tools/validate-calculation-lifecycle-runtime.cjs",
     "validate:calculation-progress-overlay": "node tools/validate-calculation-progress-overlay.cjs",
     "validate:performance-refresh-governor": "node tools/validate-performance-refresh-governor.cjs",

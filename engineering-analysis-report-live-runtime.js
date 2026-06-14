@@ -1,7 +1,7 @@
 (function installEngineeringAnalysisReportLiveRuntime(root) {
   'use strict';
 
-  const VERSION = '2026.06-analysis-report-live6';
+  const VERSION = '2026.06-analysis-report-live8';
   const REFRESH_MS = 3000;
   const ACTIVE_SELECTOR = '.journal-analysis-task-window, .journal-analysis-report-panel';
   const RESPONSIVE_STYLE_ID = 'engineeringAnalysisReportLiveResponsiveStyle';
@@ -122,6 +122,13 @@
     .replace(/\s+\/\s+/g, ' / ')
     .trim()
     .toLowerCase();
+
+  const METRIC_LABEL_RENAMES = new Map([
+    [normalizeMetric('Pump - Suction Nozzle Elev.'), 'Pump - Pump Datum Elev.'],
+    [normalizeMetric('Pump - Suction nozzle elevation'), 'Pump - Pump datum elevation']
+  ]);
+
+  const canonicalMetricLabel = (metric) => METRIC_LABEL_RENAMES.get(normalizeMetric(metric)) || metric;
 
   const toNumber = (value) => {
     if (typeof value === 'number') return Number.isFinite(value) ? value : null;
@@ -306,6 +313,23 @@
     return null;
   };
 
+  const pipeEndpointElevation = (pipeEntry, endpointKey) => {
+    if (!pipeEntry || !endpointKey) return null;
+    const props = pipeEntry.object?.props || {};
+    const direct = firstNumber(props[endpointKey]);
+    if (direct !== null) return direct;
+
+    const trace = pipeTrace(pipeEntry);
+    const segments = trace.segmentRows || trace.segments || [];
+    const orderedSegments = endpointKey === 'endElevation' ? [...segments].reverse() : segments;
+    for (const segment of orderedSegments) {
+      const profile = segment?.profile || {};
+      const value = firstNumber(profile[endpointKey], segment?.[endpointKey]);
+      if (value !== null) return value;
+    }
+    return null;
+  };
+
   const pressureHeadM = (pressureBarA, densityKgM3) => {
     const pressure = firstNumber(pressureBarA);
     const density = firstNumber(densityKgM3);
@@ -415,6 +439,14 @@
 
     setPipeGroup('Pipe Suction', suctionPipe);
     setPipeGroup('Pipe Discharge', dischargePipe);
+    const suctionPfvStartElevation = pipeEndpointElevation(suctionPipe, 'startElevation');
+    const suctionPfvEndElevation = pipeEndpointElevation(suctionPipe, 'endElevation');
+    const dischargePfvStartElevation = pipeEndpointElevation(dischargePipe, 'startElevation');
+    const dischargePfvEndElevation = pipeEndpointElevation(dischargePipe, 'endElevation');
+    set('Pipe Suction - PFV Start Elevation', withUnit(suctionPfvStartElevation, 'm', 6), suctionPfvStartElevation);
+    set('Pipe Suction - PFV End Elevation', withUnit(suctionPfvEndElevation, 'm', 6), suctionPfvEndElevation);
+    set('Pipe Discharge - PFV Start Elevation', withUnit(dischargePfvStartElevation, 'm', 6), dischargePfvStartElevation);
+    set('Pipe Discharge - PFV End Elevation', withUnit(dischargePfvEndElevation, 'm', 6), dischargePfvEndElevation);
 
     const pumpFlow = firstNumber(npsh.flow, pumpResults.fixedFlow, pumpResults.flow, pumpProps.designFlow);
     const pumpHead = firstNumber(npsh.pumpHead, pumpResults.requiredSystemHead, pumpResults.pumpHeadAtFlow, pumpResults.head, pumpProps.designHead);
@@ -436,12 +468,8 @@
     const shaftPower = firstNumber(pumpResults.power);
     const efficiency = firstNumber(pumpResults.efficiency, pumpProps.designEfficiency);
 
-    set('Pump - Elevation', withUnit(pumpProps.elevation, 'm', 6), firstNumber(pumpProps.elevation));
-    set('Pump - Suction Nozzle Elev.', withUnit(pumpProps.suctionElevation, 'm', 6), firstNumber(pumpProps.suctionElevation));
-    set('Pump - Suction nozzle elevation', withUnit(pumpProps.suctionElevation, 'm', 6), firstNumber(pumpProps.suctionElevation));
-    set('Pump - Discharge Nozzle Elev.', withUnit(pumpProps.dischargeElevation, 'm', 6), firstNumber(pumpProps.dischargeElevation));
-    set('Pump - Discharge nozzle elevation', withUnit(pumpProps.dischargeElevation, 'm', 6), firstNumber(pumpProps.dischargeElevation));
-    set('Pump - Elevation / Nozzle Elevations', `${withUnit(pumpProps.elevation, 'm', 3)} / ${withUnit(pumpProps.suctionElevation, 'm', 3)} / ${withUnit(pumpProps.dischargeElevation, 'm', 3)}`, firstNumber(pumpProps.elevation));
+    set('Pump - Pump Datum Elev.', withUnit(pumpProps.suctionElevation, 'm', 6), firstNumber(pumpProps.suctionElevation));
+    set('Pump - Pump datum elevation', withUnit(pumpProps.suctionElevation, 'm', 6), firstNumber(pumpProps.suctionElevation));
     set('Pump - Hydraulic NPSH Status', hydraulicStatus, null);
     set('Pump - Engineering Status', engineeringStatus, null);
     set('Pump - Data Confidence', dataConfidence || '-', null);
@@ -590,8 +618,10 @@
       const metricCell = cells[headers.metricIndex];
       const appCell = cells[headers.applicationIndex];
       if (!metricCell || !appCell) return;
-      const liveEntry = metrics.get(normalizeMetric(metricCell.textContent));
+      const canonicalLabel = canonicalMetricLabel(metricCell.textContent);
+      const liveEntry = metrics.get(normalizeMetric(canonicalLabel));
       if (!liveEntry) return;
+      if (canonicalLabel !== metricCell.textContent && setCellText(metricCell, liveEntry.metric)) changed += 1;
       if (setCellText(appCell, liveEntry.text)) changed += 1;
       if (headers.errorIndex >= 0 && headers.journalIndex >= 0) {
         const errorCell = cells[headers.errorIndex];
@@ -620,7 +650,9 @@
       const metricCell = cells[headers.metricIndex];
       const valueCell = cells[headers.valueIndex];
       if (!metricCell || !valueCell) return;
-      const liveEntry = metrics.get(normalizeMetric(metricCell.textContent));
+      const canonicalLabel = canonicalMetricLabel(metricCell.textContent);
+      const liveEntry = metrics.get(normalizeMetric(canonicalLabel));
+      if (liveEntry && canonicalLabel !== metricCell.textContent && setCellText(metricCell, liveEntry.metric)) changed += 1;
       if (liveEntry && setCellText(valueCell, liveEntry.valueText)) changed += 1;
     });
     return changed;

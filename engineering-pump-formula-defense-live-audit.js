@@ -1,9 +1,10 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-formula-defense-live-audit.v3';
+  const VERSION = 'pump-formula-defense-live-audit.v4';
   const WINDOW_SELECTOR = '.pump-formula-defense-task-window';
   const BADGE_SELECTOR = '[data-pump-formula-defense-live-badges]';
   const SUMMARY_SELECTOR = '[data-pump-formula-defense-vendor-summary]';
+  const MATRIX_SELECTOR = '[data-pump-calculation-matrix]';
   const REALTIME_EVENTS = [
     'npsh:calculation-stale',
     'npsh:calculation-calculating',
@@ -167,6 +168,387 @@
     return value === true ? 'Yes' : value === false ? 'No' : (value || '-');
   }
 
+  function toFiniteNumber(value) {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    if (value === null || value === undefined || value === '') return null;
+    const match = String(value).replace(/,/g, '').match(/[-+]?\d*\.?\d+(?:e[-+]?\d+)?/i);
+    if (!match) return null;
+    const parsed = Number(match[0]);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function firstNumber(...values) {
+    for (const value of values) {
+      const parsed = toFiniteNumber(value);
+      if (parsed !== null) return parsed;
+    }
+    return null;
+  }
+
+  function firstText(...values) {
+    return values
+      .map((value) => value === null || value === undefined ? '' : String(value).trim())
+      .find((value) => value && value !== '-') || '';
+  }
+
+  function trimZeros(text) {
+    return String(text)
+      .replace(/(\.\d*?[1-9])0+$/u, '$1')
+      .replace(/\.0+$/u, '');
+  }
+
+  function formatNumber(value, digits = 3) {
+    const parsed = toFiniteNumber(value);
+    if (parsed === null) return '-';
+    if (Object.is(parsed, -0) || Math.abs(parsed) < 10 ** -(digits + 1)) return '0';
+    return trimZeros(parsed.toFixed(digits));
+  }
+
+  function formatWithUnit(value, unit = '', digits = 3) {
+    const parsed = toFiniteNumber(value);
+    if (parsed === null) {
+      const text = firstText(value);
+      return text || '-';
+    }
+    const numberText = formatNumber(parsed, digits);
+    return unit ? `${numberText} ${unit}` : numberText;
+  }
+
+  function normalizeLabel(value) {
+    return String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  function findTraceStep(steps = [], title = '') {
+    const desired = normalizeLabel(title);
+    if (!desired) return null;
+    return steps.find((step) => normalizeLabel(step?.title || step?.step || step?.label) === desired)
+      || steps.find((step) => normalizeLabel(step?.title || step?.step || step?.label).includes(desired))
+      || null;
+  }
+
+  function formatTraceResult(step, fallbackValue, fallbackUnit = '', digits = 3) {
+    if (step && (step.result !== null && step.result !== undefined && step.result !== '')) {
+      return formatWithUnit(step.result, step.unit || fallbackUnit, digits);
+    }
+    return formatWithUnit(fallbackValue, fallbackUnit, digits);
+  }
+
+  function addCalculationMatrixRow(rows, {
+    output,
+    input,
+    formula,
+    substitution,
+    result,
+    connectedTo,
+    step = null
+  }) {
+    rows.push({
+      output: output || '-',
+      input: input || '-',
+      formula: firstText(formula, step?.formula, '-'),
+      substitution: firstText(substitution, step?.substitution, '-'),
+      result: result || '-',
+      connectedTo: connectedTo || '-'
+    });
+  }
+
+  function buildCalculationMatrixRows(pumpId) {
+    const { pump, results, evaluation, trace, steps } = pumpResult(pumpId);
+    const props = pump.props || {};
+    const interpretation = trace.interpretation || {};
+    const boundary = trace.boundary || {};
+    const tracePump = trace.pump || {};
+    const losses = trace.losses || {};
+    const criteria = evaluation.marginCriteria || evaluation.criteria || {};
+    const rows = [];
+
+    const systemCurveStep = findTraceStep(steps, 'System Curve Head');
+    const headResidualStep = findTraceStep(steps, 'Head Residual');
+    const sourcePressureStep = findTraceStep(steps, 'Source Absolute Pressure');
+    const pressureHeadStep = findTraceStep(steps, 'Pressure Head');
+    const elevationHeadStep = findTraceStep(steps, 'Elevation Head');
+    const suctionLossStep = findTraceStep(steps, 'Suction Loss');
+    const vaporHeadStep = findTraceStep(steps, 'Vapor Pressure Head');
+    const npshaStep = findTraceStep(steps, 'NPSHa');
+    const npshrStep = findTraceStep(steps, 'NPSHr');
+    const operatingRegionStep = findTraceStep(steps, 'Operating Region');
+    const requiredNpshaStep = findTraceStep(steps, 'Required NPSHa');
+    const marginRatioStep = findTraceStep(steps, 'Margin and Ratio');
+
+    const flow = firstNumber(evaluation.flow, results.fixedFlow, results.flow, tracePump.flow, props.designFlow);
+    const pumpHead = firstNumber(evaluation.pumpHead, results.requiredSystemHead, results.pumpHeadAtFlow, results.head, tracePump.head, props.designHead);
+    const npsha = firstNumber(evaluation.npsha, results.npsha);
+    const npshr = firstNumber(evaluation.npshr, results.npshr, props.designNpshr);
+    const npshMargin = firstNumber(evaluation.npshMargin, results.npshMargin, interpretation.margin, npsha !== null && npshr !== null ? npsha - npshr : null);
+    const npshRatio = firstNumber(evaluation.npshRatio, results.npshRatio, interpretation.ratio, npsha !== null && npshr ? npsha / npshr : null);
+    const requiredNpsha = firstNumber(evaluation.requiredNpsha, results.requiredNpsha, interpretation.requiredNpsha);
+    const npshExcess = firstNumber(evaluation.npshExcess, results.npshExcess, interpretation.npshExcess, npsha !== null && requiredNpsha !== null ? npsha - requiredNpsha : null);
+    const suctionLoss = firstNumber(evaluation.suctionLoss, results.suctionLoss, losses.total);
+    const suctionMajor = firstNumber(losses.major);
+    const suctionMinor = firstNumber(losses.minor);
+    const pumpDatum = firstNumber(props.suctionElevation, props.elevation, tracePump.elevation);
+    const sourcePressure = firstNumber(boundary.absolutePressureBar, boundary.pressureInput);
+    const pressureHead = firstNumber(boundary.pressureHead);
+    const sourceElevation = firstNumber(boundary.elevation);
+    const sourceVelocityHead = firstNumber(boundary.velocityHead);
+    const vaporPressureHead = firstNumber(trace.basis?.vaporPressureHead, vaporHeadStep?.result);
+    const ratioLimit = firstNumber(criteria.ratio, interpretation.marginRatioLimit, props.minNpshMarginRatio);
+    const absoluteMarginLimit = firstNumber(criteria.margin, interpretation.absoluteMarginLimit, props.minNpshMargin);
+    const hydraulicStatus = firstText(evaluation.hydraulicStatus, evaluation.status, results.hydraulicNpshStatus, results.cavitationStatus, interpretation.hydraulicStatus);
+    const engineeringStatus = firstText(evaluation.engineeringStatus, results.engineeringStatus, results.status, interpretation.engineeringStatus);
+    const dataConfidence = firstText(evaluation.dataConfidence, results.dataConfidence, interpretation.dataConfidence);
+    const suctionPressure = firstNumber(evaluation.suctionPressureAbs, results.suctionPressure);
+    const dominantLoss = firstText(evaluation.dominantLoss, results.dominantSuctionLoss, trace.path?.dominantLoss);
+    const reviewAction = firstText(evaluation.reviewAction, results.reviewAction, evaluation.engineeringMessage, evaluation.message, interpretation.engineeringMessage);
+
+    addCalculationMatrixRow(rows, {
+      output: 'Flow Evaluated',
+      input: 'SNK demand flow / pump fixed-flow result / pump design flow',
+      formula: 'Q_eval = solved network flow at pump',
+      substitution: `results.fixedFlow=${formatWithUnit(results.fixedFlow, 'm3/h')}; results.flow=${formatWithUnit(results.flow, 'm3/h')}; props.designFlow=${formatWithUnit(props.designFlow, 'm3/h')}`,
+      result: formatWithUnit(flow, 'm3/h', 3),
+      connectedTo: 'Sink demand -> pump evaluated flow -> suction/discharge PFV velocity and loss'
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'Pump Datum Elev.',
+      input: 'Pump input props.suctionElevation',
+      formula: 'z_pump = Pump Datum Elev.',
+      substitution: `props.suctionElevation=${formatWithUnit(props.suctionElevation, 'm')}; props.elevation fallback=${formatWithUnit(props.elevation, 'm')}`,
+      result: formatWithUnit(pumpDatum, 'm', 3),
+      connectedTo: 'Pump input -> Elevation Head -> NPSHa',
+      step: elevationHeadStep
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'Pump Head',
+      input: 'Pump curve/manual head and system curve requirement',
+      formula: 'H_pump(Q) = pump curve/manual head at evaluated flow',
+      substitution: headResidualStep?.substitution || `H_pump=${formatWithUnit(pumpHead, 'm')}; Q=${formatWithUnit(flow, 'm3/h')}`,
+      result: formatWithUnit(pumpHead, 'm', 3),
+      connectedTo: 'Pump Performance Curve -> head residual -> discharge pressure/report'
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'System Curve Head',
+      input: 'SRC/SNK boundary heads plus suction and discharge PFV losses',
+      formula: 'H_system(Q) = H_static + hL_suction(Q) + hL_discharge(Q)',
+      substitution: systemCurveStep?.substitution,
+      result: formatTraceResult(systemCurveStep, results.requiredSystemHead || pumpHead, 'm', 3),
+      connectedTo: 'Source -> PFV suction -> pump -> PFV discharge -> sink',
+      step: systemCurveStep
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'Source Absolute Pressure',
+      input: 'SRC pressure input and pressure basis',
+      formula: 'Pabs = Pgauge + Patm, or Pabs input when basis is absolute',
+      substitution: sourcePressureStep?.substitution || `boundary.absolutePressureBar=${formatWithUnit(sourcePressure, 'bar a')}`,
+      result: formatTraceResult(sourcePressureStep, sourcePressure, 'bar a', 3),
+      connectedTo: 'Source boundary -> Pressure Head -> NPSHa',
+      step: sourcePressureStep
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'Pressure Head',
+      input: 'Source absolute pressure and Fluid Basis density',
+      formula: 'Hp = Pabs x 100000 / (rho x g)',
+      substitution: pressureHeadStep?.substitution,
+      result: formatTraceResult(pressureHeadStep, pressureHead, 'm', 3),
+      connectedTo: 'Fluid Basis density + SRC pressure -> NPSHa',
+      step: pressureHeadStep
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'Elevation Head',
+      input: 'SRC elevation and Pump Datum Elev.',
+      formula: 'Hz = z_source - z_pump',
+      substitution: elevationHeadStep?.substitution || `${formatWithUnit(sourceElevation, 'm')} - ${formatWithUnit(pumpDatum, 'm')}`,
+      result: formatTraceResult(elevationHeadStep, sourceElevation !== null && pumpDatum !== null ? sourceElevation - pumpDatum : null, 'm', 3),
+      connectedTo: 'Source/PFV elevation profile + Pump Datum Elev. -> NPSHa',
+      step: elevationHeadStep
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'Source Velocity Head',
+      input: 'Source pressure-energy basis and inlet velocity',
+      formula: 'Hvel = v^2 / (2g), or 0 when not applicable',
+      substitution: findTraceStep(steps, 'Source Velocity Head')?.substitution || formatWithUnit(sourceVelocityHead, 'm'),
+      result: formatTraceResult(findTraceStep(steps, 'Source Velocity Head'), sourceVelocityHead, 'm', 3),
+      connectedTo: 'Source tie-in basis -> NPSHa'
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'Suction Loss',
+      input: 'Suction PFV major and minor loss trace',
+      formula: 'hL_suction = sum major hL + sum minor hL + allowance',
+      substitution: suctionLossStep?.substitution || `${formatWithUnit(suctionMajor, 'm')} + ${formatWithUnit(suctionMinor, 'm')} = ${formatWithUnit(suctionLoss, 'm')}`,
+      result: formatWithUnit(suctionLoss, 'm', 3),
+      connectedTo: 'Suction Pipe/Fitting/Valve -> NPSHa subtraction and dominant loss',
+      step: suctionLossStep
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'Vapor Pressure Head',
+      input: 'Fluid Basis vapor pressure and density',
+      formula: 'Hv = Pv x 100000 / (rho x g)',
+      substitution: vaporHeadStep?.substitution,
+      result: formatTraceResult(vaporHeadStep, vaporPressureHead, 'm', 3),
+      connectedTo: 'Fluid Basis -> NPSHa subtraction',
+      step: vaporHeadStep
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'NPSHa',
+      input: 'Source pressure head, source elevation, source velocity head, Pump Datum Elev., suction loss, vapor pressure head',
+      formula: 'NPSHa = Hp + z_source + Hvel - z_pump - hL_suction - Hv',
+      substitution: npshaStep?.substitution,
+      result: formatTraceResult(npshaStep, npsha, 'm', 4),
+      connectedTo: 'SRC + Fluid Basis + suction PFV + Pump Datum Elev. -> NPSH Evaluation Report',
+      step: npshaStep
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'NPSHr',
+      input: 'Manual NPSHr or pump curve NPSHr at evaluated flow',
+      formula: 'NPSHr = pump required NPSH at operating flow',
+      substitution: npshrStep?.substitution || `Q=${formatWithUnit(flow, 'm3/h')} -> NPSHr=${formatWithUnit(npshr, 'm')}`,
+      result: formatTraceResult(npshrStep, npshr, 'm', 4),
+      connectedTo: 'Pump datasheet/manual/curve -> NPSH margin and acceptance criteria',
+      step: npshrStep
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'Operating Region',
+      input: 'Evaluated flow, BEP flow, POR/AOR limits',
+      formula: 'Flow %BEP = Q / Q_BEP x 100',
+      substitution: operatingRegionStep?.substitution || `Q=${formatWithUnit(flow, 'm3/h')}; BEP=${formatWithUnit(props.bepFlow, 'm3/h')}`,
+      result: formatTraceResult(operatingRegionStep, tracePump.operatingPercentBep, '% BEP', 3),
+      connectedTo: 'BEP/POR/AOR settings -> margin basis and pump curve defense',
+      step: operatingRegionStep
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'Effective NPSH Ratio',
+      input: 'Selected NPSH Margin Basis',
+      formula: 'Ratio limit = selected ANSI/HI/user basis',
+      substitution: `basis=${firstText(criteria.basis, interpretation.marginBasis, props.npshMarginBasis, '-')}; ratio=${formatNumber(ratioLimit, 3)}`,
+      result: formatNumber(ratioLimit, 3),
+      connectedTo: 'NPSH Acceptance Criteria -> Required NPSHa'
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'Effective NPSH Margin',
+      input: 'Selected NPSH Margin Basis',
+      formula: 'Absolute margin limit = selected ANSI/HI/user basis',
+      substitution: `basis=${firstText(criteria.basis, interpretation.marginBasis, props.npshMarginBasis, '-')}; margin=${formatWithUnit(absoluteMarginLimit, 'm', 3)}`,
+      result: formatWithUnit(absoluteMarginLimit, 'm', 3),
+      connectedTo: 'NPSH Acceptance Criteria -> Required NPSHa'
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'Required NPSHa',
+      input: 'NPSHr, effective ratio, and effective absolute margin',
+      formula: 'Required NPSHa = max(NPSHr x margin ratio, NPSHr + absolute margin)',
+      substitution: requiredNpshaStep?.substitution || `max(${formatNumber(npshr, 3)} x ${formatNumber(ratioLimit, 3)}, ${formatNumber(npshr, 3)} + ${formatNumber(absoluteMarginLimit, 3)})`,
+      result: formatTraceResult(requiredNpshaStep, requiredNpsha, 'm', 4),
+      connectedTo: 'NPSHr + acceptance criteria -> Hydraulic NPSH Status',
+      step: requiredNpshaStep
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'NPSH Margin',
+      input: 'NPSHa and NPSHr',
+      formula: 'Margin = NPSHa - NPSHr',
+      substitution: `${formatNumber(npsha, 4)} - ${formatNumber(npshr, 4)} = ${formatNumber(npshMargin, 4)} m`,
+      result: formatWithUnit(npshMargin, 'm', 4),
+      connectedTo: 'NPSHa/NPSHr -> NPSH Evaluation Report',
+      step: marginRatioStep
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'NPSH Ratio',
+      input: 'NPSHa and NPSHr',
+      formula: 'Ratio = NPSHa / NPSHr',
+      substitution: `${formatNumber(npsha, 4)} / ${formatNumber(npshr, 4)} = ${formatNumber(npshRatio, 4)}`,
+      result: formatNumber(npshRatio, 4),
+      connectedTo: 'NPSHa/NPSHr -> acceptance screening',
+      step: marginRatioStep
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'NPSH Excess',
+      input: 'NPSHa and Required NPSHa',
+      formula: 'Excess = NPSHa - Required NPSHa',
+      substitution: `${formatNumber(npsha, 4)} - ${formatNumber(requiredNpsha, 4)} = ${formatNumber(npshExcess, 4)} m`,
+      result: formatWithUnit(npshExcess, 'm', 4),
+      connectedTo: 'Required NPSHa -> Hydraulic NPSH Status',
+      step: marginRatioStep
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'Hydraulic NPSH Status',
+      input: 'NPSHa, NPSHr, Required NPSHa, and NPSH Excess',
+      formula: 'Status = Safe when NPSHa satisfies selected required NPSHa; Warning/Risk otherwise',
+      substitution: `NPSHa=${formatWithUnit(npsha, 'm')}; Required=${formatWithUnit(requiredNpsha, 'm')}; Excess=${formatWithUnit(npshExcess, 'm')}`,
+      result: hydraulicStatus || '-',
+      connectedTo: 'Acceptance criteria -> NPSH Evaluation Report'
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'Engineering Status',
+      input: 'Hydraulic status and NPSHr source/data confidence',
+      formula: 'Engineering status = hydraulic status + NPSHr data confidence gate',
+      substitution: `Hydraulic=${hydraulicStatus || '-'}; Data confidence=${dataConfidence || '-'}`,
+      result: engineeringStatus || '-',
+      connectedTo: 'Pump Formula Defense + NPSH Evaluation Report'
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'Suction Pressure',
+      input: 'Pump suction-side hydraulic solution',
+      formula: 'P_suction = pressure at pump inlet after suction PFV pressure drop',
+      substitution: `results.suctionPressure=${formatWithUnit(results.suctionPressure, 'bar a')}; evaluation.suctionPressureAbs=${formatWithUnit(evaluation.suctionPressureAbs, 'bar a')}`,
+      result: formatWithUnit(suctionPressure, 'bar a', 4),
+      connectedTo: 'Suction PFV outlet -> Pump inlet readout'
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'Dominant Loss',
+      input: 'Suction loss breakdown',
+      formula: 'Dominant loss = max(item total hL) on suction path',
+      substitution: dominantLoss || '-',
+      result: dominantLoss || '-',
+      connectedTo: 'Suction PFV breakdown -> review action'
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'Review Action',
+      input: 'Engineering status, hydraulic status, and source confidence',
+      formula: 'Review action = message from status gate and source confidence',
+      substitution: reviewAction || '-',
+      result: reviewAction || '-',
+      connectedTo: 'NPSH Evaluation Report advisor text'
+    });
+
+    return rows;
+  }
+
+  function renderCalculationMatrix(pumpId) {
+    const rows = buildCalculationMatrixRows(pumpId);
+    const body = rows.map((row, index) => `
+      <tr>
+        <td style="vertical-align:top;padding:6px;border-top:1px solid #dbeafe;font-weight:700;color:#0f365d;">${index + 1}. ${escapeHtml(row.output)}</td>
+        <td style="vertical-align:top;padding:6px;border-top:1px solid #dbeafe;">${escapeHtml(row.input)}</td>
+        <td style="vertical-align:top;padding:6px;border-top:1px solid #dbeafe;font-family:Consolas,monospace;color:#0f172a;">${escapeHtml(row.formula)}</td>
+        <td style="vertical-align:top;padding:6px;border-top:1px solid #dbeafe;">${escapeHtml(row.substitution)}</td>
+        <td style="vertical-align:top;padding:6px;border-top:1px solid #dbeafe;font-weight:800;color:#075985;white-space:nowrap;">${escapeHtml(row.result)}</td>
+        <td style="vertical-align:top;padding:6px;border-top:1px solid #dbeafe;">${escapeHtml(row.connectedTo)}</td>
+      </tr>
+    `).join('');
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;">
+        <div>
+          <div style="font-size:12px;font-weight:800;color:#0f365d;">Matriks Kalkulasi Pump NPSH</div>
+          <div style="font-size:11px;color:#475569;">Input -> formula sistem -> output angka; semua baris membaca model dan calculation trace aktif.</div>
+        </div>
+        <span style="font-size:10px;font-weight:700;color:#0f5132;background:#ecfdf5;border:1px solid #bbf7d0;border-radius:5px;padding:3px 6px;">Live linked</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table data-pump-calculation-matrix-table style="width:100%;border-collapse:collapse;min-width:980px;font-size:11px;line-height:1.35;background:#fff;">
+          <thead>
+            <tr style="background:#eaf5ff;color:#17395a;text-align:left;">
+              <th style="padding:6px;">Output angka</th>
+              <th style="padding:6px;">Input/link sumber</th>
+              <th style="padding:6px;">Rumus sistem</th>
+              <th style="padding:6px;">Substitusi aktif</th>
+              <th style="padding:6px;">Hasil</th>
+              <th style="padding:6px;">Terhubung ke</th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
   function buildSummary(pumpId) {
     const { pump, results, evaluation, trace, rows, steps } = pumpResult(pumpId);
     const props = pump.props || {};
@@ -219,6 +601,9 @@
     if (position === 'after-badges') {
       const badges = windowNode.querySelector(BADGE_SELECTOR);
       badges?.insertAdjacentElement('afterend', panel) || anchor.insertBefore(panel, anchor.firstChild);
+    } else if (position === 'after-summary') {
+      const summary = windowNode.querySelector(SUMMARY_SELECTOR);
+      summary?.insertAdjacentElement('afterend', panel) || anchor.insertBefore(panel, anchor.firstChild);
     } else {
       anchor.insertBefore(panel, anchor.firstChild);
     }
@@ -247,6 +632,9 @@
         <div><span style="color:#64748b;">Review Required</span><strong style="display:block;">${escapeHtml(truthyText(summary.reviewRequired))}</strong></div>
       </div>
     `;
+
+    const matrix = ensurePanel(windowNode, MATRIX_SELECTOR, 'data-pump-calculation-matrix', 'after-summary');
+    matrix.innerHTML = renderCalculationMatrix(pumpId || windowNode.dataset?.pumpId);
   }
 
   function refreshPumpFormulaDefenseAudit(pumpId) {
@@ -597,7 +985,8 @@
     scheduleRefresh: scheduleOpenFormulaDefenseWindowRefresh,
     refreshBackend: refreshBackendForFormulaDefense,
     directRefresh: directBackendFormulaDefenseRefresh,
-    ensureRuntimeGuards
+    ensureRuntimeGuards,
+    buildCalculationMatrixRows
   };
 
   if (typeof module !== 'undefined' && module.exports) {

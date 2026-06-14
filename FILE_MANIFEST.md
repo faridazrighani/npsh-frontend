@@ -57,11 +57,12 @@ engineering-parameter-task-runtime.js public-safe hidden pump Status/Suction/Dis
 engineering-local-trace-fallback-runtime.js public-safe local route-trace fallback that keeps Pump Status connected, current, and schema-complete when the protected backend is not reachable in local preview; preserves Calculating during in-flight protected backend solves
 engineering-pipe-canvas-hydraulic-label-runtime.js public-safe compact Pipe/Fitting/Valve canvas label bridge that suppresses the old delta-P-only SVG label and replaces it with live P1-to-P2, velocity, total K, major loss, and minor loss readouts formatted to 3 decimals from current pipe results/calculation trace without changing calculation data
 engineering-pipe-source-confidence-map-runtime.js public-safe Pipe Formula Defense source-confidence bridge that restores the Source & Confidence Map rows when pipe calculation trace fallback data contains an empty sourceMap, preserving current pipe calculations and live pressure/profile evidence
+engineering-pump-nozzle-simplify-runtime.js public-safe pump properties simplification bridge that hides deprecated main Elevation and Discharge Nozzle Elev. inputs plus non-actionable Pump Evaluation Mode/Input Readiness status rows, while relabeling suctionElevation as Pump Datum Elev. and retaining PFV pipe endpoint elevations as the active elevation source
 engineering-analysis-report-live-runtime.js public-safe Analysis Report live-link bridge that refreshes existing comparison and application-value report table cells from current Fluid Basis, canonical pipe trace totals, pump NPSH/system-head results, SNK/outlet readouts, and backend/local calculation context without rebuilding report layout; refreshes only when an Analysis Report surface is visible and installs scoped responsive wrapping for long report formula/route-trace text
 engineering-canvas-context-dock.js public-safe responsive Fluid Basis and Route Trace dock for the PFD canvas, including default-collapsed audit details, sticky canvas viewport positioning, mobile compact lock, mobile symbol mode, stale/current freshness display, route breadcrumb focus, audit metadata handoff, global canvas select/context-menu guard, and explicit User Task Object Properties command-only open policy
 engineering-defense-export-package.js public-safe one-click defense report exporter, calculation defense contract evidence, UI evidence registry, task-window evidence badges, redacted audit event handoff, and print/save PDF workflow
 engineering-pipe-moody-chart-audit.js public-safe pipe Moody chart visual audit overlay that stays hidden until explicitly opened, separates overlapped markers, exposes all overlapped element names in tooltip/list evidence, and adds dimensionless Aging Roughness Factor help text
-engineering-pump-formula-defense-live-audit.js public-safe live Pump Formula Defense badges, trace-row source/literature notes, protected backend refresh bridge, and Performance Refresh Governor scheduled open-window realtime refresh for advisor-facing pump NPSH evidence
+engineering-pump-formula-defense-live-audit.js public-safe live Pump Formula Defense badges, trace-row source/literature notes, protected backend refresh bridge, input-to-output calculation matrix, and Performance Refresh Governor scheduled open-window realtime refresh for advisor-facing pump NPSH evidence
 engineering-pump-performance-chart-audit.js public-safe pump performance chart audit guard that suppresses fallback/duty-point fit curves, keeps no-data charts visually clean, requires sourced curve data, loads the realtime canonical renderer, and redraws eligible curves on log-log axes
 engineering-pump-performance-canonical-chart.js public-safe operational chart renderer that uses solver-owned performanceChartData before legacy chart arrays or pump props, self-heals realtime update hooks, and schedules one governed visible-chart render so chart numbers refresh from the latest model without repeated repaint bursts
 engineering-google-auth-runtime.js public-safe Google Identity Services frontend bridge that renders a sign-in control only on explicitly authorized OAuth origins, sends ID tokens to the backend, immediately verifies the HttpOnly app session, prevents stale session refresh overwrite after login, exposes NPSHAuth.requireApproved and NPSHAuth.diagnose, maps backend auth error codes into actionable messages, and keeps approved/pending status visible
@@ -89,6 +90,7 @@ tools/validate-formula-defense-ui.cjs Node validation for npsh-untirta compact 7
 tools/validate-pipe-canvas-hydraulic-label.cjs Node validation for Pipe/Fitting/Valve canvas hydraulic label runtime loading, 3-decimal display contract, symbolic row labels, cache key, npm script, and manifest lock
 tools/validate-pipe-source-confidence-map.cjs Node validation for Pipe Formula Defense Source & Confidence Map restoration, pump path role inference, pressure-profile evidence, cache key, npm script, and manifest lock
 tools/validate-analysis-report-live-runtime.cjs Node validation for Analysis Report live-link runtime loading, existing-table cell refresh behavior including bilingual headers and TH metric rows, Simulasi 1 Fluid/Pipe/Pump/SNK metric mapping, cache key, npm script, and manifest lock
+tools/validate-pump-nozzle-simplify-runtime.cjs Node validation for pump nozzle simplification runtime loading, deprecated main elevation input hiding, non-actionable status row hiding, Pump Datum Elev. relabeling, cache key, npm script, and manifest lock
 tools/validate-calculation-lifecycle-runtime.cjs Node validation for unified calculation lifecycle status mapping, Run/Refresh command observation, realtime event subscriptions, load order, cache key, npm script, and audit-safe no-mutation guard
 tools/validate-calculation-progress-overlay.cjs Node validation for isolated calculation progress overlay runtime loading, realtime event listeners, delay/auto-hide timing contract, audit-safe no-mutation guard, compact academic copy, cache key, npm script, E2E script, and manifest lock
 tools/validate-performance-refresh-governor.cjs Node validation for Performance Refresh Governor loading, duplicate-job coalescing, scoped secondary-window/chart/formula-defense patch coverage, cache key/load order, npm script, manifest lock, and audit-safe no-mutation guard
@@ -119,7 +121,8 @@ Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=202606
 Local trace fallback runtime cache key: engineering-local-trace-fallback-runtime.js?v=20260611-local-trace3
 Pipe canvas hydraulic label runtime cache key: engineering-pipe-canvas-hydraulic-label-runtime.js?v=20260611-pipe-canvas-hydraulic-label4
 Pipe source confidence map runtime cache key: engineering-pipe-source-confidence-map-runtime.js?v=20260611-pipe-source-confidence-map1
-Analysis Report live runtime cache key: engineering-analysis-report-live-runtime.js?v=20260613-analysis-report-live6
+Pump nozzle simplify runtime cache key: engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify4
+Analysis Report live runtime cache key: engineering-analysis-report-live-runtime.js?v=20260614-analysis-report-live8
 Route audit cache key: engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock8
 Performance refresh governor cache key: engineering-performance-refresh-governor.js?v=20260613-refresh-governor3
 Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260613-realtime-global7
@@ -135,7 +138,7 @@ Pipe Moody chart audit cache key: engineering-pipe-moody-chart-audit.js?v=202606
 Runtime API config: same-origin /api/simulate
 NPSH margin runtime cache key: engineering-npsh-margin-runtime.js?v=20260602-npsh-margin1
 Pump readiness visibility cache key: engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3
-Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260613-pump-defense-live14
+Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260614-pump-defense-live15
 Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260613-pump-chart-audit12
 Pump performance canonical chart cache key: engineering-pump-performance-canonical-chart.js?v=20260613-canonical-chart5
 Google auth runtime cache key: engineering-google-auth-runtime.js?v=20260612-google-access8
@@ -153,6 +156,7 @@ Formula Defense UI validation: npm run validate:formula-defense-ui
 Pipe canvas hydraulic label validation: npm run validate:pipe-canvas-hydraulic-label
 Pipe source confidence map validation: npm run validate:pipe-source-confidence-map
 Analysis Report live runtime validation: npm run validate:analysis-report-live-runtime
+Pump nozzle simplify runtime validation: npm run validate:pump-nozzle-simplify
 Calculation lifecycle validation: npm run validate:calculation-lifecycle
 Calculation progress overlay validation: npm run validate:calculation-progress-overlay
 Performance refresh governor validation: npm run validate:performance-refresh-governor

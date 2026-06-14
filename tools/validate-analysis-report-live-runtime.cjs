@@ -9,8 +9,8 @@ const RUNTIME_FILE = path.join(FRONTEND_ROOT, "engineering-analysis-report-live-
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const CASE_FILE = path.join(FRONTEND_ROOT, "journals", "simulasi_1", "simulasi_performansi_pompa_air_umpan_tangki_deaerator.untirta");
-const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260613-analysis-report-live6";
-const VERSION = "2026.06-analysis-report-live6";
+const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260614-analysis-report-live8";
+const VERSION = "2026.06-analysis-report-live8";
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
 function assert(condition, message) {
@@ -165,6 +165,13 @@ function createReportDocument() {
         new FakeCell("24 m"),
         new FakeCell("0.00%"),
         new FakeCell("OK")
+      ],
+      [
+        new FakeCell("Pump - Suction Nozzle Elev."),
+        new FakeCell("-0.5 m"),
+        new FakeCell("legacy label"),
+        new FakeCell("-"),
+        new FakeCell("OK")
       ]
     ]
   });
@@ -224,6 +231,7 @@ assert(runtime.includes("const ACTIVE_SELECTOR = '.journal-analysis-task-window,
 assert(runtime.includes("hasActiveReportSurface"), "Runtime must avoid refreshing when no Analysis Report surface is visible.");
 assert(!runtime.includes("ACTIVE_SELECTOR = '.journal-analysis-task-window, .journal-analysis-report-panel, .task-window'"), "Runtime must not target broad .task-window surfaces.");
 assert(runtime.includes("trace.segmentRows || trace.segments"), "Runtime must prefer canonical pipe segment rows when reading pipe trace steps.");
+assert(runtime.includes("pipeEndpointElevation"), "Runtime must expose PFV endpoint elevation mapping for pipe-managed elevations.");
 assert(runtime.includes("updateComparisonTable"), "Runtime must update existing comparison table cells.");
 assert(runtime.includes("updateApplicationValueTable"), "Runtime must update existing application value table cells when present.");
 assert(runtime.includes("setCellText"), "Runtime must patch cell text instead of rebuilding report layout.");
@@ -236,6 +244,13 @@ assert(runtime.includes("overflow-wrap: anywhere"), "Runtime responsive CSS must
 assert(runtime.includes("data input\\s*&\\s*hasil aplikasi"), "Runtime must recognize Indonesian Analysis Report application-data headings.");
 assert(runtime.includes("setPipeGroup('Pipe Suction'") && runtime.includes("${prefix} - Total Head Loss"), "Runtime must include suction pipe total-loss metric mapping.");
 assert(runtime.includes("setPipeGroup('Pipe Discharge'") && runtime.includes("${prefix} - Total Head Loss"), "Runtime must include discharge pipe total-loss metric mapping.");
+assert(runtime.includes("Pipe Discharge - PFV Start Elevation"), "Runtime must report discharge elevation from PFV start endpoint.");
+assert(runtime.includes("Pipe Discharge - PFV End Elevation"), "Runtime must report discharge elevation from PFV end endpoint.");
+assert(runtime.includes("METRIC_LABEL_RENAMES"), "Runtime must rename legacy report labels to current engineering labels.");
+assert(runtime.includes("Pump - Pump Datum Elev."), "Runtime must expose Pump Datum Elev. as the pump NPSH datum metric.");
+assert(!runtime.includes("set('Pump - Elevation'"), "Runtime must not expose deprecated pump Elevation in live report metrics.");
+assert(!runtime.includes("Pump - Discharge Nozzle Elev."), "Runtime must not expose deprecated pump Discharge Nozzle Elev. in live report metrics.");
+assert(!runtime.includes("Pump - Elevation / Nozzle Elevations"), "Runtime must not expose deprecated combined pump elevation metric.");
 assert(runtime.includes("Pump - NPSHa"), "Runtime must include pump NPSHa metric mapping.");
 assert(runtime.includes("Outlet Readout - Boundary Abs. Pressure"), "Runtime must include outlet boundary readout mapping.");
 assert(!runtime.includes("innerHTML ="), "Runtime must not replace table/report layout through innerHTML.");
@@ -254,6 +269,14 @@ assert(metricText(metrics, "Fluid Basis - Kinematic viscosity").includes("8.0300
 assert(metrics.get("fluid basis - kinematic viscosity").valueText.includes("0.803 cSt"), "Application value view must retain cSt viscosity.");
 assert(metricText(metrics, "Pipe Suction - Total head loss").includes("2.615534 m"), "Suction total loss must come from pipe trace totals.");
 assert(metricText(metrics, "Pipe Discharge - Total head loss").includes("11.668509 m"), "Discharge total loss must come from pipe trace totals.");
+assert(metricText(metrics, "Pipe Suction - PFV Start Elevation").includes("0 m"), "Suction PFV start elevation must come from the pipe endpoint.");
+assert(metricText(metrics, "Pipe Suction - PFV End Elevation").includes("-0.5 m"), "Suction PFV end elevation must come from the pipe endpoint.");
+assert(metricText(metrics, "Pipe Discharge - PFV Start Elevation").includes("0 m"), "Discharge PFV start elevation must come from the pipe endpoint.");
+assert(metricText(metrics, "Pipe Discharge - PFV End Elevation").includes("10 m"), "Discharge PFV end elevation must come from the pipe endpoint.");
+assert(metricText(metrics, "Pump - Pump Datum Elev.").includes("-0.5 m"), "Pump datum elevation must remain available for NPSH datum checks.");
+assert(!metrics.has("pump - elevation"), "Live metrics must omit deprecated Pump - Elevation.");
+assert(!metrics.has("pump - suction nozzle elev."), "Live metrics must omit old Pump - Suction Nozzle Elev. as an active metric.");
+assert(!metrics.has("pump - discharge nozzle elev."), "Live metrics must omit deprecated Pump - Discharge Nozzle Elev.");
 assert(metricText(metrics, "Pump - NPSHa").includes("6.4656 m"), "Pump NPSHa must come from pump NPSH results.");
 assert(metricText(metrics, "Pump - Pump head evaluated").includes("24 m"), "Pump evaluated head must come from solved pump/system head.");
 assert(metricText(metrics, "SNK - Reference pressure").includes("1.74370712905 bar a"), "SNK reference pressure must come from sink boundary result.");
@@ -277,6 +300,14 @@ assert(
 assert(
   reportDocument.comparisonTable.rows[1].cells[2].textContent === "31.127 m",
   "Comparison table Application cell must refresh from current pump calculation result."
+);
+assert(
+  reportDocument.comparisonTable.rows[2].cells[0].textContent === "Pump - Pump Datum Elev.",
+  "Comparison table legacy suction-nozzle label must be renamed to Pump Datum Elev."
+);
+assert(
+  reportDocument.comparisonTable.rows[2].cells[2].textContent === "-0.5 m",
+  "Comparison table legacy suction-nozzle value must refresh from the pump datum elevation."
 );
 assert(
   reportDocument.applicationTable.rows[0].cells[1].textContent === "0.355 cSt",
