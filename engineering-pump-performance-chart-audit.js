@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-performance-chart-audit.v10';
+  const VERSION = 'pump-performance-chart-audit.v11';
   const MIN_CURVE_POINTS = 3;
   const PANEL_SELECTOR = '[data-pump-performance-chart-audit-panel]';
   const CHART_CANVAS_SELECTORS = [
@@ -8,6 +8,19 @@
     '#captionAuditPumpChartCanvas',
     '.caption-audit-inline-chart-wrap canvas'
   ];
+  const RUNTIME_PATCH_FLAG_KEYS = [
+    '__engineeringRealtimeCalculationDefenseUpdatePatched',
+    '__engineeringRealtimeCalculationDefenseOriginal',
+    '__analysisReportLivePatched',
+    '__analysisReportLiveOriginal',
+    '__pumpFormulaDefenseLiveAuditPatched',
+    '__pumpFormulaDefenseLiveAuditVersion',
+    '__pumpFormulaDefenseLiveAuditOriginal',
+    '__pumpPerformanceCanonicalChartVersion',
+    '__pumpPerformanceCanonicalChartOriginal',
+    '__pumpPerformanceCanonicalChartRole'
+  ];
+  const scheduledRefreshTimers = new Map();
 
   const SERIES_STYLES = {
     pumpHead: { label: 'Pump Head', color: '#0070c0', width: 2.4 },
@@ -671,8 +684,25 @@
   }
 
   function scheduleRefresh(pumpId) {
-    [0, 40, 120, 320].forEach((delay) => {
-      root.setTimeout?.(() => refresh(pumpId), delay);
+    const key = String(pumpId || '');
+    const existing = scheduledRefreshTimers.get(key);
+    if (existing && root.clearTimeout) root.clearTimeout(existing);
+    if (!root.setTimeout) {
+      refresh(pumpId);
+      return;
+    }
+    const timer = root.setTimeout(() => {
+      scheduledRefreshTimers.delete(key);
+      refresh(pumpId);
+    }, 140);
+    scheduledRefreshTimers.set(key, timer);
+  }
+
+  function copyRuntimePatchFlags(target, source) {
+    RUNTIME_PATCH_FLAG_KEYS.forEach((key) => {
+      if (source && Object.prototype.hasOwnProperty.call(source, key)) {
+        target[key] = source[key];
+      }
     });
   }
 
@@ -687,6 +717,7 @@
       else runAfter();
       return options.skipOriginal ? root.__pumpPerformanceChartAuditLast : result;
     }
+    copyRuntimePatchFlags(wrapped, original);
     wrapped.__pumpPerformanceChartAuditPatched = true;
     wrapped.__pumpPerformanceChartAuditVersion = VERSION;
     wrapped.__pumpPerformanceChartAuditOriginal = original;
@@ -753,8 +784,7 @@
     loadCanonicalChartRenderer();
     [0, 80, 220, 500, 900, 1400, 2200, 3600, 5200, 7600].forEach((delay) => {
       root.setTimeout?.(() => {
-        ensureRuntimeGuards();
-        scheduleRefresh();
+        if (ensureRuntimeGuards()) scheduleRefresh();
       }, delay);
     });
   }
@@ -766,7 +796,7 @@
     try {
       const script = document.createElement('script');
       script.id = 'pump-performance-canonical-chart-runtime';
-      script.src = 'engineering-pump-performance-canonical-chart.js?v=20260613-canonical-chart5';
+      script.src = 'engineering-pump-performance-canonical-chart.js?v=20260614-canonical-chart7';
       script.async = false;
       document.body.appendChild(script);
       return true;

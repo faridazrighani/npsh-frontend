@@ -6,8 +6,8 @@ const INDEX_FILE = path.join(FRONTEND_ROOT, "index.html");
 const RUNTIME_FILE = path.join(FRONTEND_ROOT, "engineering-pump-nozzle-simplify-runtime.js");
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
-const CACHE_KEY = "engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify4";
-const VERSION = "2026.06-pump-nozzle-simplify4";
+const CACHE_KEY = "engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5";
+const VERSION = "2026.06-pump-nozzle-simplify5";
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -27,6 +27,11 @@ assert(runtime.includes(`const VERSION = "${VERSION}"`), "Pump nozzle simplify r
 assert(runtime.includes('const HIDDEN_MAIN_KEYS = new Set(["elevation", "dischargeElevation"])'), "Runtime must hide only deprecated pump elevation fields.");
 assert(runtime.includes('const HIDDEN_STATUS_KEYS = new Set(["npshEvaluationMode", "pump-input-readiness"])'), "Runtime must hide non-actionable pump status rows from the main input form.");
 assert(runtime.includes("HIDDEN_STATUS_KEYS.has(field.dataset.key)"), "Runtime must apply non-actionable status hiding by data-key.");
+assert(runtime.includes("const HIDDEN_PROPOSAL_SELECTORS"), "Runtime must declare redundant pump proposal summary selectors.");
+assert(runtime.includes('".pump-optimization-proposal"'), "Runtime must hide the redundant Network NPSH proposal summary panel.");
+assert(runtime.includes('".caption-audit-proposal-action-status"'), "Runtime must hide redundant Apply/Restore/Clear proposal status text.");
+assert(runtime.includes("hideRedundantPumpProposalSummary"), "Runtime must hide redundant pump proposal readouts inside pump property windows.");
+assert(runtime.includes("data-pump-optimization-summary-hidden"), "Runtime must mark redundant pump proposal summaries with a stable data attribute.");
 assert(!runtime.includes('"pump-core-validation-issues"'), "Runtime must not hide actionable Core Validation Issues.");
 assert(runtime.includes('[data-key="suctionElevation"]'), "Runtime must still identify pump windows without hiding suction nozzle elevation.");
 assert(!runtime.includes('"suctionElevation"]);'), "Runtime must not hide suction nozzle elevation.");
@@ -42,6 +47,10 @@ assert(
 assert(
   manifest.includes(`Pump nozzle simplify runtime cache key: ${CACHE_KEY}`),
   "Manifest must document the pump nozzle simplify runtime cache key."
+);
+assert(
+  manifest.includes("redundant pump optimization proposal summary readouts"),
+  "Manifest must document redundant pump optimization proposal summary hiding."
 );
 assert(
   manifest.includes("Pump nozzle simplify runtime validation: npm run validate:pump-nozzle-simplify"),

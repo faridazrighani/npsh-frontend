@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-formula-defense-live-audit.v4';
+  const VERSION = 'pump-formula-defense-live-audit.v7';
   const WINDOW_SELECTOR = '.pump-formula-defense-task-window';
   const BADGE_SELECTOR = '[data-pump-formula-defense-live-badges]';
   const SUMMARY_SELECTOR = '[data-pump-formula-defense-vendor-summary]';
@@ -13,6 +13,18 @@
     'npsh:realtime-autosolve-complete'
   ];
   const LIVE_INPUT_PATTERN = /\b(inputMode|optimizationMode|npshrSourceMode|npshAssessmentMode|npshMarginBasis|designFlow|designHead|designEfficiency|designNpshr|bepFlow|porMinPercent|porMaxPercent|aorMinPercent|aorMaxPercent|minNpshMarginRatio|minNpshMargin|speed|curveDataSource|curveSourceNote|curveData|flow|head|eff|npshr|pressure|pressureInputBasis|pressureBasis|pressureEnergyBasis|elevation|suctionElevation|dischargeElevation|density|viscosity|kinematicViscosity|dynamicViscosity|vaporPressure|segments|length|diameter|roughness|fittingType|fittingQuantity|fittingK|minorLoss|additionalK|active|boundaryMode|demandFlow)\b/i;
+  const RUNTIME_PATCH_FLAG_KEYS = [
+    '__engineeringRealtimeCalculationDefenseUpdatePatched',
+    '__engineeringRealtimeCalculationDefenseOriginal',
+    '__analysisReportLivePatched',
+    '__analysisReportLiveOriginal',
+    '__pumpPerformanceChartAuditPatched',
+    '__pumpPerformanceChartAuditVersion',
+    '__pumpPerformanceChartAuditOriginal',
+    '__pumpPerformanceCanonicalChartVersion',
+    '__pumpPerformanceCanonicalChartOriginal',
+    '__pumpPerformanceCanonicalChartRole'
+  ];
   let backendRefreshTimer = null;
   let backendRefreshBusy = false;
   let windowRefreshTimer = null;
@@ -125,13 +137,28 @@
     trace.formulaDefenseRows = rows;
   }
 
+  function datasetPumpId(target) {
+    if (!target || typeof target !== 'object') return '';
+    return firstText(target.dataset?.pumpId, target.dataset?.pumpNodeId, target.dataset?.nodeId);
+  }
+
+  function isFormulaDefenseWindowElement(target) {
+    return !!target && typeof target === 'object' && (
+      typeof target.querySelector === 'function' ||
+      typeof target.querySelectorAll === 'function' ||
+      typeof target.classList?.contains === 'function'
+    );
+  }
+
   function resolvePumpId(pumpId) {
     const model = runtimeModel();
+    const datasetId = datasetPumpId(pumpId);
+    if (datasetId && model[datasetId]?.type === 'pump') return datasetId;
     if (pumpId && model[pumpId]?.type === 'pump') return pumpId;
     if (!hasDocument()) return firstPumpId(model);
     const visibleWindow = Array.from(document.querySelectorAll(WINDOW_SELECTOR))
       .find((node) => node.offsetParent !== null || node.getClientRects().length);
-    return visibleWindow?.dataset?.pumpId || firstPumpId(model);
+    return datasetPumpId(visibleWindow) || firstPumpId(model);
   }
 
   function isInputLatencyShieldActive(pumpId = '') {
@@ -233,6 +260,92 @@
     return formatWithUnit(fallbackValue, fallbackUnit, digits);
   }
 
+  function parseSystemCurveDischargeLoss(steps = []) {
+    const step = findTraceStep(steps, 'System Curve Head');
+    const numbers = String(step?.substitution || '')
+      .match(/[-+]?\d*\.?\d+(?:e[-+]?\d+)?/gi)
+      ?.map((value) => Number(value))
+      .filter(Number.isFinite) || [];
+    return numbers.length >= 4 ? numbers[2] : null;
+  }
+
+  function routeTraceModel(results = {}, evaluation = {}) {
+    return results.routeTrace || evaluation.routeTrace || {};
+  }
+
+  function routeSequenceText(route = {}, side = '') {
+    const section = route.sections?.[side] || {};
+    const sequence = Array.isArray(section.sequence)
+      ? section.sequence
+      : (Array.isArray(route[side]) ? route[side] : []);
+    return firstText(section.text, sequence.join(' -> '), route.compactText, route.text);
+  }
+
+  function resolveDischargeLoss(results = {}, evaluation = {}, trace = {}, steps = []) {
+    const route = routeTraceModel(results, evaluation);
+    return firstNumber(
+      route.dischargeLoss?.headLoss,
+      route.sections?.discharge?.totalLossM,
+      evaluation.dischargeLoss,
+      results.dischargeLoss,
+      trace.systemHead?.dischargeLoss,
+      parseSystemCurveDischargeLoss(steps)
+    );
+  }
+
+  function resolveDischargePressureDrop(results = {}, evaluation = {}, trace = {}) {
+    const route = routeTraceModel(results, evaluation);
+    return firstNumber(
+      route.dischargeLoss?.pressureDrop,
+      route.sections?.discharge?.pressureDropBar,
+      evaluation.dischargePressureDropBar,
+      results.dischargePressureDropBar,
+      trace.systemHead?.dischargePressureDropBar
+    );
+  }
+
+  function dischargeRouteSourceText(results = {}, evaluation = {}) {
+    const route = routeTraceModel(results, evaluation);
+    return firstText(
+      routeSequenceText(route, 'discharge'),
+      'Backend route trace discharge section'
+    );
+  }
+
+  function routeStepByType(results = {}, evaluation = {}, type = '') {
+    const route = routeTraceModel(results, evaluation);
+    return (Array.isArray(route.steps) ? route.steps : [])
+      .find((step) => String(step?.type || '').toLowerCase() === String(type || '').toLowerCase()) || null;
+  }
+
+  function sinkRouteReadout(results = {}, evaluation = {}) {
+    const step = routeStepByType(results, evaluation, 'sink') || {};
+    const values = step.values || {};
+    const hydraulicHead = firstNumber(values.hydraulicHeadM);
+    const demandFlow = firstNumber(values.demandFlowM3H);
+    const evaluatedFlow = firstNumber(values.evaluatedFlowM3H);
+    const pressure = firstNumber(values.pressureBarA);
+    const elevation = firstNumber(values.elevationM);
+    const parts = [];
+    if (hydraulicHead !== null) parts.push(`H=${formatWithUnit(hydraulicHead, 'm', 3)}`);
+    if (evaluatedFlow !== null || demandFlow !== null) parts.push(`Q=${formatWithUnit(evaluatedFlow ?? demandFlow, 'm3/h', 3)}`);
+    if (pressure !== null) parts.push(`P=${formatWithUnit(pressure, 'bar a', 3)}`);
+    if (elevation !== null) parts.push(`z=${formatWithUnit(elevation, 'm', 3)}`);
+    return {
+      value: parts.join('; '),
+      source: firstText(step.id, step.name, 'SNK') + ' downstream boundary -> system head'
+    };
+  }
+
+  function sourceVelocityHeadExplanation(step, value) {
+    const numeric = firstNumber(step?.result, value);
+    const substitution = firstText(step?.substitution, formatWithUnit(value, 'm'));
+    if (numeric === 0) {
+      return `${substitution}; reservoir/source boundary velocity is neglected. v^2/(2g) is only added for External Header / Pipe Tie-in with static-pressure basis.`;
+    }
+    return substitution;
+  }
+
   function addCalculationMatrixRow(rows, {
     output,
     input,
@@ -268,6 +381,7 @@
     const pressureHeadStep = findTraceStep(steps, 'Pressure Head');
     const elevationHeadStep = findTraceStep(steps, 'Elevation Head');
     const suctionLossStep = findTraceStep(steps, 'Suction Loss');
+    const sourceVelocityHeadStep = findTraceStep(steps, 'Source Velocity Head');
     const vaporHeadStep = findTraceStep(steps, 'Vapor Pressure Head');
     const npshaStep = findTraceStep(steps, 'NPSHa');
     const npshrStep = findTraceStep(steps, 'NPSHr');
@@ -286,6 +400,9 @@
     const suctionLoss = firstNumber(evaluation.suctionLoss, results.suctionLoss, losses.total);
     const suctionMajor = firstNumber(losses.major);
     const suctionMinor = firstNumber(losses.minor);
+    const dischargeLoss = resolveDischargeLoss(results, evaluation, trace, steps);
+    const dischargePressureDrop = resolveDischargePressureDrop(results, evaluation, trace);
+    const dischargeRouteSource = dischargeRouteSourceText(results, evaluation);
     const pumpDatum = firstNumber(props.suctionElevation, props.elevation, tracePump.elevation);
     const sourcePressure = firstNumber(boundary.absolutePressureBar, boundary.pressureInput);
     const pressureHead = firstNumber(boundary.pressureHead);
@@ -336,6 +453,14 @@
       step: systemCurveStep
     });
     addCalculationMatrixRow(rows, {
+      output: 'Discharge Loss',
+      input: 'Discharge PFV major and minor loss trace',
+      formula: 'hL_discharge = sum major hL + sum minor hL + allowance',
+      substitution: `routeTrace discharge=${formatWithUnit(dischargeLoss, 'm')}; pressureDrop=${formatWithUnit(dischargePressureDrop, 'bar', 4)}`,
+      result: formatWithUnit(dischargeLoss, 'm', 3),
+      connectedTo: `${dischargeRouteSource} -> system head/outlet pressure`
+    });
+    addCalculationMatrixRow(rows, {
       output: 'Source Absolute Pressure',
       input: 'SRC pressure input and pressure basis',
       formula: 'Pabs = Pgauge + Patm, or Pabs input when basis is absolute',
@@ -365,10 +490,10 @@
     addCalculationMatrixRow(rows, {
       output: 'Source Velocity Head',
       input: 'Source pressure-energy basis and inlet velocity',
-      formula: 'Hvel = v^2 / (2g), or 0 when not applicable',
-      substitution: findTraceStep(steps, 'Source Velocity Head')?.substitution || formatWithUnit(sourceVelocityHead, 'm'),
-      result: formatTraceResult(findTraceStep(steps, 'Source Velocity Head'), sourceVelocityHead, 'm', 3),
-      connectedTo: 'Source tie-in basis -> NPSHa'
+      formula: 'Hvel = 0 for reservoir/source pressure boundary; Hvel = v^2 / (2g) only for external pipe tie-in static pressure',
+      substitution: sourceVelocityHeadExplanation(sourceVelocityHeadStep, sourceVelocityHead),
+      result: formatTraceResult(sourceVelocityHeadStep, sourceVelocityHead, 'm', 3),
+      connectedTo: 'Source boundary basis -> NPSHa'
     });
     addCalculationMatrixRow(rows, {
       output: 'Suction Loss',
@@ -610,6 +735,68 @@
     return panel;
   }
 
+  function hydrateRouteTraceDischargeReadout(windowNode, pumpId) {
+    if (!windowNode?.querySelectorAll) return false;
+    const { results, evaluation, trace, steps } = pumpResult(pumpId);
+    const dischargeLoss = resolveDischargeLoss(results, evaluation, trace, steps);
+    if (dischargeLoss === null) return false;
+    const valueText = formatWithUnit(dischargeLoss, 'm', 3);
+    const sourceText = dischargeRouteSourceText(results, evaluation);
+    let changed = false;
+    Array.from(windowNode.querySelectorAll('tr')).forEach((row) => {
+      if (!/Pipe\/Fitting\/Valve\s+discharge/i.test(String(row.textContent || ''))) return;
+      const cells = Array.from(row.querySelectorAll?.('td, th') || row.children || []);
+      if (cells.length < 2) return;
+      const liveValueCell = cells[1];
+      const sourceCell = cells[2] || null;
+      const currentValue = String(liveValueCell.textContent || '').trim();
+      if (!currentValue || currentValue === '-') {
+        liveValueCell.textContent = valueText;
+        changed = true;
+      }
+      if (sourceCell) {
+        const currentSource = String(sourceCell.textContent || '').trim();
+        if (!currentSource || currentSource === '-') {
+          sourceCell.textContent = sourceText;
+          changed = true;
+        }
+      }
+      row.dataset.pumpDischargeRouteTraceHydrated = VERSION;
+      liveValueCell.title = 'Discharge PFV loss affects system head and outlet pressure; it is not subtracted directly from NPSHa.';
+    });
+    return changed;
+  }
+
+  function hydrateRouteTraceSinkReadout(windowNode, pumpId) {
+    if (!windowNode?.querySelectorAll) return false;
+    const { results, evaluation } = pumpResult(pumpId);
+    const readout = sinkRouteReadout(results, evaluation);
+    if (!readout.value) return false;
+    let changed = false;
+    Array.from(windowNode.querySelectorAll('tr')).forEach((row) => {
+      const cells = Array.from(row.querySelectorAll?.('td, th') || row.children || []);
+      const label = String(cells[0]?.textContent || row.textContent || '').trim();
+      if (!/^SNK\b/i.test(label) || cells.length < 2) return;
+      const liveValueCell = cells[1];
+      const sourceCell = cells[2] || null;
+      const currentValue = String(liveValueCell.textContent || '').trim();
+      if (!currentValue || currentValue === '-') {
+        liveValueCell.textContent = readout.value;
+        changed = true;
+      }
+      if (sourceCell) {
+        const currentSource = String(sourceCell.textContent || '').trim();
+        if (!currentSource || currentSource === '-' || /Downstream boundary from route trace/i.test(currentSource)) {
+          sourceCell.textContent = readout.source;
+          changed = true;
+        }
+      }
+      row.dataset.pumpSinkRouteTraceHydrated = VERSION;
+      liveValueCell.title = 'SNK closes the downstream boundary for system head and pump duty; it is not a direct NPSHa term.';
+    });
+    return changed;
+  }
+
   function injectIntoWindow(windowNode, pumpId) {
     if (!windowNode) return;
     const summary = buildSummary(pumpId || windowNode.dataset?.pumpId);
@@ -635,6 +822,8 @@
 
     const matrix = ensurePanel(windowNode, MATRIX_SELECTOR, 'data-pump-calculation-matrix', 'after-summary');
     matrix.innerHTML = renderCalculationMatrix(pumpId || windowNode.dataset?.pumpId);
+    hydrateRouteTraceDischargeReadout(windowNode, pumpId || windowNode.dataset?.pumpId);
+    hydrateRouteTraceSinkReadout(windowNode, pumpId || windowNode.dataset?.pumpId);
   }
 
   function refreshPumpFormulaDefenseAudit(pumpId) {
@@ -650,13 +839,13 @@
     if (!hasDocument()) return 0;
     const windows = Array.from(document.querySelectorAll(WINDOW_SELECTOR));
     if (!windows.length) return 0;
-    const ids = [...new Set(windows.map((windowNode) => resolvePumpId(pumpId || windowNode.dataset?.pumpId)).filter(Boolean))];
+    const ids = [...new Set(windows.map((windowNode) => resolvePumpId(pumpId || datasetPumpId(windowNode))).filter(Boolean))];
     let refreshed = 0;
     if (options.rebuild !== false && typeof root.refreshPumpFormulaDefenseWindowContent === 'function' && !refreshingWindowContent) {
       refreshingWindowContent = true;
       try {
-        ids.forEach((id) => {
-          root.refreshPumpFormulaDefenseWindowContent(id);
+        windows.forEach((windowNode) => {
+          root.refreshPumpFormulaDefenseWindowContent(windowNode, options);
           refreshed += 1;
         });
       } catch (error) {
@@ -708,7 +897,7 @@
     const windows = visibleFormulaDefenseWindows();
     if (!windows.length) return [];
     const ids = windows
-      .map((windowNode) => resolvePumpId(pumpId || windowNode.dataset?.pumpId))
+      .map((windowNode) => resolvePumpId(pumpId || datasetPumpId(windowNode)))
       .filter(Boolean);
     return [...new Set(ids.length ? ids : [resolvePumpId(pumpId)])].filter(Boolean);
   }
@@ -887,27 +1076,27 @@
   }
 
   function copyRuntimePatchFlags(target, source) {
-    [
-      '__engineeringRealtimeCalculationDefenseUpdatePatched',
-      '__engineeringRealtimeCalculationDefenseOriginal',
-      '__analysisReportLivePatched',
-      '__analysisReportLiveOriginal'
-    ].forEach((key) => {
+    RUNTIME_PATCH_FLAG_KEYS.forEach((key) => {
       if (source && Object.prototype.hasOwnProperty.call(source, key)) {
         target[key] = source[key];
       }
     });
   }
 
-  function wrapFunction(name, after) {
+  function wrapFunction(name, after, options = {}) {
     const original = root[name];
     if (typeof original !== 'function' || original.__pumpFormulaDefenseLiveAuditVersion === VERSION) return false;
     function wrapped(...args) {
       let result = null;
-      try {
-        result = original.apply(this, args);
-      } catch (error) {
-        console.warn(`${VERSION}: ${name} original refresh failed; live audit badges will still refresh.`, error);
+      const shouldRunOriginal = typeof options.shouldRunOriginal === 'function'
+        ? options.shouldRunOriginal(args)
+        : true;
+      if (shouldRunOriginal) {
+        try {
+          result = original.apply(this, args);
+        } catch (error) {
+          console.warn(`${VERSION}: ${name} original refresh failed; live audit badges will still refresh.`, error);
+        }
       }
       const runAfter = () => root.setTimeout(() => after(...args), 0);
       if (result && typeof result.then === 'function') {
@@ -945,8 +1134,10 @@
       wrapFunction('openPumpFormulaDefenseTaskWindow', (pumpId) => {
         scheduleOpenFormulaDefenseWindowRefresh(pumpId, { reason: 'open-window', rebuild: false, delayMs: 120 });
       }),
-      wrapFunction('refreshPumpFormulaDefenseWindowContent', (pumpId) => {
-        refreshPumpFormulaDefenseAudit(pumpId);
+      wrapFunction('refreshPumpFormulaDefenseWindowContent', (target) => {
+        refreshPumpFormulaDefenseAudit(target);
+      }, {
+        shouldRunOriginal: (args) => isFormulaDefenseWindowElement(args[0])
       }),
       wrapFunction('updateSimulation', (options = {}) => {
         const nodeId = options?.selectedNodeId || options?.nodeId || '';

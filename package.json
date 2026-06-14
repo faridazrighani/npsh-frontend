@@ -32,6 +32,8 @@
     "validate:calculation-lifecycle": "node tools/validate-calculation-lifecycle-runtime.cjs",
     "validate:calculation-progress-overlay": "node tools/validate-calculation-progress-overlay.cjs",
     "validate:performance-refresh-governor": "node tools/validate-performance-refresh-governor.cjs",
+    "validate:pump-edit-fast-lane": "node tools/validate-pump-edit-fast-lane.cjs",
+    "validate:simulation-case-integrity": "node tools/validate-simulation-case-integrity-guard.cjs",
     "test:e2e": "playwright test",
     "test:e2e:desktop-flow-chain": "playwright test tests/e2e/desktop-simulation-flow-chain.spec.cjs",
     "test:e2e:remaining-risks": "playwright test tests/e2e/pipe-moody-defense-export.spec.cjs",

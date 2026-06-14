@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-performance-canonical-chart.v3';
+  const VERSION = 'pump-performance-canonical-chart.v5';
   const CANVAS_SELECTORS = [
     '#pumpChart',
     '#captionAuditPumpChartCanvas',
@@ -15,6 +15,18 @@
     'npsh:realtime-autosolve-complete'
   ];
   const PUMP_CHART_INPUT_PATTERN = /\b(inputMode|optimizationMode|npshrSourceMode|npshAssessmentMode|npshMarginBasis|designFlow|designHead|designEfficiency|designNpshr|bepFlow|porMinPercent|porMaxPercent|aorMinPercent|aorMaxPercent|minNpshMarginRatio|minNpshMargin|speed|curveDataSource|curveSourceNote|curveData|flow|head|eff|npshr|pressure|elevation|density|viscosity|vaporPressure|segments|length|diameter|roughness|fittingType|fittingQuantity|fittingK|minorLoss|additionalK)\b/i;
+  const RUNTIME_PATCH_FLAG_KEYS = [
+    '__engineeringRealtimeCalculationDefenseUpdatePatched',
+    '__engineeringRealtimeCalculationDefenseOriginal',
+    '__analysisReportLivePatched',
+    '__analysisReportLiveOriginal',
+    '__pumpFormulaDefenseLiveAuditPatched',
+    '__pumpFormulaDefenseLiveAuditVersion',
+    '__pumpFormulaDefenseLiveAuditOriginal',
+    '__pumpPerformanceChartAuditPatched',
+    '__pumpPerformanceChartAuditVersion',
+    '__pumpPerformanceChartAuditOriginal'
+  ];
   let renderGuardTimer = 0;
   let scheduledRenderTimer = 0;
   let pendingRenderPumpId = '';
@@ -165,6 +177,11 @@
     return normalizePoints(chartData?.series?.[key], ['value']);
   }
 
+  function npshEvaluation(pump = {}) {
+    const results = pump.results || {};
+    return results.npshEvaluation || {};
+  }
+
   const REQUIRED_ESTIMATED_CHART_INPUTS = [
     'designFlow',
     'designHead',
@@ -289,6 +306,166 @@
     };
   }
 
+  function isPumpFastLanePreviewActive(pumpId, pump = {}) {
+    const state = root.__engineeringPumpEditFastLane || {};
+    if (root.EngineeringPumpEditFastLane && typeof root.EngineeringPumpEditFastLane.isActiveFor === 'function') {
+      try {
+        if (root.EngineeringPumpEditFastLane.isActiveFor(pumpId)) return true;
+      } catch (error) {
+        // Fall through to stored state checks.
+      }
+    }
+    if (state && Number(state.activeUntil || 0) > Date.now() && (!state.pumpId || state.pumpId === pumpId)) {
+      return true;
+    }
+    const results = pump.results || {};
+    const evaluation = npshEvaluation(pump);
+    return /local preview/i.test(String(results.calculationFreshness || evaluation.calculationFreshness || ''));
+  }
+
+  function scaleSeriesToDuty(points, currentValue, previousDutyValue, currentFlow, previousDutyFlow) {
+    const numericCurrent = toNumber(currentValue);
+    const numericPrevious = toNumber(previousDutyValue);
+    const numericCurrentFlow = toNumber(currentFlow);
+    const numericPreviousFlow = toNumber(previousDutyFlow);
+    if (!points.length) return [];
+    const valueRatio = numericCurrent !== null && numericPrevious !== null && numericPrevious > 0
+      ? numericCurrent / numericPrevious
+      : 1;
+    const flowRatio = numericCurrentFlow !== null && numericPreviousFlow !== null && numericPreviousFlow > 0
+      ? numericCurrentFlow / numericPreviousFlow
+      : 1;
+    return points.map((point) => {
+      const value = toNumber(point.value);
+      const flow = toNumber(point.flow);
+      return {
+        ...point,
+        flow: flow === null ? point.flow : Number((flow * flowRatio).toFixed(6)),
+        value: value === null ? point.value : Number((value * valueRatio).toFixed(6))
+      };
+    });
+  }
+
+  function interpolateAnchors(t, anchors) {
+    return anchors.reduce((sum, anchor, anchorIndex) => {
+      const basis = anchors.reduce((product, other, otherIndex) => (
+        otherIndex === anchorIndex ? product : product * ((t - other.t) / (anchor.t - other.t))
+      ), 1);
+      return sum + anchor.value * basis;
+    }, 0);
+  }
+
+  function previewHeadSeries(flow, head) {
+    const q = toNumber(flow);
+    const h = toNumber(head);
+    if (q === null || h === null || q <= 0 || h <= 0) return [];
+    const anchors = [
+      { t: 0.2, value: h * 1.18 },
+      { t: 1, value: h },
+      { t: 1.7, value: h * 0.48 }
+    ];
+    return Array.from({ length: 11 }, (_, index) => {
+      const t = 0.2 + (1.5 * index / 10);
+      return {
+        flow: Number(Math.max(q * t, 0.001).toFixed(6)),
+        value: Number(Math.max(interpolateAnchors(t, anchors), 0.001).toFixed(6))
+      };
+    });
+  }
+
+  function previewSystemSeries(flow, head) {
+    const q = toNumber(flow);
+    const h = toNumber(head);
+    if (q === null || h === null || q <= 0 || h <= 0) return [];
+    return Array.from({ length: 11 }, (_, index) => {
+      const t = 0.2 + (1.5 * index / 10);
+      return {
+        flow: Number(Math.max(q * t, 0.001).toFixed(6)),
+        value: Number(Math.max(h * (0.25 + 0.75 * t * t), 0.001).toFixed(6))
+      };
+    });
+  }
+
+  function previewFlatSeries(flow, value) {
+    const q = toNumber(flow);
+    const y = toNumber(value);
+    if (q === null || y === null || q <= 0 || y <= 0) return [];
+    return [
+      { flow: Math.max(q * 0.2, 0.001), value: y },
+      { flow: q, value: y },
+      { flow: q * 1.7, value: y }
+    ].map((point) => ({
+      flow: Number(point.flow.toFixed(6)),
+      value: Number(point.value.toFixed(6))
+    }));
+  }
+
+  function buildFastLanePreviewModel(pumpId, pump, chartData) {
+    const results = pump.results || {};
+    const props = pump.props || {};
+    const evaluation = npshEvaluation(pump);
+    const baseRanges = chartData?.ranges || {};
+    const baseDuty = chartData?.dutyPoint || {};
+    const localFlow = toNumber(evaluation.flow ?? results.flow ?? results.fixedFlow ?? props.designFlow ?? baseDuty.flow);
+    const localHead = toNumber(evaluation.pumpHead ?? results.head ?? results.pumpHeadAtFlow ?? props.designHead ?? baseDuty.head);
+    const localNpsha = toNumber(evaluation.npsha ?? results.npsha ?? results.npshAvailable ?? baseDuty.npsha);
+    const localNpshr = toNumber(evaluation.npshr ?? results.npshr ?? results.npshRequired ?? props.designNpshr ?? baseDuty.npshr);
+    const localMargin = localNpsha !== null && localNpshr !== null
+      ? localNpsha - localNpshr
+      : toNumber(evaluation.npshMargin ?? results.npshMargin ?? baseDuty.margin);
+    const propsCurveIsDefault = isDefaultPumpCurve(props.curveData || []);
+    const propsPumpHead = propsCurveIsDefault ? [] : normalizePoints(props.curveData, ['head', 'pumpHead', 'value']);
+    const propsNpshr = propsCurveIsDefault ? [] : normalizePoints(props.curveData, ['npshr', 'requiredNpsh']);
+    const basePumpHead = canonicalSeries(chartData, 'pumpHead');
+    const baseNpshr = canonicalSeries(chartData, 'npshr');
+    const baseNpsha = canonicalSeries(chartData, 'npsha');
+    const baseSystemHead = canonicalSeries(chartData, 'systemHead');
+    const systemPoints = results.systemCurvePoints || results.sysCurve;
+    const fallbackSystemHead = normalizePoints(systemPoints, ['head', 'systemHead', 'requiredHead']);
+    return {
+      pumpId,
+      sourceMode: 'Local Pump Edit Preview',
+      sourceAudit: {
+        ...(chartData?.sourceAudit || {}),
+        localPumpEditPreview: true,
+        backendChartSourceMode: chartData?.sourceMode || ''
+      },
+      freshness: 'Local preview',
+      warnings: [
+        'Preview curve follows current Pump Properties input; backend system curve refreshes after autosolve.',
+        ...(Array.isArray(chartData?.warnings) ? chartData.warnings : [])
+      ].filter(Boolean),
+      ranges: {
+        bepFlow: toNumber(props.bepFlow ?? props.designFlow ?? baseRanges.bepFlow),
+        porMinPercent: toNumber(props.porMinPercent ?? baseRanges.porMinPercent),
+        porMaxPercent: toNumber(props.porMaxPercent ?? baseRanges.porMaxPercent),
+        aorMinPercent: toNumber(props.aorMinPercent ?? baseRanges.aorMinPercent),
+        aorMaxPercent: toNumber(props.aorMaxPercent ?? baseRanges.aorMaxPercent)
+      },
+      dutyPoint: {
+        flow: localFlow,
+        head: localHead,
+        npsha: localNpsha,
+        npshr: localNpshr,
+        margin: localMargin
+      },
+      series: {
+        pumpHead: propsPumpHead.length
+          ? propsPumpHead
+          : (basePumpHead.length ? scaleSeriesToDuty(basePumpHead, localHead, baseDuty.head, localFlow, baseDuty.flow) : previewHeadSeries(localFlow, localHead)),
+        systemHead: baseSystemHead.length
+          ? scaleSeriesToDuty(baseSystemHead, localHead, baseDuty.head, localFlow, baseDuty.flow)
+          : (fallbackSystemHead.length ? fallbackSystemHead : previewSystemSeries(localFlow, localHead)),
+        npsha: baseNpsha.length ? scaleSeriesToDuty(baseNpsha, localNpsha, baseDuty.npsha, localFlow, baseDuty.flow) : previewFlatSeries(localFlow, localNpsha),
+        npshr: propsNpshr.length
+          ? propsNpshr
+          : (baseNpshr.length ? scaleSeriesToDuty(baseNpshr, localNpshr, baseDuty.npshr, localFlow, baseDuty.flow) : previewFlatSeries(localFlow, localNpshr))
+      },
+      canonical: false,
+      preview: true
+    };
+  }
+
   function buildChartModel(pumpId) {
     const model = runtimeModel();
     const id = resolvePumpId(pumpId);
@@ -297,8 +474,12 @@
     const chartData = results.performanceChartData?.schemaVersion === 'pump-performance-chart-data.v1'
       ? results.performanceChartData
       : null;
+    const chartDataAllowed = chartData ? storedChartDataIsAllowed(pump, chartData) : false;
+    if (isPumpFastLanePreviewActive(id, pump)) {
+      return buildFastLanePreviewModel(id, pump, chartDataAllowed ? chartData : null);
+    }
     if (chartData) {
-      if (!storedChartDataIsAllowed(pump, chartData)) {
+      if (!chartDataAllowed) {
         return buildBlockedChartModel(
           id,
           pump,
@@ -551,7 +732,9 @@
     context.restore();
 
     canvas.dataset.pumpPerformanceCanonicalChartVersion = VERSION;
-    canvas.dataset.pumpPerformanceCanonicalChartSource = chartModel.canonical ? 'performanceChartData' : 'legacy-fallback';
+    canvas.dataset.pumpPerformanceCanonicalChartSource = chartModel.preview
+      ? 'local-preview'
+      : (chartModel.canonical ? 'performanceChartData' : 'legacy-fallback');
     root.__pumpPerformanceCanonicalChartLast = chartModel;
     return chartModel;
   }
@@ -572,10 +755,23 @@
       return false;
     }
     pendingRenderPumpId = id || pendingRenderPumpId;
+    const delayMs = options.delayMs === undefined ? 140 : options.delayMs;
+    if (options.force && delayMs <= 32) {
+      const runFast = () => {
+        ensureRuntimeGuards();
+        return render(pendingRenderPumpId);
+      };
+      if (typeof root.requestAnimationFrame === 'function') {
+        root.requestAnimationFrame(runFast);
+      } else {
+        root.setTimeout?.(runFast, delayMs);
+      }
+      return true;
+    }
     const governor = root.EngineeringPerformanceRefreshGovernor;
     if (governor && typeof governor.schedule === 'function') {
       return governor.schedule('pump-performance-chart', pendingRenderPumpId, {
-        delayMs: options.delayMs === undefined ? 140 : options.delayMs,
+        delayMs,
         reason: options.reason || 'canonical pump chart render',
         run: () => {
           ensureRuntimeGuards();
@@ -590,7 +786,7 @@
       scheduledRenderTimer = 0;
       ensureRuntimeGuards();
       render(pendingRenderPumpId);
-    }, options.delayMs === undefined ? 140 : options.delayMs) || 0;
+    }, delayMs) || 0;
     return true;
   }
 
@@ -649,12 +845,7 @@
   }
 
   function copyRuntimePatchFlags(target, source) {
-    [
-      '__engineeringRealtimeCalculationDefenseUpdatePatched',
-      '__engineeringRealtimeCalculationDefenseOriginal',
-      '__analysisReportLivePatched',
-      '__analysisReportLiveOriginal'
-    ].forEach((key) => {
+    RUNTIME_PATCH_FLAG_KEYS.forEach((key) => {
       if (source && Object.prototype.hasOwnProperty.call(source, key)) {
         target[key] = source[key];
       }

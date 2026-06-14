@@ -1,10 +1,14 @@
 !function(root) {
   "use strict";
 
-  const VERSION = "2026.06-pump-nozzle-simplify4";
+  const VERSION = "2026.06-pump-nozzle-simplify5";
   const STYLE_ID = "pumpNozzleSimplifyRuntimeStyle";
   const HIDDEN_MAIN_KEYS = new Set(["elevation", "dischargeElevation"]);
   const HIDDEN_STATUS_KEYS = new Set(["npshEvaluationMode", "pump-input-readiness"]);
+  const HIDDEN_PROPOSAL_SELECTORS = [
+    ".pump-optimization-proposal",
+    ".caption-audit-proposal-action-status"
+  ];
   const PUMP_DATUM_KEY = "suctionElevation";
   const PUMP_DATUM_LABEL = "Pump Datum Elev.";
   const PUMP_DATUM_LONG_LABEL = "Pump datum elevation";
@@ -20,6 +24,10 @@
     style.id = STYLE_ID;
     style.textContent = `
       [data-pump-basic-nozzle-hidden="true"] {
+        display: none !important;
+        visibility: hidden !important;
+      }
+      [data-pump-optimization-summary-hidden="true"] {
         display: none !important;
         visibility: hidden !important;
       }
@@ -104,12 +112,23 @@
     return !!windowNode.querySelector?.('[data-key="suctionElevation"], [data-key="designNpshr"], [data-key="bepFlow"]');
   }
 
+  function hideRedundantPumpProposalSummary(windowNode) {
+    if (!windowNode) return;
+    HIDDEN_PROPOSAL_SELECTORS.forEach((selector) => {
+      windowNode.querySelectorAll?.(selector)?.forEach((element) => {
+        element.dataset.pumpOptimizationSummaryHidden = "true";
+        element.setAttribute("aria-hidden", "true");
+      });
+    });
+  }
+
   function simplifyPumpNozzleInputs(scope = document) {
     if (typeof document === "undefined") return;
     installStyle();
     const rootScope = scope?.querySelectorAll ? scope : document;
     rootScope.querySelectorAll(PUMP_WINDOW_SELECTOR).forEach((windowNode) => {
       if (!isPumpPropertiesWindow(windowNode)) return;
+      hideRedundantPumpProposalSummary(windowNode);
       windowNode.querySelectorAll("[data-key]").forEach((field) => {
         if (field.dataset.key === PUMP_DATUM_KEY) {
           renamePumpDatumLabel(field);

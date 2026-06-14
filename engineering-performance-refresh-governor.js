@@ -1,7 +1,7 @@
 (function initEngineeringPerformanceRefreshGovernor(root) {
   'use strict';
 
-  const VERSION = '2026.06-performance-refresh-governor3';
+  const VERSION = '2026.06-performance-refresh-governor4';
   const DEFAULT_DELAY_MS = 300;
   const FAST_DELAY_MS = 180;
   const MAX_DELAY_MS = 1500;
@@ -83,15 +83,50 @@
   }
 
   function getModel() {
-    return root.NPSH_PROJECT_MODEL || root.projectModel || root.currentProject || null;
+    let lexicalModel = null;
+    try {
+      lexicalModel = typeof globalModel !== 'undefined' ? globalModel : null;
+    } catch (error) {
+      lexicalModel = null;
+    }
+    return root.NPSH_PROJECT_MODEL
+      || root.projectModel
+      || root.currentProject
+      || root.globalModel
+      || root.__npshGlobalModel
+      || lexicalModel
+      || null;
+  }
+
+  function getObjectContainer(source) {
+    if (!source || typeof source !== 'object') {
+      return {};
+    }
+    if (source.nodes && typeof source.nodes === 'object') {
+      return source.nodes;
+    }
+    if (source.nodeMap && typeof source.nodeMap === 'object') {
+      return source.nodeMap;
+    }
+    if (source.objects && typeof source.objects === 'object') {
+      return source.objects;
+    }
+    return source;
   }
 
   function getNodes() {
-    const model = getModel();
-    if (!model) {
-      return {};
+    return getObjectContainer(getModel());
+  }
+
+  function nodeEntries() {
+    const nodes = getNodes();
+    if (Array.isArray(nodes)) {
+      return nodes
+        .map((node, index) => [normalizeNodeId(node && (node.id || node.nodeId || node.key || index)), node])
+        .filter(([, node]) => node && typeof node === 'object');
     }
-    return model.nodes || model.nodeMap || {};
+    return Object.entries(nodes || {})
+      .filter(([, node]) => node && typeof node === 'object');
   }
 
   function getNode(nodeId) {
@@ -111,18 +146,110 @@
 
   function getAllNodeIdsByType(typeList) {
     const wanted = new Set(typeList.map((item) => String(item).toLowerCase()));
-    const nodes = getNodes();
-    const values = Array.isArray(nodes) ? nodes : Object.values(nodes || {});
-    return values
-      .filter(Boolean)
-      .filter((node) => wanted.has(String(node.type || node.kind || node.category || '').toLowerCase()))
-      .map((node) => normalizeNodeId(node.id || node.nodeId))
+    return nodeEntries()
+      .filter(([, node]) => wanted.has(String(node.type || node.kind || node.category || '').toLowerCase()))
+      .map(([id, node]) => normalizeNodeId(node.id || node.nodeId || id))
       .filter(Boolean);
+  }
+
+  function getConnections() {
+    let lexicalConnections = null;
+    try {
+      lexicalConnections = typeof connections !== 'undefined' ? connections : null;
+    } catch (error) {
+      lexicalConnections = null;
+    }
+    const model = getModel();
+    const candidates = [
+      model && model.connections,
+      model && model.links,
+      model && model.edges,
+      root.connections,
+      root.__npshConnections,
+      root.globalConnections,
+      lexicalConnections,
+      root.__npshLastBackendSimulationResponse && root.__npshLastBackendSimulationResponse.response && root.__npshLastBackendSimulationResponse.response.connections,
+    ];
+    return candidates.find(Array.isArray) || [];
+  }
+
+  function connectionEndpoint(connection, key) {
+    if (!connection) {
+      return '';
+    }
+    return normalizeNodeId(
+      connection[key]
+      || connection[`raw${key.charAt(0).toUpperCase()}${key.slice(1)}`]
+      || connection[`${key}Node`]
+      || connection[`${key}Id`]
+      || ''
+    );
+  }
+
+  function connectionPipeId(connection) {
+    return normalizeNodeId(connection && (
+      connection.pipeId
+      || connection.pipe
+      || connection.pipeNodeId
+      || connection.via
+      || connection.edgePipeId
+      || ''
+    ));
   }
 
   function readNodeType(nodeId) {
     const node = getNode(nodeId);
     return String(node && (node.type || node.kind || node.category) || '').toLowerCase();
+  }
+
+  function firstNodeIdByType(type) {
+    return getAllNodeIdsByType([type])[0] || '';
+  }
+
+  function pipeFallbackIds(pumpId) {
+    const pipes = getAllNodeIdsByType(['pipe']);
+    const suction = pipes.find((id) => /suction|pipe-?1/i.test(id)) || pipes[0] || '';
+    const discharge = pipes.find((id) => /discharge|pipe-?2/i.test(id)) || pipes.find((id) => id !== suction) || '';
+    return { suction, discharge };
+  }
+
+  function findPumpDependencyIds(pumpId) {
+    const id = normalizeNodeId(pumpId);
+    const suctionConnection = getConnections().find((connection) => connectionEndpoint(connection, 'to') === id);
+    const dischargeConnection = getConnections().find((connection) => connectionEndpoint(connection, 'from') === id);
+    const fallbackPipes = pipeFallbackIds(id);
+    const suctionPipeId = connectionPipeId(suctionConnection) || fallbackPipes.suction;
+    const dischargePipeId = connectionPipeId(dischargeConnection) || fallbackPipes.discharge;
+    const sourceId = connectionEndpoint(suctionConnection, 'from') || firstNodeIdByType('source');
+    const sinkId = connectionEndpoint(dischargeConnection, 'to') || firstNodeIdByType('sink');
+    const fluidIds = getAllNodeIdsByType(['fluid']);
+    const all = new Set([id, sourceId, suctionPipeId, dischargePipeId, sinkId, ...fluidIds].filter(Boolean));
+    return {
+      pumpId: id,
+      fluidIds,
+      sourceId,
+      suctionPipeId,
+      dischargePipeId,
+      sinkId,
+      all,
+    };
+  }
+
+  function pumpDependencySet(pumpId) {
+    return findPumpDependencyIds(pumpId).all;
+  }
+
+  function relatedPumpsForNode(nodeId) {
+    const id = normalizeNodeId(nodeId);
+    const type = readNodeType(id);
+    if (type === 'pump') {
+      return new Set([id]);
+    }
+    const pumpIds = getAllNodeIdsByType(['pump']);
+    if (type === 'fluid') {
+      return new Set(pumpIds);
+    }
+    return new Set(pumpIds.filter((pumpId) => pumpDependencySet(pumpId).has(id)));
   }
 
   function relatedNodeIds(nodeId) {
@@ -134,19 +261,17 @@
     if (!type) {
       return new Set([id]);
     }
-    const related = new Set([id]);
     if (type === 'pump') {
-      getAllNodeIdsByType(['pipe']).forEach((pipeId) => related.add(pipeId));
+      return pumpDependencySet(id);
+    }
+    if (['pipe', 'source', 'sink', 'tank', 'vessel', 'fluid'].includes(type)) {
+      const related = new Set([id]);
+      relatedPumpsForNode(id).forEach((pumpId) => {
+        pumpDependencySet(pumpId).forEach((dependencyId) => related.add(dependencyId));
+      });
       return related;
     }
-    if (type === 'pipe') {
-      getAllNodeIdsByType(['pump']).forEach((pumpId) => related.add(pumpId));
-      return related;
-    }
-    if (type === 'source' || type === 'sink' || type === 'fluid' || type === 'tank' || type === 'vessel') {
-      return null;
-    }
-    return related;
+    return new Set([id]);
   }
 
   function getWindowNodeId(element) {
@@ -278,6 +403,213 @@
     return hash.toString(36);
   }
 
+  function finiteNumber(value) {
+    const number = Number.parseFloat(value);
+    return Number.isFinite(number) ? Number(number.toPrecision(12)) : null;
+  }
+
+  function firstFiniteValue(...values) {
+    for (const value of values) {
+      const number = finiteNumber(value);
+      if (number !== null) {
+        return number;
+      }
+    }
+    return null;
+  }
+
+  function pickFields(source, fields) {
+    const output = {};
+    fields.forEach((field) => {
+      if (source && Object.prototype.hasOwnProperty.call(source, field)) {
+        output[field] = source[field];
+      }
+    });
+    return output;
+  }
+
+  function nodeParts(nodeId) {
+    const node = getNode(nodeId) || {};
+    return {
+      id: normalizeNodeId(nodeId),
+      type: node.type || node.kind || node.category || '',
+      props: node.props || {},
+      results: node.results || {},
+    };
+  }
+
+  function pipeDependencySnapshot(pipeId, role) {
+    const node = nodeParts(pipeId);
+    const results = node.results || {};
+    const trace = results.calculationTrace || {};
+    const totals = trace.totals || {};
+    return {
+      id: node.id,
+      role,
+      type: node.type,
+      inputHash: hashString(stableStringify(pickFields(node.props, [
+        'segments',
+        'roughnessAgingFactor',
+        'headLossAllowancePercent',
+        'elevationProfileMode',
+        'startElevation',
+        'endElevation',
+        'pressureBasis',
+      ]))),
+      flow: firstFiniteValue(results.flow, results.flowM3h, trace.basis && trace.basis.flowM3H),
+      velocity: firstFiniteValue(results.velocity, trace.basis && trace.basis.velocity),
+      totalK: firstFiniteValue(results.totalK, totals.totalK),
+      majorLoss: firstFiniteValue(results.majorHeadLoss, totals.majorLoss),
+      minorLoss: firstFiniteValue(results.minorHeadLoss, totals.minorLoss),
+      totalLoss: firstFiniteValue(results.totalHeadLoss, results.headLoss, totals.totalLoss),
+      pressureDrop: firstFiniteValue(results.pressureDrop, results.pressureDropBar, trace.hydraulic && trace.hydraulic.pressureDropBar),
+      inletPressure: firstFiniteValue(results.pressureInBar, results.inletPressureBar),
+      outletPressure: firstFiniteValue(results.pressureOutBar, results.outletPressureBar),
+    };
+  }
+
+  function boundarySnapshot(nodeId, role) {
+    const node = nodeParts(nodeId);
+    return {
+      id: node.id,
+      role,
+      type: node.type,
+      props: pickFields(node.props, [
+        'sourceType',
+        'boundaryMode',
+        'pressure',
+        'pressureBasis',
+        'pressureInputBasis',
+        'pressureEnergyBasis',
+        'elevation',
+        'liquidLevel',
+        'head',
+        'flow',
+        'demandFlow',
+        'active',
+      ]),
+      results: pickFields(node.results, [
+        'flow',
+        'pressureBarA',
+        'pressureAbsBar',
+        'hydraulicHeadM',
+        'head',
+        'elevation',
+        'demandFlowM3H',
+        'evaluatedFlowM3H',
+      ]),
+    };
+  }
+
+  function buildPumpDependencyContract(pumpId) {
+    const dependencies = findPumpDependencyIds(pumpId);
+    const pump = nodeParts(dependencies.pumpId);
+    const pumpResults = pump.results || {};
+    const evaluation = pumpResults.npshEvaluation || {};
+    const fluidSnapshots = dependencies.fluidIds.map((fluidId) => {
+      const fluid = nodeParts(fluidId);
+      return {
+        id: fluid.id,
+        type: fluid.type,
+        props: pickFields(fluid.props, [
+          'fluidName',
+          'temp',
+          'temperature',
+          'density',
+          'viscosity',
+          'kinematicViscosity',
+          'dynamicViscosity',
+          'vaporPressure',
+        ]),
+        results: pickFields(fluid.results, [
+          'density',
+          'kinematicViscosity',
+          'dynamicViscosity',
+          'vaporPressure',
+          'vaporPressureHead',
+        ]),
+      };
+    });
+    const pumpProps = pump.props || {};
+    return {
+      schemaVersion: 'pump-dependency-contract.v1',
+      pumpId: dependencies.pumpId,
+      dependencyIds: {
+        fluid: dependencies.fluidIds,
+        source: dependencies.sourceId,
+        suctionPfv: dependencies.suctionPipeId,
+        pump: dependencies.pumpId,
+        dischargePfv: dependencies.dischargePipeId,
+        sink: dependencies.sinkId,
+      },
+      fluidBasis: fluidSnapshots,
+      source: boundarySnapshot(dependencies.sourceId, 'source'),
+      suctionPfv: pipeDependencySnapshot(dependencies.suctionPipeId, 'suction'),
+      pump: {
+        id: pump.id,
+        type: pump.type,
+        props: pickFields(pumpProps, [
+          'npshAssessmentMode',
+          'suctionElevation',
+          'designFlow',
+          'designHead',
+          'designEfficiency',
+          'designNpshr',
+          'npshrSourceMode',
+          'npshMarginBasis',
+          'minNpshMarginRatio',
+          'minNpshMargin',
+          'bepFlow',
+          'porMinPercent',
+          'porMaxPercent',
+          'aorMinPercent',
+          'aorMaxPercent',
+          'curveDataSource',
+        ]),
+        curveInputHash: hashString(stableStringify(pickFields(pumpProps, [
+          'curveData',
+          'curvePoints',
+          'pumpCurvePoints',
+          'headCurve',
+          'npshrCurve',
+          'performancePoints',
+        ]))),
+      },
+      dischargePfv: pipeDependencySnapshot(dependencies.dischargePipeId, 'discharge'),
+      sink: boundarySnapshot(dependencies.sinkId, 'sink'),
+      pumpPerformance: {
+        flow: firstFiniteValue(evaluation.flow, pumpResults.fixedFlow, pumpResults.flow),
+        head: firstFiniteValue(evaluation.pumpHead, pumpResults.head, pumpResults.pumpHeadAtFlow),
+        npshr: firstFiniteValue(evaluation.npshr, pumpResults.npshr, pumpProps.designNpshr),
+        chartDataHash: hashString(stableStringify(pickFields(pumpResults, [
+          'performanceChartData',
+          'pumpCurveData',
+          'pumpCurve',
+          'curveFit',
+        ]))),
+      },
+      npshEvaluation: {
+        status: evaluation.hydraulicStatus || evaluation.status || pumpResults.hydraulicNpshStatus || pumpResults.cavitationStatus || '',
+        engineeringStatus: evaluation.engineeringStatus || pumpResults.engineeringStatus || '',
+        dataConfidence: evaluation.dataConfidence || pumpResults.dataConfidence || '',
+        flow: firstFiniteValue(evaluation.flow, pumpResults.fixedFlow, pumpResults.flow),
+        pumpHead: firstFiniteValue(evaluation.pumpHead, pumpResults.head, pumpResults.pumpHeadAtFlow),
+        npsha: firstFiniteValue(evaluation.npsha, pumpResults.npsha, pumpResults.npshAvailable),
+        npshr: firstFiniteValue(evaluation.npshr, pumpResults.npshr, pumpResults.npshRequired),
+        npshMargin: firstFiniteValue(evaluation.npshMargin, pumpResults.npshMargin),
+        npshRatio: firstFiniteValue(evaluation.npshRatio, pumpResults.npshRatio),
+        requiredNpsha: firstFiniteValue(evaluation.requiredNpsha, pumpResults.requiredNpsha),
+        suctionPressureAbs: firstFiniteValue(evaluation.suctionPressureAbs, pumpResults.suctionPressure),
+        suctionLoss: firstFiniteValue(evaluation.suctionLoss, pumpResults.suctionLoss),
+        dischargeLoss: firstFiniteValue(evaluation.dischargeLoss, pumpResults.dischargeLoss),
+        requiredSystemHead: firstFiniteValue(evaluation.requiredSystemHead, pumpResults.requiredSystemHead),
+      },
+      freshness: root.__engineeringCalculationFreshness && root.__engineeringCalculationFreshness.byNode
+        ? root.__engineeringCalculationFreshness.byNode[dependencies.pumpId]
+        : null,
+    };
+  }
+
   function getPipeSignaturePayload(nodeId) {
     const node = getNode(nodeId);
     const fluid = root.FluidBasisStore && typeof root.FluidBasisStore.getActive === 'function'
@@ -310,26 +642,9 @@
   }
 
   function getPumpSignaturePayload(nodeId) {
-    const node = getNode(nodeId);
     return {
-      nodeId: normalizeNodeId(nodeId),
-      type: node && node.type,
-      props: node && node.props,
-      results: node && {
-        head: node.results && node.results.head,
-        flow: node.results && node.results.flow,
-        flowM3h: node.results && node.results.flowM3h,
-        npshAvailable: node.results && node.results.npshAvailable,
-        npshRequired: node.results && node.results.npshRequired,
-        npshMargin: node.results && node.results.npshMargin,
-        npshEvaluation: node.results && node.results.npshEvaluation,
-        routeTrace: node.results && node.results.routeTrace,
-        performanceChartData: node.results && node.results.performanceChartData,
-        actionReadiness: node.results && node.results.actionReadiness,
-      },
-      freshness: root.__engineeringCalculationFreshness && root.__engineeringCalculationFreshness.byNode
-        ? root.__engineeringCalculationFreshness.byNode[normalizeNodeId(nodeId)]
-        : null,
+      contract: buildPumpDependencyContract(nodeId),
+      actionReadiness: getNode(nodeId) && getNode(nodeId).results && getNode(nodeId).results.actionReadiness,
     };
   }
 
@@ -718,13 +1033,15 @@
 
   const api = {
     version: VERSION,
-    cacheKey: '20260613-refresh-governor3',
+    cacheKey: '20260614-refresh-governor4',
     VERSION,
     schedule,
     flush,
     patch,
     scheduleEnhance,
     refreshRelevantSecondaryWindows,
+    buildPumpDependencyContract,
+    relatedNodeIds,
     hasVisiblePumpChart,
     isVisibleElement,
     traceSignature,

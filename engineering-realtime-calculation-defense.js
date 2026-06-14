@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-realtime-calculation-defense.v7';
+  const VERSION = 'engineering-realtime-calculation-defense.v8';
   const AUTO_SOLVE_DEBOUNCE_MS = 800;
   const INPUT_LATENCY_SHIELD_MS = 1250;
   const USER_INTENT_WINDOW_MS = 8000;
@@ -950,6 +950,16 @@
         if (!isCalculationInput(event.target) || event.isComposing) return;
         const nodeId = resolveNodeId(event.target);
         const reason = 'Input changed; waiting for protected backend recalculation.';
+        const fastLane = root.EngineeringPumpEditFastLane;
+        if (typeof fastLane?.handleRealtimeInput === 'function') {
+          const handled = fastLane.handleRealtimeInput(event, {
+            markUserCalculationIntent,
+            markInputLatencyShield,
+            markStale,
+            requestAutoSolve
+          });
+          if (handled?.handled) return;
+        }
         if (isTrustedUserEdit(event)) {
           markUserCalculationIntent('trusted-input', event.target);
           markInputLatencyShield(event.target, nodeId, reason);

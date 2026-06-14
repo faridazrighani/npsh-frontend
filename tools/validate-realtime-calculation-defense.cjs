@@ -123,7 +123,7 @@ globalThis.EngineeringParameterTaskRuntime = {
 };
 
 const runtime = require(runtimePath);
-assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v7', 'Realtime defense runtime should expose v7.');
+assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v8', 'Realtime defense runtime should expose v8.');
 assert.equal(typeof runtime.markInputLatencyShield, 'function', 'Realtime defense must expose the input latency shield marker.');
 assert.equal(typeof runtime.isInputLatencyShieldActive, 'function', 'Realtime defense must expose the input latency shield status reader.');
 assert.equal(typeof runtime.buildPipeSegmentRows, 'function', 'Realtime defense runtime should expose canonical pipe segment row builder.');
@@ -145,6 +145,7 @@ assert(realtimeSource.includes('realtime-input'), 'Realtime defense must mark in
 assert(realtimeSource.includes('hasRecentUserCalculationIntent'), 'Realtime defense must suppress bootstrap Calculating status without recent user intent.');
 assert(realtimeSource.includes('scheduleUiRefresh'), 'Realtime defense must route UI repaint work through a scheduler.');
 assert(realtimeSource.includes('EngineeringPerformanceRefreshGovernor'), 'Realtime defense must use the performance refresh governor when available.');
+assert(realtimeSource.includes('EngineeringPumpEditFastLane'), 'Realtime defense must delegate Pump Object Properties edits to the fast lane before scheduling backend autosolve.');
 assert(realtimeSource.includes('publishCalculationStatusState'), 'Realtime defense must use a lightweight stale/calculating publisher before backend results are current.');
 assert(realtimeSource.includes('statusOnly: true'), 'Stale/calculating calculation-state events must avoid rebuilding full canonical trace rows.');
 
@@ -264,11 +265,16 @@ runtime.flushAutoSolve().then(async () => {
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(
-  index.includes('engineering-realtime-calculation-defense.js?v=20260613-realtime-global7'),
+  index.includes('engineering-realtime-calculation-defense.js?v=20260614-realtime-global8'),
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
-  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260613-realtime-global7'),
+  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane1')
+    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260614-realtime-global8'),
+  'Pump edit fast lane must load before realtime calculation defense.'
+);
+assert(
+  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260614-realtime-global8'),
   'Manifest must document the realtime calculation defense cache key.'
 );
 assert(
