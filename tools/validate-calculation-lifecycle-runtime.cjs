@@ -36,13 +36,13 @@ assert.strictEqual(
 );
 
 assert(
-  indexHtml.includes('engineering-realtime-calculation-defense.js?v=20260613-realtime-global6')
+  indexHtml.includes('engineering-realtime-calculation-defense.js?v=20260613-realtime-global7')
     && indexHtml.includes('engineering-calculation-lifecycle-runtime.js?v=20260613-calculation-lifecycle4')
     && indexHtml.includes('engineering-calculation-progress-overlay.js?v=20260613-calculation-progress7'),
   'index.html must load realtime defense, lifecycle runtime, then progress overlay.'
 );
 assert(
-  indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260613-realtime-global6')
+  indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260613-realtime-global7')
     < indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260613-calculation-lifecycle4')
     && indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260613-calculation-lifecycle4')
       < indexHtml.indexOf('engineering-calculation-progress-overlay.js?v=20260613-calculation-progress7'),

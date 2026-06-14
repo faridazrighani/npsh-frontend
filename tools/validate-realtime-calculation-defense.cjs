@@ -123,7 +123,9 @@ globalThis.EngineeringParameterTaskRuntime = {
 };
 
 const runtime = require(runtimePath);
-assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v6', 'Realtime defense runtime should expose v6.');
+assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v7', 'Realtime defense runtime should expose v7.');
+assert.equal(typeof runtime.markInputLatencyShield, 'function', 'Realtime defense must expose the input latency shield marker.');
+assert.equal(typeof runtime.isInputLatencyShieldActive, 'function', 'Realtime defense must expose the input latency shield status reader.');
 assert.equal(typeof runtime.buildPipeSegmentRows, 'function', 'Realtime defense runtime should expose canonical pipe segment row builder.');
 assert.equal(typeof runtime.publishCanonicalCalculationState, 'function', 'Realtime defense runtime should expose canonical calculation state publisher.');
 assert.equal(typeof runtime.scheduleLinkedViewRefresh, 'function', 'Realtime defense runtime should expose frame-batched linked view refresh.');
@@ -188,6 +190,25 @@ assert.equal(current.status, 'Current', 'Backend refresh state should mark realt
 assert.equal(current.dependencyFingerprint, 'dep-1', 'Backend dependency fingerprint should be retained.');
 
 runtime.install();
+const callsBeforeShieldedInput = updateSimulationCalls.length;
+runtime.markInputLatencyShield(null, 'P-100', 'Unit test pump input edit.');
+globalThis.__engineeringCalculationUserIntentAt = Date.now();
+globalThis.__engineeringCalculationUserIntent = { calculationMode: 'realtime-input', source: 'trusted-input' };
+const shieldedInputResult = globalThis.updateSimulation({ selectedNodeId: 'P-100' });
+assert(shieldedInputResult && typeof shieldedInputResult.then === 'function', 'Shielded input update should keep the updateSimulation Promise contract.');
+assert.equal(
+  updateSimulationCalls.length,
+  callsBeforeShieldedInput,
+  'Shielded realtime input must bypass the original updateSimulation refresh path so typing is not blocked by heavy UI refresh.'
+);
+assert.equal(
+  globalThis.__engineeringInputLatencyShieldBypass?.nodeId,
+  'P-100',
+  'Shielded realtime input should record the bypassed node for diagnostics.'
+);
+globalThis.__engineeringInputLatencyShield.activeUntil = 0;
+globalThis.__engineeringCalculationUserIntentAt = 0;
+globalThis.__engineeringCalculationUserIntent = null;
 const calculating = runtime.markCalculating('P-100', 'Backend unit test recalculation.');
 assert.equal(calculating.status, 'Calculating', 'markCalculating should expose backend refresh in progress.');
 assert.equal(results.calculationFreshness, 'Calculating', 'Pump results should be marked calculating during backend refresh.');
@@ -243,11 +264,11 @@ runtime.flushAutoSolve().then(async () => {
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(
-  index.includes('engineering-realtime-calculation-defense.js?v=20260613-realtime-global6'),
+  index.includes('engineering-realtime-calculation-defense.js?v=20260613-realtime-global7'),
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
-  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260613-realtime-global6'),
+  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260613-realtime-global7'),
   'Manifest must document the realtime calculation defense cache key.'
 );
 assert(

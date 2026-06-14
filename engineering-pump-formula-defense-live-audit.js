@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-formula-defense-live-audit.v2';
+  const VERSION = 'pump-formula-defense-live-audit.v3';
   const WINDOW_SELECTOR = '.pump-formula-defense-task-window';
   const BADGE_SELECTOR = '[data-pump-formula-defense-live-badges]';
   const SUMMARY_SELECTOR = '[data-pump-formula-defense-vendor-summary]';
@@ -131,6 +131,21 @@
     const visibleWindow = Array.from(document.querySelectorAll(WINDOW_SELECTOR))
       .find((node) => node.offsetParent !== null || node.getClientRects().length);
     return visibleWindow?.dataset?.pumpId || firstPumpId(model);
+  }
+
+  function isInputLatencyShieldActive(pumpId = '') {
+    try {
+      if (typeof root.EngineeringInputLatencyShield?.isActive === 'function') {
+        return !!root.EngineeringInputLatencyShield.isActive(resolvePumpId(pumpId));
+      }
+      if (typeof root.EngineeringRealtimeCalculationDefense?.isInputLatencyShieldActive === 'function') {
+        return !!root.EngineeringRealtimeCalculationDefense.isInputLatencyShieldActive(resolvePumpId(pumpId));
+      }
+      const shield = root.__engineeringInputLatencyShield;
+      return !!(shield && Number(shield.activeUntil) > Date.now());
+    } catch (error) {
+      return false;
+    }
   }
 
   function pumpResult(pumpId) {
@@ -352,10 +367,14 @@
     if (!hasDocument() || document.__pumpFormulaDefenseLiveAuditRealtimeEventsBound) return false;
     const onRealtimeEvent = (event) => {
       const detail = event?.detail || {};
+      const pumpId = detail.nodeId || detail.pumpId || detail.selectedNodeId || '';
+      if ((event.type === 'npsh:calculation-stale' || event.type === 'npsh:calculation-calculating') && isInputLatencyShieldActive(pumpId)) {
+        return;
+      }
       const shouldRebuild = event.type === 'npsh:calculation-current'
         || event.type === 'npsh:linked-views-refreshed'
         || event.type === 'npsh:realtime-autosolve-complete';
-      scheduleOpenFormulaDefenseWindowRefresh(detail.nodeId || detail.pumpId || detail.selectedNodeId || '', {
+      scheduleOpenFormulaDefenseWindowRefresh(pumpId, {
         reason: event.type,
         rebuild: shouldRebuild,
         delayMs: event.type === 'npsh:calculation-current' || event.type === 'npsh:linked-views-refreshed' ? 180 : 220
@@ -370,7 +389,9 @@
     if (!hasDocument() || document.__pumpFormulaDefenseLiveAuditInputBound) return false;
     const onInput = (event) => {
       if (event?.isComposing || !isFormulaDefenseLiveInput(event.target)) return;
-      scheduleOpenFormulaDefenseWindowRefresh(resolvePumpIdFromTarget(event.target), {
+      const pumpId = resolvePumpIdFromTarget(event.target);
+      if (isInputLatencyShieldActive(pumpId)) return;
+      scheduleOpenFormulaDefenseWindowRefresh(pumpId, {
         reason: 'live-input',
         rebuild: false,
         delayMs: 180
@@ -541,6 +562,9 @@
       }),
       wrapFunction('updateSimulation', (options = {}) => {
         const nodeId = options?.selectedNodeId || options?.nodeId || '';
+        if (!options?.forceBackend && !options?.forceProtectedBackend && !options?.__engineeringRealtimeAutoSolve && isInputLatencyShieldActive(nodeId)) {
+          return;
+        }
         scheduleOpenFormulaDefenseWindowRefresh(nodeId, { reason: options?.refreshReason || options?.trigger || 'updateSimulation', delayMs: 180 });
       }),
       bindRealtimeEvents(),

@@ -18,8 +18,8 @@ const manifest = fs.readFileSync(manifestPath, 'utf8');
 globalThis.document = undefined;
 const governor = require(runtimePath);
 
-assert.equal(governor.version, '2026.06-performance-refresh-governor2', 'Governor must expose the locked runtime version.');
-assert.equal(governor.cacheKey, '20260613-refresh-governor2', 'Governor must expose the cache key used by index.html.');
+assert.equal(governor.version, '2026.06-performance-refresh-governor3', 'Governor must expose the locked runtime version.');
+assert.equal(governor.cacheKey, '20260613-refresh-governor3', 'Governor must expose the cache key used by index.html.');
 assert.equal(typeof governor.schedule, 'function', 'Governor must expose schedule().');
 assert.equal(typeof governor.flush, 'function', 'Governor must expose flush().');
 assert.equal(typeof governor.patch, 'function', 'Governor must expose patch().');
@@ -77,8 +77,8 @@ assert(source.includes('forceImmediate'), 'Governor must preserve an immediate r
 
 assert(
   index.includes('engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock8')
-    && index.includes('engineering-performance-refresh-governor.js?v=20260613-refresh-governor2')
-    && index.includes('engineering-realtime-calculation-defense.js?v=20260613-realtime-global6'),
+    && index.includes('engineering-performance-refresh-governor.js?v=20260613-refresh-governor3')
+    && index.includes('engineering-realtime-calculation-defense.js?v=20260613-realtime-global7'),
   'index.html must load route audit, governor, then realtime defense.'
 );
 assert(index.includes('engineering-bilingual-improvements.js?v=20260613-bilingual-autosolve2'), 'index.html must cache-bust the duplicate-autosolve-safe bilingual runtime.');
@@ -86,9 +86,9 @@ assert(bilingualSource.includes('__NPSH_USE_LEGACY_BILINGUAL_AUTOSOLVE__ !== tru
 assert(bilingualSource.includes('disabled-by-realtime-defense'), 'Bilingual runtime must mark the legacy autosolve bridge as disabled by realtime defense.');
 assert(
   index.indexOf('engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock8')
-    < index.indexOf('engineering-performance-refresh-governor.js?v=20260613-refresh-governor2')
-    && index.indexOf('engineering-performance-refresh-governor.js?v=20260613-refresh-governor2')
-      < index.indexOf('engineering-realtime-calculation-defense.js?v=20260613-realtime-global6'),
+    < index.indexOf('engineering-performance-refresh-governor.js?v=20260613-refresh-governor3')
+    && index.indexOf('engineering-performance-refresh-governor.js?v=20260613-refresh-governor3')
+      < index.indexOf('engineering-realtime-calculation-defense.js?v=20260613-realtime-global7'),
   'Performance Refresh Governor must load before realtime defense starts scheduling linked view refreshes.'
 );
 assert.equal(
@@ -97,7 +97,7 @@ assert.equal(
   'package.json must expose validate:performance-refresh-governor.'
 );
 assert(manifest.includes('engineering-performance-refresh-governor.js'), 'FILE_MANIFEST must mention the Performance Refresh Governor runtime.');
-assert(manifest.includes('Performance refresh governor cache key: engineering-performance-refresh-governor.js?v=20260613-refresh-governor2'), 'FILE_MANIFEST must document the governor cache key.');
+assert(manifest.includes('Performance refresh governor cache key: engineering-performance-refresh-governor.js?v=20260613-refresh-governor3'), 'FILE_MANIFEST must document the governor cache key.');
 assert(manifest.includes('Performance refresh governor validation: npm run validate:performance-refresh-governor'), 'FILE_MANIFEST must document the governor validator.');
 
 console.log('Performance Refresh Governor validation passed.');

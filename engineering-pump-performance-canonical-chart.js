@@ -63,6 +63,21 @@
     return firstPumpId(model);
   }
 
+  function isInputLatencyShieldActive(pumpId = '') {
+    try {
+      if (typeof root.EngineeringInputLatencyShield?.isActive === 'function') {
+        return !!root.EngineeringInputLatencyShield.isActive(resolvePumpId(pumpId));
+      }
+      if (typeof root.EngineeringRealtimeCalculationDefense?.isInputLatencyShieldActive === 'function') {
+        return !!root.EngineeringRealtimeCalculationDefense.isInputLatencyShieldActive(resolvePumpId(pumpId));
+      }
+      const shield = root.__engineeringInputLatencyShield;
+      return !!(shield && Number(shield.activeUntil) > Date.now());
+    } catch (error) {
+      return false;
+    }
+  }
+
   function resolvePumpIdFromTarget(target) {
     const holder = target?.closest?.('[data-node], [data-node-id], [data-pump-node-id], [data-task-node-id]');
     const candidate = target?.dataset?.node
@@ -693,7 +708,11 @@
     if (typeof document === 'undefined' || root.__pumpPerformanceCanonicalRealtimeEventsBound) return false;
     const onRealtimeEvent = (event) => {
       const detail = event?.detail || {};
-      scheduleRender(detail.nodeId || detail.pumpId || detail.selectedNodeId || '');
+      const pumpId = detail.nodeId || detail.pumpId || detail.selectedNodeId || '';
+      if ((event.type === 'npsh:calculation-stale' || event.type === 'npsh:calculation-calculating') && isInputLatencyShieldActive(pumpId)) {
+        return;
+      }
+      scheduleRender(pumpId);
     };
     REALTIME_EVENTS.forEach((name) => document.addEventListener(name, onRealtimeEvent));
     root.__pumpPerformanceCanonicalRealtimeEventsBound = true;
@@ -705,6 +724,7 @@
     const onInput = (event) => {
       if (event?.isComposing || !isPumpChartLiveInput(event.target)) return;
       const pumpId = resolvePumpIdFromTarget(event.target);
+      if (isInputLatencyShieldActive(pumpId)) return;
       scheduleRender(pumpId, { delayMs: 180, reason: 'pump chart input' });
     };
     document.addEventListener('input', onInput, true);
@@ -715,7 +735,14 @@
 
   function ensureRuntimeGuards() {
     const changed = [
-      wrapFunctionAfter('updateSimulation', () => scheduleRender(), 'updateSimulation'),
+      wrapFunctionAfter('updateSimulation', (options = {}) => {
+        const opts = options && typeof options === 'object' ? options : {};
+        const pumpId = opts.selectedNodeId || opts.nodeId || '';
+        if (!opts.forceBackend && !opts.forceProtectedBackend && !opts.__engineeringRealtimeAutoSolve && isInputLatencyShieldActive(pumpId)) {
+          return;
+        }
+        scheduleRender(pumpId, { reason: opts.refreshReason || opts.trigger || 'updateSimulation' });
+      }, 'updateSimulation'),
       wrapFunctionAfter('updatePumpResultReadouts', () => scheduleRender(), 'updatePumpResultReadouts'),
       installChartEndpoints(),
       bindRealtimeEvents(),

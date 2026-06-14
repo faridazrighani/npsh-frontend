@@ -252,11 +252,11 @@ globalThis.updatePumpChart('P-100');
 assert.strictEqual(lateRendererCalls, 0, 'Audit chart draw must not call the old fallback renderer.');
 
 assert(
-  index.includes('engineering-pump-performance-chart-audit.js?v=20260613-pump-chart-audit11'),
+  index.includes('engineering-pump-performance-chart-audit.js?v=20260613-pump-chart-audit12'),
   'Index must cache-bust the pump performance chart audit runtime.'
 );
 assert(
-  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260613-canonical-chart4'),
+  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260613-canonical-chart5'),
   'Audit runtime must load the canonical operational chart renderer after audit guards.'
 );
 assert.strictEqual(typeof audit.loadCanonicalChartRenderer, 'function', 'Audit runtime must expose canonical renderer loader.');

@@ -1,7 +1,7 @@
 (function installEngineeringAnalysisReportLiveRuntime(root) {
   'use strict';
 
-  const VERSION = '2026.06-analysis-report-live5';
+  const VERSION = '2026.06-analysis-report-live6';
   const REFRESH_MS = 3000;
   const ACTIVE_SELECTOR = '.journal-analysis-task-window, .journal-analysis-report-panel';
   const RESPONSIVE_STYLE_ID = 'engineeringAnalysisReportLiveResponsiveStyle';
@@ -642,6 +642,25 @@
 
   const hasActiveReportSurface = () => activeReportSurfaces().length > 0;
 
+  const currentInputLatencyShield = () => {
+    try {
+      if (typeof root.EngineeringInputLatencyShield?.current === 'function') {
+        return root.EngineeringInputLatencyShield.current();
+      }
+      const shield = root.__engineeringInputLatencyShield;
+      return shield && Number(shield.activeUntil) > Date.now() ? shield : null;
+    } catch (error) {
+      return null;
+    }
+  };
+
+  const shieldedRefreshDelay = (delayMs) => {
+    const shield = currentInputLatencyShield();
+    if (!shield) return delayMs;
+    const remaining = Math.max(0, Number(shield.activeUntil) - Date.now());
+    return Math.max(delayMs, Math.min(1500, remaining + 120));
+  };
+
   const refresh = () => {
     const candidates = activeReportSurfaces();
     if (!candidates.length) return 0;
@@ -669,6 +688,7 @@
   const scheduleRefresh = (delayMs = 120) => {
     if (!hasActiveReportSurface()) return false;
     if (scheduled) return true;
+    delayMs = shieldedRefreshDelay(delayMs);
     scheduled = root.setTimeout(() => {
       scheduled = 0;
       refresh();
@@ -681,7 +701,10 @@
     if (typeof current !== 'function' || current.__analysisReportLivePatched) return;
     const wrapped = function updateSimulationAnalysisReportLiveWrapper(...args) {
       const result = current.apply(this, args);
-      scheduleRefresh();
+      const options = args[0] && typeof args[0] === 'object' ? args[0] : {};
+      if (options.forceBackend || options.forceProtectedBackend || options.__engineeringRealtimeAutoSolve || !currentInputLatencyShield()) {
+        scheduleRefresh();
+      }
       if (result && typeof result.then === 'function') {
         result.then(scheduleRefresh, scheduleRefresh);
       }

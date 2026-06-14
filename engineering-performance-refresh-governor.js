@@ -1,10 +1,16 @@
 (function initEngineeringPerformanceRefreshGovernor(root) {
   'use strict';
 
-  const VERSION = '2026.06-performance-refresh-governor2';
+  const VERSION = '2026.06-performance-refresh-governor3';
   const DEFAULT_DELAY_MS = 300;
   const FAST_DELAY_MS = 180;
-  const MAX_DELAY_MS = 750;
+  const MAX_DELAY_MS = 1500;
+  const INPUT_SHIELDED_REFRESH_TYPES = new Set([
+    'secondary-task-windows',
+    'pump-performance-chart',
+    'pump-formula-audit',
+    'formula-enhance',
+  ]);
   const SECONDARY_WINDOW_SELECTOR = [
     '.pipe-formula-defense-task-window',
     '.pump-formula-defense-task-window',
@@ -34,6 +40,27 @@
       return root.performance.now();
     }
     return Date.now();
+  }
+
+  function currentInputLatencyShield() {
+    try {
+      if (typeof root.EngineeringInputLatencyShield?.current === 'function') {
+        return root.EngineeringInputLatencyShield.current();
+      }
+      const shield = root.__engineeringInputLatencyShield;
+      return shield && Number(shield.activeUntil) > Date.now() ? shield : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function shieldAdjustedDelay(type, delayMs) {
+    const shield = currentInputLatencyShield();
+    if (!shield || !INPUT_SHIELDED_REFRESH_TYPES.has(String(type || ''))) {
+      return delayMs;
+    }
+    const remaining = Math.max(0, Number(shield.activeUntil) - Date.now());
+    return Math.max(delayMs, Math.min(MAX_DELAY_MS, remaining + 120));
   }
 
   function getDocument() {
@@ -392,7 +419,7 @@
     const id = normalizeNodeId(nodeId);
     const opts = options || {};
     const key = `${type}:${id || 'all'}`;
-    const delayMs = asSafeDelay(opts.delayMs);
+    const delayMs = asSafeDelay(shieldAdjustedDelay(type, opts.delayMs));
     state.queue.set(key, {
       key,
       type,
@@ -691,7 +718,7 @@
 
   const api = {
     version: VERSION,
-    cacheKey: '20260613-refresh-governor2',
+    cacheKey: '20260613-refresh-governor3',
     VERSION,
     schedule,
     flush,

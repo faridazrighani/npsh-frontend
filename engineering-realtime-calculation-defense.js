@@ -1,7 +1,8 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-realtime-calculation-defense.v6';
+  const VERSION = 'engineering-realtime-calculation-defense.v7';
   const AUTO_SOLVE_DEBOUNCE_MS = 800;
+  const INPUT_LATENCY_SHIELD_MS = 1250;
   const USER_INTENT_WINDOW_MS = 8000;
   const RUN_COMMAND_SELECTOR = [
     '#btn-solve',
@@ -77,6 +78,44 @@
     if (target.disabled || target.readOnly || target.type === 'file') return false;
     if (!isCalculationField(target)) return false;
     return !!target.closest?.('.task-window, .full-editor-modal, .canvas-task-window, #taskWindowBody, [data-task-prop-body="true"]');
+  }
+
+  function markInputLatencyShield(target, nodeId = '', reason = 'realtime input edit') {
+    const now = Date.now();
+    const tokens = fieldTokens(target).join(' ');
+    root.__engineeringInputLatencyShield = {
+      version: VERSION,
+      mode: 'realtime-input',
+      nodeId: nodeId || resolveNodeId(target),
+      field: tokens,
+      activeUntil: now + INPUT_LATENCY_SHIELD_MS,
+      reason,
+      updatedAt: new Date(now).toISOString()
+    };
+    return root.__engineeringInputLatencyShield;
+  }
+
+  function getInputLatencyShield() {
+    const shield = root.__engineeringInputLatencyShield;
+    if (!shield || !Number.isFinite(Number(shield.activeUntil))) return null;
+    if (Date.now() > Number(shield.activeUntil)) return null;
+    return shield;
+  }
+
+  function isInputLatencyShieldActive(nodeId = '') {
+    const shield = getInputLatencyShield();
+    if (!shield) return false;
+    const requested = String(nodeId || '').trim();
+    if (!requested || !shield.nodeId) return true;
+    return String(shield.nodeId) === requested;
+  }
+
+  function shouldBypassImmediateInputUpdate(options = {}, nodeId = '') {
+    if (!isInputLatencyShieldActive(nodeId)) return false;
+    if (options.__engineeringRealtimeAutoSolve) return false;
+    if (options.forceBackend || options.forceProtectedBackend) return false;
+    if (options.refreshReason === 'solve' || options.trigger === 'solve') return false;
+    return currentCalculationMode() === 'realtime-input';
   }
 
   function isTrustedUserEdit(event) {
@@ -779,13 +818,26 @@
     if (typeof current !== 'function' || current.__engineeringRealtimeCalculationDefenseUpdatePatched) return false;
     const wrapped = function realtimeDefenseUpdateSimulationWrapper(...args) {
       const options = args[0] && typeof args[0] === 'object' ? args[0] : {};
+      const nodeId = options.selectedNodeId || options.nodeId || resolveNodeId(null);
+      const reason = options.refreshReason || options.trigger || 'updateSimulation';
+      if (shouldBypassImmediateInputUpdate(options, nodeId)) {
+        root.__engineeringInputLatencyShieldBypass = {
+          version: VERSION,
+          nodeId,
+          reason,
+          bypassedAt: new Date().toISOString()
+        };
+        dispatchRealtimeEvent('npsh:input-lightweight-update', root.__engineeringInputLatencyShieldBypass);
+        return Promise.resolve([]);
+      }
       if (options.forceBackend && !options.__engineeringRealtimeAutoSolve) {
         cancelAutoSolve('manual backend solve started');
       }
       const result = current.apply(this, args);
-      const nodeId = options.selectedNodeId || options.nodeId || resolveNodeId(null);
-      const after = () => refreshLinkedViews(nodeId, options.refreshReason || options.trigger || 'updateSimulation');
-      const shouldRefreshAfterUpdate = !options.__engineeringRealtimeAutoSolve && hasRecentUserCalculationIntent(10000);
+      const after = () => refreshLinkedViews(nodeId, reason);
+      const shouldRefreshAfterUpdate = !options.__engineeringRealtimeAutoSolve
+        && !shouldBypassImmediateInputUpdate(options, nodeId)
+        && hasRecentUserCalculationIntent(10000, ['manual-solve', 'sample-open']);
       if (result && typeof result.then === 'function') {
         result.then((value) => {
           dispatchLifecycleApplying({ nodeId, reason: options.refreshReason || options.trigger || 'updateSimulation' });
@@ -900,6 +952,7 @@
         const reason = 'Input changed; waiting for protected backend recalculation.';
         if (isTrustedUserEdit(event)) {
           markUserCalculationIntent('trusted-input', event.target);
+          markInputLatencyShield(event.target, nodeId, reason);
         }
         markStale(nodeId, reason);
         if (isTrustedUserEdit(event)) {
@@ -959,6 +1012,9 @@
     refreshLinkedViews,
     scheduleLinkedViewRefresh,
     patchUpdateSimulation,
+    markInputLatencyShield,
+    getInputLatencyShield,
+    isInputLatencyShieldActive,
     buildPipeSegmentRows,
     enrichPipeCalculationTrace,
     buildCanonicalCalculationState,
@@ -966,6 +1022,12 @@
   };
 
   root.EngineeringRealtimeCalculationDefense = api;
+  root.EngineeringInputLatencyShield = {
+    version: VERSION,
+    current: getInputLatencyShield,
+    isActive: isInputLatencyShieldActive,
+    markEdit: markInputLatencyShield
+  };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 
   if (typeof document === 'undefined') return;
