@@ -8,7 +8,7 @@ const INDEX_FILE = path.join(FRONTEND_ROOT, "index.html");
 const JOURNALS_DIR = path.join(FRONTEND_ROOT, "journals");
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
-const RUNTIME_CACHE_KEY = "engineering-src-canvas-parameter-runtime.js?v=20260607-src-flow-basis2";
+const RUNTIME_CACHE_KEY = "engineering-src-canvas-parameter-runtime.js?v=20260615-src-flow-basis3";
 const DEFAULT_ROW_LABELS = ["Mode", "SRC Input Flow", "Source P abs", "Source Elev.", "Source Head"];
 const ALWAYS_HIDDEN_ROWS = new Set(["Contribution", "Suction Loss", "NPSH at Pump", "Pump NPSHa"]);
 const DYNAMIC_ROWS = new Set(["Dyn Mode", "Target", "Dyn Feed", "Target Net", "Dyn Net", "Target Trend", "Dyn Trend"]);
@@ -96,12 +96,14 @@ function listSimulationUntirtaFiles() {
 }
 
 const runtime = fs.readFileSync(RUNTIME_FILE, "utf8");
-assert(runtime.includes('2026.06-src-canvas-flow-basis-lock2'), "Runtime must keep the source flow canvas basis lock version.");
+assert(runtime.includes('2026.06-src-canvas-flow-basis-lock3'), "Runtime must keep the source flow canvas basis lock version.");
 assert(runtime.includes("isSourceLiveDynamicDisplayActive = isRealtimeDynamicUnlocked"), "Runtime must override the SRC dynamic display gate.");
 assert(runtime.includes("setRealtimeDynamicUnlocked(true)"), "Runtime must unlock SRC dynamic rows when realtime dynamic starts.");
 assert(runtime.includes("setRealtimeDynamicUnlocked(false)"), "Runtime must lock SRC dynamic rows when realtime dynamic stops.");
 assert(runtime.includes("dataset.srcCanvasParameterDefaultLock"), "Runtime must expose its SRC canvas parameter lock version in the DOM for QA.");
 assert(runtime.includes("canonicalSourceValueForLabel"), "Runtime must recover exact source pressure/elevation/head values before display rounding.");
+assert(runtime.includes("sourceHeadFromLiveInputs"), "Runtime must derive Source Head from live pressure/elevation when backend trace is still stale.");
+assert(runtime.includes("pressureAbsBarFromSourceProps"), "Runtime must derive absolute source pressure from live SRC props before fallback display.");
 assert(runtime.includes("sourceInputFlowForNode"), "Runtime must preserve fixed SRC input flow separately from evaluated route flow.");
 assert(runtime.includes("shouldShowEvaluatedFlow"), "Runtime must show evaluated route flow only when it differs from SRC input flow.");
 assert(runtime.includes("solvedOperatingFlowForSource"), "Runtime must still recover solved operating route flow for the Evaluated Flow row.");

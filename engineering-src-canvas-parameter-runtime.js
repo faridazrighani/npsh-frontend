@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const LOCK_VERSION = "2026.06-src-canvas-flow-basis-lock2";
+  const LOCK_VERSION = "2026.06-src-canvas-flow-basis-lock3";
   const ALWAYS_HIDDEN_ROWS = new Set(["Contribution", "Suction Loss", "NPSH at Pump", "Pump NPSHa"]);
   const DYNAMIC_ROWS = new Set(["Dyn Mode", "Target", "Dyn Feed", "Target Net", "Dyn Net", "Target Trend", "Dyn Trend"]);
   const SOURCE_TOOLTIP_HIDDEN_ROWS = new Set(["Contribution to tank", "Dynamic contribution"]);
@@ -154,6 +154,22 @@
     return firstFiniteValue(modelRef?.FLUID?.props?.density, root.globalModel?.FLUID?.props?.density, 1000) || 1000;
   }
 
+  function pressureAbsBarFromSourceProps(props = {}, fallback = null) {
+    const pressure = finiteNumber(props.pressure);
+    if (pressure === null) return fallback;
+    const basis = normalizeRowLabel(props.pressureInputBasis || props.pressureBasis || "Absolute");
+    return /gauge/i.test(basis) ? pressure + 1.01325 : pressure;
+  }
+
+  function sourceHeadFromLiveInputs(pressureAbsBar, elevation, velocityHead, modelRef) {
+    const pressure = finiteNumber(pressureAbsBar);
+    const z = finiteNumber(elevation);
+    if (pressure === null || z === null) return null;
+    const density = activeDensity(modelRef);
+    const velocity = finiteNumber(velocityHead) || 0;
+    return pressure * 100000 / (density * 9.81) + z + velocity;
+  }
+
   function sourceInputFlowForNode(node, modelRef) {
     const props = node?.props || {};
     const flowMode = normalizeRowLabel(props.flowInputMode || "Mass Flow");
@@ -222,8 +238,7 @@
       traceBoundary.sourceInputFlow,
       results.sourceInputFlow
     );
-    return {
-      pressureAbsBar: firstFiniteValue(
+    const tracePressureAbsBar = firstFiniteValue(
         traceBoundary.pressureAbsBar,
         traceBoundary.absolutePressureBar,
         traceBoundary.pressureInput,
@@ -232,19 +247,31 @@
         pumpTraceBoundary.absolutePressureBar,
         results.pressure,
         results.boundaryPressure,
-        props.pressure,
         props.pressureAbsBar,
         props.absolutePressureBar
-      ),
-      elevation: firstFiniteValue(
+      );
+    const livePressureAbsBar = pressureAbsBarFromSourceProps(props, tracePressureAbsBar);
+    const liveElevation = firstFiniteValue(
+        props.elevation,
         traceBoundary.elevation,
         traceInput.elevation,
         pumpTraceBoundary.elevation,
         results.elevation,
-        results.sourceElevation,
-        props.elevation
-      ),
+        results.sourceElevation
+      );
+    const traceVelocityHead = firstFiniteValue(
+        traceBoundary.velocityHead,
+        traceInput.velocityHead,
+        pumpTraceBoundary.velocityHead,
+        results.velocityHead,
+        results.sourceVelocityHead
+      );
+    const liveSourceHead = sourceHeadFromLiveInputs(livePressureAbsBar, liveElevation, traceVelocityHead, modelRef);
+    return {
+      pressureAbsBar: livePressureAbsBar,
+      elevation: liveElevation,
       sourceHead: firstFiniteValue(
+        liveSourceHead,
         traceBoundary.totalSourceHead,
         traceBoundary.hydraulicHead,
         traceInput.totalSourceHead,

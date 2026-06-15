@@ -120,7 +120,7 @@ app.bundle.min.js.map sourcesContent: absent
 App bundle cache key: app.bundle.min.js?v=20260608-global-ribbon-placement-lock5
 Main style cache key: style.min.css?v=20260608-browser-issues1
 Bilingual terminology runtime cache key: engineering-bilingual-improvements.js?v=20260613-bilingual-autosolve2
-Source canvas parameter runtime cache key: engineering-src-canvas-parameter-runtime.js?v=20260607-src-flow-basis2
+Source canvas parameter runtime cache key: engineering-src-canvas-parameter-runtime.js?v=20260615-src-flow-basis3
 Decimal display runtime cache key: engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2
 Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=20260611-parameter-blocks3
 Local trace fallback runtime cache key: engineering-local-trace-fallback-runtime.js?v=20260611-local-trace3
