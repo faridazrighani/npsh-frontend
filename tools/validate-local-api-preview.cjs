@@ -30,6 +30,10 @@ assert(
   packageJson.scripts?.["validate:local-api-preview"] === "node tools/validate-local-api-preview.cjs",
   "package.json must expose validate:local-api-preview."
 );
+assert(
+  packageJson.scripts?.["validate:local-api-preview-single-flight"] === "node tools/validate-local-api-preview-single-flight.cjs",
+  "package.json must expose validate:local-api-preview-single-flight."
+);
 
 const indexHtml = read(INDEX_FILE);
 assert(indexHtml.includes('"simulationEndpoint":"/api/simulate"'), "Runtime config must keep /api/simulate as the same-origin endpoint.");
@@ -54,6 +58,9 @@ assert(apiPreview.includes("process.execPath"), "API preview wrapper must launch
 assert(apiPreview.includes("cwd: apiRoot"), "API preview wrapper must run the backend from npsh-api.");
 assert(apiPreview.includes("HOST: host"), "API preview wrapper must forward the selected host.");
 assert(apiPreview.includes("PORT: String(port)"), "API preview wrapper must forward the selected port.");
+assert(apiPreview.includes("npsh-local-api-preview-locks"), "API preview wrapper must coordinate concurrent Playwright webServer starts with a local lock.");
+assert(apiPreview.includes("waitForHealth"), "API preview wrapper must wait for an already-starting server instead of binding the same port twice.");
+assert(apiPreview.includes("Reusing existing NPSH preview server"), "API preview wrapper must explicitly reuse an existing healthy preview server.");
 
 const apiServer = read(API_SERVER_FILE);
 assert(apiServer.includes("handleApiRequest"), "Backend server must route API requests before static files.");

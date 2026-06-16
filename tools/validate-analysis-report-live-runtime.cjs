@@ -9,8 +9,8 @@ const RUNTIME_FILE = path.join(FRONTEND_ROOT, "engineering-analysis-report-live-
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const CASE_FILE = path.join(FRONTEND_ROOT, "journals", "simulasi_1", "simulasi_performansi_pompa_air_umpan_tangki_deaerator.untirta");
-const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260614-analysis-report-live8";
-const VERSION = "2026.06-analysis-report-live8";
+const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260616-analysis-report-snk-flow-demand1";
+const VERSION = "2026.06-analysis-report-live9";
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
 function assert(condition, message) {
@@ -279,8 +279,8 @@ assert(!metrics.has("pump - suction nozzle elev."), "Live metrics must omit old 
 assert(!metrics.has("pump - discharge nozzle elev."), "Live metrics must omit deprecated Pump - Discharge Nozzle Elev.");
 assert(metricText(metrics, "Pump - NPSHa").includes("6.4656 m"), "Pump NPSHa must come from pump NPSH results.");
 assert(metricText(metrics, "Pump - Pump head evaluated").includes("24 m"), "Pump evaluated head must come from solved pump/system head.");
-assert(metricText(metrics, "SNK - Reference pressure").includes("1.74370712905 bar a"), "SNK reference pressure must come from sink boundary result.");
-assert(metricText(metrics, "Outlet Readout - Vapor margin").includes("7.759"), "Outlet vapor margin must be recalculated from live pressure and Fluid Basis.");
+assert(metricText(metrics, "SNK - Reference pressure").includes("Ignored in Flow Demand Boundary"), "SNK reference pressure must be marked ignored when Flow Demand Boundary is active.");
+assert(metricText(metrics, "Outlet Readout - Vapor margin").includes("7.76"), "Outlet vapor margin must be recalculated from live pressure and Fluid Basis.");
 
 const changedProject = JSON.parse(JSON.stringify(project));
 changedProject.model.FLUID.props.temp = 80;

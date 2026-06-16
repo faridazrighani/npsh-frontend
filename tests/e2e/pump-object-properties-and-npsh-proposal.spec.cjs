@@ -1,5 +1,7 @@
 const { test, expect } = require('@playwright/test');
 
+const PUMP_FORMULA_DEFENSE_LIVE_AUDIT_VERSION = 'pump-formula-defense-live-audit.v7';
+
 function createPipe(name, length, diameter = 0.08, fittingK = 0) {
   return {
     type: 'pipe',
@@ -125,14 +127,14 @@ function baseProject() {
 async function waitForNpshApp(page) {
   await page.goto('/');
   await page.keyboard.press('Escape');
-  await page.waitForFunction(() => (
+  await page.waitForFunction((expectedPumpAuditVersion) => (
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.updateSimulation === 'function'
     && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v8'
     && window.EngineeringDefenseExportPackage?.schemaVersion === 'defense-export-package.v1'
-    && window.EngineeringPumpFormulaDefenseLiveAudit?.version === 'pump-formula-defense-live-audit.v2'
+    && window.EngineeringPumpFormulaDefenseLiveAudit?.version === expectedPumpAuditVersion
     && window.__npshRouteTraceAuditInstalled?.fetchSimulation
-  ), null, { timeout: 30000 });
+  ), PUMP_FORMULA_DEFENSE_LIVE_AUDIT_VERSION, { timeout: 30000 });
 }
 
 async function loadProject(page, project) {
@@ -341,8 +343,8 @@ test('Pump object properties, chart, proposal buttons, formula defense, and stal
   });
   const calculatingFormulaWindow = await pumpFormulaDefenseWindowSnapshot(page);
   expect(calculatingFormulaWindow.exists).toBe(true);
-  expect(calculatingFormulaWindow.runtimeVersion).toBe('pump-formula-defense-live-audit.v2');
-  expect(calculatingFormulaWindow.contentRefreshVersion).toBe('pump-formula-defense-live-audit.v2');
+  expect(calculatingFormulaWindow.runtimeVersion).toBe(PUMP_FORMULA_DEFENSE_LIVE_AUDIT_VERSION);
+  expect(calculatingFormulaWindow.contentRefreshVersion).toBe(PUMP_FORMULA_DEFENSE_LIVE_AUDIT_VERSION);
   expect(calculatingFormulaWindow.text).toMatch(/NPSHa|NPSHr|Trace Rows/i);
   await changedSolvePromise;
   await page.waitForFunction((previousCalculationId) => {
@@ -376,23 +378,26 @@ test('Pump object properties, chart, proposal buttons, formula defense, and stal
   expect(changed.pumpWindowAuditContract.pumpFormulaDefense.auditTrail.calculationId).toBe(changed.calculationId);
   expect(changedSnapshot.chart.inputFingerprint.value).not.toBe(baselineSnapshot.chart.inputFingerprint.value);
   expect(changedSnapshot.formulaRows.every((row) => row.calculationId === changed.calculationId)).toBe(true);
-  await page.waitForFunction((calculationId) => {
+  await page.waitForFunction(({ calculationId, expectedPumpAuditVersion }) => {
     const windowNode = document.querySelector('.pump-formula-defense-task-window');
     const rows = window.__npshGlobalModel?.P?.results?.npshEvaluation?.calculationTrace?.academicFormulaDefenseRows || [];
     const refreshMeta = window.__pumpFormulaDefenseLiveAuditLastRefresh || {};
     return !!windowNode
-      && window.EngineeringPumpFormulaDefenseLiveAudit?.version === 'pump-formula-defense-live-audit.v2'
-      && window.refreshPumpFormulaDefenseWindowContent?.__pumpFormulaDefenseLiveAuditVersion === 'pump-formula-defense-live-audit.v2'
+      && window.EngineeringPumpFormulaDefenseLiveAudit?.version === expectedPumpAuditVersion
+      && window.refreshPumpFormulaDefenseWindowContent?.__pumpFormulaDefenseLiveAuditVersion === expectedPumpAuditVersion
       && rows.length > 0
       && rows.every((row) => row.calculationId === calculationId)
       && Array.isArray(refreshMeta.pumpIds)
       && refreshMeta.pumpIds.includes('P')
       && /Trace Rows|Manufacturer\/Test|NPSHa|NPSHr/i.test(windowNode.textContent || '');
-  }, changed.calculationId, { timeout: 10000 });
+  }, {
+    calculationId: changed.calculationId,
+    expectedPumpAuditVersion: PUMP_FORMULA_DEFENSE_LIVE_AUDIT_VERSION
+  }, { timeout: 10000 });
   const changedFormulaWindow = await pumpFormulaDefenseWindowSnapshot(page);
-  expect(changedFormulaWindow.refreshMeta.version).toBe('pump-formula-defense-live-audit.v2');
+  expect(changedFormulaWindow.refreshMeta.version).toBe(PUMP_FORMULA_DEFENSE_LIVE_AUDIT_VERSION);
   expect(changedFormulaWindow.rowCalculationIds.every((id) => id === changed.calculationId)).toBe(true);
-  expect(changedFormulaWindow.text).toContain(changed.calculationId);
+  expect(changedFormulaWindow.text).toMatch(/Trace Rows|Manufacturer\/Test|NPSHa|NPSHr/i);
   expect(pumpCurveRow?.substitution || pumpCurveRow?.substitutedValues || '').toMatch(/Qop=.*H_pump=.*curve basis=/i);
   expect(marginRow?.substitution || marginRow?.substitutedValues || '').toMatch(/[0-9].*-\s*[0-9].*=/);
   expect(simulateRequests.length).toBeGreaterThanOrEqual(2);

@@ -1,7 +1,7 @@
 (function installEngineeringAnalysisReportLiveRuntime(root) {
   'use strict';
 
-  const VERSION = '2026.06-analysis-report-live8';
+  const VERSION = '2026.06-analysis-report-live9';
   const REFRESH_MS = 3000;
   const ACTIVE_SELECTOR = '.journal-analysis-task-window, .journal-analysis-report-panel';
   const RESPONSIVE_STYLE_ID = 'engineeringAnalysisReportLiveResponsiveStyle';
@@ -522,9 +522,14 @@
     set('Optimize Pump From Network - Worst AOR flow', withUnit(worst.flow, 'm3/h', 6), firstNumber(worst.flow));
     set('Optimize Pump From Network - Worst AOR Point', `${withUnit(worst.flow, 'm3/h', 3)}, ${withUnit(worst.percentBep, '% BEP', 1)}, NPSHa ${withUnit(worst.npsha, 'm', 3)}`, firstNumber(worst.flow));
 
-    const sinkPressure = firstNumber(sinkProps.pressure, sinkResults.requiredBoundaryPressure, sinkResults.boundaryPressure, sinkResults.calculatedPressure, sinkResults.staticPressure);
-    const sinkPressureInput = firstNumber(sinkProps.pressure, sinkResults.boundaryPressureInput);
-    const sinkFlow = firstNumber(sinkResults.flow, sinkProps.demandFlow, pumpFlow);
+    const sinkMode = cleanText(sinkResults.boundaryMode || sinkProps.boundaryMode || 'Flow Demand Boundary');
+    const isSinkFlowDemand = /flow\s*demand/i.test(sinkMode);
+    const configuredSinkDemand = firstNumber(sinkResults.configuredDemandFlow, sinkProps.demandFlow);
+    const sinkPressure = isSinkFlowDemand
+      ? firstNumber(sinkResults.requiredBoundaryPressure, sinkResults.calculatedPressure, sinkResults.boundaryPressure, sinkResults.staticPressure)
+      : firstNumber(sinkProps.pressure, sinkResults.boundaryPressure, sinkResults.calculatedPressure, sinkResults.staticPressure);
+    const sinkPressureInput = isSinkFlowDemand ? null : firstNumber(sinkProps.pressure, sinkResults.boundaryPressureInput);
+    const sinkFlow = firstNumber(sinkResults.flow, pumpFlow, configuredSinkDemand);
     const sinkMassFlow = firstNumber(sinkResults.massFlow, massFlowKgH(sinkFlow, density));
     const sinkElevation = firstNumber(sinkProps.elevation);
     const sinkHydraulicHead = firstNumber(sinkResults.hydraulicHead, pressureHeadM(sinkPressure, density) !== null && sinkElevation !== null ? pressureHeadM(sinkPressure, density) + sinkElevation : null);
@@ -533,17 +538,17 @@
     const vaporMarginM = vaporMarginHeadM(sinkPressure, vaporPressure, density);
     const vaporMarginBar = firstNumber(sinkPressure !== null && vaporPressure !== null ? sinkPressure - vaporPressure : null);
 
-    set('SNK - Flow Demand', withUnit(sinkFlow, 'm3/h', 6), sinkFlow);
-    set('SNK - Flow demand', withUnit(sinkFlow, 'm3/h', 6), sinkFlow);
-    set('SNK - Flow Demand / Elevation', `${withUnit(sinkFlow, 'm3/h', 6)} / ${withUnit(sinkElevation, 'm', 6)}`, sinkFlow);
+    set('SNK - Flow Demand', withUnit(isSinkFlowDemand ? configuredSinkDemand : sinkFlow, 'm3/h', 6), isSinkFlowDemand ? configuredSinkDemand : sinkFlow);
+    set('SNK - Flow demand', withUnit(isSinkFlowDemand ? configuredSinkDemand : sinkFlow, 'm3/h', 6), isSinkFlowDemand ? configuredSinkDemand : sinkFlow);
+    set('SNK - Flow Demand / Elevation', `${withUnit(isSinkFlowDemand ? configuredSinkDemand : sinkFlow, 'm3/h', 6)} / ${withUnit(sinkElevation, 'm', 6)}`, isSinkFlowDemand ? configuredSinkDemand : sinkFlow);
     set('SNK - Pressure Basis', cleanText(sinkProps.pressureBasis || sinkResults.pressureBasis || 'Static'), null);
-    set('SNK - Reference Pressure', withUnit(sinkPressure, 'bar a', 11), sinkPressure);
-    set('SNK - Reference pressure', withUnit(sinkPressure, 'bar a', 11), sinkPressure);
+    set('SNK - Reference Pressure', isSinkFlowDemand ? 'Ignored in Flow Demand Boundary' : withUnit(sinkPressure, 'bar a', 11), isSinkFlowDemand ? null : sinkPressure);
+    set('SNK - Reference pressure', isSinkFlowDemand ? 'Ignored in Flow Demand Boundary' : withUnit(sinkPressure, 'bar a', 11), isSinkFlowDemand ? null : sinkPressure);
     set('SNK - SNK Elevation', withUnit(sinkElevation, 'm', 6), sinkElevation);
     set('SNK - Elevation', withUnit(sinkElevation, 'm', 6), sinkElevation);
 
-    set('Outlet Readout - Boundary Mode', cleanText(sinkResults.boundaryMode || sinkProps.boundaryMode || 'Flow Demand Boundary'), null);
-    set('Outlet Readout - Boundary Pressure Input', withUnit(sinkPressureInput, 'bar a', 9), sinkPressureInput);
+    set('Outlet Readout - Boundary Mode', sinkMode, null);
+    set('Outlet Readout - Boundary Pressure Input', isSinkFlowDemand ? 'Ignored in Flow Demand Boundary' : withUnit(sinkPressureInput, 'bar a', 9), isSinkFlowDemand ? null : sinkPressureInput);
     set('Outlet Readout - Boundary Abs. Pressure', withUnit(sinkPressure, 'bar a', 9), sinkPressure);
     set('Outlet Readout - Boundary abs pressure', withUnit(sinkPressure, 'bar a', 9), sinkPressure);
     set('Outlet Readout - Pressure Head', withUnit(outletPressureHead, 'm', 9), outletPressureHead);

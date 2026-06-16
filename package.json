@@ -23,6 +23,7 @@
     "validate:sink-boundary-mode-canvas-lock": "node tools/validate-sink-boundary-mode-canvas-lock.cjs",
     "validate:pump-readiness-visibility-lock": "node tools/validate-pump-readiness-visibility-lock.cjs",
     "validate:local-api-preview": "node tools/validate-local-api-preview.cjs",
+    "validate:local-api-preview-single-flight": "node tools/validate-local-api-preview-single-flight.cjs",
     "validate:browser-issues-runtime": "node tools/validate-browser-issues-runtime.cjs",
     "validate:pipe-segments-file-runtime": "node tools/validate-pipe-segments-file-runtime.cjs",
     "validate:formula-defense-ui": "node tools/validate-formula-defense-ui.cjs",

@@ -118,7 +118,7 @@ assert(source.includes('forceImmediate'), 'Governor must preserve an immediate r
 });
 
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock8')
+  index.includes('engineering-route-trace-audit.js?v=20260616-snk-flow-demand-mode-aware1')
     && index.includes('engineering-performance-refresh-governor.js?v=20260614-refresh-governor4')
     && index.includes('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
     && index.includes('engineering-realtime-calculation-defense.js?v=20260614-realtime-global8'),
@@ -128,7 +128,7 @@ assert(index.includes('engineering-bilingual-improvements.js?v=20260613-bilingua
 assert(bilingualSource.includes('__NPSH_USE_LEGACY_BILINGUAL_AUTOSOLVE__ !== true'), 'Bilingual legacy autosolve bridge must be opt-in so realtime defense remains the only default autosolve owner.');
 assert(bilingualSource.includes('disabled-by-realtime-defense'), 'Bilingual runtime must mark the legacy autosolve bridge as disabled by realtime defense.');
 assert(
-  index.indexOf('engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock8')
+  index.indexOf('engineering-route-trace-audit.js?v=20260616-snk-flow-demand-mode-aware1')
     < index.indexOf('engineering-performance-refresh-governor.js?v=20260614-refresh-governor4')
     && index.indexOf('engineering-performance-refresh-governor.js?v=20260614-refresh-governor4')
       < index.indexOf('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')

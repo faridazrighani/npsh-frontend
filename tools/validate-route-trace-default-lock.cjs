@@ -12,7 +12,7 @@ const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 
-assert.equal(runtime.version, '2026.06-route-trace-audit-v26', 'Route trace audit runtime should expose the locked v26 version.');
+assert.equal(runtime.version, '2026.06-route-trace-audit-v27', 'Route trace audit runtime should expose the locked v27 version.');
 assert.equal(typeof runtime.openRouteAuditPanel, 'function', 'Dedicated route audit panel should remain available.');
 assert.equal(typeof runtime.pruneDefaultCanvasRouteTraceOverlays, 'function', 'Canvas route trace overlay pruning should be exposed for audit tests.');
 assert.equal(typeof runtime.pruneDefaultPumpRouteTraceRows, 'function', 'Pump route trace row pruning should be exposed for audit tests.');
@@ -488,11 +488,11 @@ try {
 }
 
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock8'),
+  index.includes('engineering-route-trace-audit.js?v=20260616-snk-flow-demand-mode-aware1'),
   'Index must load the route trace audit runtime with the default-lock cache key.'
 );
 assert(
-  manifest.includes('Route audit cache key: engineering-route-trace-audit.js?v=20260607-snk-boundary-mode-lock8'),
+  manifest.includes('Route audit cache key: engineering-route-trace-audit.js?v=20260616-snk-flow-demand-mode-aware1'),
   'Manifest must document the route trace default-lock cache key.'
 );
 

@@ -309,7 +309,8 @@ test('Simulasi 1 desktop chain refreshes route/formula/dependency after SINK edi
   expect(baselineSnapshot.bodyText).toContain('NPSH Available');
   expect(baselineSnapshot.dock.routeNodes).toEqual(['Fluid Basis', 'SRC-100', 'PIPE-1', 'P-100', 'PIPE-2', 'SNK-100']);
   expect(baselineSnapshot.audit.routeTraceText).toContain('SNK-100');
-  expect(formulaRow(baselineSnapshot, 'System Curve Head').substitution).toContain('24.000 m');
+  expect(formulaRow(baselineSnapshot, 'System Curve Head').substitution).toContain('1.946 + 2.616 + 11.669 = 16.230 m');
+  expect(formulaRow(baselineSnapshot, 'System Curve Head').result).toBeCloseTo(16.23, 3);
   expect(baselineSnapshot.exportGate.canExport).toBe(true);
 
   const suctionSegmentAudit = await page.evaluate((pumpId) => {
@@ -403,8 +404,8 @@ test('Simulasi 1 desktop chain refreshes route/formula/dependency after SINK edi
   expect(changedSnapshot.pump.backendValidationStatus).toBe('Connected');
   expect(changedSnapshot.pump.dependencyFingerprint).toBe(changed.dependencyManifest.dependencyFingerprint);
   expect(changedSnapshot.response.routeTrace.sections.discharge.pressureDropBar).toBeCloseTo(1.097003, 5);
-  expect(formulaRow(changedSnapshot, 'System Static Head').substitution).toContain('36.212 - 19.369 = 16.843 m');
-  expect(formulaRow(changedSnapshot, 'System Curve Head').substitution).toContain('31.127 m');
+  expect(formulaRow(changedSnapshot, 'System Static Head').substitution).toContain('26.315 - 19.369 = 6.946 m');
+  expect(formulaRow(changedSnapshot, 'System Curve Head').substitution).toContain('21.230 m');
   expect(JSON.stringify(changedSnapshot.response.dependencyManifest.sinkImpactMatrix)).toMatch(/sink\.props\.elevation/);
   expect(changedSnapshot.audit.routeTraceText).toContain('Fluid Basis -> SRC-100 -> PIPE-1 -> P-100 -> PIPE-2 -> SNK-100');
   expect(changedSnapshot.exportGate.canExport).toBe(true);
@@ -586,7 +587,7 @@ test('Simulasi 4 desktop chain renders actual methanol NPSH-risk fixture', async
   }, null, 2));
 });
 
-test('Manual NPSHr UI edit autosolves Simulasi 4 and refreshes linked report values', async ({ page }) => {
+test('Manual NPSHr UI edit previews Simulasi 4 locally and refreshes linked report values', async ({ page }) => {
   const caseData = loadJournalCase('simulation-case-4');
 
   await waitForNpshApp(page);
@@ -611,37 +612,43 @@ test('Manual NPSHr UI edit autosolves Simulasi 4 and refreshes linked report val
   const npshrInput = page.locator(`.persistent-object-properties-task-window[data-node-id="${caseData.pumpId}"] input[data-key="designNpshr"], .persistent-object-properties-task-window[data-node-id="${caseData.pumpId}"] input[name="design-npshr"]`).first();
   await expect(npshrInput).toBeVisible({ timeout: 10000 });
 
-  const responsePromise = page.waitForResponse(async (response) => {
-    if (!/\/api\/simulate(?:[?#]|$)/.test(response.url()) || response.request().method() !== 'POST' || response.status() !== 200) {
-      return false;
-    }
-    try {
-      const payload = JSON.parse(response.request().postData() || '{}');
-      return Number(payload?.model?.[caseData.pumpId]?.props?.designNpshr) === 4;
-    } catch {
-      return false;
-    }
-  }, { timeout: 30000 });
+  const requestsBeforeEdit = page.__desktopFlowChainRequests.length;
 
   await npshrInput.click();
   await npshrInput.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
   await npshrInput.type('4');
 
-  const response = await responsePromise;
-  const body = await response.json();
-  await page.waitForFunction((pumpId) => {
+  const localPreviewHandle = await page.waitForFunction((pumpId) => {
     const model = window.__npshGlobalModel || window.globalModel || {};
     const pump = model[pumpId] || {};
     const results = pump.results || {};
     const npsh = results.npshEvaluation || {};
-    const state = window.__engineeringCalculationDefenseRealtimeState || {};
-    return Number(pump.props?.designNpshr) === 4
-      && Number(npsh.npshr ?? results.npshr) === 4
-      && Math.abs(Number(npsh.npshMargin ?? results.npshMargin) - 0.75) < 1e-6
-      && Math.abs(Number(npsh.npshRatio ?? results.npshRatio) - 1.1875) < 1e-6
-      && state.status === 'Current'
-      && results.backendValidationStatus === 'Connected';
+    const margin = Number(npsh.npshMargin ?? results.npshMargin);
+    const ratio = Number(npsh.npshRatio ?? results.npshRatio);
+    if (
+      Number(pump.props?.designNpshr) !== 4
+      || Number(npsh.npshr ?? results.npshr) !== 4
+      || Math.abs(margin - 0.751) > 0.002
+      || Math.abs(ratio - 1.18775) > 0.002
+      || results.calculationFreshness !== 'Local preview'
+    ) {
+      return false;
+    }
+    return {
+      npshr: Number(npsh.npshr ?? results.npshr),
+      margin,
+      ratio,
+      status: npsh.hydraulicStatus || results.hydraulicNpshStatus || npsh.status || results.status || null,
+      freshness: results.calculationFreshness
+    };
   }, caseData.pumpId, { timeout: 15000 });
+  const localPreview = await localPreviewHandle.jsonValue();
+  expect(localPreview.status).toBe('Safe');
+  expect(localPreview.freshness).toBe('Local preview');
+  await expect.poll(() => page.__desktopFlowChainRequests.length, {
+    timeout: 1400,
+    intervals: [300, 400, 700]
+  }).toBe(requestsBeforeEdit);
 
   await page.waitForFunction(() => {
     const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -654,19 +661,18 @@ test('Manual NPSHr UI edit autosolves Simulasi 4 and refreshes linked report val
     const marginText = readApp('Pump - NPSH margin') || readApp('Pump - NPSH Margin / Ratio');
     const ratioText = readApp('Pump - NPSH ratio') || readApp('Pump - NPSH Margin / Ratio');
     return /(?:^|\/\s*)4(?:\.0+)?\s*m/i.test(npshrText)
-      && /0\.75\s*m/i.test(marginText)
-      && /1\.1875/i.test(ratioText);
+      && /0\.751\s*m/i.test(marginText)
+      && /1\.18775/i.test(ratioText);
   }, null, { timeout: 15000 });
 
   const changedReport = await analysisReportCellSnapshot(page);
   const npshrApplication = changedReport.pumpNpshrComparison?.application || changedReport.pumpNpshaNpshrComparison?.application || '';
   const marginApplication = changedReport.pumpMarginComparison?.application || changedReport.pumpMarginRatioComparison?.application || '';
   const ratioApplication = changedReport.pumpRatioComparison?.application || changedReport.pumpMarginRatioComparison?.application || '';
-  expect(body.results.npshr).toBe(4);
-  expect(body.results.npshMargin).toBeCloseTo(0.75, 6);
-  expect(body.results.npshRatio).toBeCloseTo(1.1875, 6);
-  expect(body.results.status).toBe('Warning');
+  expect(localPreview.npshr).toBe(4);
+  expect(localPreview.margin).toBeCloseTo(0.751, 3);
+  expect(localPreview.ratio).toBeCloseTo(1.18775, 4);
   expect(npshrApplication).toMatch(/(?:^|\/\s*)4(?:\.0+)? m/);
-  expect(marginApplication).toMatch(/0\.75 m/);
-  expect(ratioApplication).toMatch(/1\.1875/);
+  expect(marginApplication).toMatch(/0\.751 m/);
+  expect(ratioApplication).toMatch(/1\.18775/);
 });

@@ -1,5 +1,5 @@
 (function registerEngineeringRouteTraceAudit(root) {
-  const VERSION = '2026.06-route-trace-audit-v26';
+  const VERSION = '2026.06-route-trace-audit-v27';
   const PANEL_ID = 'engineeringRouteTraceAuditPanel';
   const PANEL_BODY_ID = 'engineeringRouteTraceAuditPanelBody';
   const MENU_BUTTON_ID = 'menu-tools-route-trace-audit';
@@ -823,6 +823,7 @@
       const kind = sinkBoundaryModeKind(canonical.mode);
       const isFlowDemand = kind === 'flow-demand';
       const isFreeOutlet = kind === 'free-outlet';
+      const isOutletPressure = kind === 'outlet-pressure';
       const pressureText = formatCanvasValue(canonical.pressureAbsBar, 'bar a');
 
       changed += removeLegacyGeneratedSinkPropertyRows(windowNode);
@@ -846,8 +847,26 @@
       changed += hideSinkPropertyRows(
         windowNode,
         ['Boundary Pressure Input', 'Sink Pressure Input'],
-        isFreeOutlet,
-        'free-outlet-atmospheric-assumption'
+        !isOutletPressure,
+        'only-outlet-pressure-boundary'
+      );
+      changed += hideSinkPropertyRows(
+        windowNode,
+        ['Reference Pressure', 'Outlet Pressure', 'Sink Pressure', 'Pressure Input'],
+        !isOutletPressure,
+        'only-outlet-pressure-boundary'
+      );
+      changed += hideSinkPropertyRows(
+        windowNode,
+        ['Pressure Basis', 'Pressure Input Basis'],
+        !isOutletPressure,
+        'only-outlet-pressure-boundary'
+      );
+      changed += hideSinkPropertyRows(
+        windowNode,
+        ['Elevation', 'Sink Elevation', 'SNK Elevation'],
+        isFlowDemand,
+        'flow-demand-elevation-inherited'
       );
 
       const ignoredRow = sinkPropertyRowByLabel(windowNode, 'Ignored Flow Demand');

@@ -1,5 +1,11 @@
 const { test, expect } = require('@playwright/test');
 
+const SOURCE_BOUNDARY_CHANGE = Object.freeze({
+  elevation: -2,
+  pressure: 1.2,
+  temperature: 45
+});
+
 function createPipe(name, length, diameter = 0.08, fittingK = 0) {
   return {
     type: 'pipe',
@@ -290,15 +296,11 @@ test('SRC elevation, pressure, and temperature changes refresh protected backend
   expect(baseline.srcObjectAudit.routeCalculation.directNpshImpact).toBe(true);
   expect(baseline.dependencyManifest.sourceBoundaryCoverage.status).toBe('pass');
 
-  const staleSnapshot = await changeSourceBoundaryInBrowser(page, {
-    elevation: 5,
-    pressure: 1.2,
-    temperature: 45
-  });
+  const staleSnapshot = await changeSourceBoundaryInBrowser(page, SOURCE_BOUNDARY_CHANGE);
   expect(staleSnapshot.realtime.status).toBe('Stale');
   expect(staleSnapshot.pumpFreshness).toBe('Stale');
-  expect(staleSnapshot.sourceProps.elevation).toBe(5);
-  expect(staleSnapshot.sourceProps.pressure).toBe(1.2);
+  expect(staleSnapshot.sourceProps.elevation).toBe(SOURCE_BOUNDARY_CHANGE.elevation);
+  expect(staleSnapshot.sourceProps.pressure).toBe(SOURCE_BOUNDARY_CHANGE.pressure);
   expect(staleSnapshot.sourceProps.temperatureMode).toBe('Custom');
 
   delayNextSimulation = true;
@@ -336,10 +338,10 @@ test('SRC elevation, pressure, and temperature changes refresh protected backend
   expect(simulateRequests.length).toBeGreaterThanOrEqual(2);
   const changedPayload = simulateRequests[simulateRequests.length - 1].payload;
   expect(changedPayload?.client?.previousDependencyFingerprint).toBe(baseline.dependencyManifest.dependencyFingerprint);
-  expect(Number(changedPayload?.model?.SRC?.props?.elevation)).toBe(5);
-  expect(Number(changedPayload?.model?.SRC?.props?.pressure)).toBe(1.2);
+  expect(Number(changedPayload?.model?.SRC?.props?.elevation)).toBe(SOURCE_BOUNDARY_CHANGE.elevation);
+  expect(Number(changedPayload?.model?.SRC?.props?.pressure)).toBe(SOURCE_BOUNDARY_CHANGE.pressure);
   expect(changedPayload?.model?.SRC?.props?.temperatureMode).toBe('Custom');
-  expect(Number(changedPayload?.model?.SRC?.props?.temp)).toBe(45);
+  expect(Number(changedPayload?.model?.SRC?.props?.temp)).toBe(SOURCE_BOUNDARY_CHANGE.temperature);
 
   expect(changed.calculationId).not.toBe(baseline.calculationId);
   expect(changed.dependencyManifest.dependencyFingerprint).not.toBe(baseline.dependencyManifest.dependencyFingerprint);
@@ -357,8 +359,8 @@ test('SRC elevation, pressure, and temperature changes refresh protected backend
   expect(changedSrcStep.audit.dependencyKeys).toContain('source.props.pressure');
   expect(changedSrcStep.audit.dependencyKeys).toContain('source.props.elevation');
   expect(changedSrcStep.audit.dependencyKeys).toContain('source.props.temp');
-  expect(changedSrcStep.values.elevationM).toBe(5);
-  expect(changedSrcStep.values.pressureBarA).toBe(1.2);
+  expect(changedSrcStep.values.elevationM).toBe(SOURCE_BOUNDARY_CHANGE.elevation);
+  expect(changedSrcStep.values.pressureBarA).toBe(SOURCE_BOUNDARY_CHANGE.pressure);
 
   const srcAudit = changed.srcObjectAudit;
   expect(srcAudit.routeCalculation.directNpshImpact).toBe(true);
