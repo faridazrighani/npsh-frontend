@@ -1,6 +1,6 @@
 # Frontend File Manifest
 
-Date: 2026-06-14
+Date: 2026-06-16
 
 Folder:
 
@@ -16,8 +16,8 @@ Purpose:
 Summary:
 
 ```text
-Total files: 235
-Total size: 67,103,337 bytes
+Total files: 237
+Total size: 67,208,485 bytes
 ```
 
 Inventory scope excludes `.git`, `node_modules`, `test-artifacts`, nested local workspace copies, and local preview log files.
@@ -71,6 +71,7 @@ engineering-pump-performance-chart-audit.js public-safe pump performance chart a
 engineering-pump-performance-canonical-chart.js public-safe operational smart engineering chart renderer that uses solver-owned performanceChartData before legacy chart arrays or pump props, self-heals realtime update hooks, protects vendor curves, previews design-duty anchored pump/system/NPSH curves, opens a separate Pump Performance Chart task window from pump controls/context menu, and schedules one governed visible-chart render so chart numbers refresh from the latest model without repeated repaint bursts
 engineering-google-auth-runtime.js public-safe Google Identity Services frontend bridge that renders a sign-in control only on explicitly authorized OAuth origins, sends ID tokens to the backend, immediately verifies the HttpOnly app session, prevents stale session refresh overwrite after login, exposes NPSHAuth.requireApproved and NPSHAuth.diagnose, maps backend auth error codes into actionable messages, and keeps approved/pending status visible
 engineering-literature-pdf-viewer.js public-safe Literature task-window viewer that adds Help -> Literature, requires an approved Google app session, translates protected PDF auth/approval/source failures into actionable messages, retries pending PDFs after approved auth, renders private book_pdf PDFs through the same-origin API with PDF.js canvas pages, zoom/page controls, no visible source links, and user-resizable window sizing
+engineering-src-algorithm-help-runtime.js public-safe Help -> Hydraulic Logic -> SRC Algorithm task-window runtime that presents the SRC Flow Input Mode appendix logic, equations, numbered tables, guardrails, and references without changing hydraulic calculation data
 engineering-live-parameter-repaint-lock.css public-safe live canvas parameter paint-lock override that removes transient Solve repaint shadows from parameter cards, pump status badge, and pump status icon glow
 style.min.css           minified styles
 png/                    public images and favicon
@@ -86,6 +87,7 @@ tools/validate-canvas-context-dock.cjs Node validation for default-collapsed Flu
 tools/validate-live-parameter-repaint-lock.cjs Node validation for locked live parameter repaint CSS, cache key, opaque backgrounds, no panel/badge shadow, and pump icon outline-only status display
 tools/validate-export-canvas-snapshot-lock.cjs Node validation for silent normal export canvas fallback, retained real-failure warning, and stable manual renderer snapshot path
 tools/validate-literature-pdf-viewer.cjs Node validation for Help -> Literature flyout, approved Google app-session guard, auth-approved PDF retry, local PDF.js canvas viewer, zoom/page controls, same-origin literature API, resizable task window, and no private GitHub source links in public runtime
+tools/validate-src-algorithm-help.cjs Node validation for Help -> Hydraulic Logic -> SRC Algorithm flyout, SRC Flow Input Mode task-window content, equations, numbered tables, cache-busted runtime load, and manifest lock
 tools/validate-google-auth-runtime.cjs Node validation for Google Identity Services runtime wiring, backend auth endpoints, post-login session verification, stale-session overwrite prevention, credentialed session fetches, approved-session guard, and cache-busted runtime load
 tools/validate-pump-readiness-visibility-lock.cjs Node validation for late-added developer Pump Action Readiness panel hiding, childList-only observer scope, cache-busted runtime load, and manifest lock
 tools/validate-browser-issues-runtime.cjs Node validation for browser Issues cleanup: ARIA menu repair, CSS compatibility property cleanup, static header normalization, and cache-busted runtime load
@@ -150,10 +152,12 @@ Pump performance chart audit cache key: engineering-pump-performance-chart-audit
 Pump performance canonical chart cache key: engineering-pump-performance-canonical-chart.js?v=20260614-canonical-chart15
 Google auth runtime cache key: engineering-google-auth-runtime.js?v=20260612-google-access8
 Literature PDF viewer cache key: engineering-literature-pdf-viewer.js?v=20260609-literature-access3
+SRC Algorithm help runtime cache key: engineering-src-algorithm-help-runtime.js?v=20260616-src-algorithm-help1
 Live parameter repaint lock cache key: engineering-live-parameter-repaint-lock.css?v=20260605-live-param-repaint-lock1
 Live parameter repaint lock validation: npm run validate:live-parameter-repaint-lock
 Export canvas snapshot validation: npm run validate:export-canvas-snapshot-lock
 Literature PDF viewer validation: npm run validate:literature-pdf-viewer
+SRC Algorithm help validation: npm run validate:src-algorithm-help
 Google auth runtime validation: npm run validate:google-auth-runtime
 SNK boundary mode canvas lock validation: npm run validate:sink-boundary-mode-canvas-lock
 Pump readiness visibility validation: npm run validate:pump-readiness-visibility-lock

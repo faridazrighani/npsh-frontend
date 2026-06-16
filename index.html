@@ -490,8 +490,14 @@
         <div class="menu-dropdown" id="help-dropdown-container">
             <span class="menu-item" id="menu-help" data-i18n-text="menu.help">Help</span>
             <div class="dropdown-content dropdown-help-menu" id="dropdown-help">
-                <button type="button" id="menu-src-help" data-i18n-text="menu.srcBoundaryGuidance">SRC Boundary Guidance</button>
                 <button type="button" id="menu-snk-help" data-i18n-text="menu.snkBoundaryGuidance">SNK Boundary Guidance</button>
+                <div class="dropdown-submenu dropdown-submenu-flyout hydraulic-logic-submenu">
+                    <button type="button" id="menu-hydraulic-logic" class="dropdown-submenu-trigger" aria-haspopup="true" aria-expanded="false">Hydraulic Logic</button>
+                    <div class="dropdown-submenu-content hydraulic-logic-submenu-content" id="dropdown-hydraulic-logic">
+                        <button type="button" id="menu-src-help" class="hydraulic-logic-menu-item" data-i18n-text="menu.srcBoundaryGuidance">SRC Boundary Guidance</button>
+                        <button type="button" id="menu-src-algorithm" class="hydraulic-logic-menu-item">SRC Algorithm</button>
+                    </div>
+                </div>
                 <div class="dropdown-submenu">
                     <button type="button" id="menu-fluid-properties" class="dropdown-submenu-trigger" aria-haspopup="true" aria-expanded="false" data-i18n-text="menu.fluidProperties">Fluid Properties</button>
                     <div class="dropdown-submenu-content" id="dropdown-fluid-properties">
@@ -789,5 +795,6 @@
     <script src="engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5"></script>
     <script src="engineering-analysis-report-live-runtime.js?v=20260614-analysis-report-live8"></script>
     <script src="engineering-literature-pdf-viewer.js?v=20260609-literature-access3"></script>
+    <script src="engineering-src-algorithm-help-runtime.js?v=20260616-src-algorithm-help1"></script>
 </body>
 </html>
