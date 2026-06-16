@@ -126,7 +126,7 @@ assert(decimalRuntime.includes('"Sink Flow"'), "Decimal display lock must protec
 assert(decimalRuntime.includes("attempts >= 32"), "Decimal display lock retry loop must stay short for performance.");
 
 assert(indexHtml.includes("engineering-src-canvas-parameter-runtime.js?v=20260615-src-flow-basis3"), "Index must load the global SRC realtime indicator runtime.");
-assert(indexHtml.includes("engineering-route-trace-audit.js?v=20260616-snk-flow-demand-mode-aware1"), "Index must load the global SNK/pump hover-sync runtime.");
+assert(indexHtml.includes("engineering-route-trace-audit.js?v=20260616-snk-outlet-feasibility1"), "Index must load the global SNK/pump hover-sync runtime.");
 assert(indexHtml.includes("engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2"), "Index must load the global decimal display lock.");
 
 assert(manifest.includes("Global live indicator engine-link validation"), "Manifest must document the global live indicator engine-link validation.");

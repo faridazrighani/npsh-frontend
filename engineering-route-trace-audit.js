@@ -1,5 +1,5 @@
 (function registerEngineeringRouteTraceAudit(root) {
-  const VERSION = '2026.06-route-trace-audit-v27';
+  const VERSION = '2026.06-route-trace-audit-v28';
   const PANEL_ID = 'engineeringRouteTraceAuditPanel';
   const PANEL_BODY_ID = 'engineeringRouteTraceAuditPanelBody';
   const MENU_BUTTON_ID = 'menu-tools-route-trace-audit';
@@ -114,6 +114,23 @@
     for (const value of values) {
       const number = finiteNumber(value);
       if (number !== null) return number;
+    }
+    return null;
+  }
+
+  function firstTextValue(...values) {
+    for (const value of values) {
+      const text = normalizeText(value);
+      if (text && text !== '-') return text;
+    }
+    return '';
+  }
+
+  function firstBooleanValue(...values) {
+    for (const value of values) {
+      if (typeof value === 'boolean') return value;
+      if (String(value).toLowerCase() === 'true') return true;
+      if (String(value).toLowerCase() === 'false') return false;
     }
     return null;
   }
@@ -360,6 +377,7 @@
     const results = node.results || {};
     const traceBoundary = results.calculationTrace?.boundary || {};
     const traceInput = results.calculationTrace?.inputBasis || {};
+    const tracePumpImpact = results.calculationTrace?.pumpImpact || {};
     const props = node.props || {};
     const mode = sinkBoundaryModeRaw(node);
     const pressureAbsBar = pressureAbsForSelectedSinkMode(node, mode);
@@ -371,6 +389,18 @@
       props.elevation
     );
     const sinkHead = sinkHeadForSelectedSinkMode(node, mode, pressureAbsBar, elevation);
+    const operatingFeasibilityStatus = firstTextValue(
+      results.operatingFeasibilityStatus,
+      traceBoundary.operatingFeasibilityStatus,
+      tracePumpImpact.operatingFeasibilityStatus
+    );
+    const engineeringStatus = firstTextValue(
+      results.status,
+      results.engineeringStatus,
+      results.calculationTrace?.status,
+      tracePumpImpact.engineeringStatus,
+      operatingFeasibilityStatus
+    );
     return {
       mode,
       pressureAbsBar,
@@ -391,6 +421,23 @@
         props.flow,
         props.flowDemand,
         props.outletFlow
+      ),
+      engineeringStatus,
+      operatingFeasibilityStatus,
+      boundaryFeasible: firstBooleanValue(
+        results.boundaryFeasible,
+        traceBoundary.boundaryFeasible,
+        tracePumpImpact.boundaryFeasible
+      ),
+      headResidual: firstFiniteValue(
+        results.headResidual,
+        traceBoundary.headResidual,
+        tracePumpImpact.headResidual
+      ),
+      maxAllowableSnkElevation: firstFiniteValue(
+        results.maxAllowableSnkElevation,
+        traceBoundary.maxAllowableSnkElevation,
+        tracePumpImpact.maxAllowableSnkElevation
       )
     };
   }
@@ -912,14 +959,25 @@
     const pressureAbsBar = sinkPanelDisplayValue(panel, 'Sink P abs') || formatCanvasValue(canonical.pressureAbsBar, 'bar a');
     const elevation = sinkPanelDisplayValue(panel, 'Sink Elev.') || formatCanvasValue(canonical.elevation, 'm');
     const sinkHead = sinkPanelDisplayValue(panel, 'Sink Head') || formatCanvasValue(canonical.sinkHead, 'm');
-    return [
-      'SNK status: OK',
+    const status = canonical.engineeringStatus || canonical.operatingFeasibilityStatus || 'OK';
+    const lines = [
+      `SNK status: ${status}`,
       `Mode: ${sinkModeDisplayValue(node, panel)}`,
       `Sink Flow: ${sinkFlow}`,
       `Sink P abs: ${pressureAbsBar}`,
       `Sink Elev.: ${elevation}`,
       `Sink Head: ${sinkHead}`
-    ].join('\n');
+    ];
+    if (canonical.operatingFeasibilityStatus) {
+      lines.push(`Boundary: ${canonical.operatingFeasibilityStatus}`);
+    }
+    if (canonical.headResidual !== null) {
+      lines.push(`Head Res.: ${formatCanvasValue(canonical.headResidual, 'm')}`);
+    }
+    if (canonical.maxAllowableSnkElevation !== null) {
+      lines.push(`Max Elev.: ${formatCanvasValue(canonical.maxAllowableSnkElevation, 'm')}`);
+    }
+    return lines.join('\n');
   }
 
   function syncSinkObjectTooltip(panel, node = {}, canonical = sinkCanonicalValues(node)) {
@@ -1010,6 +1068,21 @@
           changed += setTextIfChanged(valueElement, valueForExistingSinkRow(row, formatCanvasValue(canonical.sinkHead, 'm'))) ? 1 : 0;
           row.title = 'Total sink hydraulic head at the discharge closure';
           row.dataset.routeTraceSinkTerminologyLock = VERSION;
+        } else if (label === 'Boundary Feasibility' || label === 'Boundary') {
+          changed += setTextIfChanged(labelElement, 'Boundary') ? 1 : 0;
+          changed += setTextIfChanged(valueElement, canonical.operatingFeasibilityStatus || '-') ? 1 : 0;
+          row.title = 'Pump head feasibility against downstream pressure/elevation boundary';
+          row.dataset.routeTraceSinkTerminologyLock = VERSION;
+        } else if (label === 'Head Residual' || label === 'Head Res.') {
+          changed += setTextIfChanged(labelElement, 'Head Res.') ? 1 : 0;
+          changed += setTextIfChanged(valueElement, valueForExistingSinkRow(row, formatCanvasValue(canonical.headResidual, 'm'))) ? 1 : 0;
+          row.title = 'Pump available head minus required system head';
+          row.dataset.routeTraceSinkTerminologyLock = VERSION;
+        } else if (label === 'Max SNK Elevation' || label === 'Max Elev.') {
+          changed += setTextIfChanged(labelElement, 'Max Elev.') ? 1 : 0;
+          changed += setTextIfChanged(valueElement, valueForExistingSinkRow(row, formatCanvasValue(canonical.maxAllowableSnkElevation, 'm'))) ? 1 : 0;
+          row.title = 'Maximum SNK elevation allowed by the current pump head and outlet pressure duty';
+          row.dataset.routeTraceSinkTerminologyLock = VERSION;
         }
       });
       changed += syncSinkObjectTooltip(panel, sink?.node || {}, canonical);
@@ -1075,6 +1148,15 @@
       changed += upsertSinkCanvasRow(panel, 'Sink P abs', formatCanvasValue(canonical.pressureAbsBar, 'bar a'), ['Sink Flow', 'Mode']) ? 1 : 0;
       changed += upsertSinkCanvasRow(panel, 'Sink Elev.', formatCanvasValue(elevation, 'm'), ['Sink P abs', 'Sink Flow']) ? 1 : 0;
       changed += upsertSinkCanvasRow(panel, 'Sink Head', formatCanvasValue(sinkHead, 'm'), ['Sink Elev.', 'Sink P abs', 'Sink Flow']) ? 1 : 0;
+      if (canonical.operatingFeasibilityStatus) {
+        changed += upsertSinkCanvasRow(panel, 'Boundary', canonical.operatingFeasibilityStatus, ['Sink Head', 'Sink Elev.']) ? 1 : 0;
+      }
+      if (canonical.headResidual !== null) {
+        changed += upsertSinkCanvasRow(panel, 'Head Res.', formatCanvasValue(canonical.headResidual, 'm'), ['Boundary', 'Sink Head']) ? 1 : 0;
+      }
+      if (canonical.maxAllowableSnkElevation !== null) {
+        changed += upsertSinkCanvasRow(panel, 'Max Elev.', formatCanvasValue(canonical.maxAllowableSnkElevation, 'm'), ['Head Res.', 'Boundary', 'Sink Head']) ? 1 : 0;
+      }
       changed += syncSinkObjectTooltip(panel, node, canonical);
     });
     return changed;
@@ -1117,7 +1199,11 @@
       'Discharge loss': { unit: 'm', digits: 3 },
       'Vapor pressure': { unit: 'bar a', digits: 3 },
       'Outlet pressure minus vapor pressure': { unit: 'bar', digits: 3, showSign: true },
-      'Pump NPSH margin': { unit: 'm', digits: 4, showSign: true }
+      'Pump NPSH margin': { unit: 'm', digits: 4, showSign: true },
+      'Head residual': { label: 'Head Res.', unit: 'm', digits: 3, showSign: true },
+      'Head Res.': { unit: 'm', digits: 3, showSign: true },
+      'Max SNK elevation': { label: 'Max Elev.', unit: 'm', digits: 3 },
+      'Max Elev.': { unit: 'm', digits: 3 }
     };
     root.getSinkOperatingStatusTooltip = function getSinkOperatingStatusTooltipLocked(...args) {
       const text = String(originalSinkTooltip.apply(this, args) || '');
@@ -1125,6 +1211,9 @@
       const canonical = sinkCanonicalValues(node);
       let sinkFlowLineSeen = false;
       const lines = text.split('\n').map((line) => {
+        if (/^SNK status:/i.test(line)) {
+          return `SNK status: ${canonical.engineeringStatus || canonical.operatingFeasibilityStatus || normalizeText(line).replace(/^SNK status:\s*/i, '') || 'OK'}`;
+        }
         if (/^Mode:/i.test(line)) {
           const mode = sinkModeDisplayValue(node, null);
           return `Mode: ${mode === '-' ? normalizeText(line).replace(/^Mode:\s*/i, '') || '-' : mode}`;
@@ -1147,7 +1236,16 @@
         const elevationLine = `Sink Elev.: ${formatCanvasValue(canonical.elevation, 'm')}`;
         lines.splice(pressureIndex >= 0 ? pressureIndex + 1 : Math.min(2, lines.length), 0, elevationLine);
       }
-      const corePatterns = [/^Mode:/i, /^Sink Flow:/i, /^Sink P abs:/i, /^Sink Elev\.:/i, /^Sink Head:/i];
+      if (canonical.operatingFeasibilityStatus && !lines.some((line) => /^Boundary:/i.test(line))) {
+        lines.push(`Boundary: ${canonical.operatingFeasibilityStatus}`);
+      }
+      if (canonical.headResidual !== null && !lines.some((line) => /^Head Res\.:/i.test(line))) {
+        lines.push(`Head Res.: ${formatCanvasValue(canonical.headResidual, 'm')}`);
+      }
+      if (canonical.maxAllowableSnkElevation !== null && !lines.some((line) => /^Max Elev\.:/i.test(line))) {
+        lines.push(`Max Elev.: ${formatCanvasValue(canonical.maxAllowableSnkElevation, 'm')}`);
+      }
+      const corePatterns = [/^Mode:/i, /^Sink Flow:/i, /^Sink P abs:/i, /^Sink Elev\.:/i, /^Sink Head:/i, /^Boundary:/i, /^Head Res\.:/i, /^Max Elev\.:/i];
       const statusLines = lines.filter((line) => /^SNK status:/i.test(line));
       const coreLines = corePatterns
         .map((pattern) => lines.find((line) => pattern.test(line)))

@@ -130,7 +130,7 @@ Pipe canvas hydraulic label runtime cache key: engineering-pipe-canvas-hydraulic
 Pipe source confidence map runtime cache key: engineering-pipe-source-confidence-map-runtime.js?v=20260611-pipe-source-confidence-map1
 Pump nozzle simplify runtime cache key: engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5
 Analysis Report live runtime cache key: engineering-analysis-report-live-runtime.js?v=20260616-analysis-report-snk-flow-demand1
-Route audit cache key: engineering-route-trace-audit.js?v=20260616-snk-flow-demand-mode-aware1
+Route audit cache key: engineering-route-trace-audit.js?v=20260616-snk-outlet-feasibility1
 Simulation case integrity guard cache key: engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3
 Performance refresh governor cache key: engineering-performance-refresh-governor.js?v=20260614-refresh-governor4
 Pump edit fast lane cache key: engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2
