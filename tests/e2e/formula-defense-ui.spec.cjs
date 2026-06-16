@@ -12,7 +12,7 @@ async function gotoWithoutFormulaAutoEnhance(page) {
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => (
     window.EngineeringFormulaDefenseUI?.version === 'engineering-formula-defense-ui.v1'
-    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v8'
+    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v9'
     && window.katex?.renderToString
   ), null, { timeout: 30000 });
 }
@@ -410,12 +410,16 @@ test('Formula Defense UI renders light KaTeX equations, responsive tables, depen
     };
   });
   await page.locator('#diameterInput').fill('0.0810');
-  await page.waitForTimeout(350);
+  await page.waitForFunction(() => (window.__formulaDefenseAutosolveCalls || []).length >= 1);
   const autosolveState = await page.evaluate(() => ({
     calls: window.__formulaDefenseAutosolveCalls,
     bypass: window.__formulaDefenseUiAutosolveBypass
   }));
-  expect(autosolveState.calls).toHaveLength(0);
+  expect(autosolveState.calls).toHaveLength(1);
+  expect(autosolveState.calls[0].latencyMs).toBeLessThan(650);
+  expect(autosolveState.calls[0].options.__engineeringRealtimeAutoSolve).toBe(true);
+  expect(autosolveState.calls[0].options.__engineeringRealtimeAutoSolveSequence).toBeGreaterThan(0);
+  expect(autosolveState.calls[0].options.forceBackend).toBe(true);
   expect(autosolveState.bypass.reason).toContain('RealtimeCalculationDefense owns autosolve');
   const refreshState = await page.evaluate(() => ({
     refreshApi: typeof window.EngineeringFormulaDefenseUI.refreshOpenPipeFormulaDefenseWindows,

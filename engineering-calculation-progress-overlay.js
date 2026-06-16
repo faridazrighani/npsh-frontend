@@ -7,7 +7,7 @@
   'use strict';
 
   const VERSION = 'engineering-calculation-progress-overlay.v1';
-  const CACHE_KEY = '20260613-calculation-progress7';
+  const CACHE_KEY = '20260617-calculation-progress-realtime1';
   const STYLE_ID = 'engineeringCalculationProgressOverlayStyle';
   const OVERLAY_ID = 'engineeringCalculationProgressOverlay';
   const LIFECYCLE_EVENT = 'npsh:calculation-lifecycle';
@@ -499,7 +499,7 @@
       calculationMode: 'manual-solve',
       reason: target.id === 'menu-refresh-calculations'
         ? 'Refreshing calculations and connections.'
-        : 'Run Hydraulic / NPSH Evaluation started.',
+        : 'Validate / Refresh Evidence started.',
       nodeId: target.id || ''
     }, 'inputs');
     commandFallbackTimer = root.setTimeout?.(() => {

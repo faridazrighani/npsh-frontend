@@ -1854,7 +1854,7 @@
       body.innerHTML = [
         '<div class="route-audit-empty">',
         '<strong>Route trace is not available yet.</strong>',
-        '<span>Run Hydraulic / NPSH Evaluation after Fluid Basis, SRC, pump route, and SNK are connected.</span>',
+        '<span>Realtime autosolve runs after Fluid Basis, SRC, pump route, and SNK are connected; use Validate / Refresh Evidence for a manual audit refresh.</span>',
         contractWarnings.length ? `<p class="route-audit-schema-warning">Schema Warning: ${escapeText(contractWarnings.join(' | '))}</p>` : '',
         '</div>'
       ].join('');

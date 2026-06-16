@@ -20,7 +20,7 @@ const manifest = fs.existsSync(MANIFEST_FILE) ? read(MANIFEST_FILE) : '';
 const runtime = require(RUNTIME_FILE);
 
 assert.strictEqual(runtime.version, 'engineering-calculation-progress-overlay.v1');
-assert.strictEqual(runtime.cacheKey, '20260613-calculation-progress7');
+assert.strictEqual(runtime.cacheKey, '20260617-calculation-progress-realtime1');
 assert.strictEqual(runtime.showDelayMs, 90, 'Overlay must use a short delay so visible calculations are not missed.');
 assert.strictEqual(runtime.currentHideDelayMs, 520, 'Overlay must auto-hide shortly after Current state.');
 assert.strictEqual(runtime.errorHideDelayMs, 3200, 'Error state must not remain permanently blocking.');
@@ -39,18 +39,18 @@ assert.strictEqual(
 
 assert(
   indexHtml.includes('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
-    && indexHtml.includes('engineering-realtime-calculation-defense.js?v=20260614-realtime-global8')
-    && indexHtml.includes('engineering-calculation-lifecycle-runtime.js?v=20260613-calculation-lifecycle4')
-    && indexHtml.includes('engineering-calculation-progress-overlay.js?v=20260613-calculation-progress7'),
+    && indexHtml.includes('engineering-realtime-calculation-defense.js?v=20260617-realtime-first1')
+    && indexHtml.includes('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-realtime1')
+    && indexHtml.includes('engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-realtime1'),
   'index.html must load pump fast lane, realtime defense, lifecycle runtime, and progress overlay.'
 );
 assert(
   indexHtml.indexOf('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
-    < indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260614-realtime-global8')
-    && indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260614-realtime-global8')
-      < indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260613-calculation-lifecycle4')
-    && indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260613-calculation-lifecycle4')
-      < indexHtml.indexOf('engineering-calculation-progress-overlay.js?v=20260613-calculation-progress7'),
+    < indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-first1')
+    && indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-first1')
+      < indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-realtime1')
+    && indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-realtime1')
+      < indexHtml.indexOf('engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-realtime1'),
   'Pump fast lane, realtime defense, lifecycle runtime, and overlay runtime must be loaded in dependency order.'
 );
 
@@ -90,6 +90,7 @@ assert(runtimeSource.includes('sample-case-open'), 'Overlay must share selected 
 assert(runtimeSource.includes('menu-browse'), 'Overlay must track menu-browse mode separately.');
 assert(runtimeSource.includes('sample-open'), 'Overlay must track sample-open mode separately.');
 assert(runtimeSource.includes('manual-solve'), 'Overlay must track manual-solve mode separately.');
+assert(runtimeSource.includes('Validate / Refresh Evidence started.'), 'Overlay manual command copy must describe validation/evidence refresh, not primary solving.');
 assert(runtimeSource.includes('hasRecentCalculationActivity'), 'Linked-view refreshes must be guarded by recent calculation activity.');
 assert(
   runtimeSource.includes("setAttribute('role', 'status')")
@@ -172,7 +173,7 @@ assert(!showImmediateSource.includes('commandFallbackTimer = clearTimer(commandF
 
 if (manifest) {
   assert(manifest.includes('engineering-calculation-progress-overlay.js'), 'FILE_MANIFEST must mention the calculation progress overlay runtime.');
-  assert(manifest.includes('20260613-calculation-progress7'), 'FILE_MANIFEST must mention the calculation progress overlay cache key.');
+  assert(manifest.includes('20260617-calculation-progress-realtime1'), 'FILE_MANIFEST must mention the calculation progress overlay cache key.');
   assert(manifest.includes('validate:calculation-progress-overlay'), 'FILE_MANIFEST must mention the calculation progress overlay validator.');
 }
 

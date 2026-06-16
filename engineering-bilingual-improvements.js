@@ -293,6 +293,8 @@
     'sink-evaluated-flow': { i18nKey: 'trace.sink.evaluatedFlow', en: 'Evaluated Flow', id: 'Flow Terevaluasi' },
     'sink-flow': { i18nKey: 'trace.sink.flow', en: 'Flow Rate', id: 'Laju Alir' },
     'sink-flow-demand': { i18nKey: 'trace.sink.flowDemand', en: 'Flow Demand', id: 'Demand Flow' },
+    'sink-flow-demand-achieved': { i18nKey: 'trace.sink.flowDemandAchieved', en: 'Flow Demand Achieved', id: 'Demand Flow Tercapai' },
+    'sink-flow-demand-gap': { i18nKey: 'trace.sink.flowDemandGap', en: 'Flow Demand Gap', id: 'Selisih Demand Flow' },
     'sink-flow-demand-ignored': { i18nKey: 'trace.sink.flowDemandIgnored', en: 'Ignored Flow Demand', id: 'Demand Flow Diabaikan' },
     'sink-fluid-density': { i18nKey: 'trace.sink.fluidDensity', en: 'Density Used', id: 'Densitas Digunakan' },
     'sink-fluid-vapor-pressure': { i18nKey: 'trace.sink.fluidVaporPressure', en: 'Vapor Pressure', id: 'Tekanan Uap' },
@@ -616,6 +618,10 @@
   const RUNTIME_TEXT_ENTRIES = Object.freeze([
     ...FLUID_TASK_TEXT_ENTRIES,
     ...SOURCE_TASK_TEXT_ENTRIES,
+    ['menu.runHydraulicNpshEvaluation', 'Validate / Refresh Evidence', 'Validasi / Segarkan Evidence'],
+    ['menu.refreshCalculationsConnections', 'Refresh Realtime Views & Connections', 'Segarkan Tampilan Realtime & Koneksi'],
+    ['ribbon.solve', 'Validate', 'Validasi'],
+    ['ribbon.solveTitle', 'Validate current evidence; realtime autosolve updates results automatically', 'Validasi evidence saat ini; autosolve realtime memperbarui hasil otomatis'],
     ['runtime.toast.saveAs.started', 'Simulation file download has started. UNTIRTA project file is being saved.', 'Download file simulasi dimulai. File proyek UNTIRTA sedang disimpan.'],
     ['runtime.toast.save.success', 'File saved successfully.', 'File berhasil disimpan.'],
     ['runtime.toast.save.failed', 'Failed to save file. Please check browser file permissions and try again.', 'Gagal menyimpan file. Periksa izin file browser lalu coba lagi.'],
@@ -626,8 +632,10 @@
     ['runtime.toast.importLegacy.failed', 'Failed to import the legacy project file.', 'Gagal mengimpor file proyek legacy.'],
     ['runtime.toast.simulationCase.loadFailed', 'Unable to open the sample case. Open the app through start-untirta.bat and try again.', 'Tidak dapat membuka sample case. Buka aplikasi melalui start-untirta.bat lalu coba lagi.'],
     ['runtime.toast.simulationCase.unavailable', 'Simulation cases could not be loaded. Open the app through the local server using start-untirta.bat.', 'Kasus simulasi tidak dapat dimuat. Buka aplikasi melalui server lokal menggunakan start-untirta.bat.'],
-    ['runtime.toast.simulation.refreshed', 'Hydraulic and NPSH evaluation has been refreshed.', 'Evaluasi hidrolik dan NPSH telah disegarkan.'],
-    ['runtime.toast.refresh.complete', 'Calculations, connection labels, and warning status were refreshed.', 'Perhitungan, label koneksi, dan status warning telah disegarkan.'],
+    ['runtime.toast.simulation.refreshedLegacy', 'Hydraulic and NPSH evaluation has been refreshed.', 'Evaluasi hidrolik dan NPSH telah disegarkan.'],
+    ['runtime.toast.simulation.refreshed', 'Realtime hydraulic and NPSH evidence has been refreshed.', 'Evidence hidrolik dan NPSH realtime telah disegarkan.'],
+    ['runtime.toast.refresh.completeLegacy', 'Calculations, connection labels, and warning status were refreshed.', 'Perhitungan, label koneksi, dan status warning telah disegarkan.'],
+    ['runtime.toast.refresh.complete', 'Realtime views, connection labels, and warning status were refreshed.', 'Tampilan realtime, label koneksi, dan status warning telah disegarkan.'],
     ['runtime.toast.dynamic.stopped', 'Realtime dynamic inventory stopped.', 'Dynamic inventory realtime dihentikan.'],
     ['runtime.toast.dynamic.unavailable', 'Dynamic inventory engine is not available. Please reload the application.', 'Engine dynamic inventory tidak tersedia. Muat ulang aplikasi.'],
     ['runtime.toast.view.reset', 'Canvas view reset to the upper-left workspace.', 'Tampilan canvas dikembalikan ke workspace kiri atas.'],
@@ -682,6 +690,23 @@
     ['runtime.simulationCase.disabledIncomplete', 'Temporarily disabled - journal data incomplete.', 'Sementara dinonaktifkan - data jurnal belum lengkap.']
   ]);
 
+  const REALTIME_FIRST_TEXT_KEYS = Object.freeze(new Set([
+    'menu.runHydraulicNpshEvaluation',
+    'menu.refreshCalculationsConnections',
+    'ribbon.solve',
+    'ribbon.solveTitle',
+    'runtime.toast.simulation.refreshed',
+    'runtime.toast.refresh.complete'
+  ]));
+
+  const REALTIME_FIRST_LEGACY_TEXT_OVERRIDES = Object.freeze({
+    'Run Hydraulic / NPSH Evaluation': 'Validate / Refresh Evidence',
+    'Run hydraulic and NPSH evaluation': 'Validate current evidence; realtime autosolve updates results automatically',
+    Solve: 'Validate',
+    'Hydraulic and NPSH evaluation has been refreshed.': 'Realtime hydraulic and NPSH evidence has been refreshed.',
+    'Calculations, connection labels, and warning status were refreshed.': 'Realtime views, connection labels, and warning status were refreshed.'
+  });
+
   const STYLE_GUIDE = Object.freeze({
     preserveSymbols: ['NPSH', 'NPSHa', 'NPSHr', 'SRC', 'SNK', 'Cv', 'K', 'Re', 'rho', 'mu', 'nu'],
     preferredIndonesian: {
@@ -734,6 +759,12 @@
   }
 
   function registerTextEntries() {
+    if (Array.isArray(root.EngineeringI18nRawText)) {
+      root.EngineeringI18nRawText = root.EngineeringI18nRawText.filter((entry) => {
+        const key = String(entry?.key || '').trim();
+        return !REALTIME_FIRST_TEXT_KEYS.has(key);
+      });
+    }
     if (root.EngineeringI18n && typeof root.EngineeringI18n.registerTextEntries === 'function') {
       root.EngineeringI18n.registerTextEntries(I18N_TEXT_ENTRIES);
       return;
@@ -950,7 +981,7 @@
 
   function normalizeRuntimeOriginalText(text) {
     const trimmed = String(text || '').trim();
-    return LEGACY_RUNTIME_ID_TO_EN[trimmed] || RUNTIME_ID_TO_EN[trimmed] || translateRuntimePattern(trimmed, 'en');
+    return REALTIME_FIRST_LEGACY_TEXT_OVERRIDES[trimmed] || LEGACY_RUNTIME_ID_TO_EN[trimmed] || RUNTIME_ID_TO_EN[trimmed] || translateRuntimePattern(trimmed, 'en');
   }
 
   function preserveTextWhitespace(currentText, translated) {

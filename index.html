@@ -452,7 +452,7 @@
                 <button type="button" id="menu-tools-export-excel" data-i18n-text="menu.exportExcelTrace">Excel Calculation Trace (.xlsx)</button>
                 <button type="button" id="menu-tools-export-appendix-docx" data-i18n-text="menu.exportAppendixDocx">Calculation Trace Appendix (.docx)</button>
                 <button type="button" id="menu-tools-export-appendix-pdf" data-i18n-text="menu.exportAppendixPdf">Calculation Trace Appendix (.pdf)</button>
-                <button type="button" id="menu-run-solve" class="dropdown-separated" data-i18n-text="menu.runHydraulicNpshEvaluation">Run Hydraulic / NPSH Evaluation</button>
+                <button type="button" id="menu-run-solve" class="dropdown-separated" data-i18n-text="menu.runHydraulicNpshEvaluation">Validate / Refresh Evidence</button>
                 <div class="dropdown-submenu dropdown-submenu-flyout">
                     <button type="button" id="menu-flow-dynamic-state" class="dropdown-submenu-trigger" aria-haspopup="true" aria-expanded="false" data-i18n-text="menu.flowDynamicState">Flow Dynamic State</button>
                     <div class="dropdown-submenu-content" id="dropdown-flow-dynamic-state">
@@ -602,12 +602,12 @@
 
         <div class="ribbon-divider academic-solve-divider"></div>
         
-        <button class="ribbon-btn solve-ribbon-btn" id="btn-solve" type="button" aria-label="Run hydraulic and NPSH evaluation" title="Run hydraulic and NPSH evaluation" data-i18n-aria-label="ribbon.solveTitle" data-i18n-title="ribbon.solveTitle">
+        <button class="ribbon-btn solve-ribbon-btn" id="btn-solve" type="button" aria-label="Validate current evidence; realtime autosolve updates results automatically" title="Validate current evidence; realtime autosolve updates results automatically" data-i18n-aria-label="ribbon.solveTitle" data-i18n-title="ribbon.solveTitle">
             <span class="ribbon-icon">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#28a745" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 <img class="solve-mobile-logo" src="png/untirta-75.webp" width="28" height="28" alt="" aria-hidden="true">
             </span>
-            <span class="ribbon-label" data-i18n-text="ribbon.solve">Solve</span>
+            <span class="ribbon-label" data-i18n-text="ribbon.solve">Validate</span>
         </button>
         <section class="academic-compact-identity" aria-label="Compact thesis identity">
             <span>UNTIRTA &ndash; Mechanical Engineering</span>
@@ -721,7 +721,7 @@
     .then(() => addScript('engineering-source-temperature-runtime.js?v=20260601-src-fluid-link1'))
     .then(() => {
       document.readyState !== 'loading' && fireReady();
-      return addScript('engineering-bilingual-improvements.js?v=20260613-bilingual-autosolve2');
+      return addScript('engineering-bilingual-improvements.js?v=20260617-bilingual-realtime-first2');
     })
     .then(() => addScript('engineering-browser-issues-runtime.js?v=20260608-browser-issues1'))
     .then(() => addScript('engineering-pipe-segments-file-runtime.js?v=20260608-pipe-segments-file1'))
@@ -733,9 +733,9 @@
     .then(() => addScript('engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3'))
     .then(() => addScript('engineering-performance-refresh-governor.js?v=20260614-refresh-governor4'))
     .then(() => addScript('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2'))
-    .then(() => addScript('engineering-realtime-calculation-defense.js?v=20260614-realtime-global8'))
-    .then(() => addScript('engineering-calculation-lifecycle-runtime.js?v=20260613-calculation-lifecycle4'))
-    .then(() => addScript('engineering-calculation-progress-overlay.js?v=20260613-calculation-progress7'))
+    .then(() => addScript('engineering-realtime-calculation-defense.js?v=20260617-realtime-first1'))
+    .then(() => addScript('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-realtime1'))
+    .then(() => addScript('engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-realtime1'))
     .then(() => {
       window.EngineeringFormulaDefenseUI?.install?.({ force: true });
       return Promise.resolve();

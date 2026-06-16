@@ -123,7 +123,11 @@ globalThis.EngineeringParameterTaskRuntime = {
 };
 
 const runtime = require(runtimePath);
-assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v8', 'Realtime defense runtime should expose v8.');
+assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v9', 'Realtime defense runtime should expose v9.');
+assert.equal(runtime.autosolvePolicy?.mode, 'realtime-autosolve-first', 'Realtime defense must declare realtime autosolve as the primary calculation policy.');
+assert.equal(runtime.autosolvePolicy?.manualCommandRole, 'validate-refresh-evidence', 'Manual command must be treated as evidence validation/refresh.');
+assert.equal(runtime.debounceForSourceEvent('input'), 240, 'Input debounce must keep numeric edits responsive.');
+assert.equal(runtime.debounceForSourceEvent('change'), 90, 'Change debounce must refresh select/blur edits quickly.');
 assert.equal(typeof runtime.markInputLatencyShield, 'function', 'Realtime defense must expose the input latency shield marker.');
 assert.equal(typeof runtime.isInputLatencyShieldActive, 'function', 'Realtime defense must expose the input latency shield status reader.');
 assert.equal(typeof runtime.buildPipeSegmentRows, 'function', 'Realtime defense runtime should expose canonical pipe segment row builder.');
@@ -135,7 +139,12 @@ assert(
   realtimeSource.includes('requestAnimationFrame(() =>') && realtimeSource.includes('const delayMs = 360'),
   'Linked view refresh must be debounced after an animation frame and delayed enough to protect input typing.'
 );
-assert(realtimeSource.includes('AUTO_SOLVE_DEBOUNCE_MS = 800'), 'Autosolve debounce must leave enough room for responsive numeric typing.');
+assert(realtimeSource.includes('AUTO_SOLVE_DEBOUNCE_MS = 240'), 'Autosolve debounce must be realtime-first for responsive numeric typing.');
+assert(realtimeSource.includes('AUTO_SOLVE_CHANGE_DEBOUNCE_MS = 90'), 'Change-event autosolve debounce must be fast for selects and committed edits.');
+assert(realtimeSource.includes('realtime-autosolve-first'), 'Realtime defense must declare the realtime-autosolve-first policy.');
+assert(realtimeSource.includes('validate-refresh-evidence'), 'Realtime defense must document the manual command as validation/evidence refresh.');
+assert(realtimeSource.includes('npsh:realtime-autosolve-superseded'), 'Realtime defense must emit a superseded event for stale autosolve results.');
+assert(realtimeSource.includes('__engineeringRealtimeAutoSolveSequence'), 'Realtime autosolve calls must carry a sequence guard.');
 assert(realtimeSource.includes('USER_CALCULATION_INTENT_SELECTOR'), 'Realtime defense must distinguish user calculation intent from sample-menu browsing.');
 assert(realtimeSource.includes('SAMPLE_CASE_OPEN_SELECTOR'), 'Realtime defense must treat only Open Sample Case clicks as sample calculation intent.');
 assert(realtimeSource.includes('calculationMode'), 'Realtime defense must share calculation mode with lifecycle and overlay runtimes.');
@@ -259,22 +268,23 @@ runtime.flushAutoSolve().then(async () => {
   assert(autoCall, 'requestAutoSolve should call updateSimulation through the realtime autosolve path.');
   assert.equal(autoCall.forceBackend, true, 'Autosolve should force the protected backend refresh.');
   assert.equal(autoCall.renderSidebarAfter, true, 'Autosolve should allow linked object windows to refresh after solving.');
+  assert.equal(autoCall.__engineeringRealtimeAutoSolveSequence, 1, 'Autosolve should pass its sequence into updateSimulation options.');
   assert.equal(reportRefreshes > 0, true, 'Autosolve should refresh live Analysis Report cells.');
   assert.equal(parameterRefreshes > 0, true, 'Autosolve should refresh open Parameter Task windows.');
 
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(
-  index.includes('engineering-realtime-calculation-defense.js?v=20260614-realtime-global8'),
+  index.includes('engineering-realtime-calculation-defense.js?v=20260617-realtime-first1'),
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
   index.indexOf('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
-    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260614-realtime-global8'),
+    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-first1'),
   'Pump edit fast lane must load before realtime calculation defense.'
 );
 assert(
-  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260614-realtime-global8'),
+  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260617-realtime-first1'),
   'Manifest must document the realtime calculation defense cache key.'
 );
 assert(

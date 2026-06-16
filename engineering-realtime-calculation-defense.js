@@ -1,7 +1,8 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-realtime-calculation-defense.v8';
-  const AUTO_SOLVE_DEBOUNCE_MS = 800;
+  const VERSION = 'engineering-realtime-calculation-defense.v9';
+  const AUTO_SOLVE_DEBOUNCE_MS = 240;
+  const AUTO_SOLVE_CHANGE_DEBOUNCE_MS = 90;
   const INPUT_LATENCY_SHIELD_MS = 1250;
   const USER_INTENT_WINDOW_MS = 8000;
   const RUN_COMMAND_SELECTOR = [
@@ -22,6 +23,14 @@
   let linkedViewRefreshFrame = 0;
   let linkedViewRefreshTimer = 0;
   let pendingLinkedViewRefresh = null;
+
+  const AUTOSOLVE_POLICY = Object.freeze({
+    mode: 'realtime-autosolve-first',
+    manualCommandRole: 'validate-refresh-evidence',
+    debounceMs: AUTO_SOLVE_DEBOUNCE_MS,
+    changeDebounceMs: AUTO_SOLVE_CHANGE_DEBOUNCE_MS,
+    legacyAutosolveRole: 'fallback-only'
+  });
 
   function runtimeModel() {
     try {
@@ -164,6 +173,32 @@
     } catch (error) {
       // Event dispatch is diagnostic only.
     }
+  }
+
+  function debounceForSourceEvent(sourceEvent = 'input') {
+    return String(sourceEvent || '').toLowerCase() === 'change'
+      ? AUTO_SOLVE_CHANGE_DEBOUNCE_MS
+      : AUTO_SOLVE_DEBOUNCE_MS;
+  }
+
+  function isAutoSolveSuperseded(sequence) {
+    return sequence !== autoSolveSequence || root.__engineeringRealtimeCalculationDefenseAutoSolvePaused;
+  }
+
+  function markAutoSolveSuperseded(sequence, nodeId, reason) {
+    const detail = {
+      version: VERSION,
+      nodeId,
+      reason,
+      sequence,
+      latestSequence: autoSolveSequence,
+      status: 'Superseded',
+      updatedAt: new Date().toISOString()
+    };
+    root.__engineeringCalculationDefenseRealtimeAutoSolveSuperseded = detail;
+    markStale(nodeId, 'Newer input superseded the previous realtime backend result; waiting for latest recalculation.');
+    dispatchRealtimeEvent('npsh:realtime-autosolve-superseded', detail);
+    return detail;
   }
 
   function dispatchLifecycleApplying(detail = {}) {
@@ -801,7 +836,7 @@
     return true;
   }
 
-  function autoSolveOptions(nodeId, reason) {
+  function autoSolveOptions(nodeId, reason, sequence) {
     return {
       refreshReason: 'realtime-input',
       trigger: 'realtime-input',
@@ -809,6 +844,7 @@
       renderSidebarAfter: true,
       realtimeReason: reason,
       selectedNodeId: nodeId,
+      __engineeringRealtimeAutoSolveSequence: sequence,
       __engineeringRealtimeAutoSolve: true
     };
   }
@@ -863,7 +899,7 @@
   }
 
   function runAutoSolve(sequence, nodeId, reason) {
-    if (sequence !== autoSolveSequence || root.__engineeringRealtimeCalculationDefenseAutoSolvePaused) {
+    if (isAutoSolveSuperseded(sequence)) {
       return Promise.resolve(null);
     }
     autoSolveTimer = 0;
@@ -881,8 +917,12 @@
       sequence
     });
     activeAutoSolve = Promise.resolve()
-      .then(() => root.updateSimulation(autoSolveOptions(resolvedNodeId, reason)))
+      .then(() => root.updateSimulation(autoSolveOptions(resolvedNodeId, reason, sequence)))
       .then((result) => {
+        if (isAutoSolveSuperseded(sequence)) {
+          const superseded = markAutoSolveSuperseded(sequence, resolvedNodeId, reason);
+          return { ok: false, superseded: true, result, supersededState: superseded };
+        }
         scheduleLinkedViewRefresh(resolvedNodeId, 'realtime autosolve complete');
         dispatchRealtimeEvent('npsh:realtime-autosolve-complete', {
           version: VERSION,
@@ -910,7 +950,7 @@
   }
 
   function requestAutoSolve(nodeId = '', reason = 'Input changed; backend recalculation scheduled.', options = {}) {
-    const delayMs = Number.isFinite(Number(options.delayMs)) ? Math.max(0, Number(options.delayMs)) : AUTO_SOLVE_DEBOUNCE_MS;
+    const delayMs = Number.isFinite(Number(options.delayMs)) ? Math.max(0, Number(options.delayMs)) : debounceForSourceEvent(options.sourceEvent);
     autoSolveSequence += 1;
     const sequence = autoSolveSequence;
     const resolvedNodeId = nodeId || resolveNodeId(null);
@@ -921,6 +961,8 @@
       nodeId: resolvedNodeId,
       reason,
       delayMs,
+      sourceEvent: options.sourceEvent || 'input',
+      policy: AUTOSOLVE_POLICY,
       scheduledAt: new Date().toISOString()
     };
     autoSolveTimer = root.setTimeout(() => {
@@ -944,6 +986,7 @@
   function install() {
     if (root.__engineeringRealtimeCalculationDefenseInstalled) return false;
     root.__engineeringRealtimeCalculationDefenseInstalled = true;
+    root.__engineeringRealtimeAutosolvePolicy = AUTOSOLVE_POLICY;
 
     if (typeof document !== 'undefined') {
       const onInput = (event) => {
@@ -1012,6 +1055,8 @@
 
   const api = {
     version: VERSION,
+    autosolvePolicy: AUTOSOLVE_POLICY,
+    debounceForSourceEvent,
     install,
     markStale,
     markCalculating,

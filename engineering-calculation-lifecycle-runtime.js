@@ -7,7 +7,7 @@
   'use strict';
 
   const VERSION = 'engineering-calculation-lifecycle.v1';
-  const CACHE_KEY = '20260613-calculation-lifecycle4';
+  const CACHE_KEY = '20260617-calculation-lifecycle-realtime1';
   const LIFECYCLE_EVENT = 'npsh:calculation-lifecycle';
   const RUN_COMMAND_SELECTOR = [
     '#btn-solve',
@@ -267,11 +267,11 @@
       nodeId: target.id || '',
       reason: target.id === 'menu-refresh-calculations'
         ? 'Refreshing calculations and connections.'
-        : 'Run Hydraulic / NPSH Evaluation started.'
+        : 'Validate / Refresh Evidence started.'
     }, {
       calculationMode,
       sourceEvent: 'manual-command',
-      message: 'Command received. Preparing calculation lifecycle.'
+      message: 'Command received. Realtime results are already primary; refreshing validation evidence.'
     });
   }
 

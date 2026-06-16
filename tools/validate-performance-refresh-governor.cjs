@@ -121,19 +121,21 @@ assert(
   index.includes('engineering-route-trace-audit.js?v=20260616-snk-outlet-feasibility1')
     && index.includes('engineering-performance-refresh-governor.js?v=20260614-refresh-governor4')
     && index.includes('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
-    && index.includes('engineering-realtime-calculation-defense.js?v=20260614-realtime-global8'),
+    && index.includes('engineering-realtime-calculation-defense.js?v=20260617-realtime-first1'),
   'index.html must load route audit, governor, then realtime defense.'
 );
-assert(index.includes('engineering-bilingual-improvements.js?v=20260613-bilingual-autosolve2'), 'index.html must cache-bust the duplicate-autosolve-safe bilingual runtime.');
+assert(index.includes('engineering-bilingual-improvements.js?v=20260617-bilingual-realtime-first2'), 'index.html must cache-bust the realtime-first bilingual runtime.');
 assert(bilingualSource.includes('__NPSH_USE_LEGACY_BILINGUAL_AUTOSOLVE__ !== true'), 'Bilingual legacy autosolve bridge must be opt-in so realtime defense remains the only default autosolve owner.');
 assert(bilingualSource.includes('disabled-by-realtime-defense'), 'Bilingual runtime must mark the legacy autosolve bridge as disabled by realtime defense.');
+assert(bilingualSource.includes('REALTIME_FIRST_TEXT_KEYS'), 'Bilingual runtime must prune stale i18n entries for realtime-first labels.');
+assert(bilingualSource.includes('REALTIME_FIRST_LEGACY_TEXT_OVERRIDES'), 'Bilingual runtime must normalize old Solve labels to realtime-first Validate labels.');
 assert(
   index.indexOf('engineering-route-trace-audit.js?v=20260616-snk-outlet-feasibility1')
     < index.indexOf('engineering-performance-refresh-governor.js?v=20260614-refresh-governor4')
     && index.indexOf('engineering-performance-refresh-governor.js?v=20260614-refresh-governor4')
       < index.indexOf('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
     && index.indexOf('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
-      < index.indexOf('engineering-realtime-calculation-defense.js?v=20260614-realtime-global8'),
+      < index.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-first1'),
   'Performance Refresh Governor and Pump edit fast lane must load before realtime defense starts scheduling linked view refreshes.'
 );
 assert.equal(
