@@ -121,7 +121,7 @@ assert(
   index.includes('engineering-route-trace-audit.js?v=20260616-snk-outlet-feasibility1')
     && index.includes('engineering-performance-refresh-governor.js?v=20260614-refresh-governor4')
     && index.includes('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
-    && index.includes('engineering-realtime-calculation-defense.js?v=20260617-realtime-first1'),
+    && index.includes('engineering-realtime-calculation-defense.js?v=20260617-realtime-final-state1'),
   'index.html must load route audit, governor, then realtime defense.'
 );
 assert(index.includes('engineering-bilingual-improvements.js?v=20260617-bilingual-realtime-first2'), 'index.html must cache-bust the realtime-first bilingual runtime.');
@@ -135,7 +135,7 @@ assert(
     && index.indexOf('engineering-performance-refresh-governor.js?v=20260614-refresh-governor4')
       < index.indexOf('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
     && index.indexOf('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
-      < index.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-first1'),
+      < index.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-final-state1'),
   'Performance Refresh Governor and Pump edit fast lane must load before realtime defense starts scheduling linked view refreshes.'
 );
 assert.equal(

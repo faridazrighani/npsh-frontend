@@ -20,6 +20,8 @@
   let autoSolveSequence = 0;
   let pendingAutoSolve = null;
   let activeAutoSolve = null;
+  let activeCalculationTransaction = null;
+  let completedCalculationTransaction = null;
   let linkedViewRefreshFrame = 0;
   let linkedViewRefreshTimer = 0;
   let pendingLinkedViewRefresh = null;
@@ -196,7 +198,13 @@
       updatedAt: new Date().toISOString()
     };
     root.__engineeringCalculationDefenseRealtimeAutoSolveSuperseded = detail;
-    markStale(nodeId, 'Newer input superseded the previous realtime backend result; waiting for latest recalculation.');
+    updateCalculationTransaction(sequence, {
+      status: 'superseded',
+      finalState: 'Superseded',
+      finalMessage: 'Newer input superseded this realtime backend result.',
+      supersededAt: detail.updatedAt,
+      completedAt: detail.updatedAt
+    });
     dispatchRealtimeEvent('npsh:realtime-autosolve-superseded', detail);
     return detail;
   }
@@ -619,6 +627,39 @@
     return true;
   }
 
+  function markResultObjectFailed(results, reason) {
+    if (!results || typeof results !== 'object') return false;
+    results.calculationFreshness = 'Failed';
+    results.backendValidationStatus = 'Failed';
+    results.backendValidationMessage = reason;
+    if (results.performanceChartData?.schemaVersion === 'pump-performance-chart-data.v1') {
+      results.performanceChartData.freshness = 'Failed';
+      results.performanceChartData.warnings = [
+        reason,
+        ...((Array.isArray(results.performanceChartData.warnings) ? results.performanceChartData.warnings : []))
+      ].filter(Boolean);
+    }
+    if (results.routeTrace && typeof results.routeTrace === 'object') {
+      results.routeTrace.lossFreshness = 'Failed - backend refresh did not complete';
+    }
+    if (results.actionReadinessBackend && typeof results.actionReadinessBackend === 'object') {
+      results.actionReadinessBackend.stale = true;
+      results.actionReadinessBackend.status = 'Failed';
+      results.actionReadinessBackend.message = reason;
+    }
+    if (results.backendActionReadiness && typeof results.backendActionReadiness === 'object') {
+      results.backendActionReadiness.stale = true;
+      results.backendActionReadiness.status = 'Failed';
+      results.backendActionReadiness.message = reason;
+    }
+    if (results.npshEvaluation && typeof results.npshEvaluation === 'object') {
+      results.npshEvaluation.calculationFreshness = 'Failed';
+      results.npshEvaluation.backendValidationStatus = 'Failed';
+      results.npshEvaluation.backendValidationMessage = reason;
+    }
+    return true;
+  }
+
   function calculationAffectedNodeIds(model, nodeId = '') {
     const ids = new Set();
     if (nodeId && model[nodeId]) ids.add(nodeId);
@@ -630,6 +671,96 @@
     if (model[nodeId]?.type === 'pump') return [...ids];
     pumpIds.forEach((id) => ids.add(id));
     return [...ids];
+  }
+
+  function cloneCalculationTransaction(transaction) {
+    if (!transaction || typeof transaction !== 'object') return null;
+    return {
+      ...transaction,
+      nodeIds: Array.isArray(transaction.nodeIds) ? [...transaction.nodeIds] : []
+    };
+  }
+
+  function resultDependencyFingerprint(results = {}) {
+    if (!results || typeof results !== 'object') return null;
+    return results.dependencyManifest?.dependencyFingerprint
+      || results.npshEvaluation?.dependencyManifest?.dependencyFingerprint
+      || results.calculationAudit?.dependencyFingerprint
+      || results.calculationDefenseContract?.dependencyFingerprint
+      || results.actionReadinessBackend?.dependencyFingerprint
+      || results.backendActionReadiness?.dependencyFingerprint
+      || null;
+  }
+
+  function currentDependencyFingerprint(nodeId = '') {
+    const model = runtimeModel();
+    const ids = calculationAffectedNodeIds(model, nodeId);
+    for (const id of ids) {
+      const fingerprint = resultDependencyFingerprint(model[id]?.results);
+      if (fingerprint) return fingerprint;
+    }
+    return root.__engineeringCalculationDefenseRealtimeState?.dependencyFingerprint || null;
+  }
+
+  function buildCalculationRequestId(sequence) {
+    const serial = Number.isFinite(Number(sequence)) ? Number(sequence) : autoSolveSequence;
+    return `rt-${Date.now().toString(36)}-${serial}`;
+  }
+
+  function publishCalculationTransaction(transaction) {
+    const snapshot = cloneCalculationTransaction(transaction);
+    root.__engineeringCalculationTransaction = snapshot;
+    dispatchRealtimeEvent('npsh:calculation-transaction', snapshot || {});
+    return snapshot;
+  }
+
+  function startCalculationTransaction(nodeId = '', reason = 'Input changed; backend recalculation scheduled.', options = {}) {
+    const sequence = Number.isFinite(Number(options.sequence)) ? Number(options.sequence) : autoSolveSequence;
+    const model = runtimeModel();
+    const ids = calculationAffectedNodeIds(model, nodeId);
+    const now = new Date().toISOString();
+    activeCalculationTransaction = {
+      version: VERSION,
+      requestId: options.requestId || buildCalculationRequestId(sequence),
+      sequence,
+      nodeId,
+      nodeIds: ids,
+      reason,
+      sourceEvent: options.sourceEvent || '',
+      delayMs: Number.isFinite(Number(options.delayMs)) ? Number(options.delayMs) : null,
+      status: options.status || 'waiting-debounce',
+      initialDependencyFingerprint: currentDependencyFingerprint(nodeId),
+      finalDependencyFingerprint: null,
+      finalState: null,
+      finalMessage: '',
+      scheduledAt: now,
+      startedAt: null,
+      completedAt: null,
+      updatedAt: now
+    };
+    return publishCalculationTransaction(activeCalculationTransaction);
+  }
+
+  function updateCalculationTransaction(sequence, updates = {}) {
+    const normalizedSequence = Number.isFinite(Number(sequence)) ? Number(sequence) : null;
+    const matches = (transaction) => transaction
+      && (normalizedSequence === null || Number(transaction.sequence) === normalizedSequence);
+    const target = matches(activeCalculationTransaction)
+      ? activeCalculationTransaction
+      : (matches(completedCalculationTransaction) ? completedCalculationTransaction : null);
+    if (!target) return null;
+    Object.assign(target, updates, { updatedAt: new Date().toISOString() });
+    if (updates.status && ['current', 'failed', 'superseded'].includes(String(updates.status))) {
+      target.finalState = updates.finalState || (updates.status === 'current' ? 'Current' : updates.status === 'failed' ? 'Failed' : 'Superseded');
+      target.completedAt = updates.completedAt || target.updatedAt;
+      completedCalculationTransaction = target;
+      if (activeCalculationTransaction?.requestId === target.requestId) activeCalculationTransaction = null;
+    }
+    return publishCalculationTransaction(target);
+  }
+
+  function currentCalculationTransaction() {
+    return cloneCalculationTransaction(activeCalculationTransaction || completedCalculationTransaction);
   }
 
   function scheduleUiRefresh(type, nodeId, run, delayMs = 220, reason = 'calculation refresh') {
@@ -686,7 +817,7 @@
     return root.__engineeringCalculationDefenseRealtimeState;
   }
 
-  function markCalculating(nodeId = '', reason = 'Backend recalculation in progress.') {
+  function markCalculating(nodeId = '', reason = 'Backend recalculation in progress.', transaction = activeCalculationTransaction) {
     const model = runtimeModel();
     const ids = calculationAffectedNodeIds(model, nodeId);
     let touched = 0;
@@ -701,6 +832,9 @@
       status: touched ? 'Calculating' : 'No calculation result to refresh',
       reason,
       nodeIds: ids,
+      requestId: transaction?.requestId || null,
+      sequence: transaction?.sequence || null,
+      transactionStatus: transaction?.status || 'calculating',
       startedAt: new Date().toISOString()
     };
     publishCalculationStatusState('mark-calculating', nodeId, 'Calculating');
@@ -708,21 +842,80 @@
     return root.__engineeringCalculationDefenseRealtimeState;
   }
 
+  function markFailed(nodeId = '', reason = 'Backend recalculation failed.', transaction = activeCalculationTransaction) {
+    const model = runtimeModel();
+    const ids = calculationAffectedNodeIds(model, nodeId);
+    let touched = 0;
+    ids.forEach((id) => {
+      const node = model[id];
+      if (!node || typeof node !== 'object') return;
+      if (!node.results || typeof node.results !== 'object') node.results = {};
+      if (markResultObjectFailed(node.results, reason)) touched += 1;
+    });
+    const updatedAt = new Date().toISOString();
+    const finalTransaction = updateCalculationTransaction(transaction?.sequence, {
+      status: 'failed',
+      finalState: 'Failed',
+      finalMessage: reason,
+      completedAt: updatedAt
+    }) || cloneCalculationTransaction(transaction);
+    root.__engineeringCalculationDefenseRealtimeState = {
+      version: VERSION,
+      status: touched ? 'Failed' : 'Failed',
+      reason,
+      message: reason,
+      nodeIds: ids,
+      requestId: finalTransaction?.requestId || null,
+      sequence: finalTransaction?.sequence || null,
+      transactionStatus: finalTransaction?.status || 'failed',
+      failedAt: updatedAt
+    };
+    publishCalculationStatusState('mark-failed', nodeId, 'Failed');
+    dispatchRealtimeEvent('npsh:calculation-failed', root.__engineeringCalculationDefenseRealtimeState);
+    return root.__engineeringCalculationDefenseRealtimeState;
+  }
+
   function markCurrentFromBackend(payload = {}) {
+    const activeApply = root.__engineeringRealtimeActiveBackendApply || {};
+    const sequence = Number(payload.__engineeringRealtimeAutoSolveSequence || payload.sequence || activeApply.sequence || 0);
+    const nodeId = payload.nodeId || activeApply.nodeId || '';
+    if (sequence && isAutoSolveSuperseded(sequence)) {
+      const superseded = markAutoSolveSuperseded(sequence, nodeId, payload.realtimeReason || 'superseded backend apply');
+      return {
+        ...(root.__engineeringCalculationDefenseRealtimeState || {}),
+        superseded: true,
+        supersededState: superseded
+      };
+    }
+    const calculationId = payload.calculationId || payload.calculationAudit?.calculationId || null;
+    const dependencyFingerprint = payload.dependencyManifest?.dependencyFingerprint || currentDependencyFingerprint(nodeId);
+    const requestId = payload.__engineeringRealtimeRequestId || payload.requestId || activeApply.requestId || activeCalculationTransaction?.requestId || null;
+    const transactionSequence = sequence || activeCalculationTransaction?.sequence || null;
+    const transaction = transactionSequence ? updateCalculationTransaction(transactionSequence, {
+      status: 'current',
+      finalState: 'Current',
+      finalDependencyFingerprint: dependencyFingerprint || null,
+      calculationId,
+      completedAt: new Date().toISOString()
+    }) : null;
     root.__engineeringCalculationDefenseRealtimeState = {
       version: VERSION,
       status: 'Current',
-      calculationId: payload.calculationId || payload.calculationAudit?.calculationId || null,
-      dependencyFingerprint: payload.dependencyManifest?.dependencyFingerprint || null,
+      calculationId,
+      dependencyFingerprint: dependencyFingerprint || null,
       calculationDefenseStatus: payload.calculationDefenseContract?.status || null,
+      requestId: requestId || transaction?.requestId || null,
+      sequence: sequence || transaction?.sequence || null,
+      transactionStatus: 'current',
       updatedAt: new Date().toISOString()
     };
-    publishCanonicalCalculationState('backend-current', payload.nodeId || '');
+    publishCanonicalCalculationState('backend-current', nodeId);
     dispatchRealtimeEvent('npsh:calculation-current', root.__engineeringCalculationDefenseRealtimeState);
     return root.__engineeringCalculationDefenseRealtimeState;
   }
 
   function currentPayloadFromApplyArgs(args = []) {
+    const activeApply = root.__engineeringRealtimeActiveBackendApply || {};
     const response = args[2] || {};
     const results = args[0]?.results || {};
     const evaluation = results.npshEvaluation || {};
@@ -732,7 +925,10 @@
       calculationId: response.calculationId || results.calculationId || evaluation.calculationId || null,
       calculationAudit: response.calculationAudit || results.calculationAudit || evaluation.calculationAudit || null,
       dependencyManifest: response.dependencyManifest || results.dependencyManifest || evaluation.dependencyManifest || null,
-      calculationDefenseContract: response.calculationDefenseContract || results.calculationDefenseContract || evaluation.calculationDefenseContract || null
+      calculationDefenseContract: response.calculationDefenseContract || results.calculationDefenseContract || evaluation.calculationDefenseContract || null,
+      nodeId: response.nodeId || activeApply.nodeId || '',
+      sequence: response.__engineeringRealtimeAutoSolveSequence || response.sequence || activeApply.sequence || null,
+      requestId: response.__engineeringRealtimeRequestId || response.requestId || activeApply.requestId || null
     };
   }
 
@@ -831,12 +1027,20 @@
     if (pendingAutoSolve) {
       pendingAutoSolve.cancelledAt = new Date().toISOString();
       pendingAutoSolve.cancelReason = reason;
+      updateCalculationTransaction(pendingAutoSolve.sequence, {
+        status: 'superseded',
+        finalState: 'Superseded',
+        finalMessage: reason,
+        completedAt: pendingAutoSolve.cancelledAt
+      });
     }
     pendingAutoSolve = null;
     return true;
   }
 
-  function autoSolveOptions(nodeId, reason, sequence) {
+  function autoSolveOptions(nodeId, reason, transactionOrSequence) {
+    const transaction = transactionOrSequence && typeof transactionOrSequence === 'object' ? transactionOrSequence : null;
+    const sequence = transaction ? transaction.sequence : transactionOrSequence;
     return {
       refreshReason: 'realtime-input',
       trigger: 'realtime-input',
@@ -845,6 +1049,7 @@
       realtimeReason: reason,
       selectedNodeId: nodeId,
       __engineeringRealtimeAutoSolveSequence: sequence,
+      __engineeringRealtimeRequestId: transaction?.requestId || '',
       __engineeringRealtimeAutoSolve: true
     };
   }
@@ -909,41 +1114,76 @@
       return Promise.resolve(null);
     }
     const resolvedNodeId = nodeId || resolveNodeId(null);
-    markCalculating(resolvedNodeId, 'Input changed; protected backend recalculation is running.');
+    const existingTransaction = activeCalculationTransaction?.sequence === sequence ? activeCalculationTransaction : null;
+    const transaction = existingTransaction || startCalculationTransaction(resolvedNodeId, reason, {
+      sequence,
+      sourceEvent: 'autosolve-run',
+      status: 'calculating'
+    });
+    updateCalculationTransaction(sequence, {
+      status: 'calculating',
+      startedAt: new Date().toISOString()
+    });
+    const activeApply = {
+      version: VERSION,
+      requestId: transaction.requestId,
+      sequence,
+      nodeId: resolvedNodeId,
+      reason,
+      startedAt: new Date().toISOString()
+    };
+    root.__engineeringRealtimeActiveBackendApply = activeApply;
+    markCalculating(resolvedNodeId, 'Input changed; protected backend recalculation is running.', transaction);
     dispatchRealtimeEvent('npsh:realtime-autosolve-start', {
       version: VERSION,
       nodeId: resolvedNodeId,
       reason,
-      sequence
+      sequence,
+      requestId: transaction.requestId
     });
     activeAutoSolve = Promise.resolve()
-      .then(() => root.updateSimulation(autoSolveOptions(resolvedNodeId, reason, sequence)))
+      .then(() => root.updateSimulation(autoSolveOptions(resolvedNodeId, reason, transaction)))
       .then((result) => {
         if (isAutoSolveSuperseded(sequence)) {
           const superseded = markAutoSolveSuperseded(sequence, resolvedNodeId, reason);
           return { ok: false, superseded: true, result, supersededState: superseded };
         }
+        if (
+          root.__engineeringCalculationDefenseRealtimeState?.status !== 'Current'
+          || root.__engineeringCalculationDefenseRealtimeState?.requestId !== transaction.requestId
+        ) {
+          markCurrentFromBackend({
+            nodeId: resolvedNodeId,
+            sequence,
+            requestId: transaction.requestId
+          });
+        }
         scheduleLinkedViewRefresh(resolvedNodeId, 'realtime autosolve complete');
         dispatchRealtimeEvent('npsh:realtime-autosolve-complete', {
           version: VERSION,
           nodeId: resolvedNodeId,
-          sequence
+          sequence,
+          requestId: transaction.requestId
         });
         return result;
       })
       .catch((error) => {
         const message = String(error?.message || error || 'Unknown backend refresh error');
-        markStale(resolvedNodeId, `Realtime backend recalculation failed: ${message}`);
+        markFailed(resolvedNodeId, `Realtime backend recalculation failed: ${message}`, transaction);
         console.warn('Realtime backend recalculation failed.', error);
         dispatchRealtimeEvent('npsh:realtime-autosolve-error', {
           version: VERSION,
           nodeId: resolvedNodeId,
           sequence,
+          requestId: transaction.requestId,
           message
         });
         return { ok: false, error: message };
       })
       .finally(() => {
+        if (root.__engineeringRealtimeActiveBackendApply?.requestId === activeApply.requestId) {
+          root.__engineeringRealtimeActiveBackendApply = null;
+        }
         if (sequence === autoSolveSequence) activeAutoSolve = null;
       });
     return activeAutoSolve;
@@ -955,14 +1195,22 @@
     const sequence = autoSolveSequence;
     const resolvedNodeId = nodeId || resolveNodeId(null);
     cancelAutoSolve('superseded by newer input');
+    const transaction = startCalculationTransaction(resolvedNodeId, reason, {
+      sequence,
+      delayMs,
+      sourceEvent: options.sourceEvent || 'input',
+      status: 'waiting-debounce'
+    });
     pendingAutoSolve = {
       version: VERSION,
       sequence,
+      requestId: transaction.requestId,
       nodeId: resolvedNodeId,
       reason,
       delayMs,
       sourceEvent: options.sourceEvent || 'input',
       policy: AUTOSOLVE_POLICY,
+      initialDependencyFingerprint: transaction.initialDependencyFingerprint,
       scheduledAt: new Date().toISOString()
     };
     autoSolveTimer = root.setTimeout(() => {
@@ -1060,7 +1308,9 @@
     install,
     markStale,
     markCalculating,
+    markFailed,
     markCurrentFromBackend,
+    currentCalculationTransaction,
     requestAutoSolve,
     flushAutoSolve,
     cancelAutoSolve,

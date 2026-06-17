@@ -158,3 +158,96 @@ test('calculation progress overlay uses task-specific text and shows error fallb
   await expect(overlay).toContainText('Backend timeout during test');
   await expect(overlay).toContainText('Last valid result is still shown.');
 });
+
+test('calculation lifecycle locks Validate command until a final state is reached', async ({ page }) => {
+  await gotoWithProgressOverlay(page);
+
+  const snapshot = await page.evaluate(() => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.id = 'btn-solve';
+    const label = document.createElement('span');
+    label.className = 'ribbon-label';
+    label.textContent = 'Validate';
+    button.appendChild(label);
+    document.body.appendChild(button);
+
+    document.dispatchEvent(new CustomEvent('npsh:realtime-autosolve-scheduled', {
+      detail: {
+        nodeId: 'PUMP-100',
+        delayMs: 240,
+        reason: 'Input changed; waiting for protected backend recalculation.'
+      }
+    }));
+    const waiting = {
+      disabled: button.disabled,
+      ariaBusy: button.getAttribute('aria-busy'),
+      busy: button.dataset.calculationBusy,
+      label: label.textContent
+    };
+
+    document.dispatchEvent(new CustomEvent('npsh:calculation-current', {
+      detail: {
+        nodeId: 'PUMP-100',
+        calculationId: 'calculation-final-state-current'
+      }
+    }));
+    const current = {
+      disabled: button.disabled,
+      ariaBusy: button.getAttribute('aria-busy'),
+      busy: button.dataset.calculationBusy,
+      label: label.textContent
+    };
+
+    window.EngineeringCalculationLifecycle.markCalculationActivity('trusted-input', {
+      calculationMode: 'realtime-input',
+      nodeId: 'PUMP-100'
+    });
+    document.dispatchEvent(new CustomEvent('npsh:calculation-calculating', {
+      detail: {
+        nodeId: 'PUMP-100',
+        reason: 'Backend recalculation in progress.'
+      }
+    }));
+    const calculating = {
+      disabled: button.disabled,
+      ariaBusy: button.getAttribute('aria-busy'),
+      busy: button.dataset.calculationBusy,
+      label: label.textContent
+    };
+
+    document.dispatchEvent(new CustomEvent('npsh:calculation-failed', {
+      detail: {
+        nodeId: 'PUMP-100',
+        message: 'Backend timeout during final-state lock test'
+      }
+    }));
+    const failed = {
+      disabled: button.disabled,
+      ariaBusy: button.getAttribute('aria-busy'),
+      busy: button.dataset.calculationBusy,
+      label: label.textContent
+    };
+
+    button.remove();
+    return { waiting, current, calculating, failed };
+  });
+
+  expect(snapshot.waiting.disabled).toBe(true);
+  expect(snapshot.waiting.ariaBusy).toBe('true');
+  expect(snapshot.waiting.busy).toBe('true');
+  expect(snapshot.waiting.label).toBe('Preparing...');
+
+  expect(snapshot.current.disabled).toBe(false);
+  expect(snapshot.current.ariaBusy).toBe('false');
+  expect(snapshot.current.busy).toBe('false');
+  expect(snapshot.current.label).toBe('Validate');
+
+  expect(snapshot.calculating.disabled).toBe(true);
+  expect(snapshot.calculating.label).toBe('Calculating...');
+
+  expect(snapshot.failed.disabled).toBe(false);
+  expect(snapshot.failed.ariaBusy).toBe('false');
+  expect(snapshot.failed.busy).toBe('false');
+  expect(snapshot.failed.label).toBe('Validate');
+});

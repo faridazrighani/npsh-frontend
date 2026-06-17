@@ -39,17 +39,17 @@ assert.strictEqual(
 
 assert(
   indexHtml.includes('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
-    && indexHtml.includes('engineering-realtime-calculation-defense.js?v=20260617-realtime-first1')
-    && indexHtml.includes('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-realtime1')
+    && indexHtml.includes('engineering-realtime-calculation-defense.js?v=20260617-realtime-final-state1')
+    && indexHtml.includes('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-final-state1')
     && indexHtml.includes('engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-realtime1'),
   'index.html must load pump fast lane, realtime defense, lifecycle runtime, and progress overlay.'
 );
 assert(
   indexHtml.indexOf('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
-    < indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-first1')
-    && indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-first1')
-      < indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-realtime1')
-    && indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-realtime1')
+    < indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-final-state1')
+    && indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-final-state1')
+      < indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-final-state1')
+    && indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-final-state1')
       < indexHtml.indexOf('engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-realtime1'),
   'Pump fast lane, realtime defense, lifecycle runtime, and overlay runtime must be loaded in dependency order.'
 );

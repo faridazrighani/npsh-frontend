@@ -7,7 +7,7 @@
   'use strict';
 
   const VERSION = 'engineering-calculation-lifecycle.v1';
-  const CACHE_KEY = '20260617-calculation-lifecycle-realtime1';
+  const CACHE_KEY = '20260617-calculation-lifecycle-final-state1';
   const LIFECYCLE_EVENT = 'npsh:calculation-lifecycle';
   const RUN_COMMAND_SELECTOR = [
     '#btn-solve',
@@ -19,6 +19,12 @@
   const SAMPLE_CASE_OPEN_SELECTOR = '[data-simulation-case-action="open"][data-simulation-case-id]';
   const SAMPLE_CASE_BROWSE_SELECTOR = '.simulation-case-menu-item:not(.simulation-case-menu-item-disabled), [data-simulation-case-id]:not([data-simulation-case-action])';
   const USER_CALCULATION_INTENT_SELECTOR = `${RUN_COMMAND_SELECTOR}, ${SAMPLE_CASE_OPEN_SELECTOR}, ${SAMPLE_CASE_BROWSE_SELECTOR}`;
+  const BUSY_STATUSES = new Set([
+    'waiting-debounce',
+    'calculating',
+    'applying-results',
+    'refreshing-evidence'
+  ]);
 
   let installed = false;
   let sequence = 0;
@@ -107,6 +113,63 @@
     }
   }
 
+  function isBusyStatus(status, detail = {}) {
+    const normalized = String(status || '');
+    if (normalized === 'preparing') {
+      return ['manual-solve', 'sample-open'].includes(detail.calculationMode || currentState.calculationMode || '');
+    }
+    return BUSY_STATUSES.has(normalized);
+  }
+
+  function runCommandElements() {
+    if (!hasDocument()) return [];
+    try {
+      return Array.from(document.querySelectorAll(RUN_COMMAND_SELECTOR));
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function commandLabelElement(element) {
+    return element?.querySelector?.('.ribbon-label, [data-command-label], .menu-item-label') || null;
+  }
+
+  function busyLabelForStatus(status) {
+    if (status === 'refreshing-evidence') return 'Refreshing...';
+    if (status === 'waiting-debounce' || status === 'preparing') return 'Preparing...';
+    return 'Calculating...';
+  }
+
+  function setRunCommandBusy(isBusy, detail = {}) {
+    const busy = !!isBusy;
+    const state = {
+      version: VERSION,
+      busy,
+      status: detail.status || currentState.status,
+      task: detail.task || currentState.task,
+      updatedAt: new Date().toISOString()
+    };
+    root.__engineeringCalculationLifecycleCommandBusy = state;
+    runCommandElements().forEach((element) => {
+      if (!element || typeof element !== 'object') return;
+      const label = commandLabelElement(element);
+      if (label && !element.dataset.calculationLifecycleOriginalLabel) {
+        element.dataset.calculationLifecycleOriginalLabel = label.textContent || '';
+      }
+      element.toggleAttribute?.('disabled', busy);
+      if ('disabled' in element) element.disabled = busy;
+      element.setAttribute?.('aria-busy', busy ? 'true' : 'false');
+      element.setAttribute?.('aria-disabled', busy ? 'true' : 'false');
+      element.dataset.calculationBusy = busy ? 'true' : 'false';
+      if (label) {
+        label.textContent = busy
+          ? busyLabelForStatus(state.status)
+          : (element.dataset.calculationLifecycleOriginalLabel || label.textContent || '');
+      }
+    });
+    return state;
+  }
+
   function publish(status, detail = {}, overrides = {}) {
     const base = statusDefaults(status);
     const ids = normalizeNodeIds(detail);
@@ -130,6 +193,7 @@
       updatedAt: new Date().toISOString()
     };
     root.__engineeringCalculationLifecycleState = currentState;
+    setRunCommandBusy(isBusyStatus(status, currentState), currentState);
     if (hasDocument() && typeof root.CustomEvent === 'function') {
       try {
         document.dispatchEvent(new root.CustomEvent(LIFECYCLE_EVENT, { detail: currentState }));
@@ -287,6 +351,7 @@
     document.addEventListener('npsh:linked-views-refreshed', handleRefreshing);
     document.addEventListener('npsh:calculation-current', handleCurrent);
     document.addEventListener('npsh:realtime-autosolve-complete', handleCurrent);
+    document.addEventListener('npsh:calculation-failed', handleFailed);
     document.addEventListener('npsh:realtime-autosolve-error', handleFailed);
     return true;
   }
@@ -302,6 +367,7 @@
     document.removeEventListener('npsh:linked-views-refreshed', handleRefreshing);
     document.removeEventListener('npsh:calculation-current', handleCurrent);
     document.removeEventListener('npsh:realtime-autosolve-complete', handleCurrent);
+    document.removeEventListener('npsh:calculation-failed', handleFailed);
     document.removeEventListener('npsh:realtime-autosolve-error', handleFailed);
     installed = false;
     return true;
@@ -316,6 +382,8 @@
     install,
     uninstall,
     statusDefaults,
+    isBusyStatus,
+    setRunCommandBusy,
     markCalculationActivity,
     hasRecentCalculationActivity,
     currentCalculationMode

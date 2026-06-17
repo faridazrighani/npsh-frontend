@@ -133,6 +133,8 @@ assert.equal(typeof runtime.isInputLatencyShieldActive, 'function', 'Realtime de
 assert.equal(typeof runtime.buildPipeSegmentRows, 'function', 'Realtime defense runtime should expose canonical pipe segment row builder.');
 assert.equal(typeof runtime.publishCanonicalCalculationState, 'function', 'Realtime defense runtime should expose canonical calculation state publisher.');
 assert.equal(typeof runtime.scheduleLinkedViewRefresh, 'function', 'Realtime defense runtime should expose frame-batched linked view refresh.');
+assert.equal(typeof runtime.currentCalculationTransaction, 'function', 'Realtime defense runtime should expose current calculation transaction.');
+assert.equal(typeof runtime.markFailed, 'function', 'Realtime defense runtime should expose backend failure state marker.');
 
 const realtimeSource = fs.readFileSync(runtimePath, 'utf8');
 assert(
@@ -145,6 +147,11 @@ assert(realtimeSource.includes('realtime-autosolve-first'), 'Realtime defense mu
 assert(realtimeSource.includes('validate-refresh-evidence'), 'Realtime defense must document the manual command as validation/evidence refresh.');
 assert(realtimeSource.includes('npsh:realtime-autosolve-superseded'), 'Realtime defense must emit a superseded event for stale autosolve results.');
 assert(realtimeSource.includes('__engineeringRealtimeAutoSolveSequence'), 'Realtime autosolve calls must carry a sequence guard.');
+assert(realtimeSource.includes('__engineeringRealtimeRequestId'), 'Realtime autosolve calls must carry a request id guard.');
+assert(realtimeSource.includes('__engineeringCalculationTransaction'), 'Realtime defense must publish calculation transaction state.');
+assert(realtimeSource.includes('initialDependencyFingerprint'), 'Realtime transaction must record the initial dependency fingerprint.');
+assert(realtimeSource.includes('finalDependencyFingerprint'), 'Realtime transaction must record the final dependency fingerprint.');
+assert(realtimeSource.includes('markFailed'), 'Realtime defense must expose a Failed state for backend failures.');
 assert(realtimeSource.includes('USER_CALCULATION_INTENT_SELECTOR'), 'Realtime defense must distinguish user calculation intent from sample-menu browsing.');
 assert(realtimeSource.includes('SAMPLE_CASE_OPEN_SELECTOR'), 'Realtime defense must treat only Open Sample Case clicks as sample calculation intent.');
 assert(realtimeSource.includes('calculationMode'), 'Realtime defense must share calculation mode with lifecycle and overlay runtimes.');
@@ -225,6 +232,12 @@ assert.equal(results.calculationFreshness, 'Calculating', 'Pump results should b
 assert.equal(results.backendValidationStatus, 'Calculating', 'Backend validation status should show calculating while the request is pending.');
 assert.equal(results.routeTrace.lossFreshness, 'Calculating - backend refresh in progress', 'Route trace freshness should show pending backend refresh.');
 
+const failed = runtime.markFailed('P-100', 'Unit backend timeout.');
+assert.equal(failed.status, 'Failed', 'markFailed should expose backend refresh failure.');
+assert.equal(results.calculationFreshness, 'Failed', 'Pump results should be marked failed after backend refresh failure.');
+assert.equal(results.backendValidationStatus, 'Failed', 'Backend validation status should show failed after backend refresh failure.');
+assert.equal(results.routeTrace.lossFreshness, 'Failed - backend refresh did not complete', 'Route trace freshness should show failed backend refresh.');
+
 globalThis.__engineeringCalculationDefenseRealtimeState = { status: 'BeforeBackendNoIntent' };
 globalThis.runBackendSimulationShadow('P-100');
 assert.equal(backendRefreshes, 1, 'Wrapped backend refresh should still call the original backend runner.');
@@ -261,7 +274,13 @@ assert.equal(globalThis.__engineeringCalculationDefenseRealtimeState.calculation
 assert.equal(globalThis.__engineeringCalculationDefenseRealtimeState.dependencyFingerprint, 'dep-2', 'Wrapped backend apply should retain dependency fingerprint.');
 assert.equal(globalThis.__engineeringCalculationDefenseRealtimeState.calculationDefenseStatus, 'Ready', 'Wrapped backend apply should retain calculation defense status.');
 
-runtime.requestAutoSolve('P-100', 'Autosolve unit test.', { delayMs: 0 });
+const pendingAutoSolve = runtime.requestAutoSolve('P-100', 'Autosolve unit test.', { delayMs: 0 });
+assert.match(pendingAutoSolve.requestId, /^rt-/, 'Autosolve should allocate a transaction request id.');
+assert.equal(
+  runtime.currentCalculationTransaction()?.requestId,
+  pendingAutoSolve.requestId,
+  'Autosolve should publish the active transaction before backend execution.'
+);
 runtime.flushAutoSolve().then(async () => {
   await new Promise((resolve) => setTimeout(resolve, 430));
   const autoCall = updateSimulationCalls.find((call) => call.__engineeringRealtimeAutoSolve);
@@ -269,22 +288,24 @@ runtime.flushAutoSolve().then(async () => {
   assert.equal(autoCall.forceBackend, true, 'Autosolve should force the protected backend refresh.');
   assert.equal(autoCall.renderSidebarAfter, true, 'Autosolve should allow linked object windows to refresh after solving.');
   assert.equal(autoCall.__engineeringRealtimeAutoSolveSequence, 1, 'Autosolve should pass its sequence into updateSimulation options.');
+  assert.equal(autoCall.__engineeringRealtimeRequestId, pendingAutoSolve.requestId, 'Autosolve should pass request id into updateSimulation options.');
+  assert.equal(runtime.currentCalculationTransaction()?.finalState, 'Current', 'Autosolve should close its transaction as Current after backend completion.');
   assert.equal(reportRefreshes > 0, true, 'Autosolve should refresh live Analysis Report cells.');
   assert.equal(parameterRefreshes > 0, true, 'Autosolve should refresh open Parameter Task windows.');
 
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(
-  index.includes('engineering-realtime-calculation-defense.js?v=20260617-realtime-first1'),
+  index.includes('engineering-realtime-calculation-defense.js?v=20260617-realtime-final-state1'),
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
   index.indexOf('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
-    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-first1'),
+    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-final-state1'),
   'Pump edit fast lane must load before realtime calculation defense.'
 );
 assert(
-  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260617-realtime-first1'),
+  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260617-realtime-final-state1'),
   'Manifest must document the realtime calculation defense cache key.'
 );
 assert(

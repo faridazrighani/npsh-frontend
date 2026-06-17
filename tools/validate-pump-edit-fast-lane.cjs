@@ -205,7 +205,7 @@ const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(realtimeSource.includes('EngineeringPumpEditFastLane'), 'Realtime defense must delegate pump edits to the fast lane.');
 assert(
   index.indexOf('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
-    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-first1'),
+    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-final-state1'),
   'Fast lane runtime must load before realtime defense.'
 );
 assert(manifest.includes('Pump edit fast lane cache key: engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2'), 'Manifest must document Pump edit fast lane cache key.');
