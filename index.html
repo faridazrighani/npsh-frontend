@@ -281,7 +281,6 @@
     </script>
     <!-- SEO_METADATA_END -->
     <noscript><link rel="stylesheet" href="style.min.css?v=20260608-browser-issues1"></noscript>
-    <link rel="stylesheet" href="vendor/katex/katex.min.css?v=20260613-formula-defense-ui15">
     <link rel="stylesheet" href="engineering-live-parameter-repaint-lock.css?v=20260605-live-param-repaint-lock1">
     <style data-critical-about>
         :root{--bg-canvas:#f4f7f9;--grid-line:#dce4eb;--panel-bg:#fff;--border-color:#e0e0e0;--ribbon-bg:#f9f9f9;--ribbon-hover:#e6f0fa;--ribbon-active-border:#b3d4f5;--text-main:#333;--font-main:'Segoe UI',system-ui,-apple-system,sans-serif}
@@ -300,7 +299,7 @@
         .basis-status-pill{flex:0 1 210px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;max-width:210px;min-width:150px;padding:5px 8px;border:1px solid #f2c94c;border-radius:6px;background:#fff8dc;color:#17395a;cursor:pointer;font-size:11px;line-height:1.2;text-align:left}.basis-status-pill span,.academic-copy span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .toolbar-palette{display:flex;align-items:stretch;gap:6px;overflow-x:visible;padding-bottom:2px;min-height:54px;min-width:0;flex:0 0 auto;position:relative;z-index:3}.toolbar-group{flex:0 0 auto;display:flex;flex-direction:column;gap:2px;padding:0 3px;border-right:1px solid var(--border-color)}.toolbar-group-title{color:#334155;font-size:9.5px;font-weight:700;text-align:center;line-height:1}.toolbar-tools{display:flex;gap:3px}.toolbar-tool{width:46px;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:3px;border:1px solid transparent;border-radius:4px;background:transparent;color:#333;cursor:grab;font-size:9.5px}.toolbar-tool-icon{width:23px;height:20px;object-fit:contain;display:block}.toolbar-tool span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .academic-identity{flex:1 1 clamp(520px,46vw,760px);min-width:500px;max-width:760px;margin-left:clamp(8px,1vw,16px);display:flex;align-items:center;justify-content:flex-start;gap:10px;min-height:68px;padding:5px 8px 5px 4px;overflow:hidden;color:#5c1b0f;pointer-events:none}.academic-identity *{pointer-events:none}.academic-logo{width:50px;height:50px;flex:0 0 50px;object-fit:contain}.academic-copy{min-width:0;flex:1 1 auto;max-width:100%;display:flex;flex-direction:column;line-height:1.22}.academic-university{color:#b74716;font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.academic-thesis{color:#6f2b1d;font-size:9px;font-weight:600;line-height:1.18}.academic-author{color:#4c1d14;font-size:9.2px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.academic-compact-identity,.toolbar-object-menu-container{display:none}.academic-compact-identity,.academic-compact-identity *{pointer-events:none}.academic-solve-divider{flex:0 0 1px;margin-left:auto;margin-right:4px}.solve-ribbon-btn{border:1px solid #c3e6cb;background:#d4edda}.solve-mobile-logo{display:none}
-        .main-workspace{display:flex;flex:1;overflow:hidden;min-height:0;min-width:0}.pfd-canvas{flex:1;position:relative;background-color:var(--bg-canvas);background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);background-size:20px 20px;overflow:auto;min-width:0;min-height:0}.pfd-canvas::after{content:"";display:block;width:max(100%,1200px);height:max(100%,760px);pointer-events:none}.pfd-lines{position:absolute;top:0;left:0;width:max(100%,1200px);height:max(100%,760px);pointer-events:none}.canvas-status-legend{position:absolute;top:12px;right:12px;z-index:70;width:142px;padding:8px 10px;border:1px solid rgba(148,163,184,.5);border-radius:6px;background:rgba(255,255,255,.94);box-shadow:0 4px 12px rgba(15,23,42,.12);pointer-events:none}.canvas-overlay-title{margin-bottom:5px;color:#334155;font-size:11px;font-weight:700}.canvas-legend-row{display:flex;align-items:center;gap:7px;min-height:18px;color:#334155;font-size:11px}.status-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%}.status-safe{background:#16a34a}.status-warning{background:#f97316}.status-risk{background:#dc2626}.status-incomplete{background:#94a3b8}.canvas-warning-panel,.canvas-connect-hint,.tablet-landscape-notice,.full-editor-modal{display:none}
+        .main-workspace{display:flex;flex:1;overflow:hidden;min-height:0;min-width:0}.pfd-canvas{flex:1;position:relative;background-color:var(--bg-canvas);background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);background-size:20px 20px;overflow:auto;min-width:0;min-height:0}.pfd-canvas::after{content:"";display:block;width:max(100%,1200px);height:max(100%,760px);pointer-events:none}.pfd-lines{position:absolute;top:0;left:0;width:max(100%,1200px);height:max(100%,760px);pointer-events:none}.canvas-status-legend{position:absolute;top:12px;right:12px;z-index:70;width:142px;padding:8px 10px;border:1px solid rgba(148,163,184,.5);border-radius:6px;background:rgba(255,255,255,.94);box-shadow:0 4px 12px rgba(15,23,42,.12);pointer-events:none}.canvas-overlay-title{margin-bottom:5px;color:#334155;font-size:11px;font-weight:700}.canvas-legend-row{display:flex;align-items:center;gap:7px;min-height:18px;color:#334155;font-size:11px}.status-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%}.status-safe{background:#16a34a}.status-warning{background:#f97316}.status-risk{background:#dc2626}.status-incomplete{background:#94a3b8}.canvas-warning-panel,.canvas-connect-hint,.tablet-landscape-notice,.full-editor-modal{display:none}.canvas-warning-panel[hidden],.canvas-warning-panel:not(.has-warnings){display:none!important}
         .about-modal{position:fixed;inset:0;z-index:3200;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(15,23,42,.42)}
         .about-modal[hidden]{display:none!important}
         .about-window{width:min(620px,100%);max-height:min(680px,calc(100dvh - 36px));overflow:hidden;border:1px solid rgba(148,163,184,.5);border-radius:8px;background:#fff;box-shadow:0 20px 48px rgba(15,23,42,.26)}
@@ -330,7 +329,10 @@
         .fluid-basis-apply-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-top:1px solid #e2e8f0;color:#475569;font-size:12px}
         .fluid-basis-apply-bar span{min-width:0;line-height:1.25}
         .fluid-basis-apply-btn{flex:0 0 auto;padding:7px 12px;border:1px solid #1c4568;border-radius:5px;background:#1c4568;color:#fff;cursor:pointer;font-weight:700}
-        @media (max-width:639px){.task-window.task-window-mobile-sheet:not(.task-window-minimized){left:8px!important;right:8px!important;top:auto!important;bottom:8px!important;width:calc(100vw - 16px)!important;max-width:calc(100vw - 16px)!important;height:min(86dvh,calc(100dvh - 16px))!important;max-height:calc(100dvh - 16px)!important;border-radius:10px;transform:none!important}.task-window-body{padding:7px}.task-window-header{min-height:36px;padding:5px 8px 5px 10px}.task-window-title,.task-window-header span{font-size:12px}.task-window-close,.task-window-minimize{width:32px;height:32px}.academic-identity{min-width:180px;flex-basis:180px}.toolbar-palette{display:none}.basis-status-pill{display:none}.ribbon{min-height:64px}}
+        @media (max-width:820px){.ribbon{flex-wrap:wrap;align-content:flex-start;overflow-x:hidden;overflow-y:hidden}.basis-status-pill{flex-basis:100px;min-width:100px;max-width:100px}.basis-compact-status{flex-basis:118px;min-width:104px;max-width:118px}.academic-identity,.academic-solve-divider{display:none}.academic-compact-identity{order:10;flex:1 1 260px;min-width:220px;max-width:min(440px,calc(100% - 136px));display:flex;flex-direction:column;justify-content:center;align-self:center;min-height:50px;margin-left:4px;padding:4px 8px;border-left:1px solid #e2e8f0;font-size:clamp(10px,1.4vw,11px);font-weight:700;letter-spacing:0}.toolbar-palette{order:20;display:flex;min-height:50px;flex:1 0 100%;min-width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;padding-inline:2px 20px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;-webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 18px),transparent 100%);mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 18px),transparent 100%)}.toolbar-group{scroll-snap-align:start}}
+        @media (max-width:720px){.basis-status-pill,.basis-compact-status{display:none}.main-workspace{flex-direction:column;flex:1 1 auto;min-height:0}.canvas-status-legend{display:none}.pfd-canvas{flex:1 1 280px;min-height:220px}}
+        @media (max-width:640px){.menu-bar{font-size:12px;gap:12px;padding:5px 8px;min-height:32px}.language-switcher{gap:2px;margin-right:0;padding-right:2px}.language-switcher-btn{width:34px;height:24px;gap:0}.language-switcher-code{display:none}.ribbon{flex-wrap:wrap;align-content:flex-start;gap:4px;min-height:112px;padding-left:4px;padding-right:4px;overflow-x:hidden;overflow-y:hidden}.ribbon-divider{display:none}.ribbon-btn{min-width:52px;padding:5px 8px}.solve-ribbon-btn .ribbon-icon svg{display:none}.solve-ribbon-btn .solve-mobile-logo{display:block}.solve-ribbon-btn .ribbon-icon{width:30px;height:30px}.toolbar-group{padding:0 2px;gap:1px;scroll-snap-align:start}.toolbar-tools{gap:2px}.toolbar-group-title{font-size:8px}.toolbar-tool{width:44px;min-height:44px;padding:2px;font-size:8.5px}.toolbar-tool-icon{width:20px;height:18px}.academic-compact-identity{flex-basis:238px;min-width:214px;max-width:min(252px,calc(100% - 120px));min-height:48px;padding:3px 6px;font-size:clamp(9px,2.45vw,9.8px);line-height:1.13}.pfd-canvas{flex-basis:260px;min-height:200px;background-size:16px 16px}.canvas-warning-panel{top:8px;left:8px;right:auto;width:min(260px,calc(100% - 16px));min-width:min(220px,calc(100% - 16px));max-width:calc(100% - 16px);max-height:170px}}
+        @media (max-width:639px){.task-window.task-window-mobile-sheet:not(.task-window-minimized){left:8px!important;right:8px!important;top:auto!important;bottom:8px!important;width:calc(100vw - 16px)!important;max-width:calc(100vw - 16px)!important;height:min(86dvh,calc(100dvh - 16px))!important;max-height:calc(100dvh - 16px)!important;border-radius:10px;transform:none!important}.task-window-body{padding:7px}.task-window-header{min-height:36px;padding:5px 8px 5px 10px}.task-window-title,.task-window-header span{font-size:12px}.task-window-close,.task-window-minimize{width:32px;height:32px}}
         @media (min-width:768px) and (orientation:landscape){.ribbon{overflow-x:auto}.toolbar-palette{flex:0 0 auto;max-width:none;overflow:visible;padding-inline:0;scroll-snap-type:none;-webkit-mask-image:none;mask-image:none}.toolbar-group{scroll-snap-align:none}}
     </style>
 </head>
@@ -687,6 +689,44 @@
   let corePromise = null;
   let supportPromise = null;
   let stylePromise = null;
+  const criticalScripts = [
+    'app.bundle.min.js?v=20260608-global-ribbon-placement-lock5',
+    'engineering-canvas-context-dock.js?v=20260619-mobile-performance-overlay1'
+  ];
+  const realtimeScripts = [
+    'engineering-src-canvas-parameter-runtime.js?v=20260615-src-flow-basis3',
+    'engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2',
+    'engineering-performance-refresh-governor.js?v=20260614-refresh-governor4',
+    'engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2',
+    'engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1',
+    'engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1',
+    'engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1'
+  ];
+  const featureScripts = [
+    'engineering-source-temperature-runtime.js?v=20260601-src-fluid-link1',
+    'engineering-parameter-task-runtime.js?v=20260611-parameter-blocks3',
+    'engineering-local-trace-fallback-runtime.js?v=20260611-local-trace3',
+    'engineering-pipe-canvas-hydraulic-label-runtime.js?v=20260611-pipe-canvas-hydraulic-label4',
+    'engineering-pipe-source-confidence-map-runtime.js?v=20260611-pipe-source-confidence-map1',
+    'engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5',
+    'engineering-bilingual-improvements.js?v=20260617-bilingual-realtime-first2',
+    'engineering-browser-issues-runtime.js?v=20260608-browser-issues1',
+    'engineering-pipe-segments-file-runtime.js?v=20260608-pipe-segments-file1',
+    'engineering-analysis-report-live-runtime.js?v=20260616-analysis-report-snk-flow-demand1',
+    'engineering-literature-pdf-viewer.js?v=20260609-literature-access3',
+    'engineering-src-algorithm-help-runtime.js?v=20260616-src-algorithm-help1',
+    'engineering-formula-defense-ui.js?v=20260613-formula-defense-ui15'
+  ];
+  const diagnosticScripts = [
+    'engineering-library-governance.js?v=20260530-pagespeed3',
+    'engineering-caption-audit-overrides.js?v=20260606-route-schema1',
+    'engineering-route-trace-audit.js?v=20260616-snk-outlet-feasibility1',
+    'engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3',
+    'engineering-defense-export-package.js?v=20260603-defensev3',
+    'engineering-pipe-moody-chart-audit.js?v=20260607-pipe-moody-audit2',
+    'engineering-pump-formula-defense-live-audit.js?v=20260614-pump-defense-live18',
+    'engineering-pump-performance-chart-audit.js?v=20260614-pump-chart-audit21'
+  ];
   const taskWindow = document.getElementById('taskWindow');
   const syncInitialTaskSheet = () => taskWindow?.classList.toggle('task-window-mobile-sheet', window.matchMedia('(max-width: 639px)').matches);
   syncInitialTaskSheet();
@@ -702,13 +742,41 @@
     document.head.appendChild(link);
   }));
   const addScript = src => new Promise((resolve, reject) => {
+    const existing = Array.from(document.scripts).find(script => String(script.getAttribute('src') || '') === src);
+    if (existing) {
+      if (existing.dataset.npshLoaded === 'true') return resolve();
+      existing.addEventListener('load', resolve, { once: true });
+      existing.addEventListener('error', reject, { once: true });
+      return;
+    }
     const script = document.createElement('script');
     script.src = src;
     script.async = false;
-    script.onload = resolve;
+    script.dataset.npshDeferredScript = 'true';
+    script.onload = () => {
+      script.dataset.npshLoaded = 'true';
+      resolve();
+    };
     script.onerror = reject;
     document.body.appendChild(script);
   });
+  const afterIdle = (task, timeout = 900) => new Promise((resolve, reject) => {
+    const run = () => {
+      try {
+        resolve(task());
+      } catch (error) {
+        reject(error);
+      }
+    };
+    if (window.requestIdleCallback) {
+      window.requestIdleCallback(run, { timeout });
+      return;
+    }
+    window.setTimeout(run, Math.min(timeout, 1000));
+  });
+  const loadScripts = (scripts, options = {}) => scripts.reduce((promise, src) => promise.then(() => (
+    options.idle ? afterIdle(() => addScript(src), options.timeout || 900) : addScript(src)
+  )), Promise.resolve());
   const fireReady = () => {
     try {
       document.dispatchEvent(new Event('DOMContentLoaded', { bubbles: true, cancelable: true }));
@@ -716,38 +784,28 @@
       console.warn('Deferred app ready dispatch failed.', error);
     }
   };
-  const loadCore = () => corePromise || (corePromise = addScript('app.bundle.min.js?v=20260608-global-ribbon-placement-lock5')
-    .then(() => addScript('engineering-canvas-context-dock.js?v=20260618-current-prior-stale1'))
-    .then(() => addScript('engineering-source-temperature-runtime.js?v=20260601-src-fluid-link1'))
+  const loadCore = () => corePromise || (corePromise = loadScripts(criticalScripts)
     .then(() => {
       document.readyState !== 'loading' && fireReady();
-      return addScript('engineering-bilingual-improvements.js?v=20260617-bilingual-realtime-first2');
     })
-    .then(() => addScript('engineering-browser-issues-runtime.js?v=20260608-browser-issues1'))
-    .then(() => addScript('engineering-pipe-segments-file-runtime.js?v=20260608-pipe-segments-file1'))
-    .then(() => addScript('engineering-formula-defense-ui.js?v=20260613-formula-defense-ui15')));
+    .then(() => loadScripts(realtimeScripts, { idle: true, timeout: 900 })));
   const loadSupport = () => supportPromise || (supportPromise = loadCore()
-    .then(() => addScript('engineering-library-governance.js?v=20260530-pagespeed3'))
-    .then(() => addScript('engineering-caption-audit-overrides.js?v=20260606-route-schema1'))
-    .then(() => addScript('engineering-route-trace-audit.js?v=20260616-snk-outlet-feasibility1'))
-    .then(() => addScript('engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3'))
-    .then(() => addScript('engineering-performance-refresh-governor.js?v=20260614-refresh-governor4'))
-    .then(() => addScript('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2'))
-    .then(() => addScript('engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1'))
-    .then(() => addScript('engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1'))
-    .then(() => addScript('engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1'))
+    .then(() => loadScripts(featureScripts, { idle: true, timeout: 2000 }))
     .then(() => {
       window.EngineeringFormulaDefenseUI?.install?.({ force: true });
       return Promise.resolve();
     })
-    .then(() => addScript('engineering-defense-export-package.js?v=20260603-defensev3'))
-    .then(() => addScript('engineering-pipe-moody-chart-audit.js?v=20260607-pipe-moody-audit2'))
-    .then(() => addScript('engineering-pump-formula-defense-live-audit.js?v=20260614-pump-defense-live18'))
-    .then(() => addScript('engineering-pump-performance-chart-audit.js?v=20260614-pump-chart-audit21'))
+    .then(() => loadScripts(diagnosticScripts, { idle: true, timeout: 1800 }))
     .catch(error => console.warn('Deferred diagnostics did not load.', error)));
   const beginInteraction = () => {
     ensureStyles().catch(error => console.warn('Deferred stylesheet did not load.', error));
-    loadCore().then(() => window.setTimeout(loadSupport, 1200)).catch(error => console.warn('Deferred app did not load.', error));
+    loadCore()
+      .then(() => window.setTimeout(loadSupport, 12000))
+      .catch(error => console.warn('Deferred app did not load.', error));
+  };
+  const beginFeatureInteraction = () => {
+    ensureStyles().catch(error => console.warn('Deferred stylesheet did not load.', error));
+    loadSupport().catch(error => console.warn('Deferred support did not load.', error));
   };
   window.__npshAboutDismissed = true;
   const guardAboutClosePointer = () => {
@@ -793,6 +851,9 @@
     event.key === 'Escape' && closeAbout(event);
     beginInteraction();
   }, { once: true });
+  ['#menu-help', '#menu-library', '#menu-tools', '#canvas', '#taskWindow'].forEach(selector => {
+    document.querySelector(selector)?.addEventListener('click', beginFeatureInteraction, { once: true, passive: true });
+  });
   const scheduleInitialAppLoad = () => {
     if (window.requestIdleCallback) {
       window.requestIdleCallback(() => beginInteraction(), { timeout: 1200 });
@@ -803,15 +864,5 @@
   scheduleInitialAppLoad();
 })();
     </script>
-    <script src="engineering-src-canvas-parameter-runtime.js?v=20260615-src-flow-basis3"></script>
-    <script src="engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2"></script>
-    <script src="engineering-parameter-task-runtime.js?v=20260611-parameter-blocks3"></script>
-    <script src="engineering-local-trace-fallback-runtime.js?v=20260611-local-trace3"></script>
-    <script src="engineering-pipe-canvas-hydraulic-label-runtime.js?v=20260611-pipe-canvas-hydraulic-label4"></script>
-    <script src="engineering-pipe-source-confidence-map-runtime.js?v=20260611-pipe-source-confidence-map1"></script>
-    <script src="engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5"></script>
-    <script src="engineering-analysis-report-live-runtime.js?v=20260616-analysis-report-snk-flow-demand1"></script>
-    <script src="engineering-literature-pdf-viewer.js?v=20260609-literature-access3"></script>
-    <script src="engineering-src-algorithm-help-runtime.js?v=20260616-src-algorithm-help1"></script>
 </body>
 </html>

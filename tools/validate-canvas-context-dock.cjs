@@ -12,7 +12,7 @@ const manifestPath = path.join(rootDir, 'FILE_MANIFEST.md');
 const runtime = require(runtimePath);
 
 assert.equal(runtime.version, 'engineering-canvas-context-dock.v2', 'Canvas context dock runtime should expose v2.');
-assert.equal(runtime.cacheKey, '20260618-current-prior-stale1', 'Canvas context dock cache key should stay locked.');
+assert.equal(runtime.cacheKey, '20260619-mobile-performance-overlay1', 'Canvas context dock cache key should stay locked.');
 assert.equal(typeof runtime.buildDockState, 'function', 'Canvas context dock should expose buildDockState for audit tests.');
 assert.equal(typeof runtime.allowCanvasPropertiesCommandOpen, 'function', 'Canvas context dock should expose the explicit command-open hook for object properties.');
 assert.equal(typeof runtime.clearCanvasSelectionOnly, 'function', 'Canvas context dock should expose the explicit clear hook for canvas properties policy tests.');
@@ -249,7 +249,8 @@ const normalizeLineEndings = (source) => source.replace(/\r\n/g, '\n').replace(/
 const runtimeSource = normalizeLineEndings(fs.readFileSync(runtimePath, 'utf8'));
 const bundleSource = normalizeLineEndings(fs.readFileSync(bundlePath, 'utf8'));
 assert(runtimeSource.includes('@media (max-width: 639px)'), 'Runtime CSS must include a cellular breakpoint.');
-assert(runtimeSource.includes('position: sticky'), 'Fluid Basis dock should stay pinned to the canvas viewport while the canvas is panned.');
+assert(runtimeSource.includes('position: absolute'), 'Fluid Basis dock should overlay the canvas without contributing to layout shift.');
+assert(runtimeSource.includes('margin: 0;'), 'Fluid Basis dock should not push canvas content during startup.');
 assert(runtimeSource.includes('width: min(940px, calc(100% - 182px));'), 'Desktop dock width should preserve the existing left/right visual footprint.');
 assert(runtimeSource.includes('return false;\n  }\n\n  function getEffectiveExpandedState()'), 'Dock should default to collapsed on first load when no user preference is stored.');
 assert(runtimeSource.includes('if (isMobileViewport()) return false;'), 'Mobile viewports should force the dock into compact/collapsed mode.');
@@ -345,7 +346,7 @@ assert(
   'Index must load the core app bundle with the canvas properties policy cache key.'
 );
 assert(
-  index.includes('engineering-canvas-context-dock.js?v=20260618-current-prior-stale1'),
+  index.includes('engineering-canvas-context-dock.js?v=20260619-mobile-performance-overlay1'),
   'Index must load the canvas context dock runtime with cache key.'
 );
 assert(
@@ -368,7 +369,7 @@ assert(
   'Thesis branding must not intercept pointer events from toolbar placement tools.'
 );
 assert(
-  manifest.includes('Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260618-current-prior-stale1'),
+  manifest.includes('Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260619-mobile-performance-overlay1'),
   'Manifest must document the canvas context dock cache key.'
 );
 assert(

@@ -38,7 +38,8 @@ assert.strictEqual(
 );
 assert.strictEqual(packageJson.devDependencies?.katex, '^0.17.0', 'KaTeX must be tracked as a local dev dependency.');
 
-assert(indexHtml.includes('vendor/katex/katex.min.css?v=20260613-formula-defense-ui15'), 'index.html must cache-bust local KaTeX CSS.');
+assert(runtimeSource.includes("const KATEX_CSS = `vendor/katex/katex.min.css?v=${CACHE_KEY}`;"), 'Formula runtime must lazy-load cache-busted local KaTeX CSS.');
+assert(!indexHtml.includes('<link rel="stylesheet" href="vendor/katex/katex.min.css?v=20260613-formula-defense-ui15">'), 'KaTeX CSS must not be render-blocking on first load.');
 assert(indexHtml.includes('engineering-formula-defense-ui.js?v=20260613-formula-defense-ui15'), 'index.html must cache-bust Formula Defense UI runtime.');
 assert(fs.existsSync(KATEX_JS_FILE), 'Local KaTeX JS asset must be vendored for static deployment.');
 assert(fs.existsSync(KATEX_CSS_FILE), 'Local KaTeX CSS asset must be vendored for static deployment.');

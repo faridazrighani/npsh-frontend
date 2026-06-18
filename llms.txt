@@ -1,0 +1,27 @@
+# NPSH Pumping System Simulator
+
+> Protected browser-based engineering application for modeling a pumping system and evaluating centrifugal pump cavitation potential using NPSH analysis.
+
+This site is an interactive engineering simulator. Calculation results are produced by the same-origin protected API; the public frontend contains UI surfaces, evidence readouts, validators, and deployment metadata, not the private backend implementation. Agents should not infer final engineering conclusions from static HTML alone; use the visible current calculation readouts and exported evidence after user-provided inputs.
+
+## Primary Pages
+
+- [Application](https://npsh.virsim.id/): Main modeling workspace for Fluid Basis, SRC, suction Pipe/Fitting/Valve, Pump, discharge Pipe/Fitting/Valve, and SNK workflows.
+- [Sitemap](https://npsh.virsim.id/sitemap.xml): Canonical URL inventory.
+- [Robots](https://npsh.virsim.id/robots.txt): Crawling policy.
+
+## Public Metadata
+
+- [README](https://npsh.virsim.id/README.md): Static frontend deployment and runtime overview.
+- [File manifest](https://npsh.virsim.id/FILE_MANIFEST.md): Public static-file inventory, cache keys, validators, and no-mutation guardrails.
+- [Deployment notes](https://npsh.virsim.id/DEPLOYMENT.md): Cloudflare Pages deployment notes.
+
+## Notes For Agents
+
+- Preserve displayed engineering units, absolute/gauge pressure wording, NPSH status labels, and route order exactly.
+- Protected PDF literature and private backend API calls may require an approved Google session.
+- Realtime autosolve is the primary calculation path; the Validate control refreshes evidence and should not be treated as the calculation engine.
+
+## Optional
+
+- [SEO metadata](https://npsh.virsim.id/seo.metadata.json): Structured SEO metadata source.

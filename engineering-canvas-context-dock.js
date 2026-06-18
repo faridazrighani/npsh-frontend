@@ -10,7 +10,7 @@
   'use strict';
 
   const VERSION = 'engineering-canvas-context-dock.v2';
-  const CACHE_KEY = '20260618-current-prior-stale1';
+  const CACHE_KEY = '20260619-mobile-performance-overlay1';
   const DOCK_ID = 'canvasContextDock';
   const STYLE_ID = 'canvas-context-dock-style';
   const STORAGE_KEY = 'npsh.canvasContextDock.expanded';
@@ -539,11 +539,11 @@
     style.id = STYLE_ID;
     style.textContent = `
 .canvas-context-dock {
-  position: sticky;
+  position: absolute;
   top: 10px;
   left: 12px;
   width: min(940px, calc(100% - 182px));
-  margin: 10px 170px 0 12px;
+  margin: 0;
   z-index: 68;
   max-width: 940px;
   min-width: 260px;
@@ -727,7 +727,6 @@
 @media (max-width: 1040px) {
   .canvas-context-dock {
     width: calc(100% - 24px);
-    margin-right: 12px;
     max-width: none;
   }
   .context-dock-summary { grid-template-columns: repeat(4, minmax(62px, 1fr)); }
@@ -737,7 +736,7 @@
     top: 8px;
     left: 8px;
     width: calc(100% - 16px);
-    margin: 8px 8px 0;
+    margin: 0;
     min-width: 0;
     font-size: 10px;
   }

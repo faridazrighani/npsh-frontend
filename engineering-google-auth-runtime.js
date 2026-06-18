@@ -53,8 +53,8 @@
 .npsh-auth-control[data-state="pending"],.npsh-auth-control[data-state="error"]{color:#7a271a}
 .npsh-auth-google-button{display:flex;align-items:center;min-height:28px;overflow:hidden}
 .npsh-auth-user{max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid #bcd2e8;border-radius:4px;background:#fff;color:inherit;font-size:11px;font-weight:800;line-height:1;padding:7px 8px}
-.npsh-auth-logout{border:1px solid #c5d5e4;border-radius:4px;background:#fff;color:#123b5a;font-size:11px;font-weight:800;line-height:1;padding:7px 8px;cursor:pointer}
-.npsh-auth-logout:hover,.npsh-auth-logout:focus-visible{border-color:#1f6fa9;background:#e8f3ff;outline:none}
+.npsh-auth-signin,.npsh-auth-logout{border:1px solid #c5d5e4;border-radius:4px;background:#fff;color:#123b5a;font-size:11px;font-weight:800;line-height:1;padding:7px 8px;cursor:pointer}
+.npsh-auth-signin:hover,.npsh-auth-signin:focus-visible,.npsh-auth-logout:hover,.npsh-auth-logout:focus-visible{border-color:#1f6fa9;background:#e8f3ff;outline:none}
 .npsh-auth-status{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:800}
 @media (max-width:760px){.npsh-auth-control{order:99;flex:0 0 auto;margin-left:0;max-width:100%;padding-left:0}.npsh-auth-status{display:none}.npsh-auth-user{max-width:160px}}
 `;
@@ -180,6 +180,7 @@
     return {
       root: document.getElementById("npshAuthControl"),
       googleButton: document.getElementById("npshGoogleButton"),
+      signInButton: document.getElementById("npshAuthSignIn"),
       userButton: document.getElementById("npshAuthUser"),
       logoutButton: document.getElementById("npshAuthLogout"),
       status: document.getElementById("npshAuthStatus")
@@ -209,6 +210,7 @@
     const tone = state.approved ? "approved" : state.authenticated ? "pending" : state.message ? "error" : "ready";
     elements.root.dataset.state = tone;
     elements.googleButton.hidden = state.authenticated || state.loading;
+    if (elements.signInButton) elements.signInButton.hidden = state.authenticated || state.loading || elements.googleButton.dataset.rendered === "true";
     elements.userButton.hidden = !state.authenticated;
     elements.logoutButton.hidden = !state.authenticated;
     elements.userButton.textContent = state.user?.email || "Signed in";
@@ -219,8 +221,28 @@
         ? `Approved: ${state.user?.role || "user"}`
         : state.authenticated
           ? "Waiting approval"
-          : sanitizeStatusMessage(state.message) || "Login required for protected PDF";
+      : sanitizeStatusMessage(state.message) || "Login required for protected PDF";
     elements.status.title = elements.status.textContent;
+  }
+
+  function renderSignInFallback(button = document.getElementById("npshGoogleButton")) {
+    if (!button || button.dataset.rendered === "true") return;
+    button.dataset.rendered = "";
+    button.textContent = "";
+    const fallback = document.createElement("button");
+    fallback.type = "button";
+    fallback.id = "npshAuthSignIn";
+    fallback.className = "npsh-auth-signin";
+    fallback.textContent = "Sign in";
+    fallback.title = "Sign in with Google";
+    fallback.addEventListener("click", requestGoogleButton);
+    button.appendChild(fallback);
+  }
+
+  function requestGoogleButton(event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    renderGoogleButton();
   }
 
   function ensureControl() {
@@ -247,6 +269,7 @@
     observeControlHost(root);
 
     document.getElementById("npshAuthLogout")?.addEventListener("click", logout);
+    renderSignInFallback(document.getElementById("npshGoogleButton"));
     renderState();
     return root;
   }
@@ -421,6 +444,7 @@
       return;
     }
     try {
+      button.textContent = "";
       const google = await loadGoogleScript();
       google.accounts.id.initialize({
         client_id: clientId,
@@ -469,9 +493,9 @@
       const button = document.getElementById("npshGoogleButton");
       if (button) {
         button.dataset.rendered = "";
-        button.textContent = "";
+        renderSignInFallback(button);
       }
-      renderGoogleButton();
+      renderState();
     }
   }
 
@@ -619,7 +643,7 @@
       });
       return;
     }
-    await Promise.allSettled([refreshSession(), renderGoogleButton()]);
+    await refreshSession();
   }
 
   window.NPSHAuth = Object.freeze({
