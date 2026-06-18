@@ -135,13 +135,13 @@ Simulation case integrity guard cache key: engineering-simulation-case-integrity
 Performance refresh governor cache key: engineering-performance-refresh-governor.js?v=20260614-refresh-governor4
 Pump edit fast lane cache key: engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2
 Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1
-Calculation lifecycle runtime cache key: engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-realtime-passive1
+Calculation lifecycle runtime cache key: engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1
 Calculation progress overlay cache key: engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1
 Browser issues runtime cache key: engineering-browser-issues-runtime.js?v=20260608-browser-issues1
 Pipe Segments file runtime cache key: engineering-pipe-segments-file-runtime.js?v=20260608-pipe-segments-file1
 Formula Defense UI runtime cache key: engineering-formula-defense-ui.js?v=20260613-formula-defense-ui15
 Formula Defense UI KaTeX CSS cache key: vendor/katex/katex.min.css?v=20260613-formula-defense-ui15
-Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260608-browser-issues2
+Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260618-current-prior-stale1
 Defense export cache key: engineering-defense-export-package.js?v=20260603-defensev3
 Pipe Moody chart audit cache key: engineering-pipe-moody-chart-audit.js?v=20260607-pipe-moody-audit2
 Runtime API config: same-origin /api/simulate

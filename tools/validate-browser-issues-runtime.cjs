@@ -32,7 +32,7 @@ assert.strictEqual(runtime.version, 'engineering-browser-issues-runtime.v1');
 assert.strictEqual(runtime.cacheKey, '20260608-browser-issues1');
 assert(indexHtml.includes('engineering-browser-issues-runtime.js?v=20260608-browser-issues1'), 'index.html must cache-bust browser issues runtime.');
 assert(indexHtml.includes('style.min.css?v=20260608-browser-issues1'), 'index.html must cache-bust browser-issues CSS cleanup.');
-assert(indexHtml.includes('engineering-canvas-context-dock.js?v=20260608-browser-issues2'), 'index.html must cache-bust canvas context dock browser issues cleanup.');
+assert(indexHtml.includes('engineering-canvas-context-dock.js?v=20260618-current-prior-stale1'), 'index.html must cache-bust canvas context dock browser issues cleanup.');
 assert(indexHtml.includes('engineering-literature-pdf-viewer.js?v=20260609-literature-access3'), 'index.html must cache-bust literature PDF access diagnostics cleanup.');
 assert(indexHtml.includes('__chromium_devtools_metrics_reporter'), 'index.html must install the Chromium DevTools metrics reporter guard early.');
 assert(indexHtml.includes("typeof window.__chromium_devtools_metrics_reporter === 'function'"), 'Chromium DevTools metrics reporter guard must preserve real reporter functions.');

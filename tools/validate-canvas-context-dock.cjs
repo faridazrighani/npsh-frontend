@@ -12,7 +12,7 @@ const manifestPath = path.join(rootDir, 'FILE_MANIFEST.md');
 const runtime = require(runtimePath);
 
 assert.equal(runtime.version, 'engineering-canvas-context-dock.v2', 'Canvas context dock runtime should expose v2.');
-assert.equal(runtime.cacheKey, '20260608-browser-issues2', 'Canvas context dock cache key should stay locked.');
+assert.equal(runtime.cacheKey, '20260618-current-prior-stale1', 'Canvas context dock cache key should stay locked.');
 assert.equal(typeof runtime.buildDockState, 'function', 'Canvas context dock should expose buildDockState for audit tests.');
 assert.equal(typeof runtime.allowCanvasPropertiesCommandOpen, 'function', 'Canvas context dock should expose the explicit command-open hook for object properties.');
 assert.equal(typeof runtime.clearCanvasSelectionOnly, 'function', 'Canvas context dock should expose the explicit clear hook for canvas properties policy tests.');
@@ -22,6 +22,8 @@ assert.equal(typeof runtime.syncCanvasStatusLegendVisibility, 'function', 'Canva
 assert.equal(typeof runtime.getStoredExpandedState, 'function', 'Canvas context dock should expose stored expanded state for audit tests.');
 assert.equal(typeof runtime.getEffectiveExpandedState, 'function', 'Canvas context dock should expose effective expanded state for audit tests.');
 assert.equal(typeof runtime.isCanvasSelectionOnlyActive, 'function', 'Canvas context dock should expose canvas select-only active state for audit tests.');
+assert.equal(typeof runtime.isPriorStaleOnlyToken, 'function', 'Canvas context dock should expose prior-stale token classification for audit tests.');
+assert.equal(typeof runtime.isActiveStaleToken, 'function', 'Canvas context dock should expose active-stale token classification for audit tests.');
 assert.equal(typeof runtime.markCanvasSelectionOnly, 'function', 'Canvas context dock should expose canvas select-only marker for audit tests.');
 assert.equal(typeof runtime.setExpanded, 'function', 'Canvas context dock should expose expand/collapse setter for audit tests.');
 assert.equal(typeof runtime.isMobileViewport, 'function', 'Canvas context dock should expose mobile viewport detection for audit tests.');
@@ -167,6 +169,42 @@ assert.deepEqual(
   'Backend route trace should be normalized without changing route order.'
 );
 
+const recalculatedAfterPriorStaleLike = {
+  ...simulationCase1Like,
+  __engineeringCalculationDefenseRealtimeState: {
+    status: 'Current',
+    calculationId: 'new-calc',
+    dependencyFingerprint: 'new-dep',
+    calculationDefenseStatus: 'Current backend calculation; prior result stale'
+  },
+  __npshGlobalModel: {
+    ...simulationCase1Like.__npshGlobalModel,
+    'PUMP-100': {
+      ...simulationCase1Like.__npshGlobalModel['PUMP-100'],
+      results: {
+        ...simulationCase1Like.__npshGlobalModel['PUMP-100'].results,
+        calculationFreshness: 'Recalculated after stale input change',
+        calculationDefenseContract: { status: 'Stale Prior Result' },
+        actionReadinessBackend: { status: 'Ready', stale: false },
+        calculationAudit: { calculationId: 'new-calc' },
+        dependencyManifest: { dependencyFingerprint: 'new-dep', priorResultStale: true }
+      }
+    }
+  }
+};
+
+state = runtime.buildDockState(recalculatedAfterPriorStaleLike);
+assert.equal(state.status, 'Current', 'Prior stale that was recalculated by backend should render as Current.');
+assert.equal(state.statusTone, 'current', 'Recalculated prior-stale result should use current tone.');
+assert.equal(
+  state.statusNote,
+  'Recalculated after stale input change',
+  'Recalculated prior-stale result should keep the explanatory note instead of showing active Stale.'
+);
+assert.equal(runtime.isPriorStaleOnlyToken('Stale Prior Result'), true, 'Stale Prior Result should be classified as prior-stale-only.');
+assert.equal(runtime.isActiveStaleToken('Stale Prior Result'), false, 'Stale Prior Result should not be treated as active stale.');
+assert.equal(runtime.isActiveStaleToken('Stale'), true, 'Plain Stale should remain active stale.');
+
 const symbols = Object.fromEntries(state.fluidCells.map((cell) => [cell.id, cell.mobileSymbol]));
 assert.equal(symbols.density, 'ρ', 'Mobile density symbol should be available.');
 assert.equal(symbols.kinematicViscosity, 'ν', 'Mobile kinematic viscosity symbol should be available.');
@@ -223,6 +261,8 @@ assert(!runtimeSource.includes('.canvas-context-dock.is-expanded {\n    position
 assert(runtimeSource.includes('.context-dock-cell[data-cell-id="fluid"] .context-dock-value'), 'Only the active fluid value should keep bold value emphasis.');
 assert(runtimeSource.includes('item.dataset.cellId = cell.id'), 'Summary cells should expose data-cell-id for typography lock.');
 assert(runtimeSource.includes("const LEGEND_SELECTOR = '.canvas-status-legend'"), 'Pump Status collision lock should target the canvas status legend.');
+assert(runtimeSource.includes('isPriorStaleOnlyToken'), 'Dock must distinguish prior-stale audit evidence from active stale state.');
+assert(runtimeSource.includes('recalculated after stale input change'), 'Dock must recognize backend-recalculated prior stale evidence.');
 assert(runtimeSource.includes("const LEGEND_HIDDEN_CLASS = 'canvas-status-legend-hidden'"), 'Pump Status collision lock should use a stable hidden class.');
 assert(runtimeSource.includes('const LEGEND_COLLISION_MARGIN_PX = 12'), 'Pump Status collision lock should keep the protected 12px margin explicit.');
 assert(runtimeSource.includes('.canvas-status-legend.canvas-status-legend-hidden'), 'Pump Status hidden class should be styled by the dock runtime.');
@@ -305,7 +345,7 @@ assert(
   'Index must load the core app bundle with the canvas properties policy cache key.'
 );
 assert(
-  index.includes('engineering-canvas-context-dock.js?v=20260608-browser-issues2'),
+  index.includes('engineering-canvas-context-dock.js?v=20260618-current-prior-stale1'),
   'Index must load the canvas context dock runtime with cache key.'
 );
 assert(
@@ -328,7 +368,7 @@ assert(
   'Thesis branding must not intercept pointer events from toolbar placement tools.'
 );
 assert(
-  manifest.includes('Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260608-browser-issues2'),
+  manifest.includes('Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260618-current-prior-stale1'),
   'Manifest must document the canvas context dock cache key.'
 );
 assert(

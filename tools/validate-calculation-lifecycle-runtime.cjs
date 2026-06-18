@@ -20,7 +20,8 @@ const manifest = fs.existsSync(MANIFEST_FILE) ? read(MANIFEST_FILE) : '';
 const runtime = require(RUNTIME_FILE);
 
 assert.strictEqual(runtime.version, 'engineering-calculation-lifecycle.v1');
-assert.strictEqual(runtime.cacheKey, '20260617-calculation-lifecycle-realtime-passive1');
+assert.strictEqual(runtime.cacheKey, '20260618-calculation-lifecycle-refresh-release1');
+assert.strictEqual(runtime.evidenceRefreshReleaseMs, 650, 'Evidence refresh release timer should prevent a stuck Refreshing button.');
 assert.strictEqual(runtime.eventName, 'npsh:calculation-lifecycle');
 assert.strictEqual(typeof runtime.publish, 'function', 'Lifecycle runtime must expose publish().');
 assert.strictEqual(typeof runtime.current, 'function', 'Lifecycle runtime must expose current().');
@@ -40,7 +41,7 @@ assert.strictEqual(
 assert(
   indexHtml.includes('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
     && indexHtml.includes('engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1')
-    && indexHtml.includes('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-realtime-passive1')
+    && indexHtml.includes('engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1')
     && indexHtml.includes('engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1'),
   'index.html must load pump fast lane, realtime defense, lifecycle runtime, then progress overlay.'
 );
@@ -48,8 +49,8 @@ assert(
   indexHtml.indexOf('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
     < indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1')
     && indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1')
-      < indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-realtime-passive1')
-    && indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-realtime-passive1')
+      < indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1')
+    && indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1')
       < indexHtml.indexOf('engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1'),
   'Pump fast lane, realtime defense, lifecycle runtime, and progress overlay must load in dependency order.'
 );
@@ -104,6 +105,8 @@ assert(runtimeSource.includes('aria-busy'), 'Lifecycle runtime must expose comma
 assert(runtimeSource.includes('calculationBusy'), 'Lifecycle runtime must expose command busy state for diagnostics.');
 assert(runtimeSource.includes("isAllowedCalculationMode(['sample-open', 'manual-solve', 'realtime-input'])"), 'Bootstrap calculating/applying events must be suppressed unless calculation mode allows solving.');
 assert(runtimeSource.includes("isAllowedCalculationMode(['manual-solve'])"), 'Orphan linked-view refreshes must only show Refreshing evidence during manual Solve.');
+assert(runtimeSource.includes('scheduleEvidenceRefreshRelease'), 'Manual linked-view refreshes must have a release timer.');
+assert(runtimeSource.includes('linked-views-refresh-complete'), 'Evidence refresh release must publish a Current lifecycle completion event.');
 
 assert(runtimeSource.includes('#btn-solve'), 'Lifecycle runtime must observe ribbon Run command.');
 assert(runtimeSource.includes('#menu-run-solve'), 'Lifecycle runtime must observe Tools Run command.');
@@ -151,8 +154,73 @@ for (const pattern of forbiddenPatterns) {
 
 if (manifest) {
   assert(manifest.includes('engineering-calculation-lifecycle-runtime.js'), 'FILE_MANIFEST must mention the calculation lifecycle runtime.');
-  assert(manifest.includes('20260617-calculation-lifecycle-realtime-passive1'), 'FILE_MANIFEST must mention the calculation lifecycle cache key.');
+  assert(manifest.includes('20260618-calculation-lifecycle-refresh-release1'), 'FILE_MANIFEST must mention the calculation lifecycle cache key.');
   assert(manifest.includes('validate:calculation-lifecycle'), 'FILE_MANIFEST must mention the calculation lifecycle validator.');
 }
 
-console.log('Calculation lifecycle validation passed: unified status events, command/input lifecycle mapping, and no-mutation contract are locked.');
+async function validateRefreshingEvidenceRelease() {
+  const savedDocument = global.document;
+  const savedCustomEvent = global.CustomEvent;
+  const savedWindow = global.window;
+  delete require.cache[require.resolve(RUNTIME_FILE)];
+  const listeners = new Map();
+  const label = { textContent: 'Validate' };
+  const button = {
+    id: 'btn-solve',
+    dataset: {},
+    disabled: false,
+    querySelector: () => label,
+    toggleAttribute(name, enabled) {
+      this[name] = !!enabled;
+    },
+    setAttribute(name, value) {
+      this[name] = String(value);
+    },
+    closest(selector) {
+      return selector.includes('#btn-solve') ? this : null;
+    },
+    matches(selector) {
+      return selector.includes('#btn-solve');
+    }
+  };
+  global.document = {
+    documentElement: {},
+    readyState: 'complete',
+    querySelectorAll: (selector) => selector.includes('#btn-solve') ? [button] : [],
+    addEventListener: (eventName, handler) => listeners.set(eventName, handler),
+    removeEventListener: () => {},
+    dispatchEvent: () => true
+  };
+  global.CustomEvent = function CustomEvent(type, init = {}) {
+    return { type, detail: init.detail || {} };
+  };
+  try {
+    const runtimeWithDom = require(RUNTIME_FILE);
+    runtimeWithDom.markCalculationActivity('manual-command', { calculationMode: 'manual-solve', nodeId: 'btn-solve' });
+    const handler = listeners.get('npsh:linked-views-refreshed');
+    assert.strictEqual(typeof handler, 'function', 'Lifecycle runtime should install linked-view refresh listener.');
+    handler({ type: 'npsh:linked-views-refreshed', detail: { nodeId: 'P-100' } });
+    assert.strictEqual(runtimeWithDom.current().status, 'refreshing-evidence', 'Linked-view refresh should enter refreshing evidence briefly.');
+    assert.strictEqual(button.disabled, true, 'Manual evidence refresh should temporarily disable the Validate command.');
+    assert.strictEqual(label.textContent, 'Refreshing...', 'Manual evidence refresh should show Refreshing briefly.');
+    await new Promise((resolve) => setTimeout(resolve, runtimeWithDom.evidenceRefreshReleaseMs + 90));
+    assert.strictEqual(runtimeWithDom.current().status, 'current', 'Evidence refresh release should restore Current automatically.');
+    assert.strictEqual(button.disabled, false, 'Evidence refresh release should re-enable the Validate command.');
+    assert.strictEqual(label.textContent, 'Validate', 'Evidence refresh release should restore the original command label.');
+  } finally {
+    delete require.cache[require.resolve(RUNTIME_FILE)];
+    global.document = savedDocument;
+    global.CustomEvent = savedCustomEvent;
+    global.window = savedWindow;
+    require(RUNTIME_FILE);
+  }
+}
+
+validateRefreshingEvidenceRelease()
+  .then(() => {
+    console.log('Calculation lifecycle validation passed: unified status events, command/input lifecycle mapping, evidence refresh release, and no-mutation contract are locked.');
+  })
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

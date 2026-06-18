@@ -7,8 +7,9 @@
   'use strict';
 
   const VERSION = 'engineering-calculation-lifecycle.v1';
-  const CACHE_KEY = '20260617-calculation-lifecycle-realtime-passive1';
+  const CACHE_KEY = '20260618-calculation-lifecycle-refresh-release1';
   const LIFECYCLE_EVENT = 'npsh:calculation-lifecycle';
+  const EVIDENCE_REFRESH_RELEASE_MS = 650;
   const RUN_COMMAND_SELECTOR = [
     '#btn-solve',
     '#menu-run-solve',
@@ -29,6 +30,7 @@
   let installed = false;
   let sequence = 0;
   let lastCalculationActivityAt = 0;
+  let evidenceRefreshReleaseTimer = 0;
   let currentState = {
     version: VERSION,
     cacheKey: CACHE_KEY,
@@ -142,6 +144,26 @@
     return 'Calculating...';
   }
 
+  function clearEvidenceRefreshReleaseTimer() {
+    if (!evidenceRefreshReleaseTimer) return;
+    const clearTimer = root.clearTimeout || clearTimeout;
+    clearTimer(evidenceRefreshReleaseTimer);
+    evidenceRefreshReleaseTimer = 0;
+  }
+
+  function scheduleEvidenceRefreshRelease(detail = {}, state = currentState) {
+    clearEvidenceRefreshReleaseTimer();
+    const setTimer = root.setTimeout || setTimeout;
+    evidenceRefreshReleaseTimer = setTimer(() => {
+      evidenceRefreshReleaseTimer = 0;
+      if (currentState.sequence !== state.sequence || currentState.status !== 'refreshing-evidence') return;
+      publish('current', detail, {
+        sourceEvent: 'linked-views-refresh-complete',
+        message: 'Validation evidence refreshed.'
+      });
+    }, EVIDENCE_REFRESH_RELEASE_MS);
+  }
+
   function setRunCommandBusy(isBusy, detail = {}) {
     const busy = !!isBusy;
     const state = {
@@ -174,6 +196,7 @@
   }
 
   function publish(status, detail = {}, overrides = {}) {
+    if (status !== 'refreshing-evidence') clearEvidenceRefreshReleaseTimer();
     const base = statusDefaults(status);
     const ids = normalizeNodeIds(detail);
     sequence += 1;
@@ -273,10 +296,13 @@
 
   function handleRefreshing(event) {
     if (!isAllowedCalculationMode(['manual-solve'])) return false;
-    return publish('refreshing-evidence', eventDetail(event), {
+    const detail = eventDetail(event);
+    const state = publish('refreshing-evidence', detail, {
       calculationMode: 'manual-solve',
       sourceEvent: 'npsh:linked-views-refreshed'
     });
+    scheduleEvidenceRefreshRelease(detail, state);
+    return state;
   }
 
   function handleCurrent(event) {
@@ -379,6 +405,7 @@
   const api = {
     version: VERSION,
     cacheKey: CACHE_KEY,
+    evidenceRefreshReleaseMs: EVIDENCE_REFRESH_RELEASE_MS,
     eventName: LIFECYCLE_EVENT,
     current: () => ({ ...currentState, nodeIds: [...(currentState.nodeIds || [])] }),
     publish,

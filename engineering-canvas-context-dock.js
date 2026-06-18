@@ -10,7 +10,7 @@
   'use strict';
 
   const VERSION = 'engineering-canvas-context-dock.v2';
-  const CACHE_KEY = '20260608-browser-issues2';
+  const CACHE_KEY = '20260618-current-prior-stale1';
   const DOCK_ID = 'canvasContextDock';
   const STYLE_ID = 'canvas-context-dock-style';
   const STORAGE_KEY = 'npsh.canvasContextDock.expanded';
@@ -418,22 +418,74 @@
     ].map(asString).filter(Boolean);
   }
 
+  function isPriorStaleOnlyToken(token) {
+    const text = asString(token).toLowerCase();
+    return /^stale prior result$/.test(text)
+      || /recalculated after stale input change/.test(text)
+      || /current backend calculation.*prior.*stale/.test(text)
+      || /prior (?:submitted )?result (?:is )?stale/.test(text)
+      || /prior ui\/export stale/.test(text);
+  }
+
+  function isActiveStaleToken(token) {
+    const text = asString(token);
+    return /stale|dirty|expired|outdated/i.test(text) && !isPriorStaleOnlyToken(text);
+  }
+
+  function hasCurrentBackendEvidence(pumpNode, rootLike = root) {
+    const realtime = rootLike.__engineeringCalculationDefenseRealtimeState || {};
+    const results = pumpNode?.results || {};
+    const currentEvidenceTokens = [
+      realtime.status,
+      realtime.calculationDefenseStatus,
+      results.calculationFreshness,
+      results.backendValidationStatus,
+      results.performanceChartData?.freshness,
+      results.routeTrace?.lossFreshness,
+      results.npshEvaluation?.calculationFreshness,
+      results.calculationDefenseContract?.status
+    ].map(asString).filter(Boolean);
+    if (realtime.status === 'Current') return true;
+    if (currentEvidenceTokens.some((token) => /current|ready|ok|pass|connected/i.test(token) && !isActiveStaleToken(token))) {
+      return true;
+    }
+    if (!currentEvidenceTokens.some(isPriorStaleOnlyToken)) return false;
+    return !!(
+      results.calculationAudit?.calculationId ||
+      results.npshEvaluation?.calculationAudit?.calculationId ||
+      results.dependencyManifest?.dependencyFingerprint ||
+      results.npshEvaluation?.dependencyManifest?.dependencyFingerprint
+    );
+  }
+
   function resolveFreshness(pumpNode, rootLike = root) {
     const realtime = rootLike.__engineeringCalculationDefenseRealtimeState || {};
     const results = pumpNode?.results || {};
-    if (realtime.status === 'Stale' || realtime.stale || results.actionReadinessBackend?.stale) {
+    if (realtime.status === 'Stale' || realtime.stale) {
       return { status: 'Stale', tone: 'stale', note: 'Input changed before backend refresh.' };
     }
 
     const tokens = collectStatusTokens(pumpNode, rootLike);
-    if (tokens.some((token) => /stale|dirty|expired|outdated/i.test(token))) {
-      return { status: 'Stale', tone: 'stale', note: tokens.find((token) => /stale|dirty|expired|outdated/i.test(token)) };
+    const currentEvidence = hasCurrentBackendEvidence(pumpNode, rootLike);
+    if (results.actionReadinessBackend?.stale && !currentEvidence) {
+      return { status: 'Stale', tone: 'stale', note: 'Input changed before backend refresh.' };
+    }
+    const staleTokens = tokens.filter(isActiveStaleToken);
+    if (staleTokens.length) {
+      return { status: 'Stale', tone: 'stale', note: staleTokens[0] };
     }
     if (tokens.some((token) => /blocked|fail|mismatch|incomplete/i.test(token))) {
       return { status: 'Review', tone: 'review', note: tokens.find((token) => /blocked|fail|mismatch|incomplete/i.test(token)) };
     }
-    if (tokens.some((token) => /current|ready|ok|pass/i.test(token))) {
-      return { status: 'Current', tone: 'current', note: 'Current from backend/model trace.' };
+    const currentToken = tokens.find((token) => /current|ready|ok|pass|connected/i.test(token) && !isActiveStaleToken(token));
+    const recalculatedPriorStaleToken = tokens.find((token) => /recalculated after stale input change/i.test(token));
+    const priorStaleToken = recalculatedPriorStaleToken || tokens.find(isPriorStaleOnlyToken);
+    if (currentToken || (priorStaleToken && currentEvidence)) {
+      return {
+        status: 'Current',
+        tone: 'current',
+        note: priorStaleToken || 'Current from backend/model trace.'
+      };
     }
     return { status: 'Review', tone: 'review', note: 'Waiting for backend calculation trace.' };
   }
@@ -1315,7 +1367,10 @@
     getEffectiveExpandedState,
     getFluidCells,
     getStoredExpandedState,
+    hasCurrentBackendEvidence,
     isCanvasSelectionOnlyActive,
+    isPriorStaleOnlyToken,
+    isActiveStaleToken,
     install,
     isMobileViewport,
     markCanvasSelectionOnly,
