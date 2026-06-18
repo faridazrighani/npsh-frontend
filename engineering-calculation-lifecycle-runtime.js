@@ -7,7 +7,7 @@
   'use strict';
 
   const VERSION = 'engineering-calculation-lifecycle.v1';
-  const CACHE_KEY = '20260617-calculation-lifecycle-final-state1';
+  const CACHE_KEY = '20260617-calculation-lifecycle-realtime-passive1';
   const LIFECYCLE_EVENT = 'npsh:calculation-lifecycle';
   const RUN_COMMAND_SELECTOR = [
     '#btn-solve',
@@ -115,8 +115,10 @@
 
   function isBusyStatus(status, detail = {}) {
     const normalized = String(status || '');
+    const mode = detail.calculationMode || currentState.calculationMode || '';
+    if (mode === 'realtime-input') return false;
     if (normalized === 'preparing') {
-      return ['manual-solve', 'sample-open'].includes(detail.calculationMode || currentState.calculationMode || '');
+      return ['manual-solve', 'sample-open'].includes(mode);
     }
     return BUSY_STATUSES.has(normalized);
   }
@@ -147,6 +149,7 @@
       busy,
       status: detail.status || currentState.status,
       task: detail.task || currentState.task,
+      calculationMode: detail.calculationMode || currentState.calculationMode || '',
       updatedAt: new Date().toISOString()
     };
     root.__engineeringCalculationLifecycleCommandBusy = state;

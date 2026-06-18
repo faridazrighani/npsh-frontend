@@ -162,6 +162,9 @@ assert(realtimeSource.includes('hasRecentUserCalculationIntent'), 'Realtime defe
 assert(realtimeSource.includes('scheduleUiRefresh'), 'Realtime defense must route UI repaint work through a scheduler.');
 assert(realtimeSource.includes('EngineeringPerformanceRefreshGovernor'), 'Realtime defense must use the performance refresh governor when available.');
 assert(realtimeSource.includes('EngineeringPumpEditFastLane'), 'Realtime defense must delegate Pump Object Properties edits to the fast lane before scheduling backend autosolve.');
+assert(realtimeSource.includes('CALCULATION_INPUT_SURFACE_SELECTOR'), 'Realtime defense must centralize calculation input surface coverage.');
+assert(realtimeSource.includes('.persistent-object-properties-task-window'), 'Realtime defense must autosolve persistent Object Properties input edits.');
+assert(realtimeSource.includes("calculationMode: 'realtime-input'"), 'Realtime defense events must explicitly identify realtime-input mode.');
 assert(realtimeSource.includes('publishCalculationStatusState'), 'Realtime defense must use a lightweight stale/calculating publisher before backend results are current.');
 assert(realtimeSource.includes('statusOnly: true'), 'Stale/calculating calculation-state events must avoid rebuilding full canonical trace rows.');
 
@@ -285,6 +288,10 @@ runtime.flushAutoSolve().then(async () => {
   await new Promise((resolve) => setTimeout(resolve, 430));
   const autoCall = updateSimulationCalls.find((call) => call.__engineeringRealtimeAutoSolve);
   assert(autoCall, 'requestAutoSolve should call updateSimulation through the realtime autosolve path.');
+  assert.equal(autoCall.refreshReason, 'solve', 'Autosolve must enter the same protected backend route as manual solve.');
+  assert.equal(autoCall.trigger, 'solve', 'Autosolve must use the backend solve trigger while keeping realtime metadata.');
+  assert.equal(autoCall.realtimeTrigger, 'realtime-input', 'Autosolve must keep realtime-input metadata for lifecycle UX.');
+  assert.equal(autoCall.calculationMode, 'realtime-input', 'Autosolve must keep realtime-input calculation mode metadata.');
   assert.equal(autoCall.forceBackend, true, 'Autosolve should force the protected backend refresh.');
   assert.equal(autoCall.renderSidebarAfter, true, 'Autosolve should allow linked object windows to refresh after solving.');
   assert.equal(autoCall.__engineeringRealtimeAutoSolveSequence, 1, 'Autosolve should pass its sequence into updateSimulation options.');
@@ -296,16 +303,16 @@ runtime.flushAutoSolve().then(async () => {
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(
-  index.includes('engineering-realtime-calculation-defense.js?v=20260617-realtime-final-state1'),
+  index.includes('engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1'),
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
   index.indexOf('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
-    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-final-state1'),
+    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1'),
   'Pump edit fast lane must load before realtime calculation defense.'
 );
 assert(
-  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260617-realtime-final-state1'),
+  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1'),
   'Manifest must document the realtime calculation defense cache key.'
 );
 assert(

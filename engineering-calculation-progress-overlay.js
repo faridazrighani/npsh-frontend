@@ -7,7 +7,7 @@
   'use strict';
 
   const VERSION = 'engineering-calculation-progress-overlay.v1';
-  const CACHE_KEY = '20260617-calculation-progress-realtime1';
+  const CACHE_KEY = '20260617-calculation-progress-manual-only1';
   const STYLE_ID = 'engineeringCalculationProgressOverlayStyle';
   const OVERLAY_ID = 'engineeringCalculationProgressOverlay';
   const LIFECYCLE_EVENT = 'npsh:calculation-lifecycle';
@@ -83,6 +83,10 @@
 
   function isManualSolveMode(detail = {}) {
     return calculationModeFromDetail(detail) === 'manual-solve';
+  }
+
+  function isRealtimeInputMode(detail = {}) {
+    return calculationModeFromDetail(detail) === 'realtime-input';
   }
 
   function stepRows(phase = 'solving', calculationMode = 'manual-solve') {
@@ -356,15 +360,19 @@
   }
 
   function handleCalculating(event) {
+    const detail = eventDetail(event);
     if (!hasRecentCalculationIntent()) return false;
-    if (calculationModeFromDetail(eventDetail(event)) === 'menu-browse') return false;
-    return scheduleShow(eventDetail(event), 'solving');
+    if (isRealtimeInputMode(detail)) return hideOverlay();
+    if (calculationModeFromDetail(detail) === 'menu-browse') return false;
+    return scheduleShow(detail, 'solving');
   }
 
   function handleAutoSolveStart(event) {
+    const detail = eventDetail(event);
     if (!hasRecentCalculationIntent()) return false;
-    if (calculationModeFromDetail(eventDetail(event)) === 'menu-browse') return false;
-    return showImmediate(eventDetail(event), 'solving');
+    if (isRealtimeInputMode(detail)) return hideOverlay();
+    if (calculationModeFromDetail(detail) === 'menu-browse') return false;
+    return showImmediate(detail, 'solving');
   }
 
   function phaseFromLifecycle(detail = {}) {
@@ -390,6 +398,11 @@
     const detail = eventDetail(event);
     if ((detail.status === 'refreshing-evidence' || detail.phase === 'evidence') && Date.now() < ignoreEvidenceUntil) {
       return true;
+    }
+    if (isRealtimeInputMode(detail)) {
+      return detail.status === 'current'
+        ? scheduleHide(0, { showEvidence: false })
+        : hideOverlay();
     }
     if (detail.status === 'failed' || detail.phase === 'error') {
       return handleError({ detail });
@@ -440,6 +453,7 @@
     const detail = eventDetail(event);
     const text = detailText(detail);
     if (/failed|error/i.test(text)) return handleError(event);
+    if (isRealtimeInputMode(detail)) return hideOverlay();
     showTimer = clearTimer(showTimer);
     if (state !== 'calculating' && state !== 'refreshing') hideOverlay();
     return true;
@@ -448,6 +462,7 @@
   function handleError(event) {
     if (!hasRecentCalculationIntent()) return false;
     const detail = eventDetail(event);
+    if (isRealtimeInputMode(detail)) return hideOverlay();
     const message = detail.message || detail.reason || 'Backend recalculation failed';
     showTimer = clearTimer(showTimer);
     longRunningTimer = clearTimer(longRunningTimer);

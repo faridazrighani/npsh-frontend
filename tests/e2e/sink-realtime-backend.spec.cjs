@@ -152,15 +152,21 @@ async function runProtectedSolve(page) {
   const response = await responsePromise;
   const body = await response.json();
   await solvePromise;
-  await page.waitForFunction((calculationId) => (
-    window.__engineeringCalculationDefenseRealtimeState?.calculationId === calculationId
-    && window.__npshGlobalModel?.P?.results?.dependencyManifest
-  ), body.calculationId, { timeout: 10000 });
+  await page.waitForFunction((calculationId) => {
+    const pumpResults = window.__npshGlobalModel?.P?.results || {};
+    const state = window.__engineeringCalculationDefenseRealtimeState || {};
+    const activeId = pumpResults.calculationAudit?.calculationId
+      || pumpResults.npshEvaluation?.calculationAudit?.calculationId
+      || state.calculationId
+      || null;
+    return activeId === calculationId && !!pumpResults.dependencyManifest;
+  }, body.calculationId, { timeout: 10000 });
   return body;
 }
 
 async function changeSinkBoundaryInBrowser(page, { elevation, pressure }) {
   return page.evaluate(({ elevation: nextElevation, pressure: nextPressure }) => {
+    window.__engineeringRealtimeCalculationDefenseAllowSyntheticAutoSolve = true;
     const model = window.__npshGlobalModel;
     model.SNK.props.elevation = nextElevation;
     model.SNK.props.pressure = nextPressure;
@@ -188,7 +194,11 @@ async function changeSinkBoundaryInBrowser(page, { elevation, pressure }) {
     pressureInput.dispatchEvent(new Event('change', { bubbles: true }));
     taskWindow.remove();
 
-    return browserSnapshot();
+    return {
+      ...browserSnapshot(),
+      allowSyntheticAutoSolve: window.__engineeringRealtimeCalculationDefenseAllowSyntheticAutoSolve === true,
+      pendingAutoSolve: JSON.parse(JSON.stringify(window.__engineeringCalculationDefenseRealtimeAutoSolve || null))
+    };
   }, { elevation, pressure });
 }
 
@@ -271,40 +281,31 @@ test('SINK elevation and pressure changes refresh protected backend trace in the
   expect(baselineSnapshot.pumpFreshness).toBe('Current');
   expect(systemHead(baseline)).toBeGreaterThan(0);
 
-  const staleSnapshot = await changeSinkBoundaryInBrowser(page, {
-    elevation: 10,
-    pressure: 1.5
-  });
-  expect(staleSnapshot.realtime.status).toBe('Stale');
-  expect(staleSnapshot.pumpFreshness).toBe('Stale');
-  expect(staleSnapshot.sinkFreshness).toBe('Stale');
-  expect(staleSnapshot.pumpRouteFreshness).toContain('Stale');
-
   delayNextSimulation = true;
   const changedResponsePromise = page.waitForResponse((response) => (
     /\/api\/simulate(?:[?#]|$)/.test(response.url())
     && response.request().method() === 'POST'
     && response.status() === 200
   ), { timeout: 30000 });
-  const changedSolvePromise = page.evaluate(() => window.updateSimulation({
-    refreshReason: 'solve',
-    trigger: 'solve',
-    forceBackend: true,
-    renderSidebarAfter: false
-  }));
 
-  await page.waitForFunction(() => (
-    window.__engineeringCalculationDefenseRealtimeState?.status === 'Calculating'
-    && window.__npshGlobalModel?.P?.results?.backendValidationStatus === 'Calculating'
-  ), null, { timeout: 10000 });
-  const calculatingSnapshot = await browserSnapshotFromPage(page);
-  expect(calculatingSnapshot.pumpFreshness).toBe('Calculating');
-  expect(calculatingSnapshot.pumpBackendValidationStatus).toBe('Calculating');
-  expect(calculatingSnapshot.pumpRouteFreshness).toContain('Calculating');
+  const staleSnapshot = await changeSinkBoundaryInBrowser(page, {
+    elevation: 10,
+    pressure: 1.5
+  });
+  expect(staleSnapshot.realtime.status).toBe('Stale');
+  expect(staleSnapshot.allowSyntheticAutoSolve).toBe(true);
+  expect(staleSnapshot.pendingAutoSolve?.calculationMode).toBe('realtime-input');
+  expect(staleSnapshot.pumpFreshness).toBe('Stale');
+  expect(staleSnapshot.sinkFreshness).toBe('Stale');
+  expect(staleSnapshot.pumpRouteFreshness).toContain('Stale');
 
   const changedResponse = await changedResponsePromise;
   const changed = await changedResponse.json();
-  await changedSolvePromise;
+  await page.waitForFunction((calculationId) => (
+    window.__engineeringCalculationDefenseRealtimeState?.status === 'Current'
+    && window.__engineeringCalculationDefenseRealtimeState?.calculationId === calculationId
+    && window.__npshGlobalModel?.P?.results?.dependencyManifest
+  ), changed.calculationId, { timeout: 10000 });
 
   const changedSnapshot = await browserSnapshotFromPage(page);
   expect(changedSnapshot.realtime.status).toBe('Current');
@@ -368,7 +369,6 @@ test('SINK elevation and pressure changes refresh protected backend trace in the
     },
     statesObserved: {
       stale: staleSnapshot.realtime.status,
-      calculating: calculatingSnapshot.realtime.status,
       final: changedSnapshot.realtime.status
     },
     routeTraceChanged: changed.routeTraceFingerprint !== baseline.routeTraceFingerprint,

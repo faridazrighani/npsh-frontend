@@ -20,7 +20,7 @@ const manifest = fs.existsSync(MANIFEST_FILE) ? read(MANIFEST_FILE) : '';
 const runtime = require(RUNTIME_FILE);
 
 assert.strictEqual(runtime.version, 'engineering-calculation-lifecycle.v1');
-assert.strictEqual(runtime.cacheKey, '20260617-calculation-lifecycle-final-state1');
+assert.strictEqual(runtime.cacheKey, '20260617-calculation-lifecycle-realtime-passive1');
 assert.strictEqual(runtime.eventName, 'npsh:calculation-lifecycle');
 assert.strictEqual(typeof runtime.publish, 'function', 'Lifecycle runtime must expose publish().');
 assert.strictEqual(typeof runtime.current, 'function', 'Lifecycle runtime must expose current().');
@@ -39,18 +39,18 @@ assert.strictEqual(
 
 assert(
   indexHtml.includes('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
-    && indexHtml.includes('engineering-realtime-calculation-defense.js?v=20260617-realtime-final-state1')
-    && indexHtml.includes('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-final-state1')
-    && indexHtml.includes('engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-realtime1'),
+    && indexHtml.includes('engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1')
+    && indexHtml.includes('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-realtime-passive1')
+    && indexHtml.includes('engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1'),
   'index.html must load pump fast lane, realtime defense, lifecycle runtime, then progress overlay.'
 );
 assert(
   indexHtml.indexOf('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
-    < indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-final-state1')
-    && indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-final-state1')
-      < indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-final-state1')
-    && indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-final-state1')
-      < indexHtml.indexOf('engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-realtime1'),
+    < indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1')
+    && indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1')
+      < indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-realtime-passive1')
+    && indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-realtime-passive1')
+      < indexHtml.indexOf('engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1'),
   'Pump fast lane, realtime defense, lifecycle runtime, and progress overlay must load in dependency order.'
 );
 
@@ -98,7 +98,8 @@ assert(runtimeSource.includes('sample-open'), 'Lifecycle runtime must track samp
 assert(runtimeSource.includes('manual-solve'), 'Lifecycle runtime must track manual-solve mode for full evidence refresh.');
 assert(runtimeSource.includes('Validate / Refresh Evidence started.'), 'Lifecycle manual command copy must describe validation/evidence refresh, not primary solving.');
 assert(runtimeSource.includes('Realtime results are already primary'), 'Lifecycle manual command message must declare realtime autosolve as primary.');
-assert(runtimeSource.includes('setRunCommandBusy'), 'Lifecycle runtime must lock Run/Validate commands while calculation is busy.');
+assert(runtimeSource.includes('setRunCommandBusy'), 'Lifecycle runtime must manage Run/Validate command busy state.');
+assert(runtimeSource.includes("mode === 'realtime-input'"), 'Lifecycle runtime must keep Run/Validate passive during realtime input autosolve.');
 assert(runtimeSource.includes('aria-busy'), 'Lifecycle runtime must expose command busy state for accessibility.');
 assert(runtimeSource.includes('calculationBusy'), 'Lifecycle runtime must expose command busy state for diagnostics.');
 assert(runtimeSource.includes("isAllowedCalculationMode(['sample-open', 'manual-solve', 'realtime-input'])"), 'Bootstrap calculating/applying events must be suppressed unless calculation mode allows solving.');
@@ -117,6 +118,8 @@ assert.strictEqual(runtime.current().status, 'waiting-debounce');
 assert.strictEqual(runtime.isBusyStatus('calculating'), true, 'Calculating must be treated as command-busy.');
 assert.strictEqual(runtime.isBusyStatus('refreshing-evidence'), true, 'Refreshing evidence must be treated as command-busy.');
 assert.strictEqual(runtime.isBusyStatus('preparing', { calculationMode: 'manual-solve' }), true, 'Manual command preparing must be treated as command-busy.');
+assert.strictEqual(runtime.isBusyStatus('waiting-debounce', { calculationMode: 'realtime-input' }), false, 'Realtime input debounce must not lock Run/Validate commands.');
+assert.strictEqual(runtime.isBusyStatus('calculating', { calculationMode: 'realtime-input' }), false, 'Realtime input autosolve must not lock Run/Validate commands.');
 assert.strictEqual(runtime.isBusyStatus('preparing', { calculationMode: 'menu-browse' }), false, 'Sample menu browsing must not lock Run/Validate commands.');
 assert.strictEqual(runtime.isBusyStatus('input-changed'), false, 'Input changed without a running backend request must not lock Run/Validate commands.');
 assert.strictEqual(runtime.isBusyStatus('current'), false, 'Current must release command-busy.');
@@ -148,7 +151,7 @@ for (const pattern of forbiddenPatterns) {
 
 if (manifest) {
   assert(manifest.includes('engineering-calculation-lifecycle-runtime.js'), 'FILE_MANIFEST must mention the calculation lifecycle runtime.');
-  assert(manifest.includes('20260617-calculation-lifecycle-final-state1'), 'FILE_MANIFEST must mention the calculation lifecycle cache key.');
+  assert(manifest.includes('20260617-calculation-lifecycle-realtime-passive1'), 'FILE_MANIFEST must mention the calculation lifecycle cache key.');
   assert(manifest.includes('validate:calculation-lifecycle'), 'FILE_MANIFEST must mention the calculation lifecycle validator.');
 }
 

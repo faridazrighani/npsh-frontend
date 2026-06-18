@@ -15,6 +15,16 @@
   const SAMPLE_CASE_OPEN_SELECTOR = '[data-simulation-case-action="open"][data-simulation-case-id]';
   const USER_CALCULATION_INTENT_SELECTOR = `${RUN_COMMAND_SELECTOR}, ${SAMPLE_CASE_OPEN_SELECTOR}`;
   const CALCULATION_FIELD_PATTERN = /\b(inputMode|optimizationMode|npshrSourceMode|npshAssessmentMode|npshMarginBasis|screeningDefaultsApplied|elevation|suctionElevation|dischargeElevation|designFlow|designHead|designEfficiency|designNpshr|bepFlow|porMinPercent|porMaxPercent|aorMinPercent|aorMaxPercent|minNpshMarginRatio|minNpshMargin|speed|curveDataSource|curveSourceNote|curveData|flow|demandFlow|massFlow|flowInputMode|boundaryMode|boundaryDataSource|pressure|pressureInputBasis|pressureBasis|pressureEnergyBasis|sourceType|temperatureMode|temp|temperature|fluidName|density|viscosity|kinematicViscosity|dynViscosity|dynamicViscosity|vaporPressure|specificWeight|vaporPressureHead|routeStyle|elevationProfileMode|startElevation|endElevation|highPointElevation|highPointLocationPercent|roughnessAgingFactor|headLossAllowancePercent|segments|length|diameter|roughness|fittingType|fittingQuantity|fittingK|minorLoss|additionalK|active|liquidLevel|level)\b/i;
+  const CALCULATION_INPUT_SURFACE_SELECTOR = [
+    '.task-window',
+    '.full-editor-modal',
+    '.canvas-task-window',
+    '.persistent-object-properties-task-window',
+    '#taskWindowBody',
+    '[data-task-prop-body="true"]',
+    '[data-task-node-id]',
+    '[data-node-id][data-kind]'
+  ].join(',');
 
   let autoSolveTimer = 0;
   let autoSolveSequence = 0;
@@ -88,7 +98,7 @@
     if (!target || !target.matches?.('input, select, textarea')) return false;
     if (target.disabled || target.readOnly || target.type === 'file') return false;
     if (!isCalculationField(target)) return false;
-    return !!target.closest?.('.task-window, .full-editor-modal, .canvas-task-window, #taskWindowBody, [data-task-prop-body="true"]');
+    return !!target.closest?.(CALCULATION_INPUT_SURFACE_SELECTOR);
   }
 
   function markInputLatencyShield(target, nodeId = '', reason = 'realtime input edit') {
@@ -192,6 +202,7 @@
       version: VERSION,
       nodeId,
       reason,
+      calculationMode: 'realtime-input',
       sequence,
       latestSequence: autoSolveSequence,
       status: 'Superseded',
@@ -809,6 +820,7 @@
       version: VERSION,
       status: touched ? 'Stale' : 'No calculation result to mark',
       reason,
+      calculationMode: currentCalculationMode() || 'realtime-input',
       nodeIds: ids,
       markedAt: new Date().toISOString()
     };
@@ -831,6 +843,7 @@
       version: VERSION,
       status: touched ? 'Calculating' : 'No calculation result to refresh',
       reason,
+      calculationMode: currentCalculationMode() || '',
       nodeIds: ids,
       requestId: transaction?.requestId || null,
       sequence: transaction?.sequence || null,
@@ -864,6 +877,7 @@
       status: touched ? 'Failed' : 'Failed',
       reason,
       message: reason,
+      calculationMode: currentCalculationMode() || '',
       nodeIds: ids,
       requestId: finalTransaction?.requestId || null,
       sequence: finalTransaction?.sequence || null,
@@ -904,6 +918,7 @@
       calculationId,
       dependencyFingerprint: dependencyFingerprint || null,
       calculationDefenseStatus: payload.calculationDefenseContract?.status || null,
+      calculationMode: payload.calculationMode || activeApply.calculationMode || currentCalculationMode() || '',
       requestId: requestId || transaction?.requestId || null,
       sequence: sequence || transaction?.sequence || null,
       transactionStatus: 'current',
@@ -1042,11 +1057,13 @@
     const transaction = transactionOrSequence && typeof transactionOrSequence === 'object' ? transactionOrSequence : null;
     const sequence = transaction ? transaction.sequence : transactionOrSequence;
     return {
-      refreshReason: 'realtime-input',
-      trigger: 'realtime-input',
+      refreshReason: 'solve',
+      trigger: 'solve',
       forceBackend: true,
       renderSidebarAfter: true,
       realtimeReason: reason,
+      realtimeTrigger: 'realtime-input',
+      calculationMode: 'realtime-input',
       selectedNodeId: nodeId,
       __engineeringRealtimeAutoSolveSequence: sequence,
       __engineeringRealtimeRequestId: transaction?.requestId || '',
@@ -1130,6 +1147,7 @@
       sequence,
       nodeId: resolvedNodeId,
       reason,
+      calculationMode: 'realtime-input',
       startedAt: new Date().toISOString()
     };
     root.__engineeringRealtimeActiveBackendApply = activeApply;
@@ -1138,6 +1156,7 @@
       version: VERSION,
       nodeId: resolvedNodeId,
       reason,
+      calculationMode: 'realtime-input',
       sequence,
       requestId: transaction.requestId
     });
@@ -1154,6 +1173,7 @@
         ) {
           markCurrentFromBackend({
             nodeId: resolvedNodeId,
+            calculationMode: 'realtime-input',
             sequence,
             requestId: transaction.requestId
           });
@@ -1162,6 +1182,7 @@
         dispatchRealtimeEvent('npsh:realtime-autosolve-complete', {
           version: VERSION,
           nodeId: resolvedNodeId,
+          calculationMode: 'realtime-input',
           sequence,
           requestId: transaction.requestId
         });
@@ -1209,6 +1230,7 @@
       reason,
       delayMs,
       sourceEvent: options.sourceEvent || 'input',
+      calculationMode: 'realtime-input',
       policy: AUTOSOLVE_POLICY,
       initialDependencyFingerprint: transaction.initialDependencyFingerprint,
       scheduledAt: new Date().toISOString()

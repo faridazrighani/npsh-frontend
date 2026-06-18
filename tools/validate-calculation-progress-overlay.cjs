@@ -20,7 +20,7 @@ const manifest = fs.existsSync(MANIFEST_FILE) ? read(MANIFEST_FILE) : '';
 const runtime = require(RUNTIME_FILE);
 
 assert.strictEqual(runtime.version, 'engineering-calculation-progress-overlay.v1');
-assert.strictEqual(runtime.cacheKey, '20260617-calculation-progress-realtime1');
+assert.strictEqual(runtime.cacheKey, '20260617-calculation-progress-manual-only1');
 assert.strictEqual(runtime.showDelayMs, 90, 'Overlay must use a short delay so visible calculations are not missed.');
 assert.strictEqual(runtime.currentHideDelayMs, 520, 'Overlay must auto-hide shortly after Current state.');
 assert.strictEqual(runtime.errorHideDelayMs, 3200, 'Error state must not remain permanently blocking.');
@@ -39,18 +39,18 @@ assert.strictEqual(
 
 assert(
   indexHtml.includes('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
-    && indexHtml.includes('engineering-realtime-calculation-defense.js?v=20260617-realtime-final-state1')
-    && indexHtml.includes('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-final-state1')
-    && indexHtml.includes('engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-realtime1'),
+    && indexHtml.includes('engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1')
+    && indexHtml.includes('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-realtime-passive1')
+    && indexHtml.includes('engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1'),
   'index.html must load pump fast lane, realtime defense, lifecycle runtime, and progress overlay.'
 );
 assert(
   indexHtml.indexOf('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
-    < indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-final-state1')
-    && indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-final-state1')
-      < indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-final-state1')
-    && indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-final-state1')
-      < indexHtml.indexOf('engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-realtime1'),
+    < indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1')
+    && indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1')
+      < indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-realtime-passive1')
+    && indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260617-calculation-lifecycle-realtime-passive1')
+      < indexHtml.indexOf('engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1'),
   'Pump fast lane, realtime defense, lifecycle runtime, and overlay runtime must be loaded in dependency order.'
 );
 
@@ -84,6 +84,8 @@ assert(runtimeSource.includes('ignoreEvidenceUntil'), 'Overlay must ignore late 
 assert(runtimeSource.includes('Date.now() < ignoreEvidenceUntil'), 'Both lifecycle and legacy evidence paths must honor the post-Current ignore window.');
 assert(runtimeSource.includes("state !== 'calculating' && state !== 'refreshing'"), 'Orphan linked-view refreshes must not show the overlay while the sample-case chooser is idle.');
 assert(runtimeSource.includes('hasRecentCalculationIntent'), 'Raw calculating/autosolve events must be gated by explicit user calculation intent.');
+assert(runtimeSource.includes('isRealtimeInputMode'), 'Overlay runtime must identify realtime input mode.');
+assert(runtimeSource.includes('if (isRealtimeInputMode(detail)) return hideOverlay();'), 'Realtime input autosolve must not show the progress overlay.');
 assert(runtimeSource.includes('SAMPLE_CASE_OPEN_SELECTOR'), 'Overlay must record Open Sample Case clicks without treating sample-menu browsing as calculation progress.');
 assert(runtimeSource.includes('SAMPLE_CASE_BROWSE_SELECTOR'), 'Overlay must show only Reading inputs when browsing Simulation Case parent menus.');
 assert(runtimeSource.includes('sample-case-open'), 'Overlay must share selected sample case intent with realtime/lifecycle guards.');
@@ -173,7 +175,7 @@ assert(!showImmediateSource.includes('commandFallbackTimer = clearTimer(commandF
 
 if (manifest) {
   assert(manifest.includes('engineering-calculation-progress-overlay.js'), 'FILE_MANIFEST must mention the calculation progress overlay runtime.');
-  assert(manifest.includes('20260617-calculation-progress-realtime1'), 'FILE_MANIFEST must mention the calculation progress overlay cache key.');
+  assert(manifest.includes('20260617-calculation-progress-manual-only1'), 'FILE_MANIFEST must mention the calculation progress overlay cache key.');
   assert(manifest.includes('validate:calculation-progress-overlay'), 'FILE_MANIFEST must mention the calculation progress overlay validator.');
 }
 
