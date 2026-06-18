@@ -74,3 +74,44 @@ test('browser Issues cleanup keeps ARIA roles and response headers compatible', 
     invalidMenus: browserIssueState.invalidMenus
   }, null, 2));
 });
+
+test('first load keeps About hidden and menu bar clickable', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#aboutModal')).toBeHidden();
+  await page.waitForFunction(() => (
+    typeof window.applySimulationStateAtomic === 'function'
+    && window.EngineeringCalculationLifecycle?.cacheKey === '20260618-calculation-lifecycle-refresh-release1'
+  ), null, { timeout: 30000 });
+
+  await page.click('#menu-file');
+  await expect(page.locator('#dropdown-file')).toBeVisible();
+
+  await page.click('#menu-tools');
+  await expect(page.locator('#dropdown-tools')).toBeVisible();
+  await expect(page.locator('#menu-refresh-calculations')).toBeEnabled();
+  await page.hover('#menu-flow-dynamic-state');
+  await expect(page.locator('#dropdown-flow-dynamic-state')).toBeVisible();
+
+  await page.click('#menu-help');
+  await expect(page.locator('#dropdown-help')).toBeVisible();
+  await page.hover('#menu-hydraulic-logic');
+  await expect(page.locator('#dropdown-hydraulic-logic')).toBeVisible();
+
+  const menuState = await page.evaluate(() => ({
+    aboutHidden: document.getElementById('aboutModal')?.hasAttribute('hidden') || false,
+    fileVisible: getComputedStyle(document.getElementById('dropdown-file')).display !== 'none',
+    toolsVisible: getComputedStyle(document.getElementById('dropdown-tools')).display !== 'none',
+    helpVisible: getComputedStyle(document.getElementById('dropdown-help')).display !== 'none',
+    solveDisabled: document.getElementById('btn-solve')?.disabled || false,
+    lifecycleKey: window.EngineeringCalculationLifecycle?.cacheKey || null
+  }));
+
+  expect(menuState.aboutHidden).toBe(true);
+  expect(menuState.helpVisible).toBe(true);
+  expect(menuState.solveDisabled).toBe(false);
+
+  console.log(JSON.stringify({
+    menuFirstLoadE2E: 'pass',
+    ...menuState
+  }, null, 2));
+});

@@ -337,7 +337,7 @@
 <body class="fluid-basis-task-open">
 
     <!-- About Dialog -->
-    <div class="about-modal" id="aboutModal" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+    <div class="about-modal" id="aboutModal" role="dialog" aria-modal="true" aria-labelledby="aboutTitle" hidden>
         <div class="about-window">
             <div class="about-header">
                 <span id="aboutTitle" data-i18n-text="about.title">About</span>
@@ -749,6 +749,7 @@
     ensureStyles().catch(error => console.warn('Deferred stylesheet did not load.', error));
     loadCore().then(() => window.setTimeout(loadSupport, 1200)).catch(error => console.warn('Deferred app did not load.', error));
   };
+  window.__npshAboutDismissed = true;
   const guardAboutClosePointer = () => {
     document.getElementById('aboutCloseShield')?.remove();
     const shield = document.createElement('div');
@@ -773,17 +774,33 @@
     guardAboutClosePointer();
     beginInteraction();
   };
+  const openAbout = event => {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    aboutModal?.removeAttribute('hidden');
+    beginInteraction();
+  };
   const aboutModal = document.getElementById('aboutModal');
   const closeButton = document.getElementById('closeAbout');
+  const aboutMenu = document.getElementById('menu-about');
   aboutModal?.addEventListener('pointerdown', closeAbout, { capture: true });
   aboutModal?.addEventListener('click', closeAbout, { capture: true });
   closeButton?.addEventListener('pointerdown', closeAbout, { capture: true });
   closeButton?.addEventListener('click', closeAbout);
+  aboutMenu?.addEventListener('click', openAbout);
   window.addEventListener('pointerdown', beginInteraction, { once: true, passive: true });
   window.addEventListener('keydown', event => {
     event.key === 'Escape' && closeAbout(event);
     beginInteraction();
   }, { once: true });
+  const scheduleInitialAppLoad = () => {
+    if (window.requestIdleCallback) {
+      window.requestIdleCallback(() => beginInteraction(), { timeout: 1200 });
+      return;
+    }
+    window.setTimeout(beginInteraction, 250);
+  };
+  scheduleInitialAppLoad();
 })();
     </script>
     <script src="engineering-src-canvas-parameter-runtime.js?v=20260615-src-flow-basis3"></script>

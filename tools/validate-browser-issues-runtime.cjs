@@ -39,6 +39,11 @@ assert(indexHtml.includes("typeof window.__chromium_devtools_metrics_reporter ==
 assert(indexHtml.includes("set(value)"), 'Chromium DevTools metrics reporter guard must handle later non-function assignments.');
 assert(!indexHtml.includes('name="theme-color"'), 'index.html should not trigger Firefox theme-color compatibility notice.');
 assert(!indexHtml.includes('fetchpriority='), 'About dialog images should not trigger Firefox fetchpriority compatibility notice.');
+assert(/<div class="about-modal" id="aboutModal"[^>]*\shidden\b/.test(indexHtml), 'About dialog must be hidden by default so it cannot block menu clicks on first load.');
+assert(indexHtml.includes('function scheduleInitialAppLoad') || indexHtml.includes('const scheduleInitialAppLoad'), 'Index must schedule initial app loading without requiring the first menu click.');
+assert(indexHtml.includes('requestIdleCallback') && indexHtml.includes('window.setTimeout(beginInteraction, 250)'), 'Initial app load should use idle scheduling with a timer fallback.');
+assert(indexHtml.includes("aboutMenu?.addEventListener('click', openAbout)"), 'About menu should explicitly open the hidden About dialog.');
+assert(indexHtml.includes('window.__npshAboutDismissed = true'), 'Bootstrap must suppress legacy automatic About opening after core app load.');
 assert(!/id="toolbarObjectMenu"[^>]*role="menu"/.test(indexHtml), 'Static empty toolbar object menu must not declare role=menu.');
 assert(indexHtml.includes('stop-color="#4a90e2"'), 'Fluid Basis SVG gradient must not use inline CSS style attributes.');
 assert(indexHtml.includes('-webkit-user-select:none;user-select:none'), 'Critical inline CSS must list -webkit-user-select before user-select.');
