@@ -42,8 +42,12 @@ assert(indexHtml.includes("set(value)"), 'Chromium DevTools metrics reporter gua
 assert(!indexHtml.includes('name="theme-color"'), 'index.html should not trigger Firefox theme-color compatibility notice.');
 assert(!indexHtml.includes('fetchpriority='), 'About dialog images should not trigger Firefox fetchpriority compatibility notice.');
 assert(/<div class="about-modal" id="aboutModal"[^>]*\shidden\b/.test(indexHtml), 'About dialog must be hidden by default so it cannot block menu clicks on first load.');
-assert(indexHtml.includes('function scheduleInitialAppLoad') || indexHtml.includes('const scheduleInitialAppLoad'), 'Index must schedule initial app loading without requiring the first menu click.');
-assert(indexHtml.includes('requestIdleCallback') && indexHtml.includes('window.setTimeout(beginInteraction, 250)'), 'Initial app load should use idle scheduling with a timer fallback.');
+assert(indexHtml.includes('function scheduleInitialAppLoad') || indexHtml.includes('const scheduleInitialAppLoad'), 'Index must schedule initial app-shell loading without requiring the first menu click.');
+assert(indexHtml.includes('requestIdleCallback') && indexHtml.includes('window.setTimeout(startInitialShellLoad, 250)'), 'Initial app-shell load should use idle scheduling with a timer fallback.');
+assert(indexHtml.includes('window.__npshLoadRealtime = loadRealtime'), 'Index must expose an internal realtime bootstrap hook for E2E and diagnostics.');
+assert(indexHtml.includes("window.addEventListener('pointerdown', beginInteraction")
+  && indexHtml.includes("window.addEventListener('keydown', handleFirstKeydown")
+  && indexHtml.includes("document.addEventListener('keydown', handleFirstKeydown"), 'Realtime runtime must load from the first pointer/key activation instead of passive page-load work.');
 assert(indexHtml.includes('@media (max-width:820px){.ribbon{flex-wrap:wrap;align-content:flex-start;overflow-x:hidden;overflow-y:hidden}'), 'Critical CSS must pre-lock the mobile wrapped ribbon to prevent first-load layout shift.');
 assert(indexHtml.includes('@media (max-width:720px){.basis-status-pill,.basis-compact-status{display:none}.main-workspace{flex-direction:column;flex:1 1 auto;min-height:0}'), 'Critical CSS must pre-lock the mobile workspace/canvas layout before the deferred stylesheet arrives.');
 assert(indexHtml.includes('@media (max-width:640px){.menu-bar{font-size:12px;gap:12px;padding:5px 8px;min-height:32px}'), 'Critical CSS must pre-lock mobile menu sizing to match the final stylesheet.');

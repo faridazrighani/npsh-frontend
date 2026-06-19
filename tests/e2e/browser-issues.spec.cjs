@@ -78,6 +78,7 @@ test('browser Issues cleanup keeps ARIA roles and response headers compatible', 
 test('first load keeps About hidden and menu bar clickable', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('#aboutModal')).toBeHidden();
+  await page.keyboard.press('Escape');
   await page.waitForFunction(() => (
     typeof window.applySimulationStateAtomic === 'function'
     && window.EngineeringCalculationLifecycle?.cacheKey === '20260618-calculation-lifecycle-refresh-release1'

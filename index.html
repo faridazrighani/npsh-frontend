@@ -683,15 +683,14 @@
     </script>
     <script src="engineering-google-auth-runtime.js?v=20260612-google-access8"></script>
     <script src="engineering-npsh-margin-runtime.js?v=20260602-npsh-margin1"></script>
-    <script src="engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3"></script>
     <script>
 (() => {
   let corePromise = null;
+  let realtimePromise = null;
   let supportPromise = null;
   let stylePromise = null;
   const criticalScripts = [
-    'app.bundle.min.js?v=20260608-global-ribbon-placement-lock5',
-    'engineering-canvas-context-dock.js?v=20260619-mobile-performance-overlay1'
+    'app.bundle.min.js?v=20260608-global-ribbon-placement-lock5'
   ];
   const realtimeScripts = [
     'engineering-src-canvas-parameter-runtime.js?v=20260615-src-flow-basis3',
@@ -702,7 +701,11 @@
     'engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1',
     'engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1'
   ];
+  const statusScripts = [
+    'engineering-canvas-context-dock.js?v=20260619-mobile-performance-overlay1'
+  ];
   const featureScripts = [
+    'engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3',
     'engineering-source-temperature-runtime.js?v=20260601-src-fluid-link1',
     'engineering-parameter-task-runtime.js?v=20260611-parameter-blocks3',
     'engineering-local-trace-fallback-runtime.js?v=20260611-local-trace3',
@@ -784,12 +787,14 @@
       console.warn('Deferred app ready dispatch failed.', error);
     }
   };
-  const loadCore = () => corePromise || (corePromise = loadScripts(criticalScripts)
+  const loadShell = () => corePromise || (corePromise = loadScripts(criticalScripts)
     .then(() => {
       document.readyState !== 'loading' && fireReady();
-    })
-    .then(() => loadScripts(realtimeScripts, { idle: true, timeout: 900 })));
-  const loadSupport = () => supportPromise || (supportPromise = loadCore()
+    }));
+  const loadRealtime = () => realtimePromise || (realtimePromise = loadShell()
+    .then(() => loadScripts(realtimeScripts, { idle: true, timeout: 900 }))
+    .then(() => loadScripts(statusScripts, { idle: true, timeout: 1200 })));
+  const loadSupport = () => supportPromise || (supportPromise = loadRealtime()
     .then(() => loadScripts(featureScripts, { idle: true, timeout: 2000 }))
     .then(() => {
       window.EngineeringFormulaDefenseUI?.install?.({ force: true });
@@ -799,7 +804,7 @@
     .catch(error => console.warn('Deferred diagnostics did not load.', error)));
   const beginInteraction = () => {
     ensureStyles().catch(error => console.warn('Deferred stylesheet did not load.', error));
-    loadCore()
+    loadRealtime()
       .then(() => window.setTimeout(loadSupport, 12000))
       .catch(error => console.warn('Deferred app did not load.', error));
   };
@@ -847,20 +852,31 @@
   closeButton?.addEventListener('click', closeAbout);
   aboutMenu?.addEventListener('click', openAbout);
   window.addEventListener('pointerdown', beginInteraction, { once: true, passive: true });
-  window.addEventListener('keydown', event => {
+  let firstKeydownHandled = false;
+  const handleFirstKeydown = event => {
+    if (firstKeydownHandled) return;
+    firstKeydownHandled = true;
     event.key === 'Escape' && closeAbout(event);
     beginInteraction();
-  }, { once: true });
+  };
+  window.addEventListener('keydown', handleFirstKeydown, { once: true });
+  document.addEventListener('keydown', handleFirstKeydown, { once: true });
   ['#menu-help', '#menu-library', '#menu-tools', '#canvas', '#taskWindow'].forEach(selector => {
     document.querySelector(selector)?.addEventListener('click', beginFeatureInteraction, { once: true, passive: true });
   });
   const scheduleInitialAppLoad = () => {
+    const startInitialShellLoad = () => {
+      ensureStyles().catch(error => console.warn('Deferred stylesheet did not load.', error));
+      loadShell().catch(error => console.warn('Deferred app shell did not load.', error));
+    };
     if (window.requestIdleCallback) {
-      window.requestIdleCallback(() => beginInteraction(), { timeout: 1200 });
+      window.requestIdleCallback(startInitialShellLoad, { timeout: 1200 });
       return;
     }
-    window.setTimeout(beginInteraction, 250);
+    window.setTimeout(startInitialShellLoad, 250);
   };
+  window.__npshLoadRealtime = loadRealtime;
+  window.__npshLoadSupport = loadSupport;
   scheduleInitialAppLoad();
 })();
     </script>

@@ -102,8 +102,8 @@ tools/validate-analysis-report-live-runtime.cjs Node validation for Analysis Rep
 tools/validate-pump-nozzle-simplify-runtime.cjs Node validation for pump nozzle simplification runtime loading, deprecated main elevation input hiding, non-actionable status row hiding, redundant pump optimization proposal summary hiding, Pump Datum Elev. relabeling, cache key, npm script, and manifest lock
 tools/validate-calculation-lifecycle-runtime.cjs Node validation for unified calculation lifecycle status mapping, Run/Refresh command observation, realtime event subscriptions, load order, cache key, npm script, and audit-safe no-mutation guard
 tools/validate-calculation-progress-overlay.cjs Node validation for isolated calculation progress overlay runtime loading, realtime event listeners, delay/auto-hide timing contract, audit-safe no-mutation guard, compact academic copy, cache key, npm script, E2E script, and manifest lock
-tools/validate-performance-refresh-governor.cjs Node validation for Performance Refresh Governor loading, duplicate-job coalescing, scoped secondary-window/chart/formula-defense patch coverage, cache key/load order, npm script, manifest lock, and audit-safe no-mutation guard
-tools/validate-simulation-case-integrity-guard.cjs Node validation for Simulation Case integrity guard runtime loading, Simulasi 4 partial Methanol detection, sample-file restore wiring, rendered canvas object repair, cache key, npm script, and manifest lock
+tools/validate-performance-refresh-governor.cjs Node validation for Performance Refresh Governor loading, duplicate-job coalescing, scoped secondary-window/chart/formula-defense patch coverage, governor-before-realtime load order, deferred route-audit diagnostic placement, npm script, manifest lock, and audit-safe no-mutation guard
+tools/validate-simulation-case-integrity-guard.cjs Node validation for Simulation Case integrity guard runtime loading, deferred diagnostic placement, Simulasi 4 partial Methanol detection, sample-file restore wiring, rendered canvas object repair, cache key, npm script, and manifest lock
 ```
 
 Protected-bundle guardrail:
@@ -145,11 +145,14 @@ Pipe Segments file runtime cache key: engineering-pipe-segments-file-runtime.js?
 Formula Defense UI runtime cache key: engineering-formula-defense-ui.js?v=20260613-formula-defense-ui15
 Formula Defense UI KaTeX CSS cache key: vendor/katex/katex.min.css?v=20260613-formula-defense-ui15
 Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260619-mobile-performance-overlay1
+Canvas context dock load placement: post-realtime idle status script, not critical first-paint script
+Initial app load placement: shell/CSS auto-loads on idle; realtime/status/support scripts load on first pointer/key activation or internal diagnostic hook
 Defense export cache key: engineering-defense-export-package.js?v=20260603-defensev3
 Pipe Moody chart audit cache key: engineering-pipe-moody-chart-audit.js?v=20260607-pipe-moody-audit2
 Runtime API config: same-origin /api/simulate
 NPSH margin runtime cache key: engineering-npsh-margin-runtime.js?v=20260602-npsh-margin1
 Pump readiness visibility cache key: engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3
+Pump readiness visibility load placement: support-lazy feature script for developer panel hiding, not critical first-paint script
 Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260614-pump-defense-live18
 Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260614-pump-chart-audit21
 Pump performance canonical chart cache key: engineering-pump-performance-canonical-chart.js?v=20260614-canonical-chart15
