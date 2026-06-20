@@ -796,7 +796,7 @@
     try {
       const script = document.createElement('script');
       script.id = 'pump-performance-canonical-chart-runtime';
-      script.src = 'engineering-pump-performance-canonical-chart.js?v=20260621-canonical-chart17';
+      script.src = 'engineering-pump-performance-canonical-chart.js?v=20260621-canonical-chart18';
       script.async = false;
       document.body.appendChild(script);
       return true;

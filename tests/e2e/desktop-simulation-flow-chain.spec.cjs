@@ -616,17 +616,12 @@ test('Manual NPSHr UI edit previews Simulasi 4 locally and refreshes linked repo
   await page.evaluate(({ entry, report, pumpId }) => {
     window.openJournalAnalysisTaskWindow(entry, report);
     window.currentSelectedNode = pumpId;
-    window.__npshExplicitObjectPropertiesOpenUntil = Date.now() + 2000;
-    window.requestObjectPropertiesTaskWindowOpen?.(pumpId);
-    window.openObjectPropertiesTaskWindow?.(pumpId);
-    const taskWindow = document.querySelector(`.persistent-object-properties-task-window[data-node-id="${pumpId}"]`);
-    window.renderSidebar?.(pumpId, { taskWindow, skipDismissedGuard: true });
+    window.renderSidebar?.(pumpId, { skipDismissedGuard: true });
     window.EngineeringAnalysisReportLiveRuntime?.refresh?.();
   }, { entry: caseData.entry, report: caseData.report, pumpId: caseData.pumpId });
 
   await page.waitForSelector('.journal-analysis-task-window .journal-analysis-comparison-table', { timeout: 10000 });
-  const relocatedPropertiesNpshrInput = page.locator(`.persistent-object-properties-task-window[data-node-id="${caseData.pumpId}"] input[data-key="designNpshr"], .persistent-object-properties-task-window[data-node-id="${caseData.pumpId}"] input[name="design-npshr"]`).first();
-  await expect(relocatedPropertiesNpshrInput).toBeHidden({ timeout: 10000 });
+  await expect(page.locator(`.persistent-object-properties-task-window[data-node-id="${caseData.pumpId}"], #taskWindow[data-node-id="${caseData.pumpId}"]`)).toHaveCount(0);
   await page.waitForFunction(() => typeof window.openPumpManualNpshrTaskWindow === 'function', null, { timeout: 10000 });
   await page.evaluate((pumpId) => {
     const escape = window.CSS?.escape || ((value) => String(value).replace(/["\\]/g, '\\$&'));
@@ -653,17 +648,15 @@ test('Manual NPSHr UI edit previews Simulasi 4 locally and refreshes linked repo
   const pumpMenuItems = await page.locator('#canvasContextMenu button[role="menuitem"]').evaluateAll((buttons) => (
     buttons.map((button) => button.textContent.replace(/\s+/g, ' ').trim())
   ));
+  expect(pumpMenuItems).not.toContain('User Task Object Properties');
+  expect(pumpMenuItems).not.toContain('Pump Performance Chart');
   const pumpMenuCoreOrder = pumpMenuItems.filter((item) => [
-    'User Task Object Properties',
-    'Pump Performance Chart',
     'Manual NPSHr',
     'Pump Formula Defense',
     'Connect',
     'Delete Object'
   ].includes(item));
   expect(pumpMenuCoreOrder).toEqual([
-    'User Task Object Properties',
-    'Pump Performance Chart',
     'Manual NPSHr',
     'Pump Formula Defense',
     'Connect',

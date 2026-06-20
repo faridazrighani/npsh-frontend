@@ -1,8 +1,9 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-performance-canonical-chart.v15';
+  const VERSION = 'pump-performance-canonical-chart.v16';
   const PUMP_FORMULA_DEFENSE_RELOCATION_STYLE_ID = 'pump-formula-defense-relocation-style';
   const PUMP_MANUAL_NPSHR_RELOCATION_STYLE_ID = 'pump-manual-npshr-relocation-style';
+  const PUMP_DEVELOPMENT_UI_SUPPRESSION_STYLE_ID = 'pump-development-ui-suppression-style';
   const CANVAS_SELECTORS = [
     '#pumpChart',
     '#captionAuditPumpChartCanvas',
@@ -2129,23 +2130,6 @@
     lastPumpContextMenuId = runtimeModel()?.[id]?.type === 'pump' ? id : '';
   }
 
-  function createChartMenuButton(pumpId) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.setAttribute('role', 'menuitem');
-    button.tabIndex = -1;
-    button.textContent = 'Pump Performance Chart';
-    button.dataset.pumpPerformanceChartTaskMenu = 'true';
-    button.dataset.pumpNodeId = pumpId;
-    button.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      hideCanvasContextMenu();
-      root.openPumpPerformanceChartTaskWindow?.(pumpId);
-    });
-    return button;
-  }
-
   function createManualNpshrMenuButton(pumpId) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -2185,6 +2169,120 @@
     if (anchor?.nextSibling) menu.insertBefore(button, anchor.nextSibling);
     else menu.appendChild(button);
     return true;
+  }
+
+  function insertMenuButtonBefore(menu, button, anchor) {
+    if (!menu || !button) return false;
+    if (anchor) menu.insertBefore(button, anchor);
+    else menu.appendChild(button);
+    return true;
+  }
+
+  function installPumpDevelopmentUiSuppressionStyles() {
+    if (typeof document === 'undefined' || document.getElementById(PUMP_DEVELOPMENT_UI_SUPPRESSION_STYLE_ID)) return false;
+    const style = document.createElement('style');
+    style.id = PUMP_DEVELOPMENT_UI_SUPPRESSION_STYLE_ID;
+    style.textContent = `
+#canvasContextMenu [data-pump-performance-chart-task-menu="true"],
+#canvasContextMenu [data-pump-object-properties-suppressed="true"],
+.pump-performance-chart-task-window {
+  display: none !important;
+}
+`;
+    document.head?.appendChild(style);
+    return true;
+  }
+
+  function pumpIdFromOpenArgs(args = []) {
+    const model = runtimeModel();
+    const first = args[0];
+    const direct = typeof first === 'string'
+      ? first
+      : (first?.dataset?.nodeId || first?.dataset?.node || first?.dataset?.pumpNodeId || first?.nodeId || first?.id || '');
+    if (direct && model?.[direct]?.type === 'pump') return direct;
+    if (direct) return '';
+    try {
+      if (typeof currentSelectedNode !== 'undefined' && model?.[currentSelectedNode]?.type === 'pump') return currentSelectedNode;
+    } catch (error) {
+      // Protected builds can hide direct globals.
+    }
+    return '';
+  }
+
+  function closePumpObjectPropertiesTaskWindows(pumpId = '') {
+    if (typeof document === 'undefined') return false;
+    const model = runtimeModel();
+    let changed = false;
+    const windows = Array.from(document.querySelectorAll('#taskWindow, .persistent-object-properties-task-window, .object-properties-task'));
+    windows.forEach((windowNode) => {
+      const id = windowNode.dataset?.nodeId || windowNode.dataset?.taskNodeId || windowNode.dataset?.pumpNodeId || '';
+      if (!id || model?.[id]?.type !== 'pump') return;
+      if (pumpId && id !== pumpId) return;
+      const title = windowNode.querySelector?.('.task-window-header, #taskWindowTitle')?.textContent || windowNode.textContent || '';
+      if (!/Pump Object Properties/i.test(title)) return;
+      if (windowNode.id === 'taskWindow') {
+        windowNode.hidden = true;
+        windowNode.setAttribute('aria-hidden', 'true');
+      } else {
+        windowNode.remove();
+      }
+      changed = true;
+    });
+    return changed;
+  }
+
+  function closePumpPerformanceChartTaskWindows(pumpId = '') {
+    if (typeof document === 'undefined') return false;
+    const selector = pumpId
+      ? `.pump-performance-chart-task-window[data-pump-node-id="${cssEscape(pumpId)}"]`
+      : '.pump-performance-chart-task-window';
+    const windows = Array.from(document.querySelectorAll(selector));
+    windows.forEach((windowNode) => {
+      disconnectChartTaskWindowResizeObserver(windowNode);
+      windowNode.remove();
+    });
+    const modal = document.getElementById('fullEditor');
+    const modalCanvas = modal?.querySelector?.('.modal-chart-wrap canvas');
+    const modalPumpId = modalCanvas?.dataset?.pumpId || '';
+    const shouldCloseModal = !!(modal && modalCanvas && (!pumpId || !modalPumpId || modalPumpId === pumpId));
+    if (shouldCloseModal) {
+      modal.style.display = 'none';
+      modal.innerHTML = '';
+    }
+    return windows.length > 0 || shouldCloseModal;
+  }
+
+  function suppressPumpObjectPropertiesMenuButton(menu) {
+    if (!menu) return false;
+    const buttons = Array.from(menu.querySelectorAll('button[role="menuitem"]'));
+    let changed = false;
+    buttons.forEach((button) => {
+      if (!/User Task Object Properties/i.test(button.textContent || '')) return;
+      button.dataset.pumpObjectPropertiesSuppressed = 'true';
+      button.hidden = true;
+      button.disabled = true;
+      button.tabIndex = -1;
+      button.setAttribute('aria-hidden', 'true');
+      button.remove();
+      changed = true;
+    });
+    return changed;
+  }
+
+  function suppressPumpPerformanceChartMenuButtons(menu) {
+    if (!menu) return false;
+    const buttons = Array.from(menu.querySelectorAll('button[role="menuitem"]'));
+    let changed = false;
+    buttons.forEach((button) => {
+      if (button.dataset?.pumpPerformanceChartTaskMenu !== 'true' && !/^Pump Performance Chart$/i.test((button.textContent || '').trim())) return;
+      button.hidden = true;
+      button.disabled = true;
+      button.tabIndex = -1;
+      button.setAttribute('aria-hidden', 'true');
+      button.remove();
+      changed = true;
+    });
+    return changed;
   }
 
   function installPumpManualNpshrRelocationStyles() {
@@ -2290,7 +2388,7 @@
     return changed;
   }
 
-  function injectPumpContextMenuChartButton() {
+  function syncPumpContextMenuAnalysisButtons() {
     if (typeof document === 'undefined') return false;
     if (!lastPumpContextMenuId) return false;
     const pumpId = resolvePumpId(lastPumpContextMenuId);
@@ -2298,23 +2396,17 @@
     const menu = document.getElementById('canvasContextMenu');
     if (!menu || menu.getAttribute('aria-hidden') === 'true' || menu.style.display === 'none') return false;
     let changed = false;
-    const buttons = Array.from(menu.querySelectorAll('button[role="menuitem"]'));
-    const propertiesButton = buttons.find((item) => /User Task Object Properties/i.test(item.textContent || ''));
-    let chartButton = menu.querySelector('[data-pump-performance-chart-task-menu="true"]');
-    if (chartButton) {
-      chartButton.dataset.pumpNodeId = pumpId;
-    } else {
-      chartButton = createChartMenuButton(pumpId);
-      insertMenuButtonAfter(menu, chartButton, propertiesButton);
-      changed = true;
-    }
+    changed = suppressPumpObjectPropertiesMenuButton(menu) || changed;
+    changed = suppressPumpPerformanceChartMenuButtons(menu) || changed;
 
     let manualNpshrButton = menu.querySelector('[data-pump-manual-npshr-task-menu="true"]');
     if (manualNpshrButton) {
       manualNpshrButton.dataset.pumpNodeId = pumpId;
     } else {
       manualNpshrButton = createManualNpshrMenuButton(pumpId);
-      insertMenuButtonAfter(menu, manualNpshrButton, chartButton);
+      const firstStandardButton = Array.from(menu.querySelectorAll('button[role="menuitem"]'))
+        .find((item) => item !== manualNpshrButton && !item.dataset?.pumpFormulaDefenseTaskMenu);
+      insertMenuButtonBefore(menu, manualNpshrButton, firstStandardButton || null);
       changed = true;
     }
 
@@ -2328,8 +2420,14 @@
     }
 
     const orderedButtons = Array.from(menu.querySelectorAll('button[role="menuitem"]'));
-    if (orderedButtons.indexOf(manualNpshrButton) !== orderedButtons.indexOf(chartButton) + 1) {
-      insertMenuButtonAfter(menu, manualNpshrButton, chartButton);
+    const firstStandardButton = orderedButtons.find((item) => (
+      item !== manualNpshrButton
+      && item !== defenseButton
+      && item.dataset?.pumpFormulaDefenseTaskMenu !== 'true'
+      && item.dataset?.pumpManualNpshrTaskMenu !== 'true'
+    ));
+    if (firstStandardButton && orderedButtons.indexOf(manualNpshrButton) > orderedButtons.indexOf(firstStandardButton)) {
+      insertMenuButtonBefore(menu, manualNpshrButton, firstStandardButton);
       changed = true;
     }
     const reorderedButtons = Array.from(menu.querySelectorAll('button[role="menuitem"]'));
@@ -2343,11 +2441,14 @@
   function syncPumpPerformanceChartEntryPoints() {
     const changed = [
       installChartTaskWindowStyles(),
+      installPumpDevelopmentUiSuppressionStyles(),
       installPumpManualNpshrRelocationStyles(),
       installPumpFormulaDefenseRelocationStyles(),
       hideManualNpshrPropertiesInputs(),
       hidePumpFormulaDefensePropertiesButtons(),
-      injectPumpContextMenuChartButton()
+      closePumpObjectPropertiesTaskWindows(),
+      closePumpPerformanceChartTaskWindows(),
+      syncPumpContextMenuAnalysisButtons()
     ].some(Boolean);
     return changed;
   }
@@ -2370,8 +2471,8 @@
       const shouldSync = records.some((record) => Array.from(record.addedNodes || []).some((node) => (
         node.nodeType === 1
         && (node.matches?.('#canvasContextMenu')
-          || node.matches?.('#taskWindow, .object-properties-task, .persistent-object-properties-task-window, [data-pump-formula-defense], input[data-key="designNpshr"], input[data-key="manualNpshr"], input[name="design-npshr"]')
-          || node.querySelector?.('#canvasContextMenu, #taskWindow, .object-properties-task, .persistent-object-properties-task-window, [data-pump-formula-defense], input[data-key="designNpshr"], input[data-key="manualNpshr"], input[name="design-npshr"]'))
+          || node.matches?.('#taskWindow, .object-properties-task, .persistent-object-properties-task-window, .pump-performance-chart-task-window, [data-pump-formula-defense], input[data-key="designNpshr"], input[data-key="manualNpshr"], input[name="design-npshr"]')
+          || node.querySelector?.('#canvasContextMenu, #taskWindow, .object-properties-task, .persistent-object-properties-task-window, .pump-performance-chart-task-window, [data-pump-formula-defense], input[data-key="designNpshr"], input[data-key="manualNpshr"], input[name="design-npshr"]'))
       )));
       if (shouldSync) scheduleSync();
     });
@@ -2413,6 +2514,32 @@
     return true;
   }
 
+  function wrapPumpObjectPropertiesOpener(name) {
+    const current = root[name];
+    if (typeof current !== 'function' || current.__pumpObjectPropertiesSuppressedVersion === VERSION) return false;
+    const wrapped = function pumpObjectPropertiesSuppressedWrapper(...args) {
+      const pumpId = pumpIdFromOpenArgs(args);
+      if (pumpId) {
+        closePumpObjectPropertiesTaskWindows(pumpId);
+        return null;
+      }
+      return current.apply(this, args);
+    };
+    markCanonicalFunction(wrapped, `${name}PumpSuppressed`);
+    wrapped.__pumpObjectPropertiesSuppressedVersion = VERSION;
+    wrapped.__pumpPerformanceCanonicalChartOriginal = current;
+    copyRuntimePatchFlags(wrapped, current);
+    root[name] = wrapped;
+    return true;
+  }
+
+  function wrapPumpObjectPropertiesOpeners() {
+    return [
+      wrapPumpObjectPropertiesOpener('requestObjectPropertiesTaskWindowOpen'),
+      wrapPumpObjectPropertiesOpener('openObjectPropertiesTaskWindow')
+    ].some(Boolean);
+  }
+
   function installChartEndpoints() {
     let changed = false;
     if (typeof root.updatePumpChart !== 'function' || root.updatePumpChart.__pumpPerformanceCanonicalChartVersion !== VERSION) {
@@ -2427,24 +2554,20 @@
     }
 
     if (typeof root.openPumpPerformanceCurveWindow !== 'function' || root.openPumpPerformanceCurveWindow.__pumpPerformanceCanonicalChartVersion !== VERSION) {
-      root.openPumpPerformanceCurveWindow = markCanonicalFunction(function openPumpCanonicalPerformanceCurveWindow(pumpId) {
+      root.openPumpPerformanceCurveWindow = markCanonicalFunction(function openPumpCanonicalPerformanceCurveWindowDisabled(pumpId) {
         const id = resolvePumpId(pumpId);
-        ensureModal(id);
-        const chartModel = render(id);
-        scheduleRender(id, { force: true, delayMs: 140, reason: 'openPumpPerformanceCurveWindow' });
-        return chartModel;
-      }, 'openPumpPerformanceCurveWindow');
+        closePumpPerformanceChartTaskWindows(id);
+        return null;
+      }, 'openPumpPerformanceCurveWindowDisabled');
       changed = true;
     }
 
     if (typeof root.openPumpPerformanceChartTaskWindow !== 'function' || root.openPumpPerformanceChartTaskWindow.__pumpPerformanceCanonicalChartVersion !== VERSION) {
-      root.openPumpPerformanceChartTaskWindow = markCanonicalFunction(function openPumpCanonicalPerformanceChartTaskWindow(pumpId) {
+      root.openPumpPerformanceChartTaskWindow = markCanonicalFunction(function openPumpCanonicalPerformanceChartTaskWindowDisabled(pumpId) {
         const id = resolvePumpId(pumpId);
-        ensureTaskWindow(id);
-        const chartModel = render(id);
-        scheduleRender(id, { force: true, delayMs: 16, reason: 'openPumpPerformanceChartTaskWindow' });
-        return chartModel;
-      }, 'openPumpPerformanceChartTaskWindow');
+        closePumpPerformanceChartTaskWindows(id);
+        return null;
+      }, 'openPumpPerformanceChartTaskWindowDisabled');
       changed = true;
     }
 
@@ -2499,6 +2622,7 @@
       }, 'updateSimulation'),
       wrapFunctionAfter('updatePumpResultReadouts', () => scheduleRender(), 'updatePumpResultReadouts'),
       installChartEndpoints(),
+      wrapPumpObjectPropertiesOpeners(),
       bindRealtimeEvents(),
       bindLiveInputRefresh(),
       bindChartTaskEntryPoints()
@@ -2559,7 +2683,10 @@
     buildChartModel,
     scheduleRender,
     ensureRuntimeGuards,
-    openTaskWindow: ensureTaskWindow,
+    openTaskWindow: (pumpId) => {
+      closePumpPerformanceChartTaskWindows(resolvePumpId(pumpId));
+      return null;
+    },
     openManualNpshrWindow: ensureManualNpshrTaskWindow,
     syncEntryPoints: syncPumpPerformanceChartEntryPoints
   };
