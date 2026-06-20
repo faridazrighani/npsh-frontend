@@ -50,8 +50,8 @@ const uploadReadiness = read(UPLOAD_READINESS_FILE);
 
 assert(indexHtml.includes(LOCK_CACHE_KEY), "index.html must load the live parameter repaint-lock CSS with the locked cache key.");
 assert(
-  !indexHtml.includes(`\n    <link rel="stylesheet" href="${LOCK_CACHE_KEY}">`),
-  "Live parameter repaint-lock CSS must not be a render-blocking head stylesheet."
+  !indexHtml.includes('<link rel="stylesheet" href="engineering-live-parameter-repaint-lock.css'),
+  "Live parameter repaint-lock CSS must not appear as an initial HTML stylesheet."
 );
 assert(
   indexHtml.includes(`const LIVE_PARAMETER_REPAINT_LOCK_HREF = '${LOCK_CACHE_KEY}';`),
