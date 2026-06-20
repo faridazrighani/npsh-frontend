@@ -1,6 +1,7 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-performance-canonical-chart.v13';
+  const VERSION = 'pump-performance-canonical-chart.v14';
+  const PUMP_FORMULA_DEFENSE_RELOCATION_STYLE_ID = 'pump-formula-defense-relocation-style';
   const CANVAS_SELECTORS = [
     '#pumpChart',
     '#captionAuditPumpChartCanvas',
@@ -1950,6 +1951,66 @@
     return button;
   }
 
+  function createFormulaDefenseMenuButton(pumpId) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.setAttribute('role', 'menuitem');
+    button.tabIndex = -1;
+    button.textContent = 'Pump Formula Defense';
+    button.dataset.pumpFormulaDefenseTaskMenu = 'true';
+    button.dataset.pumpNodeId = pumpId;
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      hideCanvasContextMenu();
+      root.openPumpFormulaDefenseTaskWindow?.(pumpId);
+    });
+    return button;
+  }
+
+  function insertMenuButtonAfter(menu, button, anchor) {
+    if (!menu || !button) return false;
+    if (anchor?.nextSibling) menu.insertBefore(button, anchor.nextSibling);
+    else menu.appendChild(button);
+    return true;
+  }
+
+  function installPumpFormulaDefenseRelocationStyles() {
+    if (typeof document === 'undefined' || document.getElementById(PUMP_FORMULA_DEFENSE_RELOCATION_STYLE_ID)) return false;
+    const style = document.createElement('style');
+    style.id = PUMP_FORMULA_DEFENSE_RELOCATION_STYLE_ID;
+    style.textContent = `
+#taskWindow [data-pump-formula-defense],
+.object-properties-task [data-pump-formula-defense],
+.persistent-object-properties-task-window [data-pump-formula-defense] {
+  display: none !important;
+}
+`;
+    document.head?.appendChild(style);
+    return true;
+  }
+
+  function hidePumpFormulaDefensePropertiesButtons(scope = null) {
+    if (typeof document === 'undefined') return false;
+    const selector = '#taskWindow [data-pump-formula-defense], .object-properties-task [data-pump-formula-defense], .persistent-object-properties-task-window [data-pump-formula-defense]';
+    const searchRoot = scope || document;
+    const candidates = [];
+    if (searchRoot?.nodeType === 1 && searchRoot.matches?.(selector)) candidates.push(searchRoot);
+    candidates.push(...Array.from(searchRoot?.querySelectorAll?.(selector) || []));
+    let changed = false;
+    candidates.forEach((button) => {
+      if (button.dataset?.pumpFormulaDefenseTaskMenu === 'true') return;
+      if (!button.hidden || button.getAttribute('aria-hidden') !== 'true' || button.tabIndex !== -1) {
+        button.hidden = true;
+        button.tabIndex = -1;
+        button.setAttribute('aria-hidden', 'true');
+        button.dataset.pumpFormulaDefenseRelocatedFromProperties = 'true';
+        changed = true;
+      }
+    });
+    return changed;
+  }
+
   function injectPumpContextMenuChartButton() {
     if (typeof document === 'undefined') return false;
     if (!lastPumpContextMenuId) return false;
@@ -1957,18 +2018,43 @@
     if (!pumpId || runtimeModel()?.[pumpId]?.type !== 'pump') return false;
     const menu = document.getElementById('canvasContextMenu');
     if (!menu || menu.getAttribute('aria-hidden') === 'true' || menu.style.display === 'none') return false;
-    if (menu.querySelector('[data-pump-performance-chart-task-menu="true"]')) return false;
-    const button = createChartMenuButton(pumpId);
+    let changed = false;
     const buttons = Array.from(menu.querySelectorAll('button[role="menuitem"]'));
     const propertiesButton = buttons.find((item) => /User Task Object Properties/i.test(item.textContent || ''));
-    if (propertiesButton?.nextSibling) menu.insertBefore(button, propertiesButton.nextSibling);
-    else menu.appendChild(button);
-    return true;
+    let chartButton = menu.querySelector('[data-pump-performance-chart-task-menu="true"]');
+    if (chartButton) {
+      chartButton.dataset.pumpNodeId = pumpId;
+    } else {
+      chartButton = createChartMenuButton(pumpId);
+      insertMenuButtonAfter(menu, chartButton, propertiesButton);
+      changed = true;
+    }
+
+    let defenseButton = menu.querySelector('[data-pump-formula-defense-task-menu="true"]');
+    if (defenseButton) {
+      defenseButton.dataset.pumpNodeId = pumpId;
+    } else {
+      defenseButton = createFormulaDefenseMenuButton(pumpId);
+      insertMenuButtonAfter(menu, defenseButton, chartButton);
+      changed = true;
+    }
+
+    const orderedButtons = Array.from(menu.querySelectorAll('button[role="menuitem"]'));
+    if (orderedButtons.indexOf(defenseButton) !== orderedButtons.indexOf(chartButton) + 1) {
+      insertMenuButtonAfter(menu, defenseButton, chartButton);
+      changed = true;
+    }
+    return changed;
   }
 
   function syncPumpPerformanceChartEntryPoints() {
-    installChartTaskWindowStyles();
-    return injectPumpContextMenuChartButton();
+    const changed = [
+      installChartTaskWindowStyles(),
+      installPumpFormulaDefenseRelocationStyles(),
+      hidePumpFormulaDefensePropertiesButtons(),
+      injectPumpContextMenuChartButton()
+    ].some(Boolean);
+    return changed;
   }
 
   function bindChartTaskEntryPoints() {
@@ -1989,7 +2075,8 @@
       const shouldSync = records.some((record) => Array.from(record.addedNodes || []).some((node) => (
         node.nodeType === 1
         && (node.matches?.('#canvasContextMenu')
-          || node.querySelector?.('#canvasContextMenu'))
+          || node.matches?.('#taskWindow, .object-properties-task, .persistent-object-properties-task-window, [data-pump-formula-defense]')
+          || node.querySelector?.('#canvasContextMenu, #taskWindow, .object-properties-task, .persistent-object-properties-task-window, [data-pump-formula-defense]'))
       )));
       if (shouldSync) scheduleSync();
     });
