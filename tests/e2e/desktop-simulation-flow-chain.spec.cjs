@@ -460,6 +460,9 @@ test('Analysis Report live cells refresh from current calculation state without 
   }, { entry: caseData.entry, report: caseData.report });
 
   await page.waitForSelector('.journal-analysis-task-window .journal-analysis-comparison-table', { timeout: 10000 });
+  const xlsxExportButton = page.locator('.journal-analysis-task-window [data-analysis-report-xlsx-export="true"]');
+  await expect(xlsxExportButton).toBeVisible({ timeout: 10000 });
+  await expect(xlsxExportButton).toHaveText('XLSX');
   const baselineReport = await analysisReportCellSnapshot(page);
   expect(baselineReport.tempComparison.application).toContain('100 deg C');
   expect(baselineReport.pumpHeadComparison.application).toContain('24 m');
@@ -495,6 +498,20 @@ test('Analysis Report live cells refresh from current calculation state without 
   expect(changedReport.pumpHeadComparison.application).toBe('31.127 m');
   expect(changedReport.viscosityApplication.value).toBe('0.355 cSt');
   expect(changedReport.lastRefresh?.changed).toBeGreaterThanOrEqual(3);
+  const workbookSnapshot = await page.evaluate(() => {
+    const taskWindow = document.querySelector('.journal-analysis-task-window');
+    const workbook = window.EngineeringAnalysisReportLiveRuntime.collectAnalysisReportWorkbook(taskWindow);
+    const bytes = window.EngineeringAnalysisReportLiveRuntime.buildXlsxBytes(workbook);
+    return {
+      sheetNames: workbook.sheets.map((sheet) => sheet.name),
+      byteLength: bytes.length,
+      zipHeader: Array.from(bytes.slice(0, 4)).map((byte) => byte.toString(16).padStart(2, '0')).join('')
+    };
+  });
+  expect(workbookSnapshot.sheetNames).toContain('Case Status Summary');
+  expect(workbookSnapshot.sheetNames.length).toBeGreaterThan(2);
+  expect(workbookSnapshot.byteLength).toBeGreaterThan(1200);
+  expect(workbookSnapshot.zipHeader).toBe('504b0304');
 
   await page.evaluate(() => {
     const taskWindow = document.querySelector('.journal-analysis-task-window');

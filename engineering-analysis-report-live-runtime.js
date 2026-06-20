@@ -1,7 +1,7 @@
 (function installEngineeringAnalysisReportLiveRuntime(root) {
   'use strict';
 
-  const VERSION = '2026.06-analysis-report-live9';
+  const VERSION = '2026.06-analysis-report-live10';
   const REFRESH_MS = 3000;
   const ACTIVE_SELECTOR = '.journal-analysis-task-window, .journal-analysis-report-panel';
   const RESPONSIVE_STYLE_ID = 'engineeringAnalysisReportLiveResponsiveStyle';
@@ -111,6 +111,45 @@
 .journal-analysis-task-window table,
 .journal-analysis-report-panel table {
   max-width: 100%;
+}
+.analysis-report-xlsx-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.analysis-report-xlsx-title-row > :first-child {
+  min-width: 0;
+}
+.analysis-report-xlsx-export-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid #9bc4dd;
+  border-radius: 5px;
+  background: #f4fbff;
+  color: #103d5f;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.analysis-report-xlsx-export-btn:hover,
+.analysis-report-xlsx-export-btn:focus-visible {
+  border-color: #1f6fa9;
+  background: #e8f5ff;
+  outline: 2px solid rgba(31, 111, 169, 0.25);
+  outline-offset: 1px;
+}
+.analysis-report-xlsx-export-btn:disabled {
+  cursor: wait;
+  opacity: 0.72;
 }
 `;
     document.head.appendChild(style);
@@ -679,6 +718,380 @@
 
   const hasActiveReportSurface = () => activeReportSurfaces().length > 0;
 
+  const reportScope = (surface) => {
+    if (!surface) return null;
+    return surface.classList?.contains?.('journal-analysis-report-panel')
+      ? surface
+      : (surface.querySelector?.('.journal-analysis-report-panel')
+        || surface.querySelector?.('.task-window-body')
+        || surface);
+  };
+
+  const visibleText = (element) => String(element?.textContent || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const sheetName = (name, usedNames) => {
+    const base = String(name || 'Sheet')
+      .replace(/[\\/?*[\]:]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 31) || 'Sheet';
+    let candidate = base;
+    let suffix = 2;
+    while (usedNames.has(candidate.toLowerCase())) {
+      const tail = ` ${suffix}`;
+      candidate = `${base.slice(0, Math.max(1, 31 - tail.length))}${tail}`;
+      suffix += 1;
+    }
+    usedNames.add(candidate.toLowerCase());
+    return candidate;
+  };
+
+  const findNearestSectionHeading = (element) => {
+    const host = element?.closest?.('section, article, .journal-analysis-card, .fluid-help-card, .task-window-body');
+    const heading = host?.querySelector?.('h1, h2, h3, h4, h5, h6, caption');
+    return visibleText(heading) || 'Analysis Report';
+  };
+
+  const tableRows = (table) => Array.from(table?.rows || [])
+    .map((row) => Array.from(row.cells || []).map((cell) => visibleText(cell)))
+    .filter((row) => row.some(Boolean));
+
+  const findCaseStatusSummaryHeading = (surface) => {
+    const scope = reportScope(surface);
+    if (!scope?.querySelectorAll) return null;
+    const headings = Array.from(scope.querySelectorAll('h1, h2, h3, h4, h5, h6, .journal-analysis-section-title, .fluid-help-card-title, summary, caption'));
+    return headings.find((heading) => {
+      const text = normalizeMetric(heading.textContent);
+      return text.includes('case status summary')
+        || text.includes('status summary')
+        || text.includes('ringkasan status kasus')
+        || text.includes('ringkasan status');
+    }) || null;
+  };
+
+  const collectReportTextRows = (scope) => {
+    if (!scope?.querySelectorAll) return [];
+    return Array.from(scope.querySelectorAll('h1, h2, h3, h4, h5, h6, p, li, summary, caption, pre, code'))
+      .filter((element) => !element.closest?.('table') && !element.closest?.('[data-analysis-report-xlsx-export]'))
+      .map((element) => [element.tagName || 'TEXT', visibleText(element)])
+      .filter((row) => row[1]);
+  };
+
+  const collectCaseStatusSummaryRows = (surface) => {
+    const heading = findCaseStatusSummaryHeading(surface);
+    const host = heading?.closest?.('section, article, .journal-analysis-card, .fluid-help-card') || heading?.parentElement;
+    if (!host) return [];
+    const rows = [];
+    const title = visibleText(heading);
+    if (title) rows.push([title]);
+    const tables = Array.from(host.querySelectorAll?.('table') || []);
+    tables.forEach((table, index) => {
+      if (index > 0 || rows.length) rows.push([]);
+      rows.push([visibleText(table.caption) || `${title || 'Case Status Summary'} Table ${index + 1}`]);
+      rows.push(...tableRows(table));
+    });
+    if (!tables.length) {
+      Array.from(host.querySelectorAll?.('p, li') || [])
+        .map((element) => visibleText(element))
+        .filter(Boolean)
+        .forEach((text) => rows.push([text]));
+    }
+    return rows.filter((row) => row.some(Boolean));
+  };
+
+  const collectAnalysisReportWorkbook = (surface) => {
+    const scope = reportScope(surface);
+    const usedNames = new Set();
+    const sheets = [];
+    const metadataRows = [
+      ['Analysis Report Export'],
+      ['Generated At', new Date().toISOString()],
+      ['Runtime Version', VERSION],
+      ['Source', 'Visible Analysis Report DOM values']
+    ];
+    sheets.push({ name: sheetName('Export Info', usedNames), rows: metadataRows });
+
+    const caseStatusRows = collectCaseStatusSummaryRows(surface);
+    if (caseStatusRows.length) {
+      sheets.push({ name: sheetName('Case Status Summary', usedNames), rows: caseStatusRows });
+    }
+
+    const reportTextRows = collectReportTextRows(scope);
+    if (reportTextRows.length) {
+      sheets.push({
+        name: sheetName('Report Text', usedNames),
+        rows: [['Element', 'Text'], ...reportTextRows]
+      });
+    }
+
+    Array.from(scope?.querySelectorAll?.('table') || []).forEach((table, index) => {
+      const rows = tableRows(table);
+      if (!rows.length) return;
+      const title = visibleText(table.caption) || findNearestSectionHeading(table) || `Table ${index + 1}`;
+      sheets.push({
+        name: sheetName(title, usedNames),
+        rows: [[title], [], ...rows]
+      });
+    });
+
+    return {
+      title: 'Analysis Report',
+      sheets: sheets.filter((sheet) => Array.isArray(sheet.rows) && sheet.rows.length)
+    };
+  };
+
+  const xmlEscape = (value) => String(value ?? '')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+
+  const columnName = (index) => {
+    let name = '';
+    let value = index + 1;
+    while (value > 0) {
+      const mod = (value - 1) % 26;
+      name = String.fromCharCode(65 + mod) + name;
+      value = Math.floor((value - mod) / 26);
+    }
+    return name;
+  };
+
+  const isNumericCell = (value) => /^[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?$/i.test(String(value || '').trim());
+
+  const worksheetXml = (rows) => {
+    const rowXml = rows.map((row, rowIndex) => {
+      const cells = row.map((value, columnIndex) => {
+        const ref = `${columnName(columnIndex)}${rowIndex + 1}`;
+        const text = String(value ?? '').trim();
+        if (text && isNumericCell(text)) {
+          return `<c r="${ref}"><v>${xmlEscape(text)}</v></c>`;
+        }
+        return `<c r="${ref}" t="inlineStr"><is><t>${xmlEscape(value)}</t></is></c>`;
+      }).join('');
+      return `<row r="${rowIndex + 1}">${cells}</row>`;
+    }).join('');
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rowXml}</sheetData></worksheet>`;
+  };
+
+  const crc32 = (() => {
+    const table = new Uint32Array(256);
+    for (let index = 0; index < 256; index += 1) {
+      let value = index;
+      for (let bit = 0; bit < 8; bit += 1) {
+        value = (value & 1) ? (0xEDB88320 ^ (value >>> 1)) : (value >>> 1);
+      }
+      table[index] = value >>> 0;
+    }
+    return (bytes) => {
+      let crc = 0xFFFFFFFF;
+      for (let index = 0; index < bytes.length; index += 1) {
+        crc = table[(crc ^ bytes[index]) & 0xFF] ^ (crc >>> 8);
+      }
+      return (crc ^ 0xFFFFFFFF) >>> 0;
+    };
+  })();
+
+  const encodeText = (text) => new TextEncoder().encode(String(text));
+
+  const writeUint16 = (view, offset, value) => view.setUint16(offset, value, true);
+  const writeUint32 = (view, offset, value) => view.setUint32(offset, value >>> 0, true);
+
+  const concatBytes = (parts) => {
+    const total = parts.reduce((sum, part) => sum + part.length, 0);
+    const output = new Uint8Array(total);
+    let offset = 0;
+    parts.forEach((part) => {
+      output.set(part, offset);
+      offset += part.length;
+    });
+    return output;
+  };
+
+  const zipFiles = (files) => {
+    const localParts = [];
+    const centralParts = [];
+    let offset = 0;
+    files.forEach((file) => {
+      const nameBytes = encodeText(file.path);
+      const dataBytes = file.data instanceof Uint8Array ? file.data : encodeText(file.data);
+      const crc = crc32(dataBytes);
+      const localHeader = new Uint8Array(30);
+      const localView = new DataView(localHeader.buffer);
+      writeUint32(localView, 0, 0x04034b50);
+      writeUint16(localView, 4, 20);
+      writeUint16(localView, 6, 0);
+      writeUint16(localView, 8, 0);
+      writeUint16(localView, 10, 0);
+      writeUint16(localView, 12, 0);
+      writeUint32(localView, 14, crc);
+      writeUint32(localView, 18, dataBytes.length);
+      writeUint32(localView, 22, dataBytes.length);
+      writeUint16(localView, 26, nameBytes.length);
+      writeUint16(localView, 28, 0);
+      localParts.push(localHeader, nameBytes, dataBytes);
+
+      const centralHeader = new Uint8Array(46);
+      const centralView = new DataView(centralHeader.buffer);
+      writeUint32(centralView, 0, 0x02014b50);
+      writeUint16(centralView, 4, 20);
+      writeUint16(centralView, 6, 20);
+      writeUint16(centralView, 8, 0);
+      writeUint16(centralView, 10, 0);
+      writeUint16(centralView, 12, 0);
+      writeUint16(centralView, 14, 0);
+      writeUint32(centralView, 16, crc);
+      writeUint32(centralView, 20, dataBytes.length);
+      writeUint32(centralView, 24, dataBytes.length);
+      writeUint16(centralView, 28, nameBytes.length);
+      writeUint16(centralView, 30, 0);
+      writeUint16(centralView, 32, 0);
+      writeUint16(centralView, 34, 0);
+      writeUint16(centralView, 36, 0);
+      writeUint32(centralView, 38, 0);
+      writeUint32(centralView, 42, offset);
+      centralParts.push(centralHeader, nameBytes);
+      offset += localHeader.length + nameBytes.length + dataBytes.length;
+    });
+    const centralDirectory = concatBytes(centralParts);
+    const endRecord = new Uint8Array(22);
+    const endView = new DataView(endRecord.buffer);
+    writeUint32(endView, 0, 0x06054b50);
+    writeUint16(endView, 4, 0);
+    writeUint16(endView, 6, 0);
+    writeUint16(endView, 8, files.length);
+    writeUint16(endView, 10, files.length);
+    writeUint32(endView, 12, centralDirectory.length);
+    writeUint32(endView, 16, offset);
+    writeUint16(endView, 20, 0);
+    return concatBytes([...localParts, centralDirectory, endRecord]);
+  };
+
+  const buildXlsxBytes = (workbook) => {
+    const sheets = workbook?.sheets?.length ? workbook.sheets : [{ name: 'Analysis Report', rows: [['No report data available']] }];
+    const workbookSheets = sheets.map((sheet, index) => `<sheet name="${xmlEscape(sheet.name)}" sheetId="${index + 1}" r:id="rId${index + 1}"/>`).join('');
+    const workbookRels = sheets.map((sheet, index) => `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${index + 1}.xml"/>`).join('');
+    const worksheetOverrides = sheets.map((sheet, index) => `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('');
+    const files = [
+      {
+        path: '[Content_Types].xml',
+        data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${worksheetOverrides}<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`
+      },
+      {
+        path: '_rels/.rels',
+        data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>'
+      },
+      {
+        path: 'xl/workbook.xml',
+        data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${workbookSheets}</sheets></workbook>`
+      },
+      {
+        path: 'xl/_rels/workbook.xml.rels',
+        data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${workbookRels}</Relationships>`
+      },
+      {
+        path: 'docProps/core.xml',
+        data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${xmlEscape(workbook.title || 'Analysis Report')}</dc:title><dc:creator>NPSH Simulation</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${new Date().toISOString()}</dcterms:created></cp:coreProperties>`
+      },
+      {
+        path: 'docProps/app.xml',
+        data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>NPSH Simulation</Application></Properties>'
+      },
+      ...sheets.map((sheet, index) => ({
+        path: `xl/worksheets/sheet${index + 1}.xml`,
+        data: worksheetXml(sheet.rows)
+      }))
+    ];
+    return zipFiles(files);
+  };
+
+  const downloadBytes = (filename, bytes, mimeType) => {
+    const blob = new Blob([bytes], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    root.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return true;
+  };
+
+  const exportFilename = () => {
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19);
+    return `analysis-report-${stamp}.xlsx`;
+  };
+
+  const downloadAnalysisReportXlsx = (surface) => {
+    refresh();
+    const workbook = collectAnalysisReportWorkbook(surface);
+    const bytes = buildXlsxBytes(workbook);
+    return downloadBytes(exportFilename(), bytes, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  };
+
+  const installAnalysisReportExportButtons = (surface = null) => {
+    if (typeof document === 'undefined' || !document.createElement) return 0;
+    const surfaces = surface ? [surface] : activeReportSurfaces();
+    let installed = 0;
+    surfaces.forEach((item) => {
+      const heading = findCaseStatusSummaryHeading(item);
+      if (!heading || heading.closest?.('[data-analysis-report-xlsx-title-row]')) return;
+      if (/^(caption|summary)$/i.test(String(heading.tagName || ''))) return;
+      const parent = heading.parentElement;
+      if (!parent?.insertBefore) return;
+      const row = document.createElement('div');
+      row.className = 'analysis-report-xlsx-title-row';
+      row.dataset.analysisReportXlsxTitleRow = 'true';
+      parent.insertBefore(row, heading);
+      row.appendChild(heading);
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'analysis-report-xlsx-export-btn';
+      button.dataset.analysisReportXlsxExport = 'true';
+      button.textContent = 'XLSX';
+      button.title = 'Export Analysis Report to Excel spreadsheet';
+      button.setAttribute('aria-label', 'Export Analysis Report to Excel spreadsheet');
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const previousText = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Saving...';
+        try {
+          downloadAnalysisReportXlsx(item);
+          if (typeof root.showUiToast === 'function') {
+            root.showUiToast('Analysis Report XLSX export has started.', {
+              title: 'Export XLSX',
+              variant: 'success',
+              duration: 3200
+            });
+          }
+        } catch (error) {
+          console.warn('Analysis Report XLSX export failed.', error);
+          if (typeof root.showUiToast === 'function') {
+            root.showUiToast('Analysis Report XLSX export failed. Please try again.', {
+              title: 'Export XLSX',
+              variant: 'error',
+              duration: 5000
+            });
+          }
+        } finally {
+          button.disabled = false;
+          button.textContent = previousText;
+        }
+      });
+      row.appendChild(button);
+      installed += 1;
+    });
+    return installed;
+  };
+
   const currentInputLatencyShield = () => {
     try {
       if (typeof root.EngineeringInputLatencyShield?.current === 'function') {
@@ -702,6 +1115,7 @@
     const candidates = activeReportSurfaces();
     if (!candidates.length) return 0;
     installResponsiveCss();
+    installAnalysisReportExportButtons();
     const metrics = collectLiveMetrics();
     if (!metrics.size) return 0;
     let changed = 0;
@@ -757,6 +1171,10 @@
     refresh,
     collectLiveMetrics,
     installResponsiveCss,
+    installAnalysisReportExportButtons,
+    collectAnalysisReportWorkbook,
+    buildXlsxBytes,
+    downloadAnalysisReportXlsx,
     scheduleRefresh,
     hasActiveReportSurface
   };

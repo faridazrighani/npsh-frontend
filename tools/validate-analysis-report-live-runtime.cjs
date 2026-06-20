@@ -9,8 +9,8 @@ const RUNTIME_FILE = path.join(FRONTEND_ROOT, "engineering-analysis-report-live-
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const CASE_FILE = path.join(FRONTEND_ROOT, "journals", "simulasi_1", "simulasi_performansi_pompa_air_umpan_tangki_deaerator.untirta");
-const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260616-analysis-report-snk-flow-demand1";
-const VERSION = "2026.06-analysis-report-live9";
+const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260620-analysis-report-xlsx-export1";
+const VERSION = "2026.06-analysis-report-live10";
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
 function assert(condition, message) {
@@ -53,6 +53,10 @@ function loadRuntime(runtimeSource, model, documentOverride = null) {
     MutationObserver: class {
       observe() {}
     },
+    TextEncoder,
+    Uint8Array,
+    Uint32Array,
+    DataView,
     setTimeout: () => 1,
     clearTimeout: () => {},
     setInterval: () => 1,
@@ -238,6 +242,12 @@ assert(runtime.includes("setCellText"), "Runtime must patch cell text instead of
 assert(runtime.includes("row.closest?.('thead')"), "Runtime must update data rows that use TH metric cells and only skip THEAD rows.");
 assert(runtime.includes("installResponsiveCss"), "Runtime must install scoped Analysis Report responsive CSS.");
 assert(runtime.includes("engineeringAnalysisReportLiveResponsiveStyle"), "Runtime must use a stable responsive CSS marker.");
+assert(runtime.includes("installAnalysisReportExportButtons"), "Runtime must install Analysis Report XLSX export controls.");
+assert(runtime.includes("downloadAnalysisReportXlsx"), "Runtime must expose Analysis Report XLSX download behavior.");
+assert(runtime.includes("collectAnalysisReportWorkbook"), "Runtime must collect visible Analysis Report DOM content for export.");
+assert(runtime.includes("buildXlsxBytes"), "Runtime must build XLSX bytes without adding an eager spreadsheet dependency.");
+assert(runtime.includes("button.dataset.analysisReportXlsxExport"), "Runtime must mark the Analysis Report export button for browser validation.");
+assert(runtime.includes("Case Status Summary"), "Runtime must preserve a dedicated Case Status Summary export sheet.");
 assert(runtime.includes(".journal-analysis-task-window .academic-equation-math"), "Runtime responsive CSS must target Analysis Report formula nodes.");
 assert(runtime.includes("white-space: normal !important"), "Runtime responsive CSS must allow long report formulas to wrap.");
 assert(runtime.includes("overflow-wrap: anywhere"), "Runtime responsive CSS must break long report route/formula traces inside the panel.");
@@ -259,6 +269,10 @@ assert(api && api.version === VERSION, "Runtime API must expose the Analysis Rep
 assert(typeof api.collectLiveMetrics === "function", "Runtime API must expose live metric collection.");
 assert(typeof api.refresh === "function", "Runtime API must expose a refresh function.");
 assert(typeof api.installResponsiveCss === "function", "Runtime API must expose responsive CSS installation for browser checks.");
+assert(typeof api.installAnalysisReportExportButtons === "function", "Runtime API must expose XLSX export button installation.");
+assert(typeof api.collectAnalysisReportWorkbook === "function", "Runtime API must expose Analysis Report workbook collection.");
+assert(typeof api.buildXlsxBytes === "function", "Runtime API must expose XLSX byte generation for validation.");
+assert(typeof api.downloadAnalysisReportXlsx === "function", "Runtime API must expose Analysis Report XLSX download.");
 assert(typeof api.hasActiveReportSurface === "function", "Runtime API must expose visible Analysis Report surface detection.");
 
 const metrics = api.collectLiveMetrics();
@@ -317,6 +331,29 @@ assert(
   reportDocument.applicationTable.rows[1].cells[1].textContent === "7.123456 m",
   "Application Input & Result Data table must refresh NPSHa from current pump calculation result."
 );
+
+const workbookBytes = api.buildXlsxBytes({
+  title: "Analysis Report",
+  sheets: [
+    {
+      name: "Case Status Summary",
+      rows: [
+        ["Metric", "Journal", "Application"],
+        ["Pump - NPSHa", "6.4656 m", "7.123456 m"]
+      ]
+    },
+    {
+      name: "Application Values",
+      rows: [
+        ["Metric", "Value"],
+        ["Fluid Basis - Kinematic viscosity", "0.355 cSt"]
+      ]
+    }
+  ]
+});
+assert(workbookBytes instanceof Uint8Array, "XLSX builder must return Uint8Array bytes.");
+assert(workbookBytes.length > 1200, "XLSX builder must produce a non-empty workbook archive.");
+assert(Buffer.from(workbookBytes.subarray(0, 4)).toString("hex") === "504b0304", "XLSX export must be a ZIP/OpenXML workbook.");
 
 assert(
   packageJson.scripts?.["validate:analysis-report-live-runtime"] === "node tools/validate-analysis-report-live-runtime.cjs",
