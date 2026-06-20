@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-performance-canonical-chart.v16';
+  const VERSION = 'pump-performance-canonical-chart.v17';
   const PUMP_FORMULA_DEFENSE_RELOCATION_STYLE_ID = 'pump-formula-defense-relocation-style';
   const PUMP_MANUAL_NPSHR_RELOCATION_STYLE_ID = 'pump-manual-npshr-relocation-style';
   const PUMP_DEVELOPMENT_UI_SUPPRESSION_STYLE_ID = 'pump-development-ui-suppression-style';
@@ -2119,9 +2119,18 @@
   function hideCanvasContextMenu() {
     const menu = document.getElementById('canvasContextMenu');
     if (!menu) return;
+    releaseCanvasContextMenuFocus(menu);
     menu.style.display = 'none';
     menu.setAttribute('aria-hidden', 'true');
     document.body?.classList?.remove('context-menu-open');
+  }
+
+  function releaseCanvasContextMenuFocus(menu) {
+    if (typeof document === 'undefined' || !menu) return false;
+    const active = document.activeElement;
+    if (!active || active === document.body || !menu.contains(active)) return false;
+    active.blur?.();
+    return true;
   }
 
   function capturePumpContextMenuTarget(event) {
@@ -2258,6 +2267,7 @@
     let changed = false;
     buttons.forEach((button) => {
       if (!/User Task Object Properties/i.test(button.textContent || '')) return;
+      if (document.activeElement === button || button.contains?.(document.activeElement)) releaseCanvasContextMenuFocus(menu);
       button.dataset.pumpObjectPropertiesSuppressed = 'true';
       button.hidden = true;
       button.disabled = true;
@@ -2275,6 +2285,7 @@
     let changed = false;
     buttons.forEach((button) => {
       if (button.dataset?.pumpPerformanceChartTaskMenu !== 'true' && !/^Pump Performance Chart$/i.test((button.textContent || '').trim())) return;
+      if (document.activeElement === button || button.contains?.(document.activeElement)) releaseCanvasContextMenuFocus(menu);
       button.hidden = true;
       button.disabled = true;
       button.tabIndex = -1;

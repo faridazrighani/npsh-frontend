@@ -262,11 +262,11 @@ globalThis.updatePumpChart('P-100');
 assert.strictEqual(lateRendererCalls, 0, 'Audit chart draw must not call the old fallback renderer.');
 
 assert(
-  index.includes('engineering-pump-performance-chart-audit.js?v=20260621-pump-chart-audit24'),
+  index.includes('engineering-pump-performance-chart-audit.js?v=20260621-pump-chart-audit25'),
   'Index must cache-bust the pump performance chart audit runtime.'
 );
 assert(
-  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260621-canonical-chart18'),
+  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260621-canonical-chart19'),
   'Audit runtime must load the canonical operational chart renderer after audit guards.'
 );
 assert.strictEqual(typeof audit.loadCanonicalChartRenderer, 'function', 'Audit runtime must expose canonical renderer loader.');
@@ -305,6 +305,8 @@ assert(canonicalSource.includes('options.force && delayMs <= 32'), 'Canonical ch
 assert(canonicalSource.includes('suppressPumpObjectPropertiesMenuButton'), 'Pump context menu must remove the Pump Object Properties menu item for pump objects.');
 assert(canonicalSource.includes('wrapPumpObjectPropertiesOpeners'), 'Pump Object Properties openers must be blocked for pump objects.');
 assert(canonicalSource.includes('suppressPumpPerformanceChartMenuButtons'), 'Pump context menu must remove the Pump Performance Chart menu item for pump objects.');
+assert(canonicalSource.includes('releaseCanvasContextMenuFocus'), 'Canvas context menu must release focused descendants before aria-hidden is applied.');
+assert(canonicalSource.includes('releaseCanvasContextMenuFocus(menu);'), 'hideCanvasContextMenu must call the focus release guard before hiding the menu.');
 assert(canonicalSource.includes('openPumpPerformanceChartTaskWindowDisabled'), 'Pump Performance Chart task-window opener must be disabled.');
 assert(canonicalSource.includes('openPumpPerformanceCurveWindowDisabled'), 'Legacy pump performance curve window opener must be disabled.');
 assert(canonicalSource.includes('closePumpPerformanceChartTaskWindows'), 'Existing Pump Performance Chart task windows must be closed/suppressed.');
@@ -338,7 +340,7 @@ assert(canonicalSource.includes('Curve Mode:'), 'Canonical footer metadata must 
 assert(canonicalSource.includes('chart.bottom + (compact ? 38 : 44)'), 'X-axis label must be positioned from the plot footer, not absolute canvas bottom.');
 assert(canonicalSource.includes('chart.bottom + 58'), 'Compact footer metadata must be below the x-axis label.');
 assert(!canonicalSource.includes('height - 44 + index * 11'), 'Footer metadata must not return to the old axis-overlap position.');
-assert.strictEqual(canonical.version, 'pump-performance-canonical-chart.v16', 'Canonical chart runtime must expose the smart engineering chart version.');
+assert.strictEqual(canonical.version, 'pump-performance-canonical-chart.v17', 'Canonical chart runtime must expose the smart engineering chart version.');
 assert.strictEqual(typeof canonical.ensureRuntimeGuards, 'function', 'Canonical chart runtime must expose self-healing realtime guards.');
 assert.strictEqual(typeof canonical.openTaskWindow, 'function', 'Canonical chart runtime must expose a disabled Pump Performance Chart task-window guard.');
 assert.strictEqual(typeof canonical.syncEntryPoints, 'function', 'Canonical chart runtime must expose entry-point synchronization for menu/buttons.');
@@ -359,7 +361,7 @@ globalThis.updatePumpChart = function overwrittenPumpChartRenderer() {
 canonical.ensureRuntimeGuards();
 assert.strictEqual(
   globalThis.updatePumpChart.__pumpPerformanceCanonicalChartVersion,
-  'pump-performance-canonical-chart.v16',
+  'pump-performance-canonical-chart.v17',
   'Canonical renderer must reclaim updatePumpChart after any late override.'
 );
 

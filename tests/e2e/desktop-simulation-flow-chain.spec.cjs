@@ -605,6 +605,13 @@ test('Simulasi 4 desktop chain renders actual methanol NPSH-risk fixture', async
 
 test('Manual NPSHr UI edit previews Simulasi 4 locally and refreshes linked report values', async ({ page }) => {
   const caseData = loadJournalCase('simulation-case-4');
+  const ariaHiddenFocusWarnings = [];
+  page.on('console', (message) => {
+    const text = message.text();
+    if (/Blocked aria-hidden/i.test(text) && /canvasContextMenu/i.test(text)) {
+      ariaHiddenFocusWarnings.push(text);
+    }
+  });
 
   await waitForNpshApp(page);
   await loadProject(page, caseData);
@@ -665,6 +672,7 @@ test('Manual NPSHr UI edit previews Simulasi 4 locally and refreshes linked repo
   await page.locator('#canvasContextMenu button[role="menuitem"]').filter({ hasText: /^Manual NPSHr$/ }).click();
   const npshrInput = page.locator(`.pump-manual-npshr-task-window[data-pump-node-id="${caseData.pumpId}"] input[data-field="manualNpshr"]`).first();
   await expect(npshrInput).toBeVisible({ timeout: 10000 });
+  expect(ariaHiddenFocusWarnings).toEqual([]);
 
   const requestsBeforeEdit = page.__desktopFlowChainRequests.length;
 
