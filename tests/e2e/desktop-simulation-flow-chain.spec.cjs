@@ -625,7 +625,52 @@ test('Manual NPSHr UI edit previews Simulasi 4 locally and refreshes linked repo
   }, { entry: caseData.entry, report: caseData.report, pumpId: caseData.pumpId });
 
   await page.waitForSelector('.journal-analysis-task-window .journal-analysis-comparison-table', { timeout: 10000 });
-  const npshrInput = page.locator(`.persistent-object-properties-task-window[data-node-id="${caseData.pumpId}"] input[data-key="designNpshr"], .persistent-object-properties-task-window[data-node-id="${caseData.pumpId}"] input[name="design-npshr"]`).first();
+  const relocatedPropertiesNpshrInput = page.locator(`.persistent-object-properties-task-window[data-node-id="${caseData.pumpId}"] input[data-key="designNpshr"], .persistent-object-properties-task-window[data-node-id="${caseData.pumpId}"] input[name="design-npshr"]`).first();
+  await expect(relocatedPropertiesNpshrInput).toBeHidden({ timeout: 10000 });
+  await page.waitForFunction(() => typeof window.openPumpManualNpshrTaskWindow === 'function', null, { timeout: 10000 });
+  await page.evaluate((pumpId) => {
+    const escape = window.CSS?.escape || ((value) => String(value).replace(/["\\]/g, '\\$&'));
+    const candidates = Array.from(document.querySelectorAll(`[data-id="${escape(pumpId)}"]`));
+    const target = candidates.find((node) => node.classList?.contains('pfd-object') || node.closest?.('svg')) || candidates[0];
+    if (!target) throw new Error(`Pump object ${pumpId} was not found on the canvas.`);
+    const rect = target.getBoundingClientRect();
+    target.dispatchEvent(new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      button: 2,
+      buttons: 2,
+      clientX: rect.left + Math.max(4, rect.width / 2),
+      clientY: rect.top + Math.max(4, rect.height / 2)
+    }));
+    window.EngineeringPumpPerformanceCanonicalChart?.syncEntryPoints?.();
+  }, caseData.pumpId);
+  await page.waitForFunction(() => {
+    const items = Array.from(document.querySelectorAll('#canvasContextMenu button[role="menuitem"]'))
+      .map((button) => button.textContent.replace(/\s+/g, ' ').trim());
+    return items.includes('Manual NPSHr') && items.includes('Pump Formula Defense');
+  }, null, { timeout: 10000 });
+  const pumpMenuItems = await page.locator('#canvasContextMenu button[role="menuitem"]').evaluateAll((buttons) => (
+    buttons.map((button) => button.textContent.replace(/\s+/g, ' ').trim())
+  ));
+  const pumpMenuCoreOrder = pumpMenuItems.filter((item) => [
+    'User Task Object Properties',
+    'Pump Performance Chart',
+    'Manual NPSHr',
+    'Pump Formula Defense',
+    'Connect',
+    'Delete Object'
+  ].includes(item));
+  expect(pumpMenuCoreOrder).toEqual([
+    'User Task Object Properties',
+    'Pump Performance Chart',
+    'Manual NPSHr',
+    'Pump Formula Defense',
+    'Connect',
+    'Delete Object'
+  ]);
+  await page.locator('#canvasContextMenu button[role="menuitem"]').filter({ hasText: /^Manual NPSHr$/ }).click();
+  const npshrInput = page.locator(`.pump-manual-npshr-task-window[data-pump-node-id="${caseData.pumpId}"] input[data-field="manualNpshr"]`).first();
   await expect(npshrInput).toBeVisible({ timeout: 10000 });
 
   const requestsBeforeEdit = page.__desktopFlowChainRequests.length;

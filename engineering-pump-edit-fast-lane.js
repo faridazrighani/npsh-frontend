@@ -1,7 +1,7 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-pump-edit-fast-lane.v2';
-  const CACHE_KEY = '20260614-pump-edit-fast-lane2';
+  const VERSION = 'engineering-pump-edit-fast-lane.v3';
+  const CACHE_KEY = '20260621-pump-edit-fast-lane3';
   const PUMP_WINDOW_SELECTOR = [
     '.persistent-object-properties-task-window',
     '#taskWindow',
@@ -123,8 +123,9 @@
   function isPumpPropertySurface(target) {
     const windowNode = target?.closest?.(PUMP_WINDOW_SELECTOR);
     if (!windowNode) return false;
+    if (windowNode.classList?.contains?.('pump-manual-npshr-task-window') || windowNode.dataset?.kind === 'pump-manual-npshr') return true;
     const text = normalizeText(windowNode.querySelector?.('.task-window-header, #taskWindowTitle')?.textContent || windowNode.textContent || '');
-    return /Pump Object Properties|\bP-\d+\b|NPSH Evaluation Report|Pump Datum Elev/i.test(text);
+    return /Pump Object Properties|\bP-\d+\b|\bPUMP[-_]\d+\b|NPSH Evaluation Report|Pump Datum Elev/i.test(text);
   }
 
   function firstPumpId(model = runtimeModel()) {

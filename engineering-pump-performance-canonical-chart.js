@@ -1,7 +1,8 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-performance-canonical-chart.v14';
+  const VERSION = 'pump-performance-canonical-chart.v15';
   const PUMP_FORMULA_DEFENSE_RELOCATION_STYLE_ID = 'pump-formula-defense-relocation-style';
+  const PUMP_MANUAL_NPSHR_RELOCATION_STYLE_ID = 'pump-manual-npshr-relocation-style';
   const CANVAS_SELECTORS = [
     '#pumpChart',
     '#captionAuditPumpChartCanvas',
@@ -33,6 +34,7 @@
   let scheduledRenderTimer = 0;
   let pendingRenderPumpId = '';
   let chartTaskWindowCounter = 0;
+  let manualNpshrTaskWindowCounter = 0;
   let lastPumpContextMenuId = '';
 
   const STYLES = {
@@ -1699,6 +1701,52 @@
 .pump-performance-chart-task-window.task-window-minimized .task-window-body {
   display: none;
 }
+.pump-manual-npshr-task-window {
+  width: min(360px, calc(100vw - 24px));
+  min-width: min(300px, calc(100vw - 24px));
+  min-height: 0;
+  height: auto;
+  resize: none;
+  overflow: hidden;
+}
+.pump-manual-npshr-task-window .task-window-header {
+  cursor: move;
+}
+.pump-manual-npshr-task-body {
+  padding: 12px;
+  background: #f8fbff;
+}
+.pump-manual-npshr-field {
+  display: grid;
+  grid-template-columns: minmax(104px, 1fr) minmax(120px, 1.4fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin: 0;
+  color: #25455f;
+  font-size: 12px;
+  line-height: 1.3;
+}
+.pump-manual-npshr-field input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  padding: 4px 8px;
+  border: 1px solid #c8d7e5;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #14283a;
+  font: inherit;
+}
+.pump-manual-npshr-field input:focus {
+  border-color: #2879b8;
+  box-shadow: 0 0 0 2px rgba(40, 121, 184, 0.16);
+  outline: none;
+}
+.pump-manual-npshr-unit {
+  color: #355c76;
+  white-space: nowrap;
+}
 @media (max-width: 760px) {
   .pump-performance-chart-task-window {
     left: 8px !important;
@@ -1706,6 +1754,16 @@
     width: calc(100vw - 16px);
     min-width: 0;
     height: min(560px, calc(100vh - 24px));
+  }
+  .pump-manual-npshr-task-window {
+    left: 8px !important;
+    right: 8px !important;
+    width: calc(100vw - 16px);
+    min-width: 0;
+  }
+  .pump-manual-npshr-field {
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
 }
 `;
@@ -1920,6 +1978,143 @@
     return canvas;
   }
 
+  function formatManualNpshrInputValue(pumpId) {
+    const pump = runtimeModel()?.[resolvePumpId(pumpId)] || {};
+    const evaluation = pump.results?.npshEvaluation || {};
+    const value = firstNumber(
+      pump.props?.manualNpshr,
+      pump.props?.designNpshr,
+      evaluation.npshr,
+      pump.results?.npshr,
+      pump.results?.npshRequired
+    );
+    return value === null ? '' : Number(value.toFixed(6)).toString();
+  }
+
+  function refreshManualNpshrTaskWindow(taskWindow, pumpId) {
+    const input = taskWindow?.querySelector?.('input[data-field="manualNpshr"]');
+    if (!input || document.activeElement === input) return false;
+    const nextValue = formatManualNpshrInputValue(pumpId);
+    if (input.value === nextValue) return false;
+    input.value = nextValue;
+    return true;
+  }
+
+  function scheduleManualNpshrLinkedRefresh(pumpId, eventType = 'input') {
+    scheduleRender(pumpId, { force: true, delayMs: eventType === 'change' ? 80 : 16, reason: 'manual npshr task input' });
+    try {
+      root.EngineeringAnalysisReportLiveRuntime?.scheduleRefresh?.(80);
+    } catch (error) {
+      // Analysis report refresh is best-effort.
+    }
+    try {
+      root.EngineeringPumpFormulaDefenseLiveAudit?.scheduleRefresh?.(pumpId);
+    } catch (error) {
+      // Formula Defense refresh is best-effort.
+    }
+  }
+
+  function ensureManualNpshrTaskWindow(pumpId) {
+    if (typeof document === 'undefined') return null;
+    installChartTaskWindowStyles();
+    const id = resolvePumpId(pumpId);
+    const selector = `.pump-manual-npshr-task-window[data-pump-node-id="${cssEscape(id)}"]`;
+    const existing = document.querySelector(selector);
+    if (existing) {
+      refreshManualNpshrTaskWindow(existing, id);
+      bringChartTaskWindowToFront(existing);
+      clampChartTaskWindowToViewport(existing);
+      existing.focus?.({ preventScroll: true });
+      const existingInput = existing.querySelector('input[data-field="manualNpshr"]');
+      existingInput?.focus?.({ preventScroll: true });
+      existingInput?.select?.();
+      return existing;
+    }
+
+    manualNpshrTaskWindowCounter += 1;
+    const offset = (manualNpshrTaskWindowCounter - 1) % 4 * 20;
+    const taskWindow = document.createElement('section');
+    taskWindow.className = 'task-window pump-manual-npshr-task-window task-window-user-positioned';
+    taskWindow.dataset.kind = 'pump-manual-npshr';
+    taskWindow.dataset.pumpNodeId = id;
+    taskWindow.dataset.nodeId = id;
+    taskWindow.setAttribute('role', 'dialog');
+    taskWindow.setAttribute('aria-modal', 'false');
+    taskWindow.setAttribute('aria-label', 'Manual NPSHr');
+    taskWindow.setAttribute('tabindex', '-1');
+
+    const pumpProperties = document.getElementById('taskWindow');
+    const anchor = pumpProperties && !pumpProperties.hidden ? pumpProperties.getBoundingClientRect() : null;
+    const width = Math.min(360, Math.max(300, window.innerWidth - 24));
+    const fallbackLeft = window.innerWidth <= 760 ? 8 : 96 + offset;
+    const left = anchor ? Math.min(anchor.right + 14, window.innerWidth - width - 8) : fallbackLeft;
+    taskWindow.style.left = `${Math.max(8, left > 8 ? left : fallbackLeft)}px`;
+    taskWindow.style.top = `${Math.max(8, (anchor?.top || 112) + offset)}px`;
+    taskWindow.style.right = 'auto';
+
+    const header = document.createElement('div');
+    header.className = 'task-window-header pump-manual-npshr-window-header';
+    const title = document.createElement('span');
+    title.textContent = `Manual NPSHr - ${id || '-'}`;
+    const actions = document.createElement('div');
+    actions.className = 'task-window-actions';
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'task-window-close';
+    close.textContent = 'X';
+    close.setAttribute('aria-label', 'Close Manual NPSHr window');
+    actions.append(close);
+    header.append(title, actions);
+
+    const body = document.createElement('div');
+    body.className = 'task-window-body pump-manual-npshr-task-body';
+    const field = document.createElement('label');
+    field.className = 'pump-manual-npshr-field';
+    const labelText = document.createElement('span');
+    labelText.textContent = 'Manual NPSHr';
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.inputMode = 'decimal';
+    input.min = '0';
+    input.step = '0.001';
+    input.name = 'design-npshr';
+    input.dataset.key = 'designNpshr';
+    input.dataset.field = 'manualNpshr';
+    input.dataset.node = id;
+    input.dataset.nodeId = id;
+    input.dataset.pumpNodeId = id;
+    input.value = formatManualNpshrInputValue(id);
+    input.setAttribute('aria-label', 'Manual NPSHr');
+    const unit = document.createElement('span');
+    unit.className = 'pump-manual-npshr-unit';
+    unit.textContent = 'm';
+    field.append(labelText, input, unit);
+    body.appendChild(field);
+
+    const onResize = () => clampChartTaskWindowToViewport(taskWindow);
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    close.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+      taskWindow.remove();
+    });
+    input.addEventListener('input', () => scheduleManualNpshrLinkedRefresh(id, 'input'));
+    input.addEventListener('change', () => scheduleManualNpshrLinkedRefresh(id, 'change'));
+
+    taskWindow.append(header, body);
+    document.body.appendChild(taskWindow);
+    initializeChartTaskWindowDrag(taskWindow, header);
+    bringChartTaskWindowToFront(taskWindow);
+    clampChartTaskWindowToViewport(taskWindow);
+    taskWindow.focus?.({ preventScroll: true });
+    input.focus?.({ preventScroll: true });
+    input.select?.();
+    return taskWindow;
+  }
+
   function hideCanvasContextMenu() {
     const menu = document.getElementById('canvasContextMenu');
     if (!menu) return;
@@ -1951,6 +2146,23 @@
     return button;
   }
 
+  function createManualNpshrMenuButton(pumpId) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.setAttribute('role', 'menuitem');
+    button.tabIndex = -1;
+    button.textContent = 'Manual NPSHr';
+    button.dataset.pumpManualNpshrTaskMenu = 'true';
+    button.dataset.pumpNodeId = pumpId;
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      hideCanvasContextMenu();
+      root.openPumpManualNpshrTaskWindow?.(pumpId);
+    });
+    return button;
+  }
+
   function createFormulaDefenseMenuButton(pumpId) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -1973,6 +2185,73 @@
     if (anchor?.nextSibling) menu.insertBefore(button, anchor.nextSibling);
     else menu.appendChild(button);
     return true;
+  }
+
+  function installPumpManualNpshrRelocationStyles() {
+    if (typeof document === 'undefined' || document.getElementById(PUMP_MANUAL_NPSHR_RELOCATION_STYLE_ID)) return false;
+    const style = document.createElement('style');
+    style.id = PUMP_MANUAL_NPSHR_RELOCATION_STYLE_ID;
+    style.textContent = `
+#taskWindow [data-pump-manual-npshr-relocated-row="true"],
+.object-properties-task [data-pump-manual-npshr-relocated-row="true"],
+.persistent-object-properties-task-window [data-pump-manual-npshr-relocated-row="true"],
+#taskWindow input[data-key="manualNpshr"],
+.object-properties-task input[data-key="manualNpshr"],
+.persistent-object-properties-task-window input[data-key="manualNpshr"],
+#taskWindow input[data-key="designNpshr"],
+.object-properties-task input[data-key="designNpshr"],
+.persistent-object-properties-task-window input[data-key="designNpshr"],
+#taskWindow input[name="design-npshr"],
+.object-properties-task input[name="design-npshr"],
+.persistent-object-properties-task-window input[name="design-npshr"] {
+  display: none !important;
+}
+`;
+    document.head?.appendChild(style);
+    return true;
+  }
+
+  function hideManualNpshrPropertiesInputs(scope = null) {
+    if (typeof document === 'undefined') return false;
+    const selector = [
+      '#taskWindow input[data-key="manualNpshr"]',
+      '.object-properties-task input[data-key="manualNpshr"]',
+      '.persistent-object-properties-task-window input[data-key="manualNpshr"]',
+      '#taskWindow input[data-key="designNpshr"]',
+      '.object-properties-task input[data-key="designNpshr"]',
+      '.persistent-object-properties-task-window input[data-key="designNpshr"]',
+      '#taskWindow input[name="design-npshr"]',
+      '.object-properties-task input[name="design-npshr"]',
+      '.persistent-object-properties-task-window input[name="design-npshr"]'
+    ].join(', ');
+    const searchRoot = scope || document;
+    const candidates = [];
+    if (searchRoot?.nodeType === 1 && searchRoot.matches?.(selector)) candidates.push(searchRoot);
+    candidates.push(...Array.from(searchRoot?.querySelectorAll?.(selector) || []));
+    let changed = false;
+    candidates.forEach((input) => {
+      if (input.closest?.('.pump-manual-npshr-task-window')) return;
+      const row = input.closest?.('tr, .prop-row, .form-row, .field-row, .pump-live-param-row, label')
+        || input.closest?.('div');
+      const target = row || input;
+      if (target.dataset?.pumpManualNpshrRelocatedRow !== 'true') {
+        if (target.dataset) target.dataset.pumpManualNpshrRelocatedRow = 'true';
+        changed = true;
+      }
+      if (!target.hidden || target.getAttribute('aria-hidden') !== 'true') {
+        target.hidden = true;
+        target.setAttribute('aria-hidden', 'true');
+        changed = true;
+      }
+      if (!input.hidden || input.getAttribute('aria-hidden') !== 'true' || input.tabIndex !== -1) {
+        input.hidden = true;
+        input.tabIndex = -1;
+        input.setAttribute('aria-hidden', 'true');
+        input.dataset.pumpManualNpshrRelocatedFromProperties = 'true';
+        changed = true;
+      }
+    });
+    return changed;
   }
 
   function installPumpFormulaDefenseRelocationStyles() {
@@ -2030,18 +2309,32 @@
       changed = true;
     }
 
+    let manualNpshrButton = menu.querySelector('[data-pump-manual-npshr-task-menu="true"]');
+    if (manualNpshrButton) {
+      manualNpshrButton.dataset.pumpNodeId = pumpId;
+    } else {
+      manualNpshrButton = createManualNpshrMenuButton(pumpId);
+      insertMenuButtonAfter(menu, manualNpshrButton, chartButton);
+      changed = true;
+    }
+
     let defenseButton = menu.querySelector('[data-pump-formula-defense-task-menu="true"]');
     if (defenseButton) {
       defenseButton.dataset.pumpNodeId = pumpId;
     } else {
       defenseButton = createFormulaDefenseMenuButton(pumpId);
-      insertMenuButtonAfter(menu, defenseButton, chartButton);
+      insertMenuButtonAfter(menu, defenseButton, manualNpshrButton);
       changed = true;
     }
 
     const orderedButtons = Array.from(menu.querySelectorAll('button[role="menuitem"]'));
-    if (orderedButtons.indexOf(defenseButton) !== orderedButtons.indexOf(chartButton) + 1) {
-      insertMenuButtonAfter(menu, defenseButton, chartButton);
+    if (orderedButtons.indexOf(manualNpshrButton) !== orderedButtons.indexOf(chartButton) + 1) {
+      insertMenuButtonAfter(menu, manualNpshrButton, chartButton);
+      changed = true;
+    }
+    const reorderedButtons = Array.from(menu.querySelectorAll('button[role="menuitem"]'));
+    if (reorderedButtons.indexOf(defenseButton) !== reorderedButtons.indexOf(manualNpshrButton) + 1) {
+      insertMenuButtonAfter(menu, defenseButton, manualNpshrButton);
       changed = true;
     }
     return changed;
@@ -2050,7 +2343,9 @@
   function syncPumpPerformanceChartEntryPoints() {
     const changed = [
       installChartTaskWindowStyles(),
+      installPumpManualNpshrRelocationStyles(),
       installPumpFormulaDefenseRelocationStyles(),
+      hideManualNpshrPropertiesInputs(),
       hidePumpFormulaDefensePropertiesButtons(),
       injectPumpContextMenuChartButton()
     ].some(Boolean);
@@ -2075,8 +2370,8 @@
       const shouldSync = records.some((record) => Array.from(record.addedNodes || []).some((node) => (
         node.nodeType === 1
         && (node.matches?.('#canvasContextMenu')
-          || node.matches?.('#taskWindow, .object-properties-task, .persistent-object-properties-task-window, [data-pump-formula-defense]')
-          || node.querySelector?.('#canvasContextMenu, #taskWindow, .object-properties-task, .persistent-object-properties-task-window, [data-pump-formula-defense]'))
+          || node.matches?.('#taskWindow, .object-properties-task, .persistent-object-properties-task-window, [data-pump-formula-defense], input[data-key="designNpshr"], input[data-key="manualNpshr"], input[name="design-npshr"]')
+          || node.querySelector?.('#canvasContextMenu, #taskWindow, .object-properties-task, .persistent-object-properties-task-window, [data-pump-formula-defense], input[data-key="designNpshr"], input[data-key="manualNpshr"], input[name="design-npshr"]'))
       )));
       if (shouldSync) scheduleSync();
     });
@@ -2150,6 +2445,14 @@
         scheduleRender(id, { force: true, delayMs: 16, reason: 'openPumpPerformanceChartTaskWindow' });
         return chartModel;
       }, 'openPumpPerformanceChartTaskWindow');
+      changed = true;
+    }
+
+    if (typeof root.openPumpManualNpshrTaskWindow !== 'function' || root.openPumpManualNpshrTaskWindow.__pumpPerformanceCanonicalChartVersion !== VERSION) {
+      root.openPumpManualNpshrTaskWindow = markCanonicalFunction(function openPumpCanonicalManualNpshrTaskWindow(pumpId) {
+        const id = resolvePumpId(pumpId);
+        return ensureManualNpshrTaskWindow(id);
+      }, 'openPumpManualNpshrTaskWindow');
       changed = true;
     }
     return changed;
@@ -2257,6 +2560,7 @@
     scheduleRender,
     ensureRuntimeGuards,
     openTaskWindow: ensureTaskWindow,
+    openManualNpshrWindow: ensureManualNpshrTaskWindow,
     syncEntryPoints: syncPumpPerformanceChartEntryPoints
   };
 
