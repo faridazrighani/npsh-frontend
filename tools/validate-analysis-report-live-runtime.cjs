@@ -9,8 +9,9 @@ const RUNTIME_FILE = path.join(FRONTEND_ROOT, "engineering-analysis-report-live-
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const CASE_FILE = path.join(FRONTEND_ROOT, "journals", "simulasi_1", "simulasi_performansi_pompa_air_umpan_tangki_deaerator.untirta");
-const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260620-analysis-report-xlsx-export1";
-const VERSION = "2026.06-analysis-report-live10";
+const LOGO_FILE = path.join(FRONTEND_ROOT, "png", "untirta-universitas-sultanagengtirtayasa880x870.png");
+const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260621-analysis-report-xlsx-format1";
+const VERSION = "2026.06-analysis-report-live12";
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
 function assert(condition, message) {
@@ -176,6 +177,13 @@ function createReportDocument() {
         new FakeCell("legacy label"),
         new FakeCell("-"),
         new FakeCell("OK")
+      ],
+      [
+        new FakeCell("Trailing Dash Numeric"),
+        new FakeCell("12.5 m -"),
+        new FakeCell("12.625 m -"),
+        new FakeCell("-"),
+        new FakeCell("OK")
       ]
     ]
   });
@@ -248,6 +256,16 @@ assert(runtime.includes("collectAnalysisReportWorkbook"), "Runtime must collect 
 assert(runtime.includes("buildXlsxBytes"), "Runtime must build XLSX bytes without adding an eager spreadsheet dependency.");
 assert(runtime.includes("button.dataset.analysisReportXlsxExport"), "Runtime must mark the Analysis Report export button for browser validation.");
 assert(runtime.includes("Case Status Summary"), "Runtime must preserve a dedicated Case Status Summary export sheet.");
+assert(runtime.includes("Journal vs Application Comparis"), "Runtime must use the Excel-safe Journal vs Application sheet name.");
+assert(runtime.includes("const rowNumber = rows.length + 8"), "Runtime must align XLSX Error formulas with the exported table row numbers.");
+assert(runtime.includes("IFERROR(ABS(D${rowNumber}-C${rowNumber})/ABS(C${rowNumber})"), "Runtime must use the % Error formula pattern in the Error column.");
+assert(runtime.includes("ANALYSIS_REPORT_LOGO_PATH"), "Runtime must resolve the Analysis Report XLSX logo from the frontend png folder.");
+assert(runtime.includes("untirta-universitas-sultanagengtirtayasa880x870.png"), "Runtime must use the UNTIRTA logo asset for XLSX branding.");
+assert(runtime.includes("loadAnalysisReportLogoBytes"), "Runtime must lazy-load the XLSX logo only during export.");
+assert(runtime.includes("xl/media/image1.png"), "Runtime must package the UNTIRTA logo in the XLSX media folder.");
+assert(runtime.includes("xl/drawings/drawing"), "Runtime must package XLSX drawing anchors for logo/header branding.");
+assert(runtime.includes("normalizeExportNumericText"), "Runtime must normalize trailing-dash numeric export values.");
+assert(runtime.includes("styles.xml"), "Runtime must include workbook styles for XLSX layout formatting.");
 assert(runtime.includes(".journal-analysis-task-window .academic-equation-math"), "Runtime responsive CSS must target Analysis Report formula nodes.");
 assert(runtime.includes("white-space: normal !important"), "Runtime responsive CSS must allow long report formulas to wrap.");
 assert(runtime.includes("overflow-wrap: anywhere"), "Runtime responsive CSS must break long report route/formula traces inside the panel.");
@@ -272,6 +290,7 @@ assert(typeof api.installResponsiveCss === "function", "Runtime API must expose 
 assert(typeof api.installAnalysisReportExportButtons === "function", "Runtime API must expose XLSX export button installation.");
 assert(typeof api.collectAnalysisReportWorkbook === "function", "Runtime API must expose Analysis Report workbook collection.");
 assert(typeof api.buildXlsxBytes === "function", "Runtime API must expose XLSX byte generation for validation.");
+assert(typeof api.loadAnalysisReportLogoBytes === "function", "Runtime API must expose lazy logo loading for branded XLSX export.");
 assert(typeof api.downloadAnalysisReportXlsx === "function", "Runtime API must expose Analysis Report XLSX download.");
 assert(typeof api.hasActiveReportSurface === "function", "Runtime API must expose visible Analysis Report surface detection.");
 
@@ -331,29 +350,49 @@ assert(
   reportDocument.applicationTable.rows[1].cells[1].textContent === "7.123456 m",
   "Application Input & Result Data table must refresh NPSHa from current pump calculation result."
 );
+const collectedWorkbook = liveDomApi.collectAnalysisReportWorkbook(reportDocument.body);
+const trailingDashRow = collectedWorkbook.sheets[1].rows.find((row) => row[0] === "Trailing Dash Numeric");
+assert(trailingDashRow, "Workbook collection must include the trailing-dash numeric validation row.");
+assert(trailingDashRow[2] === 12.5, "Journal trailing-dash numeric values must export as numbers.");
+assert(trailingDashRow[3] === 12.625, "Application trailing-dash numeric values must export as numbers.");
+assert(
+  trailingDashRow[4]?.formula && /IFERROR\(ABS\(D\d+-C\d+\)\/ABS\(C\d+\)/.test(trailingDashRow[4].formula),
+  "Trailing-dash numeric rows must retain the % Error formula."
+);
 
 const workbookBytes = api.buildXlsxBytes({
   title: "Analysis Report",
+  logoBytes: read(LOGO_FILE, null),
   sheets: [
     {
-      name: "Case Status Summary",
+      name: "Report Text",
+      type: "reportText",
       rows: [
-        ["Metric", "Journal", "Application"],
-        ["Pump - NPSHa", "6.4656 m", "7.123456 m"]
+        ["H3", "Case Status Summary"],
+        ["LI", "Application recalculation gives required head and NPSH values."],
+        [],
+        ["H3", "Findings"],
+        ["LI", "NPSHr remains manual journal input."]
       ]
     },
     {
-      name: "Application Values",
+      name: "Journal vs Application Comparis",
+      type: "comparison",
       rows: [
-        ["Metric", "Value"],
-        ["Fluid Basis - Kinematic viscosity", "0.355 cSt"]
+        ["Metric", "unit", "Journal", "Application", "Error", "Status"],
+        ["Pump - NPSHa", "m", 6.4656, 7.123456, { formula: 'IFERROR(ABS(D9-C9)/ABS(C9),"")', style: "error" }, "Review"]
       ]
     }
   ]
 });
 assert(workbookBytes instanceof Uint8Array, "XLSX builder must return Uint8Array bytes.");
-assert(workbookBytes.length > 1200, "XLSX builder must produce a non-empty workbook archive.");
+assert(workbookBytes.length > 70000, "XLSX builder must produce a branded workbook archive with the logo media.");
 assert(Buffer.from(workbookBytes.subarray(0, 4)).toString("hex") === "504b0304", "XLSX export must be a ZIP/OpenXML workbook.");
+const workbookZipBytes = Buffer.from(workbookBytes);
+assert(workbookZipBytes.includes(Buffer.from("xl/media/image1.png")), "XLSX export must include the UNTIRTA logo media file.");
+assert(workbookZipBytes.includes(Buffer.from("xl/drawings/drawing1.xml")), "XLSX export must include the first worksheet drawing.");
+assert(workbookZipBytes.includes(Buffer.from("xl/worksheets/_rels/sheet1.xml.rels")), "XLSX export must include worksheet drawing relationships.");
+assert(workbookZipBytes.includes(Buffer.from("fullCalcOnLoad")), "XLSX export must ask spreadsheet apps to recalculate formulas on open.");
 
 assert(
   packageJson.scripts?.["validate:analysis-report-live-runtime"] === "node tools/validate-analysis-report-live-runtime.cjs",

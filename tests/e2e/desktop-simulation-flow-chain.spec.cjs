@@ -508,8 +508,7 @@ test('Analysis Report live cells refresh from current calculation state without 
       zipHeader: Array.from(bytes.slice(0, 4)).map((byte) => byte.toString(16).padStart(2, '0')).join('')
     };
   });
-  expect(workbookSnapshot.sheetNames).toContain('Case Status Summary');
-  expect(workbookSnapshot.sheetNames.length).toBeGreaterThan(2);
+  expect(workbookSnapshot.sheetNames).toEqual(['Report Text', 'Journal vs Application Comparis']);
   expect(workbookSnapshot.byteLength).toBeGreaterThan(1200);
   expect(workbookSnapshot.zipHeader).toBe('504b0304');
 
