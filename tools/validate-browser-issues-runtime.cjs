@@ -73,6 +73,8 @@ assert(indexHtml.includes('.toolbar-palette{order:20;display:flex;min-height:50p
 assert(indexHtml.includes("aboutMenu?.addEventListener('click', openAbout)"), 'About menu should explicitly open the hidden About dialog.');
 assert(indexHtml.includes('window.__npshAboutDismissed = true'), 'Bootstrap must suppress legacy automatic About opening after core app load.');
 assert(!/id="toolbarObjectMenu"[^>]*role="menu"/.test(indexHtml), 'Static empty toolbar object menu must not declare role=menu.');
+assert(!/id="toolbarObjectMenu"[^>]*aria-label=/.test(indexHtml), 'Static empty toolbar object menu must not declare aria-label without an ARIA role.');
+assert(!/id="toolbarObjectMenu"[^>]*data-i18n-aria-label=/.test(indexHtml), 'Static empty toolbar object menu must not localize an aria-label before it has an ARIA role.');
 assert(indexHtml.includes('stop-color="#4a90e2"'), 'Fluid Basis SVG gradient must not use inline CSS style attributes.');
 assert(indexHtml.includes('-webkit-user-select:none;user-select:none'), 'Critical inline CSS must list -webkit-user-select before user-select.');
 
