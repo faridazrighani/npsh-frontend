@@ -52,6 +52,16 @@ assert(indexHtml.includes('.ribbon-label{display:block;min-height:14px;font-size
 assert(indexHtml.includes('.solve-ribbon-btn .ribbon-label{min-width:46px}'), 'Critical CSS must reserve the Validate/Solve command label width before i18n/support scripts run.');
 assert(indexHtml.includes('function scheduleInitialAppLoad') || indexHtml.includes('const scheduleInitialAppLoad'), 'Index must schedule initial app-shell loading without requiring the first menu click.');
 assert(indexHtml.includes('requestIdleCallback') && indexHtml.includes('window.setTimeout(startInitialShellLoad, 250)'), 'Initial app-shell load should use idle scheduling with a timer fallback.');
+assert(!indexHtml.includes('<script src="engineering-npsh-margin-runtime.js'), 'NPSH margin bridge must not load as a synchronous first-load script.');
+assert(
+  indexHtml.indexOf("'engineering-npsh-margin-runtime.js?v=20260602-npsh-margin1'") >
+    indexHtml.indexOf('const realtimeScripts = ['),
+  'NPSH margin bridge must load through the deferred realtime script path.'
+);
+assert(
+  !/startInitialShellLoad\s*=\s*\(\)\s*=>\s*\{[\s\S]*?ensureMainStyles\(\)/.test(indexHtml),
+  'Passive initial app-shell load must not request style.min.css before first interaction.'
+);
 assert(indexHtml.includes('window.__npshLoadRealtime = loadRealtime'), 'Index must expose an internal realtime bootstrap hook for E2E and diagnostics.');
 assert(indexHtml.includes("window.addEventListener('pointerdown', beginInteraction")
   && indexHtml.includes("window.addEventListener('keydown', handleFirstKeydown")

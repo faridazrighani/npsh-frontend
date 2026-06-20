@@ -682,7 +682,6 @@
     <script id="npsh-runtime-config" type="application/json">
 {"apiBaseUrl":"","simulationEndpoint":"/api/simulate","backendMode":"primary","backendPrimaryEnabled":true,"protectedFrontend":true,"showPumpActionReadinessPanel":false,"allowExternalApiOnLocal":true,"googleClientId":"941768542541-kos89u2knlv2vus0ctotclaq0850dsq1.apps.googleusercontent.com","googleAuthorizedOrigins":["https://npsh.virsim.id","https://npsh-frontend.pages.dev"]}
     </script>
-    <script src="engineering-npsh-margin-runtime.js?v=20260602-npsh-margin1"></script>
     <script>
 (() => {
   let corePromise = null;
@@ -694,6 +693,7 @@
     'app.bundle.min.js?v=20260608-global-ribbon-placement-lock5'
   ];
   const realtimeScripts = [
+    'engineering-npsh-margin-runtime.js?v=20260602-npsh-margin1',
     'engineering-src-canvas-parameter-runtime.js?v=20260615-src-flow-basis3',
     'engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2',
     'engineering-performance-refresh-governor.js?v=20260614-refresh-governor4',
@@ -883,7 +883,6 @@
   });
   const scheduleInitialAppLoad = () => {
     const startInitialShellLoad = () => {
-      ensureMainStyles().catch(error => console.warn('Deferred stylesheet did not load.', error));
       loadShell().catch(error => console.warn('Deferred app shell did not load.', error));
     };
     if (window.requestIdleCallback) {

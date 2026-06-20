@@ -25,6 +25,17 @@ assert(
   'Pump NPSH acceptance runtime must be loaded from index.html.'
 );
 assert(
+  !index.includes('<script src="engineering-npsh-margin-runtime.js'),
+  'NPSH margin bridge must not block the initial HTML parse as a synchronous script.'
+);
+assert(
+  index.indexOf("'engineering-npsh-margin-runtime.js?v=20260602-npsh-margin1'") >
+    index.indexOf('const realtimeScripts = [') &&
+    index.indexOf("'engineering-npsh-margin-runtime.js?v=20260602-npsh-margin1'") <
+    index.indexOf("'engineering-pump-npsh-acceptance-runtime.js?v=20260620-pump-npsh-acceptance1'"),
+  'NPSH margin bridge must load through realtimeScripts before Pump NPSH Acceptance.'
+);
+assert(
   runtimeSource.includes('PDF p.31 / printed p.20')
     && marginRuntimeSource.includes('PDF p.31 / printed p.20'),
   'General Purpose NPSH margin reference must point to the page-locked ANSI/HI table.'

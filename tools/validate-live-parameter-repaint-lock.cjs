@@ -74,8 +74,12 @@ assert(
 );
 assert(
   indexHtml.includes("startInitialShellLoad") &&
-    indexHtml.includes("ensureMainStyles().catch(error => console.warn('Deferred stylesheet did not load.', error));"),
-  "Passive initial shell load must only request the main stylesheet."
+    indexHtml.includes("loadShell().catch(error => console.warn('Deferred app shell did not load.', error));"),
+  "Passive initial shell load must still schedule the app shell."
+);
+assert(
+  !/startInitialShellLoad\s*=\s*\(\)\s*=>\s*\{[\s\S]*?ensureMainStyles\(\)/.test(indexHtml),
+  "Passive initial shell load must not request the full main stylesheet before LCP."
 );
 assert(manifest.includes(LOCK_CACHE_KEY), "FILE_MANIFEST.md must record the repaint-lock cache key.");
 assert(uploadReadiness.includes("engineering-live-parameter-repaint-lock.css"), "UPLOAD_READINESS.md must list the repaint-lock CSS as a required public asset.");

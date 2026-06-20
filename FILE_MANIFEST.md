@@ -146,11 +146,12 @@ Formula Defense UI runtime cache key: engineering-formula-defense-ui.js?v=202606
 Formula Defense UI KaTeX CSS cache key: vendor/katex/katex.min.css?v=20260613-formula-defense-ui15
 Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260619-mobile-performance-overlay1
 Canvas context dock load placement: post-realtime idle status script, not critical first-paint script
-Initial app load placement: Fluid Basis setup prompt is first in body DOM order for LCP; critical CSS reserves the Fluid Basis LCP card and Validate/Solve ribbon label metrics to prevent first-load CLS; shell/main CSS auto-loads on idle; live parameter repaint lock has no initial/noscript stylesheet link and loads only after user interaction/realtime via deferred stylesheet injection; realtime/status/support scripts load on first pointer/key activation or internal diagnostic hook; Google Auth/GSI is support-lazy and not part of the first render path
+Initial app load placement: Fluid Basis setup prompt is first in body DOM order for LCP; critical CSS reserves the Fluid Basis LCP card and Validate/Solve ribbon label metrics to prevent first-load CLS; shell JS auto-loads on idle; full main CSS and live parameter repaint lock load only after user interaction/realtime via deferred stylesheet injection; realtime/status/support scripts load on first pointer/key activation or internal diagnostic hook; Google Auth/GSI is support-lazy and not part of the first render path
 Defense export cache key: engineering-defense-export-package.js?v=20260603-defensev3
 Pipe Moody chart audit cache key: engineering-pipe-moody-chart-audit.js?v=20260607-pipe-moody-audit2
 Runtime API config: same-origin /api/simulate
 NPSH margin runtime cache key: engineering-npsh-margin-runtime.js?v=20260602-npsh-margin1
+NPSH margin runtime load placement: deferred realtimeScripts path before Pump NPSH Acceptance runtime; no synchronous first-load script tag
 Pump readiness visibility cache key: engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3
 Pump readiness visibility load placement: support-lazy feature script for developer panel hiding, not critical first-paint script
 Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260614-pump-defense-live18
