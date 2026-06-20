@@ -16,7 +16,7 @@ test('browser Issues cleanup keeps ARIA roles and response headers compatible', 
   expect(documentHeaders['content-type']).toContain('text/html; charset=utf-8');
   expect(documentHeaders['x-frame-options']).toBeUndefined();
 
-  const runtimeResponse = await page.request.get('/engineering-browser-issues-runtime.js?v=20260608-browser-issues1');
+  const runtimeResponse = await page.request.get('/engineering-browser-issues-runtime.js?v=20260620-orphan-label-cleanup1');
   expect(runtimeResponse.headers()['cache-control']).toContain('immutable');
   expect(runtimeResponse.headers()['content-type']).toContain('charset=utf-8');
 
@@ -29,7 +29,7 @@ test('browser Issues cleanup keeps ARIA roles and response headers compatible', 
   expect(apiHeaders['x-frame-options']).toBeUndefined();
   expect(apiHeaders['x-xss-protection']).toBeUndefined();
 
-  const browserIssueState = await page.evaluate(() => {
+  const browserIssueState = await page.evaluate(async () => {
     window.__chromium_devtools_metrics_reporter = { broken: true };
     const chromiumReporterTypeAfterObject = typeof window.__chromium_devtools_metrics_reporter;
     window.__chromium_devtools_metrics_reporter('npsh-devtools-console-guard');
@@ -37,6 +37,19 @@ test('browser Issues cleanup keeps ARIA roles and response headers compatible', 
     const chromiumReporterTypeAfterString = typeof window.__chromium_devtools_metrics_reporter;
     window.__chromium_devtools_metrics_reporter('npsh-devtools-console-guard-again');
     window.EngineeringBrowserIssuesRuntime.repairMenuRoles(document);
+    const orphanLabel = document.createElement('label');
+    orphanLabel.id = 'simulation-file-input-devtools-a11y-label';
+    orphanLabel.className = 'form-field-a11y-label';
+    orphanLabel.htmlFor = 'simulation-file-input-devtools';
+    orphanLabel.textContent = 'Moody Chart Audit X';
+    document.body.appendChild(orphanLabel);
+    const orphanLabelsBeforeRepair = document.querySelectorAll('label.form-field-a11y-label[for="simulation-file-input-devtools"]').length;
+    await new Promise((resolve) => setTimeout(resolve, 180));
+    const orphanLabelsAfterObserver = document.querySelectorAll('label.form-field-a11y-label[for="simulation-file-input-devtools"]').length;
+    const orphanFormFieldLabelsManualRepair = orphanLabelsAfterObserver
+      ? window.EngineeringBrowserIssuesRuntime.repairFormFieldLabels(document)
+      : 0;
+    const orphanLabelsAfterRepair = document.querySelectorAll('label.form-field-a11y-label[for="simulation-file-input-devtools"]').length;
     const emptyObjectMenu = document.getElementById('toolbarObjectMenu');
     const invalidMenus = [...document.querySelectorAll('[role="menu"]')]
       .filter((menu) => !menu.querySelector('[role="menuitem"],[role="menuitemcheckbox"],[role="menuitemradio"],[role="group"]'))
@@ -48,6 +61,10 @@ test('browser Issues cleanup keeps ARIA roles and response headers compatible', 
       objectMenuItemCount: emptyObjectMenu?.querySelectorAll('[role="menuitem"]').length || 0,
       chromiumReporterTypeAfterObject,
       chromiumReporterTypeAfterString,
+      orphanLabelsBeforeRepair,
+      orphanLabelsAfterObserver,
+      orphanFormFieldLabelsManualRepair,
+      orphanLabelsAfterRepair,
       invalidMenus
     };
   });
@@ -61,6 +78,10 @@ test('browser Issues cleanup keeps ARIA roles and response headers compatible', 
   }
   expect(browserIssueState.chromiumReporterTypeAfterObject).toBe('function');
   expect(browserIssueState.chromiumReporterTypeAfterString).toBe('function');
+  expect(browserIssueState.orphanLabelsBeforeRepair).toBe(1);
+  expect(browserIssueState.orphanLabelsAfterObserver).toBe(0);
+  expect(browserIssueState.orphanFormFieldLabelsManualRepair).toBe(0);
+  expect(browserIssueState.orphanLabelsAfterRepair).toBe(0);
   expect(browserIssueState.invalidMenus).toEqual([]);
 
   console.log(JSON.stringify({
@@ -71,6 +92,9 @@ test('browser Issues cleanup keeps ARIA roles and response headers compatible', 
     apiContentType: apiHeaders['content-type'],
     chromiumReporterTypeAfterObject: browserIssueState.chromiumReporterTypeAfterObject,
     chromiumReporterTypeAfterString: browserIssueState.chromiumReporterTypeAfterString,
+    orphanLabelsBeforeRepair: browserIssueState.orphanLabelsBeforeRepair,
+    orphanLabelsAfterObserver: browserIssueState.orphanLabelsAfterObserver,
+    orphanLabelsAfterRepair: browserIssueState.orphanLabelsAfterRepair,
     invalidMenus: browserIssueState.invalidMenus
   }, null, 2));
 });
