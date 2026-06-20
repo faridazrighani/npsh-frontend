@@ -281,7 +281,7 @@
     </script>
     <!-- SEO_METADATA_END -->
     <noscript><link rel="stylesheet" href="style.min.css?v=20260608-browser-issues1"></noscript>
-    <link rel="stylesheet" href="engineering-live-parameter-repaint-lock.css?v=20260605-live-param-repaint-lock1">
+    <noscript><link rel="stylesheet" href="engineering-live-parameter-repaint-lock.css?v=20260620-render-blocking-fix1"></noscript>
     <style data-critical-about>
         :root{--bg-canvas:#f4f7f9;--grid-line:#dce4eb;--panel-bg:#fff;--border-color:#e0e0e0;--ribbon-bg:#f9f9f9;--ribbon-hover:#e6f0fa;--ribbon-active-border:#b3d4f5;--text-main:#333;--font-main:'Segoe UI',system-ui,-apple-system,sans-serif}
         *{box-sizing:border-box;margin:0;padding:0}
@@ -735,16 +735,29 @@
   const syncInitialTaskSheet = () => taskWindow?.classList.toggle('task-window-mobile-sheet', window.matchMedia('(max-width: 639px)').matches);
   syncInitialTaskSheet();
   window.addEventListener('resize', syncInitialTaskSheet, { passive: true });
-  const ensureStyles = () => stylePromise || (stylePromise = new Promise((resolve, reject) => {
-    if (document.getElementById('npsh-main-style')) return resolve();
+  const MAIN_STYLE_HREF = 'style.min.css?v=20260608-browser-issues1';
+  const LIVE_PARAMETER_REPAINT_LOCK_HREF = 'engineering-live-parameter-repaint-lock.css?v=20260620-render-blocking-fix1';
+  const loadStylesheet = (id, href) => new Promise((resolve, reject) => {
+    const existing = document.getElementById(id);
+    if (existing) {
+      if (existing.sheet || existing.dataset.npshLoaded === 'true') return resolve();
+      existing.addEventListener('load', resolve, { once: true });
+      existing.addEventListener('error', reject, { once: true });
+      return;
+    }
     const link = document.createElement('link');
-    link.id = 'npsh-main-style';
+    link.id = id;
     link.rel = 'stylesheet';
-    link.href = 'style.min.css?v=20260608-browser-issues1';
-    link.onload = resolve;
+    link.href = href;
+    link.onload = () => {
+      link.dataset.npshLoaded = 'true';
+      resolve();
+    };
     link.onerror = reject;
     document.head.appendChild(link);
-  }));
+  });
+  const ensureStyles = () => stylePromise || (stylePromise = loadStylesheet('npsh-main-style', MAIN_STYLE_HREF)
+    .then(() => loadStylesheet('npsh-live-parameter-repaint-lock-style', LIVE_PARAMETER_REPAINT_LOCK_HREF)));
   const addScript = src => new Promise((resolve, reject) => {
     const existing = Array.from(document.scripts).find(script => String(script.getAttribute('src') || '') === src);
     if (existing) {

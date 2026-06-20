@@ -75,7 +75,7 @@ engineering-pump-performance-canonical-chart.js public-safe operational smart en
 engineering-google-auth-runtime.js public-safe Google Identity Services frontend bridge that renders a sign-in control only on explicitly authorized OAuth origins, sends ID tokens to the backend, immediately verifies the HttpOnly app session, prevents stale session refresh overwrite after login, exposes NPSHAuth.requireApproved and NPSHAuth.diagnose, maps backend auth error codes into actionable messages, and keeps approved/pending status visible
 engineering-literature-pdf-viewer.js public-safe Literature task-window viewer that adds Help -> Literature, requires an approved Google app session, translates protected PDF auth/approval/source failures into actionable messages, retries pending PDFs after approved auth, renders private book_pdf PDFs through the same-origin API with PDF.js canvas pages, zoom/page controls, no visible source links, and user-resizable window sizing
 engineering-src-algorithm-help-runtime.js public-safe Help -> Hydraulic Logic -> SRC Algorithm task-window runtime that presents the SRC Flow Input Mode appendix logic, equations, numbered tables, guardrails, and references without changing hydraulic calculation data
-engineering-live-parameter-repaint-lock.css public-safe live canvas parameter paint-lock override that removes transient Solve repaint shadows from parameter cards, pump status badge, and pump status icon glow
+engineering-live-parameter-repaint-lock.css public-safe deferred live canvas parameter paint-lock override that removes transient Solve repaint shadows from parameter cards, pump status badge, and pump status icon glow without blocking first render
 style.min.css           minified styles
 png/                    public images and favicon
 toolbar/                public toolbar icons
@@ -87,7 +87,7 @@ tools/validate-route-trace-default-lock.cjs Node validation for default-hidden c
 tools/validate-sink-boundary-mode-canvas-lock.cjs Node validation for SNK Boundary Mode canonical canvas/tooltip/readout values, stale result override, null-panel hover guard, free-outlet atmospheric pressure/head calculation, and cache-busted runtime load
 tools/validate-global-live-indicator-engine-link.cjs Node validation for Global live indicator engine-link validation across all six UNTIRTA simulations, including SRC/SNK/pump canvas readouts, hover/title backup synchronization, engine-result hooks, realtime decimal locks, and cache-busted runtime load
 tools/validate-canvas-context-dock.cjs Node validation for default-collapsed Fluid Basis dock behavior, absolute canvas overlay positioning, mobile compact lock, responsive Fluid Basis symbols, route trace source preference, stale freshness display, and cache-busted runtime load
-tools/validate-live-parameter-repaint-lock.cjs Node validation for locked live parameter repaint CSS, cache key, opaque backgrounds, no panel/badge shadow, and pump icon outline-only status display
+tools/validate-live-parameter-repaint-lock.cjs Node validation for locked live parameter repaint CSS, deferred non-render-blocking cache key, opaque backgrounds, no panel/badge shadow, and pump icon outline-only status display
 tools/validate-export-canvas-snapshot-lock.cjs Node validation for silent normal export canvas fallback, retained real-failure warning, and stable manual renderer snapshot path
 tools/validate-literature-pdf-viewer.cjs Node validation for Help -> Literature flyout, approved Google app-session guard, auth-approved PDF retry, local PDF.js canvas viewer, zoom/page controls, same-origin literature API, resizable task window, and no private GitHub source links in public runtime
 tools/validate-src-algorithm-help.cjs Node validation for Help -> Hydraulic Logic -> SRC Algorithm flyout, SRC Flow Input Mode task-window content, equations, numbered tables, cache-busted runtime load, and manifest lock
@@ -146,7 +146,7 @@ Formula Defense UI runtime cache key: engineering-formula-defense-ui.js?v=202606
 Formula Defense UI KaTeX CSS cache key: vendor/katex/katex.min.css?v=20260613-formula-defense-ui15
 Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260619-mobile-performance-overlay1
 Canvas context dock load placement: post-realtime idle status script, not critical first-paint script
-Initial app load placement: shell/CSS auto-loads on idle; realtime/status/support scripts load on first pointer/key activation or internal diagnostic hook
+Initial app load placement: shell/CSS auto-loads on idle; main CSS and live parameter repaint lock load through deferred stylesheet injection; realtime/status/support scripts load on first pointer/key activation or internal diagnostic hook
 Defense export cache key: engineering-defense-export-package.js?v=20260603-defensev3
 Pipe Moody chart audit cache key: engineering-pipe-moody-chart-audit.js?v=20260607-pipe-moody-audit2
 Runtime API config: same-origin /api/simulate
@@ -159,7 +159,7 @@ Pump performance canonical chart cache key: engineering-pump-performance-canonic
 Google auth runtime cache key: engineering-google-auth-runtime.js?v=20260612-google-access8
 Literature PDF viewer cache key: engineering-literature-pdf-viewer.js?v=20260609-literature-access3
 SRC Algorithm help runtime cache key: engineering-src-algorithm-help-runtime.js?v=20260616-src-algorithm-help1
-Live parameter repaint lock cache key: engineering-live-parameter-repaint-lock.css?v=20260605-live-param-repaint-lock1
+Live parameter repaint lock cache key: engineering-live-parameter-repaint-lock.css?v=20260620-render-blocking-fix1
 Live parameter repaint lock validation: npm run validate:live-parameter-repaint-lock
 Export canvas snapshot validation: npm run validate:export-canvas-snapshot-lock
 Literature PDF viewer validation: npm run validate:literature-pdf-viewer

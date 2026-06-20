@@ -12,7 +12,7 @@ const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
 
-const LOCK_CACHE_KEY = "engineering-live-parameter-repaint-lock.css?v=20260605-live-param-repaint-lock1";
+const LOCK_CACHE_KEY = "engineering-live-parameter-repaint-lock.css?v=20260620-render-blocking-fix1";
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");
@@ -49,6 +49,24 @@ const manifest = read(MANIFEST_FILE);
 const uploadReadiness = read(UPLOAD_READINESS_FILE);
 
 assert(indexHtml.includes(LOCK_CACHE_KEY), "index.html must load the live parameter repaint-lock CSS with the locked cache key.");
+assert(
+  !indexHtml.includes(`\n    <link rel="stylesheet" href="${LOCK_CACHE_KEY}">`),
+  "Live parameter repaint-lock CSS must not be a render-blocking head stylesheet."
+);
+assert(
+  indexHtml.includes(`const LIVE_PARAMETER_REPAINT_LOCK_HREF = '${LOCK_CACHE_KEY}';`),
+  "index.html must defer the live parameter repaint-lock CSS through the stylesheet loader."
+);
+assert(
+  indexHtml.includes("loadStylesheet('npsh-main-style', MAIN_STYLE_HREF)") &&
+    indexHtml.includes("loadStylesheet('npsh-live-parameter-repaint-lock-style', LIVE_PARAMETER_REPAINT_LOCK_HREF)"),
+  "Deferred stylesheet loader must load main CSS before the live parameter repaint-lock override."
+);
+assert(
+  indexHtml.indexOf("loadStylesheet('npsh-main-style', MAIN_STYLE_HREF)") <
+    indexHtml.indexOf("loadStylesheet('npsh-live-parameter-repaint-lock-style', LIVE_PARAMETER_REPAINT_LOCK_HREF)"),
+  "Live parameter repaint-lock override must be appended after the main stylesheet."
+);
 assert(manifest.includes(LOCK_CACHE_KEY), "FILE_MANIFEST.md must record the repaint-lock cache key.");
 assert(uploadReadiness.includes("engineering-live-parameter-repaint-lock.css"), "UPLOAD_READINESS.md must list the repaint-lock CSS as a required public asset.");
 assert(
