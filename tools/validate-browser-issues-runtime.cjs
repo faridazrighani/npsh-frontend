@@ -42,6 +42,10 @@ assert(indexHtml.includes("set(value)"), 'Chromium DevTools metrics reporter gua
 assert(!indexHtml.includes('name="theme-color"'), 'index.html should not trigger Firefox theme-color compatibility notice.');
 assert(!indexHtml.includes('fetchpriority='), 'About dialog images should not trigger Firefox fetchpriority compatibility notice.');
 assert(/<div class="about-modal" id="aboutModal"[^>]*\shidden\b/.test(indexHtml), 'About dialog must be hidden by default so it cannot block menu clicks on first load.');
+assert(
+  indexHtml.indexOf('data-i18n-text="basis.openSetupInstruction"') < indexHtml.indexOf('<div class="about-modal" id="aboutModal"'),
+  'Fluid Basis LCP task prompt must appear before the hidden About dialog in DOM order.'
+);
 assert(indexHtml.includes('function scheduleInitialAppLoad') || indexHtml.includes('const scheduleInitialAppLoad'), 'Index must schedule initial app-shell loading without requiring the first menu click.');
 assert(indexHtml.includes('requestIdleCallback') && indexHtml.includes('window.setTimeout(startInitialShellLoad, 250)'), 'Initial app-shell load should use idle scheduling with a timer fallback.');
 assert(indexHtml.includes('window.__npshLoadRealtime = loadRealtime'), 'Index must expose an internal realtime bootstrap hook for E2E and diagnostics.');

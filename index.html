@@ -337,6 +337,34 @@
 </head>
 <body class="fluid-basis-task-open">
 
+    <!-- Reusable Nonblocking Task Window -->
+    <section class="task-window task-window-fluid-active task-window-mobile-sheet" id="taskWindow" role="dialog" aria-modal="false" aria-labelledby="taskWindowTitle" aria-expanded="true" tabindex="-1" data-kind="fluid">
+        <div class="task-window-header" id="taskWindowHeader">
+            <h2 class="task-window-title" id="taskWindowTitle" data-i18n-text="basis.title">Fluid Basis</h2>
+            <div class="task-window-actions">
+                <button class="task-window-minimize" id="taskWindowMinimize" type="button" aria-label="Minimize task window">_</button>
+                <button class="task-window-close" id="taskWindowClose" type="button" aria-label="Close task window" data-i18n-aria-label="button.close">X</button>
+            </div>
+        </div>
+        <div class="task-window-body fluid-basis-task-body" id="taskWindowBody">
+            <div class="fluid-basis-task fluid-basis-lcp-shell">
+                <div class="fluid-basis-grid">
+                    <section class="fluid-input-card">
+                        <h3 data-i18n-text="basis.inputBasis">Input Basis</h3>
+                        <div class="fluid-basis-setup-notice">
+                            <strong data-i18n-text="basis.setCalculationFirst">Set calculation basis first</strong>
+                            <span data-fluid-lcp-reason data-i18n-text="basis.setupRequiredReason">Set Fluid Basis and Unit Standard before adding equipment.</span>
+                        </div>
+                        <div class="fluid-basis-apply-bar fluid-basis-lcp-action">
+                            <span data-i18n-text="basis.openSetupInstruction">Open the setup panel to select the fluid basis and unit standard.</span>
+                            <button class="fluid-basis-apply-btn" type="button" data-fluid-action="open-full-basis" data-i18n-text="basis.openSetup">Open Setup</button>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- About Dialog -->
     <div class="about-modal" id="aboutModal" role="dialog" aria-modal="true" aria-labelledby="aboutTitle" hidden>
         <div class="about-window">
@@ -365,34 +393,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Reusable Nonblocking Task Window -->
-    <section class="task-window task-window-fluid-active task-window-mobile-sheet" id="taskWindow" role="dialog" aria-modal="false" aria-labelledby="taskWindowTitle" aria-expanded="true" tabindex="-1" data-kind="fluid">
-        <div class="task-window-header" id="taskWindowHeader">
-            <h2 class="task-window-title" id="taskWindowTitle" data-i18n-text="basis.title">Fluid Basis</h2>
-            <div class="task-window-actions">
-                <button class="task-window-minimize" id="taskWindowMinimize" type="button" aria-label="Minimize task window">_</button>
-                <button class="task-window-close" id="taskWindowClose" type="button" aria-label="Close task window" data-i18n-aria-label="button.close">X</button>
-            </div>
-        </div>
-        <div class="task-window-body fluid-basis-task-body" id="taskWindowBody">
-            <div class="fluid-basis-task fluid-basis-lcp-shell">
-                <div class="fluid-basis-grid">
-                    <section class="fluid-input-card">
-                        <h3 data-i18n-text="basis.inputBasis">Input Basis</h3>
-                        <div class="fluid-basis-setup-notice">
-                            <strong data-i18n-text="basis.setCalculationFirst">Set calculation basis first</strong>
-                            <span data-fluid-lcp-reason data-i18n-text="basis.setupRequiredReason">Set Fluid Basis and Unit Standard before adding equipment.</span>
-                        </div>
-                        <div class="fluid-basis-apply-bar fluid-basis-lcp-action">
-                            <span data-i18n-text="basis.openSetupInstruction">Open the setup panel to select the fluid basis and unit standard.</span>
-                            <button class="fluid-basis-apply-btn" type="button" data-fluid-action="open-full-basis" data-i18n-text="basis.openSetup">Open Setup</button>
-                        </div>
-                    </section>
-                </div>
-            </div>
-        </div>
-    </section>
 
     <!-- Top Menu Bar -->
     <div class="menu-bar">
