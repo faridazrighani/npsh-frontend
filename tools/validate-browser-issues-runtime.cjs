@@ -46,6 +46,10 @@ assert(
   indexHtml.indexOf('data-i18n-text="basis.openSetupInstruction"') < indexHtml.indexOf('<div class="about-modal" id="aboutModal"'),
   'Fluid Basis LCP task prompt must appear before the hidden About dialog in DOM order.'
 );
+assert(indexHtml.includes('.fluid-basis-lcp-shell .fluid-input-card{min-height:138px}'), 'Critical CSS must reserve the Fluid Basis LCP card height before the deferred stylesheet arrives.');
+assert(indexHtml.includes('.fluid-basis-lcp-shell .fluid-basis-grid{grid-template-columns:minmax(0,1fr);gap:0}'), 'Critical CSS must keep the Fluid Basis LCP grid identical to the final stylesheet before deferred CSS loads.');
+assert(indexHtml.includes('.ribbon-label{display:block;min-height:14px;font-size:11px;line-height:1.2;'), 'Critical CSS must reserve ribbon label metrics to prevent Solve/Validate label layout shift.');
+assert(indexHtml.includes('.solve-ribbon-btn .ribbon-label{min-width:46px}'), 'Critical CSS must reserve the Validate/Solve command label width before i18n/support scripts run.');
 assert(indexHtml.includes('function scheduleInitialAppLoad') || indexHtml.includes('const scheduleInitialAppLoad'), 'Index must schedule initial app-shell loading without requiring the first menu click.');
 assert(indexHtml.includes('requestIdleCallback') && indexHtml.includes('window.setTimeout(startInitialShellLoad, 250)'), 'Initial app-shell load should use idle scheduling with a timer fallback.');
 assert(indexHtml.includes('window.__npshLoadRealtime = loadRealtime'), 'Index must expose an internal realtime bootstrap hook for E2E and diagnostics.');
