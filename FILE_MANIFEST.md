@@ -72,7 +72,7 @@ engineering-pipe-moody-chart-audit.js public-safe pipe Moody chart visual audit 
 engineering-pump-formula-defense-live-audit.js public-safe live Pump Formula Defense badges, trace-row source/literature notes, protected backend refresh bridge, input-to-output calculation matrix, and Performance Refresh Governor scheduled open-window realtime refresh for advisor-facing pump NPSH evidence
 engineering-pump-performance-chart-audit.js public-safe pump performance chart audit guard that suppresses fallback/duty-point fit curves, keeps no-data charts visually clean, requires sourced curve data, loads the realtime canonical renderer, and validates smart engineering chart modes
 engineering-pump-performance-canonical-chart.js public-safe operational smart engineering chart renderer that uses solver-owned performanceChartData before legacy chart arrays or pump props, self-heals realtime update hooks, protects vendor curves, previews design-duty anchored pump/system/NPSH curves, opens a separate Pump Performance Chart task window from pump controls/context menu, and schedules one governed visible-chart render so chart numbers refresh from the latest model without repeated repaint bursts
-engineering-google-auth-runtime.js public-safe Google Identity Services frontend bridge that renders a sign-in control only on explicitly authorized OAuth origins, sends ID tokens to the backend, immediately verifies the HttpOnly app session, prevents stale session refresh overwrite after login, exposes NPSHAuth.requireApproved and NPSHAuth.diagnose, maps backend auth error codes into actionable messages, and keeps approved/pending status visible
+engineering-google-auth-runtime.js public-safe support-lazy Google Identity Services frontend bridge that renders a sign-in control only on explicitly authorized OAuth origins when protected literature/auth is requested, sends ID tokens to the backend, immediately verifies the HttpOnly app session, prevents stale session refresh overwrite after login, exposes NPSHAuth.requireApproved and NPSHAuth.diagnose, maps backend auth error codes into actionable messages, and keeps approved/pending status visible
 engineering-literature-pdf-viewer.js public-safe Literature task-window viewer that adds Help -> Literature, requires an approved Google app session, translates protected PDF auth/approval/source failures into actionable messages, retries pending PDFs after approved auth, renders private book_pdf PDFs through the same-origin API with PDF.js canvas pages, zoom/page controls, no visible source links, and user-resizable window sizing
 engineering-src-algorithm-help-runtime.js public-safe Help -> Hydraulic Logic -> SRC Algorithm task-window runtime that presents the SRC Flow Input Mode appendix logic, equations, numbered tables, guardrails, and references without changing hydraulic calculation data
 engineering-live-parameter-repaint-lock.css public-safe deferred live canvas parameter paint-lock override that removes transient Solve repaint shadows from parameter cards, pump status badge, and pump status icon glow without blocking first render
@@ -146,7 +146,7 @@ Formula Defense UI runtime cache key: engineering-formula-defense-ui.js?v=202606
 Formula Defense UI KaTeX CSS cache key: vendor/katex/katex.min.css?v=20260613-formula-defense-ui15
 Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260619-mobile-performance-overlay1
 Canvas context dock load placement: post-realtime idle status script, not critical first-paint script
-Initial app load placement: shell/CSS auto-loads on idle; main CSS and live parameter repaint lock load through deferred stylesheet injection; realtime/status/support scripts load on first pointer/key activation or internal diagnostic hook
+Initial app load placement: shell/main CSS auto-loads on idle; live parameter repaint lock loads only after user interaction/realtime via deferred stylesheet injection; realtime/status/support scripts load on first pointer/key activation or internal diagnostic hook; Google Auth/GSI is support-lazy and not part of the first render path
 Defense export cache key: engineering-defense-export-package.js?v=20260603-defensev3
 Pipe Moody chart audit cache key: engineering-pipe-moody-chart-audit.js?v=20260607-pipe-moody-audit2
 Runtime API config: same-origin /api/simulate
@@ -156,7 +156,7 @@ Pump readiness visibility load placement: support-lazy feature script for develo
 Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260614-pump-defense-live18
 Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260614-pump-chart-audit21
 Pump performance canonical chart cache key: engineering-pump-performance-canonical-chart.js?v=20260614-canonical-chart15
-Google auth runtime cache key: engineering-google-auth-runtime.js?v=20260612-google-access8
+Google auth runtime cache key: engineering-google-auth-runtime.js?v=20260620-google-auth-lazy1
 Literature PDF viewer cache key: engineering-literature-pdf-viewer.js?v=20260609-literature-access3
 SRC Algorithm help runtime cache key: engineering-src-algorithm-help-runtime.js?v=20260616-src-algorithm-help1
 Live parameter repaint lock cache key: engineering-live-parameter-repaint-lock.css?v=20260620-render-blocking-fix1

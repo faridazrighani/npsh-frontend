@@ -67,6 +67,16 @@ assert(
     indexHtml.indexOf("loadStylesheet('npsh-live-parameter-repaint-lock-style', LIVE_PARAMETER_REPAINT_LOCK_HREF)"),
   "Live parameter repaint-lock override must be appended after the main stylesheet."
 );
+assert(
+  indexHtml.includes("const ensureMainStyles = () => mainStylePromise") &&
+    indexHtml.includes("const ensureStyles = () => stylePromise || (stylePromise = ensureMainStyles()"),
+  "Main stylesheet and live repaint-lock stylesheet must have separate loading gates."
+);
+assert(
+  indexHtml.includes("startInitialShellLoad") &&
+    indexHtml.includes("ensureMainStyles().catch(error => console.warn('Deferred stylesheet did not load.', error));"),
+  "Passive initial shell load must only request the main stylesheet."
+);
 assert(manifest.includes(LOCK_CACHE_KEY), "FILE_MANIFEST.md must record the repaint-lock cache key.");
 assert(uploadReadiness.includes("engineering-live-parameter-repaint-lock.css"), "UPLOAD_READINESS.md must list the repaint-lock CSS as a required public asset.");
 assert(

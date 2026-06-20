@@ -16,15 +16,25 @@ const authRuntime = read("engineering-google-auth-runtime.js");
 const literatureRuntime = read("engineering-literature-pdf-viewer.js");
 const packageJson = JSON.parse(read("package.json"));
 const manifest = read("FILE_MANIFEST.md");
+const GOOGLE_AUTH_CACHE_KEY = "engineering-google-auth-runtime.js?v=20260620-google-auth-lazy1";
+const LITERATURE_CACHE_KEY = "engineering-literature-pdf-viewer.js?v=20260609-literature-access3";
 
 assert(index.includes('"googleClientId":"941768542541-kos89u2knlv2vus0ctotclaq0850dsq1.apps.googleusercontent.com"'), "Runtime config must include the public Google OAuth client ID.");
 assert(index.includes('"googleAuthorizedOrigins":["https://npsh.virsim.id","https://npsh-frontend.pages.dev"]'), "Runtime config must list Google-authorized production and Pages origins.");
-assert(index.includes("engineering-google-auth-runtime.js?v=20260612-google-access8"), "Index must load the cache-busted Google auth runtime.");
+assert(index.includes(GOOGLE_AUTH_CACHE_KEY), "Index must load the cache-busted Google auth runtime.");
 assert(
-  index.indexOf("engineering-google-auth-runtime.js?v=20260612-google-access8") < index.indexOf("engineering-src-canvas-parameter-runtime.js"),
-  "Google auth runtime must load before deferred/blocking app support scripts so the login control is available immediately."
+  !index.includes(`<script src="${GOOGLE_AUTH_CACHE_KEY}"></script>`),
+  "Google auth runtime must not load as an initial render-path script."
 );
-assert(index.includes("engineering-literature-pdf-viewer.js?v=20260609-literature-access3"), "Index must load the auth-aware literature viewer.");
+assert(
+  index.indexOf(GOOGLE_AUTH_CACHE_KEY) > index.indexOf("const featureScripts = ["),
+  "Google auth runtime must be deferred in the support feature script group."
+);
+assert(
+  index.indexOf(GOOGLE_AUTH_CACHE_KEY) < index.indexOf(LITERATURE_CACHE_KEY),
+  "Google auth runtime must load before the auth-aware Literature PDF viewer."
+);
+assert(index.includes(LITERATURE_CACHE_KEY), "Index must load the auth-aware literature viewer.");
 
 assert(authRuntime.includes("https://accounts.google.com/gsi/client"), "Auth runtime must load Google Identity Services.");
 assert(authRuntime.includes("google.accounts.id.initialize"), "Auth runtime must initialize Google Identity Services.");
@@ -66,7 +76,7 @@ assert(
   "package.json must expose validate:google-auth-runtime."
 );
 assert(
-  manifest.includes("Google auth runtime cache key: engineering-google-auth-runtime.js?v=20260612-google-access8"),
+  manifest.includes(`Google auth runtime cache key: ${GOOGLE_AUTH_CACHE_KEY}`),
   "Manifest must document the Google auth runtime cache key."
 );
 

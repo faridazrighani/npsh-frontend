@@ -681,13 +681,13 @@
     <script id="npsh-runtime-config" type="application/json">
 {"apiBaseUrl":"","simulationEndpoint":"/api/simulate","backendMode":"primary","backendPrimaryEnabled":true,"protectedFrontend":true,"showPumpActionReadinessPanel":false,"allowExternalApiOnLocal":true,"googleClientId":"941768542541-kos89u2knlv2vus0ctotclaq0850dsq1.apps.googleusercontent.com","googleAuthorizedOrigins":["https://npsh.virsim.id","https://npsh-frontend.pages.dev"]}
     </script>
-    <script src="engineering-google-auth-runtime.js?v=20260612-google-access8"></script>
     <script src="engineering-npsh-margin-runtime.js?v=20260602-npsh-margin1"></script>
     <script>
 (() => {
   let corePromise = null;
   let realtimePromise = null;
   let supportPromise = null;
+  let mainStylePromise = null;
   let stylePromise = null;
   const criticalScripts = [
     'app.bundle.min.js?v=20260608-global-ribbon-placement-lock5'
@@ -717,6 +717,7 @@
     'engineering-browser-issues-runtime.js?v=20260608-browser-issues1',
     'engineering-pipe-segments-file-runtime.js?v=20260608-pipe-segments-file1',
     'engineering-analysis-report-live-runtime.js?v=20260616-analysis-report-snk-flow-demand1',
+    'engineering-google-auth-runtime.js?v=20260620-google-auth-lazy1',
     'engineering-literature-pdf-viewer.js?v=20260609-literature-access3',
     'engineering-src-algorithm-help-runtime.js?v=20260616-src-algorithm-help1',
     'engineering-formula-defense-ui.js?v=20260613-formula-defense-ui15'
@@ -756,7 +757,8 @@
     link.onerror = reject;
     document.head.appendChild(link);
   });
-  const ensureStyles = () => stylePromise || (stylePromise = loadStylesheet('npsh-main-style', MAIN_STYLE_HREF)
+  const ensureMainStyles = () => mainStylePromise || (mainStylePromise = loadStylesheet('npsh-main-style', MAIN_STYLE_HREF));
+  const ensureStyles = () => stylePromise || (stylePromise = ensureMainStyles()
     .then(() => loadStylesheet('npsh-live-parameter-repaint-lock-style', LIVE_PARAMETER_REPAINT_LOCK_HREF)));
   const addScript = src => new Promise((resolve, reject) => {
     const existing = Array.from(document.scripts).find(script => String(script.getAttribute('src') || '') === src);
@@ -880,7 +882,7 @@
   });
   const scheduleInitialAppLoad = () => {
     const startInitialShellLoad = () => {
-      ensureStyles().catch(error => console.warn('Deferred stylesheet did not load.', error));
+      ensureMainStyles().catch(error => console.warn('Deferred stylesheet did not load.', error));
       loadShell().catch(error => console.warn('Deferred app shell did not load.', error));
     };
     if (window.requestIdleCallback) {
