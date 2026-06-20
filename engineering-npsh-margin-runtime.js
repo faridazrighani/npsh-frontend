@@ -2,36 +2,37 @@
   "use strict";
 
   const userDefined = "User Defined";
+  const marginPdf = "book_pdf/Hydraulic_Institute_2024_Rotodynamic_Pumps_Guideline_for_NPSH_Margin.pdf";
   const presets = Object.freeze({
     "General Purpose": {
       por: { ratio: 1.05, margin: 0.6 },
       aor: { ratio: 1.1, margin: 1.0 },
-      reference: "ANSI/HI 9.6.1-2024 NPSH margin guidance; local page-lock: book_pdf/Hydraulic_Institute_2024_Rotodynamic_Pumps_Guideline_for_NPSH_Margin.pdf p.12"
+      reference: `ANSI/HI 9.6.1-2024 Table 9.6.1.4.11.4 general purpose pumps; local page-lock: ${marginPdf} PDF p.31 / printed p.20`
     },
     "Petroleum/Hydrocarbon": {
       por: { ratio: 1.1, margin: 1.0 },
       aor: { ratio: 1.1, margin: 1.0 },
-      reference: "ANSI/HI 9.6.1-2024 petroleum/hydrocarbon NPSH margin guidance; local page-lock: book_pdf/Hydraulic_Institute_2024_Rotodynamic_Pumps_Guideline_for_NPSH_Margin.pdf p.12"
+      reference: `ANSI/HI 9.6.1-2024 Table 9.6.1.4.1.4 petroleum/hydrocarbon process pumps; local page-lock: ${marginPdf} PDF p.21 / printed p.10`
     },
     "Chemical Process": {
       por: { ratio: 1.1, margin: 0.6 },
       aor: { ratio: 1.2, margin: 1.0 },
-      reference: "ANSI/HI 9.6.1-2024 chemical process NPSH margin guidance; local page-lock: book_pdf/Hydraulic_Institute_2024_Rotodynamic_Pumps_Guideline_for_NPSH_Margin.pdf p.12"
+      reference: `ANSI/HI 9.6.1-2024 Table 9.6.1.4.3.4 chemical process pumps; local page-lock: ${marginPdf} PDF p.23 / printed p.12`
     },
     "Water/Wastewater": {
       por: { ratio: 1.1, margin: 1.0 },
       aor: { ratio: 1.2, margin: 1.5 },
-      reference: "ANSI/HI 9.6.1-2024 water/wastewater NPSH margin guidance; local page-lock: book_pdf/Hydraulic_Institute_2024_Rotodynamic_Pumps_Guideline_for_NPSH_Margin.pdf p.12"
+      reference: `ANSI/HI 9.6.1-2024 Table 9.6.1.4.6.4 water/wastewater pumps; local page-lock: ${marginPdf} PDF p.26 / printed p.15`
     },
     "Building Services": {
       por: { ratio: 1.1, margin: 0.6 },
       aor: { ratio: 1.1, margin: 0.6 },
-      reference: "ANSI/HI 9.6.1-2024 building services NPSH margin guidance; local page-lock: book_pdf/Hydraulic_Institute_2024_Rotodynamic_Pumps_Guideline_for_NPSH_Margin.pdf p.12"
+      reference: `ANSI/HI 9.6.1-2024 Table 9.6.1.4.8.4 building services pumps; local page-lock: ${marginPdf} PDF p.28 / printed p.17`
     },
     Irrigation: {
       por: { ratio: 1.1, margin: 0.6 },
       aor: { ratio: 1.2, margin: 1.0 },
-      reference: "ANSI/HI 9.6.1-2024 irrigation NPSH margin guidance; local page-lock: book_pdf/Hydraulic_Institute_2024_Rotodynamic_Pumps_Guideline_for_NPSH_Margin.pdf p.12"
+      reference: `ANSI/HI 9.6.1-2024 Table 9.6.1.4.10.4 irrigation pumps; local page-lock: ${marginPdf} PDF p.30 / printed p.19`
     }
   });
 
@@ -80,11 +81,13 @@
       };
     }
 
-    const selectedRegion = regionKey(regionStatus);
+    const normalizedRegionStatus = String(regionStatus || "").trim() || "Unknown";
+    const selectedRegion = regionKey(normalizedRegionStatus);
     const selected = preset[selectedRegion] || preset.aor || preset.por;
     return {
       basis,
       regionBasis: selectedRegion.toUpperCase(),
+      operatingRegionStatus: normalizedRegionStatus,
       ratio: selected.ratio,
       margin: selected.margin,
       valid: true,
