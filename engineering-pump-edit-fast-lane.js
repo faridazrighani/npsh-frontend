@@ -1,7 +1,7 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-pump-edit-fast-lane.v3';
-  const CACHE_KEY = '20260621-pump-edit-fast-lane3';
+  const VERSION = 'engineering-pump-edit-fast-lane.v4';
+  const CACHE_KEY = '20260621-pump-edit-fast-lane4';
   const PUMP_WINDOW_SELECTOR = [
     '.persistent-object-properties-task-window',
     '#taskWindow',
@@ -11,7 +11,6 @@
   const LIGHT_FIELDS = new Set([
     'designEfficiency',
     'designNpshr',
-    'manualNpshr',
     'npshr',
     'npshrSourceMode',
     'npshMarginBasis',
@@ -153,6 +152,9 @@
     if (!isPumpPropertySurface(target)) return null;
     const field = canonicalField(target);
     if (!field) return null;
+    if (field === 'manualNpshr') {
+      return { field, className: 'network-defer', backend: 'defer', chart: true, delayMs: 90 };
+    }
     if (LIGHT_FIELDS.has(field)) {
       return { field, className: 'light', backend: 'none', chart: true, delayMs: 0 };
     }
@@ -449,8 +451,11 @@
     scheduleReadoutRefresh(result.pumpId, result.pump, result.evaluation);
     markFastLaneState(result.pumpId, classification, classification.backend === 'defer');
     if (classification.backend === 'defer' && event?.isTrusted && typeof hooks.requestAutoSolve === 'function') {
-      hooks.markStale?.(result.pumpId, 'Pump input changed; backend recalculation deferred until typing settles.');
-      hooks.requestAutoSolve(result.pumpId, 'Pump input changed; backend recalculation deferred until typing settles.', {
+      const autosolveReason = classification.field === 'manualNpshr'
+        ? 'Manual NPSHr changed; recalculating connected route for NPSHa and NPSH status.'
+        : 'Pump input changed; backend recalculation deferred until typing settles.';
+      hooks.markStale?.(result.pumpId, autosolveReason);
+      hooks.requestAutoSolve(result.pumpId, autosolveReason, {
         sourceEvent: event.type,
         delayMs: classification.delayMs || 1000,
         fastLane: true

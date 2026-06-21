@@ -10,8 +10,8 @@ const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const CASE_FILE = path.join(FRONTEND_ROOT, "journals", "simulasi_1", "simulasi_performansi_pompa_air_umpan_tangki_deaerator.untirta");
 const LOGO_FILE = path.join(FRONTEND_ROOT, "png", "untirta-universitas-sultanagengtirtayasa880x870.png");
-const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260621-analysis-report-xlsx-format1";
-const VERSION = "2026.06-analysis-report-live12";
+const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260621-analysis-report-design-contract1";
+const VERSION = "2026.06-analysis-report-live13";
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
 function assert(condition, message) {
@@ -280,6 +280,9 @@ assert(!runtime.includes("set('Pump - Elevation'"), "Runtime must not expose dep
 assert(!runtime.includes("Pump - Discharge Nozzle Elev."), "Runtime must not expose deprecated pump Discharge Nozzle Elev. in live report metrics.");
 assert(!runtime.includes("Pump - Elevation / Nozzle Elevations"), "Runtime must not expose deprecated combined pump elevation metric.");
 assert(runtime.includes("Pump - NPSHa"), "Runtime must include pump NPSHa metric mapping.");
+assert(runtime.includes("Pump - Maximum Allowable NPSHr"), "Runtime must include maximum allowable NPSHr metric mapping.");
+assert(runtime.includes("calculatedNpshStatus"), "Runtime must derive hydraulic NPSH status when stale backend status says Input Required.");
+assert(runtime.includes("NPSHr,max"), "Runtime must document the maximum allowable NPSHr concept in report metric mapping.");
 assert(runtime.includes("Outlet Readout - Boundary Abs. Pressure"), "Runtime must include outlet boundary readout mapping.");
 assert(!runtime.includes("innerHTML ="), "Runtime must not replace table/report layout through innerHTML.");
 
@@ -311,6 +314,9 @@ assert(!metrics.has("pump - elevation"), "Live metrics must omit deprecated Pump
 assert(!metrics.has("pump - suction nozzle elev."), "Live metrics must omit old Pump - Suction Nozzle Elev. as an active metric.");
 assert(!metrics.has("pump - discharge nozzle elev."), "Live metrics must omit deprecated Pump - Discharge Nozzle Elev.");
 assert(metricText(metrics, "Pump - NPSHa").includes("6.4656 m"), "Pump NPSHa must come from pump NPSH results.");
+assert(metricText(metrics, "Pump - Required NPSHa").includes("3.0002 m"), "Pump required NPSHa must be available from live or computed NPSH criteria.");
+assert(metricText(metrics, "Pump - Maximum Allowable NPSHr").includes("5.8656 m"), "Pump maximum allowable NPSHr must be calculated from NPSHa and margin basis.");
+assert(metricText(metrics, "Pump - Route Calculation Status") === "Calculated", "Pump route calculation status must not be blocked by pump curve development.");
 assert(metricText(metrics, "Pump - Pump head evaluated").includes("24 m"), "Pump evaluated head must come from solved pump/system head.");
 assert(metricText(metrics, "SNK - Reference pressure").includes("Ignored in Flow Demand Boundary"), "SNK reference pressure must be marked ignored when Flow Demand Boundary is active.");
 assert(metricText(metrics, "Outlet Readout - Vapor margin").includes("7.76"), "Outlet vapor margin must be recalculated from live pressure and Fluid Basis.");

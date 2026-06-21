@@ -123,7 +123,7 @@ globalThis.EngineeringParameterTaskRuntime = {
 };
 
 const runtime = require(runtimePath);
-assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v9', 'Realtime defense runtime should expose v9.');
+assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v10', 'Realtime defense runtime should expose v10.');
 assert.equal(runtime.autosolvePolicy?.mode, 'realtime-autosolve-first', 'Realtime defense must declare realtime autosolve as the primary calculation policy.');
 assert.equal(runtime.autosolvePolicy?.manualCommandRole, 'validate-refresh-evidence', 'Manual command must be treated as evidence validation/refresh.');
 assert.equal(runtime.debounceForSourceEvent('input'), 240, 'Input debounce must keep numeric edits responsive.');
@@ -164,6 +164,7 @@ assert(realtimeSource.includes('EngineeringPerformanceRefreshGovernor'), 'Realti
 assert(realtimeSource.includes('EngineeringPumpEditFastLane'), 'Realtime defense must delegate Pump Object Properties edits to the fast lane before scheduling backend autosolve.');
 assert(realtimeSource.includes('CALCULATION_INPUT_SURFACE_SELECTOR'), 'Realtime defense must centralize calculation input surface coverage.');
 assert(realtimeSource.includes('.persistent-object-properties-task-window'), 'Realtime defense must autosolve persistent Object Properties input edits.');
+assert(realtimeSource.includes('manualNpshr'), 'Realtime defense must treat compact Manual NPSHr as a calculation input.');
 assert(realtimeSource.includes("calculationMode: 'realtime-input'"), 'Realtime defense events must explicitly identify realtime-input mode.');
 assert(realtimeSource.includes('publishCalculationStatusState'), 'Realtime defense must use a lightweight stale/calculating publisher before backend results are current.');
 assert(realtimeSource.includes('statusOnly: true'), 'Stale/calculating calculation-state events must avoid rebuilding full canonical trace rows.');
@@ -303,16 +304,16 @@ runtime.flushAutoSolve().then(async () => {
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(
-  index.includes('engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1'),
+  index.includes('engineering-realtime-calculation-defense.js?v=20260621-manual-npshr-autosolve1'),
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
-  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane3')
-    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1'),
+  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane4')
+    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260621-manual-npshr-autosolve1'),
   'Pump edit fast lane must load before realtime calculation defense.'
 );
 assert(
-  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1'),
+  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260621-manual-npshr-autosolve1'),
   'Manifest must document the realtime calculation defense cache key.'
 );
 assert(

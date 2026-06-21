@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-performance-canonical-chart.v17';
+  const VERSION = 'pump-performance-canonical-chart.v18';
   const PUMP_FORMULA_DEFENSE_RELOCATION_STYLE_ID = 'pump-formula-defense-relocation-style';
   const PUMP_MANUAL_NPSHR_RELOCATION_STYLE_ID = 'pump-manual-npshr-relocation-style';
   const PUMP_DEVELOPMENT_UI_SUPPRESSION_STYLE_ID = 'pump-development-ui-suppression-style';
@@ -18,7 +18,7 @@
     'npsh:linked-views-refreshed',
     'npsh:realtime-autosolve-complete'
   ];
-  const PUMP_CHART_INPUT_PATTERN = /\b(inputMode|optimizationMode|npshrSourceMode|npshAssessmentMode|npshMarginBasis|designFlow|designHead|designEfficiency|designNpshr|bepFlow|porMinPercent|porMaxPercent|aorMinPercent|aorMaxPercent|minNpshMarginRatio|minNpshMargin|speed|curveDataSource|curveSourceNote|curveData|flow|head|eff|npshr|pressure|elevation|density|viscosity|vaporPressure|segments|length|diameter|roughness|fittingType|fittingQuantity|fittingK|minorLoss|additionalK)\b/i;
+  const PUMP_CHART_INPUT_PATTERN = /\b(inputMode|optimizationMode|npshrSourceMode|npshAssessmentMode|npshMarginBasis|designFlow|designHead|designEfficiency|designNpshr|manualNpshr|suctionElevation|pumpDatumElevation|bepFlow|porMinPercent|porMaxPercent|aorMinPercent|aorMaxPercent|minNpshMarginRatio|minNpshMargin|speed|curveDataSource|curveSourceNote|curveData|flow|head|eff|npshr|pressure|elevation|density|viscosity|vaporPressure|segments|length|diameter|roughness|fittingType|fittingQuantity|fittingK|minorLoss|additionalK)\b/i;
   const RUNTIME_PATCH_FLAG_KEYS = [
     '__engineeringRealtimeCalculationDefenseUpdatePatched',
     '__engineeringRealtimeCalculationDefenseOriginal',
@@ -1727,6 +1727,9 @@
   font-size: 12px;
   line-height: 1.3;
 }
+.pump-manual-npshr-field + .pump-manual-npshr-field {
+  margin-top: 10px;
+}
 .pump-manual-npshr-field input {
   box-sizing: border-box;
   width: 100%;
@@ -1992,13 +1995,31 @@
     return value === null ? '' : Number(value.toFixed(6)).toString();
   }
 
+  function formatPumpDatumInputValue(pumpId) {
+    const pump = runtimeModel()?.[resolvePumpId(pumpId)] || {};
+    const evaluation = pump.results?.npshEvaluation || {};
+    const tracePump = evaluation.calculationTrace?.pump || {};
+    const value = firstNumber(
+      pump.props?.suctionElevation,
+      pump.props?.elevation,
+      tracePump.elevation
+    );
+    return value === null ? '' : Number(value.toFixed(6)).toString();
+  }
+
   function refreshManualNpshrTaskWindow(taskWindow, pumpId) {
-    const input = taskWindow?.querySelector?.('input[data-field="manualNpshr"]');
-    if (!input || document.activeElement === input) return false;
-    const nextValue = formatManualNpshrInputValue(pumpId);
-    if (input.value === nextValue) return false;
-    input.value = nextValue;
-    return true;
+    if (!taskWindow?.querySelector) return false;
+    let changed = false;
+    [
+      ['manualNpshr', formatManualNpshrInputValue(pumpId)],
+      ['suctionElevation', formatPumpDatumInputValue(pumpId)]
+    ].forEach(([field, nextValue]) => {
+      const input = taskWindow.querySelector(`input[data-field="${field}"]`);
+      if (!input || document.activeElement === input || input.value === nextValue) return;
+      input.value = nextValue;
+      changed = true;
+    });
+    return changed;
   }
 
   function scheduleManualNpshrLinkedRefresh(pumpId, eventType = 'input') {
@@ -2069,28 +2090,48 @@
 
     const body = document.createElement('div');
     body.className = 'task-window-body pump-manual-npshr-task-body';
-    const field = document.createElement('label');
-    field.className = 'pump-manual-npshr-field';
-    const labelText = document.createElement('span');
-    labelText.textContent = 'Manual NPSHr';
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.inputMode = 'decimal';
-    input.min = '0';
-    input.step = '0.001';
-    input.name = 'design-npshr';
-    input.dataset.key = 'designNpshr';
-    input.dataset.field = 'manualNpshr';
-    input.dataset.node = id;
-    input.dataset.nodeId = id;
-    input.dataset.pumpNodeId = id;
-    input.value = formatManualNpshrInputValue(id);
-    input.setAttribute('aria-label', 'Manual NPSHr');
-    const unit = document.createElement('span');
-    unit.className = 'pump-manual-npshr-unit';
-    unit.textContent = 'm';
-    field.append(labelText, input, unit);
-    body.appendChild(field);
+    const createNumericField = ({ label, field, key, name, value, min = '', step = '0.001', ariaLabel = label }) => {
+      const fieldNode = document.createElement('label');
+      fieldNode.className = 'pump-manual-npshr-field';
+      const labelText = document.createElement('span');
+      labelText.textContent = label;
+      const inputNode = document.createElement('input');
+      inputNode.type = 'number';
+      inputNode.inputMode = 'decimal';
+      if (min !== '') inputNode.min = min;
+      inputNode.step = step;
+      inputNode.name = name;
+      inputNode.dataset.key = key;
+      inputNode.dataset.field = field;
+      inputNode.dataset.node = id;
+      inputNode.dataset.nodeId = id;
+      inputNode.dataset.pumpNodeId = id;
+      inputNode.value = value;
+      inputNode.setAttribute('aria-label', ariaLabel);
+      const unit = document.createElement('span');
+      unit.className = 'pump-manual-npshr-unit';
+      unit.textContent = 'm';
+      fieldNode.append(labelText, inputNode, unit);
+      return { fieldNode, inputNode };
+    };
+    const manualField = createNumericField({
+      label: 'Manual NPSHr',
+      field: 'manualNpshr',
+      key: 'designNpshr',
+      name: 'design-npshr',
+      value: formatManualNpshrInputValue(id),
+      min: '0',
+      ariaLabel: 'Manual NPSHr'
+    });
+    const datumField = createNumericField({
+      label: 'Pump Datum Elev.',
+      field: 'suctionElevation',
+      key: 'suctionElevation',
+      name: 'pump-datum-elevation',
+      value: formatPumpDatumInputValue(id),
+      ariaLabel: 'Pump Datum Elev.'
+    });
+    body.append(manualField.fieldNode, datumField.fieldNode);
 
     const onResize = () => clampChartTaskWindowToViewport(taskWindow);
     window.addEventListener('resize', onResize);
@@ -2102,8 +2143,10 @@
       window.removeEventListener('orientationchange', onResize);
       taskWindow.remove();
     });
-    input.addEventListener('input', () => scheduleManualNpshrLinkedRefresh(id, 'input'));
-    input.addEventListener('change', () => scheduleManualNpshrLinkedRefresh(id, 'change'));
+    [manualField.inputNode, datumField.inputNode].forEach((inputNode) => {
+      inputNode.addEventListener('input', () => scheduleManualNpshrLinkedRefresh(id, 'input'));
+      inputNode.addEventListener('change', () => scheduleManualNpshrLinkedRefresh(id, 'change'));
+    });
 
     taskWindow.append(header, body);
     document.body.appendChild(taskWindow);
@@ -2111,8 +2154,8 @@
     bringChartTaskWindowToFront(taskWindow);
     clampChartTaskWindowToViewport(taskWindow);
     taskWindow.focus?.({ preventScroll: true });
-    input.focus?.({ preventScroll: true });
-    input.select?.();
+    manualField.inputNode.focus?.({ preventScroll: true });
+    manualField.inputNode.select?.();
     return taskWindow;
   }
 

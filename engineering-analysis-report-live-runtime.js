@@ -1,7 +1,7 @@
 (function installEngineeringAnalysisReportLiveRuntime(root) {
   'use strict';
 
-  const VERSION = '2026.06-analysis-report-live12';
+  const VERSION = '2026.06-analysis-report-live13';
   const REFRESH_MS = 3000;
   const ACTIVE_SELECTOR = '.journal-analysis-task-window, .journal-analysis-report-panel';
   const RESPONSIVE_STYLE_ID = 'engineeringAnalysisReportLiveResponsiveStyle';
@@ -217,6 +217,21 @@
   const cleanText = (value, fallback = '-') => {
     if (value === null || value === undefined || value === '') return fallback;
     return String(value);
+  };
+
+  const statusNeedsCalculatedFallback = (value) => /input\s*required|incomplete|unknown/i.test(String(value || ''));
+
+  const calculatedNpshStatus = (npsha, npshr, requiredNpsha) => {
+    if (npsha === null || npshr === null) return null;
+    if (npsha <= npshr) return 'Cavitation Risk';
+    if (requiredNpsha !== null && npsha < requiredNpsha) return 'Warning';
+    return 'Safe';
+  };
+
+  const chooseCalculatedStatus = (rawStatus, calculatedStatus, fallback = '-') => {
+    const raw = cleanText(rawStatus, '');
+    if (statusNeedsCalculatedFallback(raw) && calculatedStatus) return calculatedStatus;
+    return raw || calculatedStatus || fallback;
   };
 
   const getModel = () => {
@@ -488,21 +503,70 @@
     set('Pipe Discharge - PFV Start Elevation', withUnit(dischargePfvStartElevation, 'm', 6), dischargePfvStartElevation);
     set('Pipe Discharge - PFV End Elevation', withUnit(dischargePfvEndElevation, 'm', 6), dischargePfvEndElevation);
 
+    const npshTraceInterpretation = npsh.calculationTrace?.interpretation || {};
     const pumpFlow = firstNumber(npsh.flow, pumpResults.fixedFlow, pumpResults.flow, pumpProps.designFlow);
     const pumpHead = firstNumber(npsh.pumpHead, pumpResults.requiredSystemHead, pumpResults.pumpHeadAtFlow, pumpResults.head, pumpProps.designHead);
     const npsha = firstNumber(npsh.npsha, pumpResults.npsha);
     const npshr = firstNumber(npsh.npshr, pumpResults.npshr, pumpProps.designNpshr);
+    const marginRatioLimit = firstNumber(
+      npsh.marginCriteria?.ratio,
+      npsh.criteria?.ratio,
+      npshTraceInterpretation.marginRatioLimit,
+      pumpResults.npshMarginRatioLimit,
+      pumpProps.minNpshMarginRatio,
+      1.1
+    );
+    const absoluteMarginLimit = firstNumber(
+      npsh.marginCriteria?.margin,
+      npsh.criteria?.margin,
+      npshTraceInterpretation.absoluteMarginLimit,
+      pumpResults.npshMarginLimit,
+      pumpProps.minNpshMargin,
+      0.6
+    );
+    const computedRequiredNpsha = npshr !== null && marginRatioLimit !== null && absoluteMarginLimit !== null
+      ? Math.max(npshr * marginRatioLimit, npshr + absoluteMarginLimit)
+      : null;
     const npshMargin = firstNumber(npsh.npshMargin, pumpResults.npshMargin, npsha !== null && npshr !== null ? npsha - npshr : null);
     const npshRatio = firstNumber(npsh.npshRatio, pumpResults.npshRatio, npsha !== null && npshr ? npsha / npshr : null);
-    const requiredNpsha = firstNumber(npsh.requiredNpsha, pumpResults.requiredNpsha);
-    const npshExcess = firstNumber(npsh.npshExcess, pumpResults.npshExcess);
+    const requiredNpsha = firstNumber(npsh.requiredNpsha, pumpResults.requiredNpsha, computedRequiredNpsha);
+    const npshExcess = firstNumber(npsh.npshExcess, pumpResults.npshExcess, npsha !== null && requiredNpsha !== null ? npsha - requiredNpsha : null);
+    const computedMaxNpshrByRatio = npsha !== null && marginRatioLimit !== null && marginRatioLimit > 0
+      ? npsha / marginRatioLimit
+      : null;
+    const computedMaxNpshrByMargin = npsha !== null && absoluteMarginLimit !== null
+      ? npsha - absoluteMarginLimit
+      : null;
+    const maxNpshrByRatio = firstNumber(npsh.maxNpshrByRatio, pumpResults.maxNpshrByRatio, npshTraceInterpretation.maxNpshrByRatio, computedMaxNpshrByRatio);
+    const maxNpshrByMargin = firstNumber(npsh.maxNpshrByMargin, pumpResults.maxNpshrByMargin, npshTraceInterpretation.maxNpshrByMargin, computedMaxNpshrByMargin);
+    const maxAllowableNpshr = firstNumber(
+      npsh.maxAllowableNpshr,
+      pumpResults.maxAllowableNpshr,
+      npshTraceInterpretation.maxAllowableNpshr,
+      maxNpshrByRatio !== null && maxNpshrByMargin !== null ? Math.min(maxNpshrByRatio, maxNpshrByMargin) : null
+    );
     const suctionLoss = firstNumber(npsh.suctionLoss, pipeMetric(suctionPipe, 'totalLoss'), pumpResults.suctionLoss);
     const dischargeLoss = firstNumber(npsh.dischargeLoss, pipeMetric(dischargePipe, 'totalLoss'), pumpResults.dischargeLoss);
-    const hydraulicStatus = cleanText(npsh.hydraulicStatus || pumpResults.hydraulicNpshStatus || npsh.status || pumpResults.cavitationStatus || 'Incomplete');
-    const engineeringStatus = cleanText(npsh.engineeringStatus || pumpResults.engineeringStatus || pumpResults.status || '-');
-    const dataConfidence = [pumpResults.dataConfidenceStatus, pumpResults.dataConfidence || npsh.dataConfidence]
+    const computedHydraulicStatus = calculatedNpshStatus(npsha, npshr, requiredNpsha);
+    const rawHydraulicStatus = npsh.hydraulicStatus || pumpResults.hydraulicNpshStatus || npsh.status || pumpResults.cavitationStatus || 'Incomplete';
+    const hydraulicStatus = chooseCalculatedStatus(rawHydraulicStatus, computedHydraulicStatus, 'Incomplete');
+    const dataConfidence = [pumpResults.dataConfidenceStatus || npsh.dataConfidenceStatus, pumpResults.dataConfidence || npsh.dataConfidence]
       .filter(Boolean)
       .join(': ');
+    const rawEngineeringStatus = cleanText(npsh.engineeringStatus || pumpResults.engineeringStatus || pumpResults.status || '', '');
+    const computedEngineeringStatus = (statusNeedsCalculatedFallback(rawEngineeringStatus) || rawEngineeringStatus === '-' || !rawEngineeringStatus) && computedHydraulicStatus
+      ? (/warning|review|manual|without locked|verify/i.test(dataConfidence) ? 'Review Required' : computedHydraulicStatus)
+      : null;
+    const engineeringStatus = chooseCalculatedStatus(rawEngineeringStatus, computedEngineeringStatus, '-');
+    const routeCalculationStatus = cleanText(npsh.routeCalculationStatus || pumpResults.routeCalculationStatus || npshTraceInterpretation.routeCalculationStatus || (pumpFlow !== null ? 'Calculated' : 'Input Required'));
+    const npshaCalculationStatus = cleanText(npsh.npshaCalculationStatus || pumpResults.npshaCalculationStatus || npshTraceInterpretation.npshaCalculationStatus || (npsha !== null ? 'Calculated' : 'Input Required'));
+    const requiredPumpHeadStatus = cleanText(npsh.requiredPumpHeadStatus || pumpResults.requiredPumpHeadStatus || npshTraceInterpretation.requiredPumpHeadStatus || (pumpHead !== null ? 'Calculated' : 'Input Required'));
+    const maxAllowableNpshrStatus = cleanText(npsh.maxAllowableNpshrStatus || pumpResults.maxAllowableNpshrStatus || npshTraceInterpretation.maxAllowableNpshrStatus || (maxAllowableNpshr !== null ? 'Calculated' : 'Review Required'));
+    const computedManualComparisonStatus = npshr !== null
+      ? (maxAllowableNpshr !== null ? (npshr <= maxAllowableNpshr ? 'Safe' : 'Warning') : 'Review Required')
+      : 'Not Provided';
+    const manualNpshrComparisonStatus = cleanText(npsh.manualNpshrComparisonStatus || pumpResults.manualNpshrComparisonStatus || npshTraceInterpretation.manualNpshrComparisonStatus || computedManualComparisonStatus);
+    const vendorCurveVerificationStatus = cleanText(npsh.vendorCurveVerificationStatus || pumpResults.vendorCurveVerificationStatus || npshTraceInterpretation.vendorCurveVerificationStatus || 'Not Required for route calculation');
     const suctionPressure = firstNumber(npsh.suctionPressureAbs, pumpResults.suctionPressure);
     const dischargePressure = firstNumber(pumpResults.dischargePressure);
     const shaftPower = firstNumber(pumpResults.power);
@@ -511,8 +575,16 @@
     set('Pump - Pump Datum Elev.', withUnit(pumpProps.suctionElevation, 'm', 6), firstNumber(pumpProps.suctionElevation));
     set('Pump - Pump datum elevation', withUnit(pumpProps.suctionElevation, 'm', 6), firstNumber(pumpProps.suctionElevation));
     set('Pump - Hydraulic NPSH Status', hydraulicStatus, null);
+    set('Hydraulic NPSH Status', hydraulicStatus, null);
     set('Pump - Engineering Status', engineeringStatus, null);
+    set('Engineering Status', engineeringStatus, null);
     set('Pump - Data Confidence', dataConfidence || '-', null);
+    set('Pump - Route Calculation Status', routeCalculationStatus, null);
+    set('Pump - NPSHa Calculation Status', npshaCalculationStatus, null);
+    set('Pump - Required Pump Head Status', requiredPumpHeadStatus, null);
+    set('Pump - Max Allowable NPSHr Status', maxAllowableNpshrStatus, null);
+    set('Pump - Manual NPSHr Comparison', manualNpshrComparisonStatus, null);
+    set('Pump - Vendor Curve Verification', vendorCurveVerificationStatus, null);
     set('Pump - Flow Evaluated', withUnit(pumpFlow, 'm3/h', 6), pumpFlow);
     set('Pump - Flow evaluated', withUnit(pumpFlow, 'm3/h', 6), pumpFlow);
     set('Pump - Pump Head', withUnit(pumpHead, 'm', 6), pumpHead);
@@ -531,6 +603,13 @@
     set('Pump - NPSH excess', withUnit(npshExcess, 'm', 9), npshExcess);
     set('Pump - NPSH Excess', withUnit(npshExcess, 'm', 9), npshExcess);
     set('Pump - Required NPSHa / NPSH Excess', `${withUnit(requiredNpsha, 'm', 6)} / ${withUnit(npshExcess, 'm', 6)}`, requiredNpsha);
+    set('Pump - Maximum Allowable NPSHr', withUnit(maxAllowableNpshr, 'm', 9), maxAllowableNpshr);
+    set('Pump - Max Allowable NPSHr', withUnit(maxAllowableNpshr, 'm', 9), maxAllowableNpshr);
+    set('Pump - Maximum Allowable NPSHr Formula', 'NPSHr,max = min(NPSHa / margin ratio, NPSHa - absolute margin)', null);
+    set('Pump - Max NPSHr by Ratio', withUnit(maxNpshrByRatio, 'm', 9), maxNpshrByRatio);
+    set('Pump - Max NPSHr by Margin', withUnit(maxNpshrByMargin, 'm', 9), maxNpshrByMargin);
+    set('NPSHa, NPSHr, Required NPSHa, and NPSH Excess', `NPSHa=${withUnit(npsha, 'm', 6)}; NPSHr=${withUnit(npshr, 'm', 6)}; Required=${withUnit(requiredNpsha, 'm', 6)}; Excess=${withUnit(npshExcess, 'm', 6)}`, npsha);
+    set('NPSHa, NPSHr, Required NPSHa, and NPSH Excess Status', hydraulicStatus, null);
     set('Pump - Suction Pressure', withUnit(suctionPressure, 'bar a', 9), suctionPressure);
     set('Pump - Suction pressure', withUnit(suctionPressure, 'bar a', 9), suctionPressure);
     set('Pump - Suction Loss', withUnit(suctionLoss, 'm', 9), suctionLoss);
@@ -543,7 +622,7 @@
     const targetFlow = firstNumber(proposal.targetFlow, proposal.targetFlowM3H, pumpFlow);
     const requiredHead = firstNumber(proposal.requiredSystemHead, pumpResults.requiredSystemHead, pumpHead);
     const proposalNpsha = firstNumber(proposal.npshaAtDesign, npsha);
-    const maxAllowableNpshr = firstNumber(proposal.maxAllowableNpshr, proposal.allowableNpshrAtDesign);
+    const proposalMaxAllowableNpshr = firstNumber(proposal.maxAllowableNpshr, proposal.allowableNpshrAtDesign, maxAllowableNpshr);
     const proposedNpshr = firstNumber(proposal.proposedNpshr, proposal.proposedProps?.designNpshr);
     const worst = proposal.worstCase || {};
 
@@ -555,8 +634,8 @@
     set('Optimize Pump From Network - Required system head', withUnit(requiredHead, 'm', 6), requiredHead);
     set('Optimize Pump From Network - NPSHa at Design', withUnit(proposalNpsha, 'm', 6), proposalNpsha);
     set('Optimize Pump From Network - NPSHa at design', withUnit(proposalNpsha, 'm', 6), proposalNpsha);
-    set('Optimize Pump From Network - Max Allowable NPSHr', withUnit(maxAllowableNpshr, 'm', 6), maxAllowableNpshr);
-    set('Optimize Pump From Network - Max allowable NPSHr', withUnit(maxAllowableNpshr, 'm', 6), maxAllowableNpshr);
+    set('Optimize Pump From Network - Max Allowable NPSHr', withUnit(proposalMaxAllowableNpshr, 'm', 6), proposalMaxAllowableNpshr);
+    set('Optimize Pump From Network - Max allowable NPSHr', withUnit(proposalMaxAllowableNpshr, 'm', 6), proposalMaxAllowableNpshr);
     set('Optimize Pump From Network - Proposed NPSHr', withUnit(proposedNpshr, 'm', 6), proposedNpshr);
     set('Optimize Pump From Network - Worst AOR Flow', withUnit(worst.flow, 'm3/h', 6), firstNumber(worst.flow));
     set('Optimize Pump From Network - Worst AOR flow', withUnit(worst.flow, 'm3/h', 6), firstNumber(worst.flow));

@@ -69,7 +69,7 @@ async function waitForProductionApp(page, diagnostics) {
     await page.waitForFunction(() => (
       typeof window.applySimulationStateAtomic === 'function'
       && typeof window.updateSimulation === 'function'
-      && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v9'
+      && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v10'
       && window.CanvasContextDock?.version
       && window.EngineeringRouteTraceAudit?.version
       && window.EngineeringDefenseExportPackage?.schemaVersion === 'defense-export-package.v1'

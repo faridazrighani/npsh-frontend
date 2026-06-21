@@ -120,8 +120,8 @@ assert(source.includes('forceImmediate'), 'Governor must preserve an immediate r
 assert(
   index.includes('engineering-route-trace-audit.js?v=20260616-snk-outlet-feasibility1')
     && index.includes('engineering-performance-refresh-governor.js?v=20260614-refresh-governor4')
-    && index.includes('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane3')
-    && index.includes('engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1'),
+    && index.includes('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane4')
+    && index.includes('engineering-realtime-calculation-defense.js?v=20260621-manual-npshr-autosolve1'),
   'index.html must keep route audit, governor, pump edit fast lane, and realtime defense cache-busted.'
 );
 assert(index.includes('engineering-bilingual-improvements.js?v=20260617-bilingual-realtime-first2'), 'index.html must cache-bust the realtime-first bilingual runtime.');
@@ -131,16 +131,16 @@ assert(bilingualSource.includes('REALTIME_FIRST_TEXT_KEYS'), 'Bilingual runtime 
 assert(bilingualSource.includes('REALTIME_FIRST_LEGACY_TEXT_OVERRIDES'), 'Bilingual runtime must normalize old Solve labels to realtime-first Validate labels.');
 assert(
   index.indexOf('engineering-performance-refresh-governor.js?v=20260614-refresh-governor4')
-      < index.indexOf('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane3')
-    && index.indexOf('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane3')
-      < index.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1'),
+      < index.indexOf('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane4')
+    && index.indexOf('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane4')
+      < index.indexOf('engineering-realtime-calculation-defense.js?v=20260621-manual-npshr-autosolve1'),
   'Performance Refresh Governor and Pump edit fast lane must load before realtime defense starts scheduling linked view refreshes.'
 );
 assert(
   index.indexOf('engineering-route-trace-audit.js?v=20260616-snk-outlet-feasibility1')
     > index.indexOf('const diagnosticScripts = [')
     && index.indexOf('engineering-route-trace-audit.js?v=20260616-snk-outlet-feasibility1')
-      > index.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1'),
+      > index.indexOf('engineering-realtime-calculation-defense.js?v=20260621-manual-npshr-autosolve1'),
   'Route trace audit must remain deferred with diagnostic scripts so PageSpeed critical-path work stays calculation-only.'
 );
 assert.equal(
