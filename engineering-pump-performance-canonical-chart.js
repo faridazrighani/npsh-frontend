@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-performance-canonical-chart.v18';
+  const VERSION = 'pump-performance-canonical-chart.v19';
   const PUMP_FORMULA_DEFENSE_RELOCATION_STYLE_ID = 'pump-formula-defense-relocation-style';
   const PUMP_MANUAL_NPSHR_RELOCATION_STYLE_ID = 'pump-manual-npshr-relocation-style';
   const PUMP_DEVELOPMENT_UI_SUPPRESSION_STYLE_ID = 'pump-development-ui-suppression-style';
@@ -2187,7 +2187,7 @@
     button.type = 'button';
     button.setAttribute('role', 'menuitem');
     button.tabIndex = -1;
-    button.textContent = 'Manual NPSHr';
+    button.textContent = 'Pump Datum - NPSHR';
     button.dataset.pumpManualNpshrTaskMenu = 'true';
     button.dataset.pumpNodeId = pumpId;
     button.addEventListener('click', (event) => {

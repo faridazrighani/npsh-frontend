@@ -650,7 +650,7 @@ test('Manual NPSHr UI edit previews Simulasi 4 locally and refreshes linked repo
   await page.waitForFunction(() => {
     const items = Array.from(document.querySelectorAll('#canvasContextMenu button[role="menuitem"]'))
       .map((button) => button.textContent.replace(/\s+/g, ' ').trim());
-    return items.includes('Manual NPSHr') && items.includes('Pump Formula Defense');
+    return items.includes('Pump Datum - NPSHR') && items.includes('Pump Formula Defense');
   }, null, { timeout: 10000 });
   const pumpMenuItems = await page.locator('#canvasContextMenu button[role="menuitem"]').evaluateAll((buttons) => (
     buttons.map((button) => button.textContent.replace(/\s+/g, ' ').trim())
@@ -658,18 +658,18 @@ test('Manual NPSHr UI edit previews Simulasi 4 locally and refreshes linked repo
   expect(pumpMenuItems).not.toContain('User Task Object Properties');
   expect(pumpMenuItems).not.toContain('Pump Performance Chart');
   const pumpMenuCoreOrder = pumpMenuItems.filter((item) => [
-    'Manual NPSHr',
+    'Pump Datum - NPSHR',
     'Pump Formula Defense',
     'Connect',
     'Delete Object'
   ].includes(item));
   expect(pumpMenuCoreOrder).toEqual([
-    'Manual NPSHr',
+    'Pump Datum - NPSHR',
     'Pump Formula Defense',
     'Connect',
     'Delete Object'
   ]);
-  await page.locator('#canvasContextMenu button[role="menuitem"]').filter({ hasText: /^Manual NPSHr$/ }).click();
+  await page.locator('#canvasContextMenu button[role="menuitem"]').filter({ hasText: /^Pump Datum - NPSHR$/ }).click();
   const npshrInput = page.locator(`.pump-manual-npshr-task-window[data-pump-node-id="${caseData.pumpId}"] input[data-field="manualNpshr"]`).first();
   await expect(npshrInput).toBeVisible({ timeout: 10000 });
   expect(ariaHiddenFocusWarnings).toEqual([]);
