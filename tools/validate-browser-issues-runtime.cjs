@@ -36,7 +36,7 @@ assert(indexHtml.includes('engineering-browser-issues-runtime.js?v=20260620-orph
 assert(indexHtml.includes('style.min.css?v=20260608-browser-issues1'), 'index.html must cache-bust browser-issues CSS cleanup.');
 assert.strictEqual(typeof runtime.repairFormFieldLabels, 'function', 'Browser issues runtime must expose orphan form-field label cleanup.');
 assert.strictEqual(typeof runtime.repairBrowserIssues, 'function', 'Browser issues runtime must expose a combined browser-issues repair pass.');
-assert(indexHtml.includes('engineering-canvas-context-dock.js?v=20260619-mobile-performance-overlay1'), 'index.html must cache-bust canvas context dock browser issues cleanup.');
+assert(indexHtml.includes('engineering-canvas-context-dock.js?v=20260621-pipe-left-click-menu1'), 'index.html must cache-bust canvas context dock browser issues cleanup.');
 assert(indexHtml.includes('engineering-literature-pdf-viewer.js?v=20260609-literature-access3'), 'index.html must cache-bust literature PDF access diagnostics cleanup.');
 assert(indexHtml.includes('__chromium_devtools_metrics_reporter'), 'index.html must install the Chromium DevTools metrics reporter guard early.');
 assert(indexHtml.includes("typeof window.__chromium_devtools_metrics_reporter === 'function'"), 'Chromium DevTools metrics reporter guard must preserve real reporter functions.');
