@@ -518,10 +518,10 @@
     set('Pipe Discharge - PFV End Elevation', withUnit(dischargePfvEndElevation, 'm', 6), dischargePfvEndElevation);
 
     const npshTraceInterpretation = npsh.calculationTrace?.interpretation || {};
-    const pumpFlow = firstNumber(npsh.flow, pumpResults.fixedFlow, pumpResults.flow, pumpProps.designFlow);
-    const pumpHead = firstNumber(npsh.pumpHead, pumpResults.requiredSystemHead, pumpResults.pumpHeadAtFlow, pumpResults.head, pumpProps.designHead);
+    const pumpFlow = firstNumber(npsh.flow, pumpResults.fixedFlow, pumpResults.flow);
+    const pumpHead = firstNumber(npsh.pumpHead, pumpResults.requiredSystemHead, pumpResults.pumpHeadAtFlow, pumpResults.head);
     const npsha = firstNumber(npsh.npsha, pumpResults.npsha);
-    const npshr = firstNumber(npsh.npshr, pumpResults.npshr, pumpProps.designNpshr);
+    const npshr = firstNumber(npsh.npshr, pumpResults.npshr, pumpProps.manualNpshr, pumpProps.designNpshr);
     const marginRatioLimit = firstNumber(
       npsh.marginCriteria?.ratio,
       npsh.criteria?.ratio,
@@ -646,7 +646,7 @@
     const requiredHead = firstNumber(proposal.requiredSystemHead, pumpResults.requiredSystemHead, pumpHead);
     const proposalNpsha = firstNumber(proposal.npshaAtDesign, npsha);
     const proposalMaxAllowableNpshr = firstNumber(proposal.maxAllowableNpshr, proposal.allowableNpshrAtDesign, maxAllowableNpshr);
-    const proposedNpshr = firstNumber(proposal.proposedNpshr, proposal.proposedProps?.designNpshr);
+    const proposedNpshr = firstNumber(proposal.proposedNpshr, proposal.proposedProps?.manualNpshr, proposal.proposedProps?.designNpshr);
     const worst = proposal.worstCase || {};
 
     set('Optimize Pump From Network - Workflow Status', `${cleanText(proposal.status || 'Not ready')}; readiness ${cleanText(readiness.status || proposal.readinessStatus || '-')}`, null);

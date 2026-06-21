@@ -15,6 +15,37 @@
   const SAMPLE_CASE_OPEN_SELECTOR = '[data-simulation-case-action="open"][data-simulation-case-id]';
   const USER_CALCULATION_INTENT_SELECTOR = `${RUN_COMMAND_SELECTOR}, ${SAMPLE_CASE_OPEN_SELECTOR}`;
   const CALCULATION_FIELD_PATTERN = /\b(inputMode|optimizationMode|npshrSourceMode|npshAssessmentMode|npshMarginBasis|screeningDefaultsApplied|elevation|suctionElevation|dischargeElevation|designFlow|designHead|designEfficiency|designNpshr|manualNpshr|bepFlow|porMinPercent|porMaxPercent|aorMinPercent|aorMaxPercent|minNpshMarginRatio|minNpshMargin|speed|curveDataSource|curveSourceNote|curveData|flow|demandFlow|massFlow|flowInputMode|boundaryMode|boundaryDataSource|pressure|pressureInputBasis|pressureBasis|pressureEnergyBasis|sourceType|temperatureMode|temp|temperature|fluidName|density|viscosity|kinematicViscosity|dynViscosity|dynamicViscosity|vaporPressure|specificWeight|vaporPressureHead|routeStyle|elevationProfileMode|startElevation|endElevation|highPointElevation|highPointLocationPercent|roughnessAgingFactor|headLossAllowancePercent|segments|length|diameter|roughness|fittingType|fittingQuantity|fittingK|minorLoss|additionalK|active|liquidLevel|level)\b/i;
+  const ROUTE_ONLY_PUMP_CALCULATION_FIELDS = Object.freeze([
+    'suctionelevation',
+    'pumpdatumelev',
+    'pumpdatumelevation',
+    'manualnpshr',
+    'npshmarginbasis',
+    'minnpshratio',
+    'minnpshmarginratio',
+    'minnpshmargin'
+  ]);
+  const LEGACY_PUMP_PERFORMANCE_FIELDS = Object.freeze([
+    'inputmode',
+    'optimizationmode',
+    'npshrourcemode',
+    'npshassessmentmode',
+    'screeningdefaultsapplied',
+    'dischargeelevation',
+    'designflow',
+    'designhead',
+    'designefficiency',
+    'designnpshr',
+    'bepflow',
+    'porminpercent',
+    'pormaxpercent',
+    'aorminpercent',
+    'aormaxpercent',
+    'speed',
+    'curvedatasource',
+    'curvesourcenote',
+    'curvedata'
+  ]);
   const CALCULATION_INPUT_SURFACE_SELECTOR = [
     '.task-window',
     '.full-editor-modal',
@@ -85,11 +116,78 @@
     ].filter(Boolean).map((token) => String(token));
   }
 
+  function normalizedFieldText(tokens = []) {
+    return tokens.join(' ').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  }
+
+  function nodeTypeForTarget(target, nodeId = resolveNodeId(target)) {
+    const modelType = runtimeModel()?.[nodeId]?.type || '';
+    if (modelType) return String(modelType);
+    const holder = target?.closest?.('[data-kind], [data-node-type], [data-task-node-type]');
+    return holder?.dataset?.kind || holder?.dataset?.nodeType || holder?.dataset?.taskNodeType || '';
+  }
+
+  function hasNormalizedField(normalizedText, fields = []) {
+    return fields.some((field) => normalizedText.includes(field));
+  }
+
+  function sinkModeKindForTarget(nodeId) {
+    const mode = String(runtimeModel()?.[nodeId]?.props?.boundaryMode || '').toLowerCase();
+    if (/flow\s*demand/.test(mode)) return 'flow-demand';
+    if (/free\s*outlet|atmospheric/.test(mode)) return 'free-outlet';
+    if (/outlet\s*pressure|pressure\s*boundary|specified\s*pressure/.test(mode)) return 'outlet-pressure';
+    return mode ? 'unknown' : 'free-outlet';
+  }
+
+  function sinkFieldKey(normalizedText) {
+    if (normalizedText.includes('boundarymode')) return 'boundaryMode';
+    if (normalizedText.includes('active')) return 'active';
+    if (normalizedText.includes('elevation')) return 'elevation';
+    if (normalizedText.includes('pressureinputbasis')) return 'pressureInputBasis';
+    if (normalizedText.includes('pressurebasis')) return 'pressureBasis';
+    if (normalizedText.includes('demandflow')) return 'demandFlow';
+    if (normalizedText.includes('outletpressure') || normalizedText.includes('pressure')) return 'pressure';
+    return '';
+  }
+
+  function sourceFlowModeKind(nodeId) {
+    const mode = String(runtimeModel()?.[nodeId]?.props?.flowInputMode || '').toLowerCase();
+    return /mass/.test(mode) ? 'mass-flow' : 'volumetric-flow';
+  }
+
+  function sourceFieldKey(normalizedText) {
+    if (normalizedText.includes('flowinputmode')) return 'flowInputMode';
+    if (normalizedText.includes('massflow')) return 'massFlow';
+    if (normalizedText.includes('flow')) return 'flow';
+    return '';
+  }
+
   function isCalculationField(target) {
     const tokens = fieldTokens(target);
     if (!tokens.length) return false;
-    if (target.closest?.('#pumpCurveTable') && /^(flow|head|eff|npshr)$/i.test(String(target.dataset?.field || ''))) {
-      return true;
+    const normalizedText = normalizedFieldText(tokens);
+    const nodeId = resolveNodeId(target);
+    const type = String(nodeTypeForTarget(target, nodeId) || '').toLowerCase();
+    if (target.closest?.('#pumpCurveTable')) {
+      return false;
+    }
+    if (type === 'pump') {
+      if (hasNormalizedField(normalizedText, LEGACY_PUMP_PERFORMANCE_FIELDS)) return false;
+      return hasNormalizedField(normalizedText, ROUTE_ONLY_PUMP_CALCULATION_FIELDS);
+    }
+    if (type === 'sink') {
+      const fieldKey = sinkFieldKey(normalizedText);
+      const modeKind = sinkModeKindForTarget(nodeId);
+      if (['active', 'boundaryMode', 'elevation', 'pressureBasis'].includes(fieldKey)) return true;
+      if (fieldKey === 'demandFlow') return modeKind === 'flow-demand';
+      if (fieldKey === 'pressure' || fieldKey === 'pressureInputBasis') return modeKind === 'outlet-pressure';
+      return CALCULATION_FIELD_PATTERN.test(tokens.join(' '));
+    }
+    if (type === 'source') {
+      const fieldKey = sourceFieldKey(normalizedText);
+      if (fieldKey === 'flowInputMode') return true;
+      if (fieldKey === 'flow') return sourceFlowModeKind(nodeId) === 'volumetric-flow';
+      if (fieldKey === 'massFlow') return sourceFlowModeKind(nodeId) === 'mass-flow';
     }
     return CALCULATION_FIELD_PATTERN.test(tokens.join(' '));
   }
@@ -1336,6 +1434,8 @@
     requestAutoSolve,
     flushAutoSolve,
     cancelAutoSolve,
+    isCalculationField,
+    isCalculationInput,
     refreshLinkedViews,
     scheduleLinkedViewRefresh,
     patchUpdateSimulation,

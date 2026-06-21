@@ -135,6 +135,34 @@ assert.equal(typeof runtime.publishCanonicalCalculationState, 'function', 'Realt
 assert.equal(typeof runtime.scheduleLinkedViewRefresh, 'function', 'Realtime defense runtime should expose frame-batched linked view refresh.');
 assert.equal(typeof runtime.currentCalculationTransaction, 'function', 'Realtime defense runtime should expose current calculation transaction.');
 assert.equal(typeof runtime.markFailed, 'function', 'Realtime defense runtime should expose backend failure state marker.');
+assert.equal(typeof runtime.isCalculationField, 'function', 'Realtime defense runtime should expose calculation field classification for regression validation.');
+
+function fakeInput({ nodeId = 'P-100', field = '', id = '', name = '', inPumpCurveTable = false } = {}) {
+  return {
+    name,
+    id,
+    type: 'number',
+    disabled: false,
+    readOnly: false,
+    dataset: { nodeId, field },
+    getAttribute: () => '',
+    matches: (selector) => /input|select|textarea/.test(selector),
+    closest: (selector) => {
+      if (selector === '#pumpCurveTable' || selector.includes('#pumpCurveTable')) return inPumpCurveTable ? { id: 'pumpCurveTable' } : null;
+      if (selector.includes('data-node') || selector.includes('data-task-node-id') || selector.includes('task-window')) {
+        return { dataset: { nodeId } };
+      }
+      return null;
+    }
+  };
+}
+
+assert.equal(runtime.isCalculationField(fakeInput({ field: 'manualNpshr' })), true, 'Manual NPSHr must remain a route-only calculation input.');
+assert.equal(runtime.isCalculationField(fakeInput({ field: 'suctionElevation' })), true, 'Pump Datum Elev. must remain a route-only calculation input.');
+assert.equal(runtime.isCalculationField(fakeInput({ field: 'designFlow' })), false, 'Legacy designFlow must not trigger route-only autosolve.');
+assert.equal(runtime.isCalculationField(fakeInput({ field: 'curveData', inPumpCurveTable: true })), false, 'Pump curve table edits must not trigger route-only autosolve.');
+assert.equal(runtime.isCalculationField(fakeInput({ nodeId: 'SNK-100', field: 'pressure' })), false, 'SNK pressure must be ignored while Flow Demand Boundary is active.');
+assert.equal(runtime.isCalculationField(fakeInput({ nodeId: 'SNK-100', field: 'demandFlow' })), true, 'SNK demandFlow must trigger autosolve while Flow Demand Boundary is active.');
 
 const realtimeSource = fs.readFileSync(runtimePath, 'utf8');
 assert(
