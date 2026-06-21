@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 
-const PUMP_FORMULA_DEFENSE_LIVE_AUDIT_VERSION = 'pump-formula-defense-live-audit.v9';
+const PUMP_FORMULA_DEFENSE_LIVE_AUDIT_VERSION = 'pump-formula-defense-live-audit.v10';
 
 function createPipe(name, length, diameter = 0.08, fittingK = 0) {
   return {

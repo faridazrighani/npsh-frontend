@@ -140,7 +140,6 @@ globalThis.__npshGlobalModel = {
         maxNpshrByMargin: 6.4,
         maxAllowableNpshr: 6.4,
         suctionLoss: 1.25,
-        dischargeLoss: 2.5,
         routeCalculationStatus: 'Calculated',
         npshaCalculationStatus: 'Calculated',
         requiredPumpHeadStatus: 'Calculated',
@@ -169,15 +168,10 @@ globalThis.__npshGlobalModel = {
           sections: {
             discharge: {
               text: 'P-100 -> PIPE-2 -> SNK-100',
-              totalLossM: 2.5,
               pressureDropBar: 0.244,
               directNpshImpact: false
             }
           },
-          dischargeLoss: {
-            headLoss: 2.5,
-            pressureDrop: 0.244
-          }
         },
         marginCriteria: {
           basis: 'General Purpose',
@@ -207,6 +201,9 @@ globalThis.__npshGlobalModel = {
             requiredNpsha: 4.6,
             npshExcess: 2.4
           },
+          systemHead: {
+            dischargeLoss: 2.5
+          },
           steps: [
             { title: 'Pressure Head', formula: 'Hp = Pabs x 100000 / (rho x g)', substitution: '1.800 x 100000 / (1000 x 9.81) = 18.350 m', result: 18.35, unit: 'm' },
             { title: 'Source Velocity Head', formula: 'Hvel = 0', substitution: '0.000 m', result: 0, unit: 'm' },
@@ -235,12 +232,12 @@ globalThis.updateSimulation = (options = {}) => ({ ok: true, options });
 globalThis.shouldSkipBackendSimulationFetch = () => true;
 
 const runtime = require(runtimePath);
-assert.equal(runtime.version, 'pump-formula-defense-live-audit.v9', 'Pump Formula Defense live audit runtime must expose route-design v9.');
+assert.equal(runtime.version, 'pump-formula-defense-live-audit.v10', 'Pump Formula Defense live audit runtime must expose route-design v10.');
 assert.equal(typeof runtime.refreshOpenWindows, 'function', 'Runtime must expose open-window refresh.');
 assert.equal(typeof runtime.scheduleRefresh, 'function', 'Runtime must expose scheduled refresh.');
 assert.equal(typeof runtime.ensureRuntimeGuards, 'function', 'Runtime must expose self-healing guard installer.');
 assert.equal(typeof runtime.buildCalculationMatrixRows, 'function', 'Runtime must expose live calculation matrix rows for validation.');
-assert.equal(globalThis.refreshPumpFormulaDefenseWindowContent.__pumpFormulaDefenseLiveAuditVersion, 'pump-formula-defense-live-audit.v9');
+assert.equal(globalThis.refreshPumpFormulaDefenseWindowContent.__pumpFormulaDefenseLiveAuditVersion, 'pump-formula-defense-live-audit.v10');
 
 runtime.refreshOpenWindows('P-100', { reason: 'unit-test' });
 assert(contentRefreshCalls > 0, 'Open Pump Formula Defense windows must rebuild their content when refreshed.');
@@ -299,7 +296,7 @@ globalThis.refreshPumpFormulaDefenseWindowContent = () => ({ stale: true });
 runtime.ensureRuntimeGuards();
 assert.equal(
   globalThis.refreshPumpFormulaDefenseWindowContent.__pumpFormulaDefenseLiveAuditVersion,
-  'pump-formula-defense-live-audit.v9',
+  'pump-formula-defense-live-audit.v10',
   'Runtime must reclaim Pump Formula Defense content refresh after late overrides.'
 );
 
@@ -327,11 +324,11 @@ assert(runtimeSource.includes('Maximum Allowable NPSHr'), 'Runtime must expose m
 assert(runtimeSource.includes('EngineeringPerformanceRefreshGovernor'), 'Runtime must delegate scheduled open-window refreshes to the performance governor when available.');
 assert(!runtimeSource.includes("scheduleOpenFormulaDefenseWindowRefresh('', { reason: 'guard-loop'"), 'Runtime guard loop must not trigger repeated visual refreshes.');
 assert(
-  index.includes('engineering-pump-formula-defense-live-audit.js?v=20260621-pump-defense-route-design2'),
+  index.includes('engineering-pump-formula-defense-live-audit.js?v=20260621-pump-defense-route-design3'),
   'Index must cache-bust Pump Formula Defense live audit runtime.'
 );
 assert(
-  manifest.includes('Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260621-pump-defense-route-design2'),
+  manifest.includes('Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260621-pump-defense-route-design3'),
   'Manifest must document Pump Formula Defense live audit cache key.'
 );
 

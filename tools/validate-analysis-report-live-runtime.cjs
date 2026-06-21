@@ -10,8 +10,8 @@ const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const CASE_FILE = path.join(FRONTEND_ROOT, "journals", "simulasi_1", "simulasi_performansi_pompa_air_umpan_tangki_deaerator.untirta");
 const LOGO_FILE = path.join(FRONTEND_ROOT, "png", "untirta-universitas-sultanagengtirtayasa880x870.png");
-const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260621-analysis-report-design-contract2";
-const VERSION = "2026.06-analysis-report-live14";
+const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260621-analysis-report-design-contract3";
+const VERSION = "2026.06-analysis-report-live15";
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
 function assert(condition, message) {
@@ -320,6 +320,41 @@ assert(metricText(metrics, "Pump - Route Calculation Status") === "Calculated", 
 assert(metricText(metrics, "Pump - Pump head evaluated").includes("24 m"), "Pump evaluated head must come from solved pump/system head.");
 assert(metricText(metrics, "SNK - Reference pressure").includes("Ignored in Flow Demand Boundary"), "SNK reference pressure must be marked ignored when Flow Demand Boundary is active.");
 assert(metricText(metrics, "Outlet Readout - Vapor margin").includes("7.76"), "Outlet vapor margin must be recalculated from live pressure and Fluid Basis.");
+
+const routeOnlyDischargeLossProject = JSON.parse(JSON.stringify(project));
+const routeOnlyPump = routeOnlyDischargeLossProject.model["P-100"];
+assert(routeOnlyPump, "Route-only discharge loss fixture requires P-100.");
+routeOnlyPump.results = routeOnlyPump.results || {};
+routeOnlyPump.results.npshEvaluation = routeOnlyPump.results.npshEvaluation || {};
+delete routeOnlyPump.results.npshEvaluation.dischargeLoss;
+delete routeOnlyPump.results.dischargeLoss;
+routeOnlyPump.results.routeTrace = {
+  dischargeLoss: {
+    headLoss: 12.345678,
+    pressureDrop: 1.2345
+  },
+  sections: {
+    discharge: {
+      sequence: ["P-100", "PIPE-2", "SNK-100"],
+      totalLossM: 12.345678,
+      pressureDropBar: 1.2345
+    }
+  }
+};
+Object.values(routeOnlyDischargeLossProject.model)
+  .filter((node) => String(node?.type || "").toLowerCase() === "pipe")
+  .forEach((pipe) => {
+    pipe.results = {
+      calculationTrace: {
+        totals: {}
+      }
+    };
+  });
+const routeOnlyDischargeLossMetrics = loadRuntime(runtime, routeOnlyDischargeLossProject.model).collectLiveMetrics();
+assert(
+  metricText(routeOnlyDischargeLossMetrics, "Outlet Readout - Discharge Loss").includes("12.345678 m"),
+  "Outlet Discharge Loss must fall back to backend routeTrace when pipe-object totals are not present."
+);
 
 const changedProject = JSON.parse(JSON.stringify(project));
 changedProject.model.FLUID.props.temp = 80;

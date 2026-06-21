@@ -1,7 +1,7 @@
 (function installEngineeringAnalysisReportLiveRuntime(root) {
   'use strict';
 
-  const VERSION = '2026.06-analysis-report-live14';
+  const VERSION = '2026.06-analysis-report-live15';
   const REFRESH_MS = 3000;
   const ACTIVE_SELECTOR = '.journal-analysis-task-window, .journal-analysis-report-panel';
   const RESPONSIVE_STYLE_ID = 'engineeringAnalysisReportLiveResponsiveStyle';
@@ -368,6 +368,20 @@
     return null;
   };
 
+  const routeDischargeLoss = (pumpResults = {}, npsh = {}) => {
+    const route = pumpResults.routeTrace || npsh.routeTrace || {};
+    const trace = npsh.calculationTrace || pumpResults.calculationTrace || {};
+    return firstNumber(
+      route.dischargeLoss?.headLoss,
+      route.sections?.discharge?.totalLossM,
+      trace.systemHead?.dischargeLoss,
+      npsh.dischargeLoss,
+      pumpResults.dischargeLoss,
+      pumpResults.requiredSystemHeadTrace?.dischargeLoss,
+      pumpResults.systemHead?.dischargeLoss
+    );
+  };
+
   const pipeEndpointElevation = (pipeEntry, endpointKey) => {
     if (!pipeEntry || !endpointKey) return null;
     const props = pipeEntry.object?.props || {};
@@ -546,7 +560,7 @@
       maxNpshrByRatio !== null && maxNpshrByMargin !== null ? Math.min(maxNpshrByRatio, maxNpshrByMargin) : null
     );
     const suctionLoss = firstNumber(npsh.suctionLoss, pipeMetric(suctionPipe, 'totalLoss'), pumpResults.suctionLoss);
-    const dischargeLoss = firstNumber(npsh.dischargeLoss, pipeMetric(dischargePipe, 'totalLoss'), pumpResults.dischargeLoss);
+    const dischargeLoss = firstNumber(routeDischargeLoss(pumpResults, npsh), pipeMetric(dischargePipe, 'totalLoss'));
     const computedHydraulicStatus = calculatedNpshStatus(npsha, npshr, requiredNpsha);
     const rawHydraulicStatus = npsh.hydraulicStatus || pumpResults.hydraulicNpshStatus || npsh.status || pumpResults.cavitationStatus || 'Incomplete';
     const hydraulicStatus = chooseCalculatedStatus(rawHydraulicStatus, computedHydraulicStatus, 'Incomplete');

@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-formula-defense-live-audit.v9';
+  const VERSION = 'pump-formula-defense-live-audit.v10';
   const WINDOW_SELECTOR = '.pump-formula-defense-task-window';
   const BADGE_SELECTOR = '[data-pump-formula-defense-live-badges]';
   const SUMMARY_SELECTOR = '[data-pump-formula-defense-vendor-summary]';
@@ -278,6 +278,8 @@
     const results = pump.results || {};
     const evaluation = results.npshEvaluation || {};
     if (!evaluation || typeof evaluation !== 'object' || evaluation === results) return false;
+    const trace = evaluation.calculationTrace || results.calculationTrace || {};
+    const route = results.routeTrace || evaluation.routeTrace || {};
     const npsha = firstNumber(evaluation.npsha, results.npsha);
     const npshr = firstNumber(evaluation.npshr, results.npshr, pump.props?.designNpshr, pump.props?.manualNpshr);
     const requiredNpsha = firstNumber(evaluation.requiredNpsha, results.requiredNpsha);
@@ -317,7 +319,15 @@
       ['suctionPressure', firstNumber(evaluation.suctionPressure, evaluation.suctionPressureAbs)],
       ['dischargePressure', firstNumber(evaluation.dischargePressure, evaluation.dischargePressureAbs)],
       ['suctionLoss', evaluation.suctionLoss],
-      ['dischargeLoss', evaluation.dischargeLoss],
+      ['dischargeLoss', firstNumber(
+        route.dischargeLoss?.headLoss,
+        route.sections?.discharge?.totalLossM,
+        trace.systemHead?.dischargeLoss,
+        evaluation.dischargeLoss,
+        results.dischargeLoss,
+        results.requiredSystemHeadTrace?.dischargeLoss,
+        results.systemHead?.dischargeLoss
+      )],
       ['vaporPressureHead', evaluation.vaporPressureHead],
       ['suctionVelocityHead', evaluation.suctionVelocityHead]
     ].forEach(([key, value]) => {
@@ -439,8 +449,11 @@
       route.dischargeLoss?.headLoss,
       route.sections?.discharge?.totalLossM,
       evaluation.dischargeLoss,
+      evaluation.calculationTrace?.systemHead?.dischargeLoss,
       results.dischargeLoss,
       trace.systemHead?.dischargeLoss,
+      results.requiredSystemHeadTrace?.dischargeLoss,
+      results.systemHead?.dischargeLoss,
       parseSystemCurveDischargeLoss(steps)
     );
   }
