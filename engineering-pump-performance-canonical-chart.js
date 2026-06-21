@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-performance-canonical-chart.v20';
+  const VERSION = 'pump-performance-canonical-chart.v23';
   const PUMP_FORMULA_DEFENSE_RELOCATION_STYLE_ID = 'pump-formula-defense-relocation-style';
   const PUMP_MANUAL_NPSHR_RELOCATION_STYLE_ID = 'pump-manual-npshr-relocation-style';
   const PUMP_DEVELOPMENT_UI_SUPPRESSION_STYLE_ID = 'pump-development-ui-suppression-style';
@@ -49,18 +49,56 @@
   const PUMP_NPSH_MARGIN_BASIS_OPTIONS = [
     'General Purpose',
     'Petroleum/Hydrocarbon',
+    'Oil & Gas - Consult Manufacturer',
     'Chemical Process',
+    'Chemical Process - S < 210',
+    'Chemical Process - S >= 210',
+    'Power Plant - Boiler Feed <225 kW',
+    'Power Plant - Boiler Feed 225-500 kW',
+    'Power Plant - Condensate',
+    'Power Plant - Circulation/Cooling Water',
+    'Power Plant - Cooling Tower/Other',
     'Water/Wastewater',
+    'Wastewater - Cast Iron <45 kW',
+    'Wastewater - Stainless Steel <45 kW',
+    'Wastewater - Cast Iron >=45 kW',
+    'Wastewater - Stainless Steel >=45 kW',
+    'Water - Stainless/Al Bronze <75 kW',
+    'Water - Stainless/Al Bronze >=75 kW',
+    'Pulp & Paper Stock <6% - S <145',
+    'Pulp & Paper Stock <6% - S >=145',
     'Building Services',
+    'Building Services - S <145',
+    'Building Services - S >=145',
+    'Slurry',
     'Irrigation',
     'User Defined'
   ];
   const PUMP_NPSH_MARGIN_PRESETS = {
     'General Purpose': { por: { ratio: 1.05, margin: 0.6 }, aor: { ratio: 1.1, margin: 1.0 } },
     'Petroleum/Hydrocarbon': { por: { ratio: 1.1, margin: 1.0 }, aor: { ratio: 1.1, margin: 1.0 } },
+    'Oil & Gas - Consult Manufacturer': { por: {}, aor: {}, consultManufacturer: true },
     'Chemical Process': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.2, margin: 1.0 } },
+    'Chemical Process - S < 210': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.1, margin: 0.6 } },
+    'Chemical Process - S >= 210': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.2, margin: 1.0 } },
+    'Power Plant - Boiler Feed <225 kW': { por: { ratio: 1.1 }, aor: { ratio: 1.3 } },
+    'Power Plant - Boiler Feed 225-500 kW': { por: { ratio: 1.2 }, aor: { ratio: 1.5 } },
+    'Power Plant - Condensate': { por: { ratio: 1.0 }, aor: { ratio: 1.0 } },
+    'Power Plant - Circulation/Cooling Water': { por: { ratio: 1.05 }, aor: { margin: 1.0 } },
+    'Power Plant - Cooling Tower/Other': { por: { ratio: 1.1 }, aor: { ratio: 1.3 } },
     'Water/Wastewater': { por: { ratio: 1.1, margin: 1.0 }, aor: { ratio: 1.2, margin: 1.5 } },
+    'Wastewater - Cast Iron <45 kW': { por: { ratio: 1.1, margin: 1.0 }, aor: { ratio: 1.2, margin: 1.5 } },
+    'Wastewater - Stainless Steel <45 kW': { por: { ratio: 1.05, margin: 1.0 }, aor: { ratio: 1.1, margin: 1.5 } },
+    'Wastewater - Cast Iron >=45 kW': { por: { ratio: 1.2, margin: 1.0 }, aor: { ratio: 1.3, margin: 1.5 } },
+    'Wastewater - Stainless Steel >=45 kW': { por: { ratio: 1.1, margin: 1.0 }, aor: { ratio: 1.2, margin: 1.5 } },
+    'Water - Stainless/Al Bronze <75 kW': { por: { ratio: 1.05, margin: 1.0 }, aor: { ratio: 1.1, margin: 1.5 } },
+    'Water - Stainless/Al Bronze >=75 kW': { por: { ratio: 1.1, margin: 1.0 }, aor: { ratio: 1.2, margin: 1.5 } },
+    'Pulp & Paper Stock <6% - S <145': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.1, margin: 0.6 } },
+    'Pulp & Paper Stock <6% - S >=145': { por: { ratio: 1.2, margin: 1.0 }, aor: { ratio: 1.2, margin: 1.0 } },
     'Building Services': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.1, margin: 0.6 } },
+    'Building Services - S <145': { por: { ratio: 1.0 }, aor: { ratio: 1.0 } },
+    'Building Services - S >=145': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.1, margin: 0.6 } },
+    'Slurry': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.1, margin: 0.6 } },
     'Irrigation': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.2, margin: 1.0 } }
   };
 
@@ -1776,6 +1814,27 @@
   color: #355c76;
   white-space: nowrap;
 }
+.pump-manual-npshr-criteria-note {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border: 1px solid #cfddea;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #274963;
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+.pump-manual-npshr-criteria-note[data-state="partial"] {
+  border-color: #e8d8a8;
+  background: #fff9e8;
+  color: #5b4a14;
+}
+.pump-manual-npshr-criteria-note[data-state="consult"],
+.pump-manual-npshr-criteria-note[data-state="missing"] {
+  border-color: #e6b8b8;
+  background: #fff6f6;
+  color: #74312f;
+}
 @media (max-width: 760px) {
   .pump-performance-chart-task-window {
     left: 8px !important;
@@ -2017,15 +2076,14 @@
   }
 
   function marginRegionKey(pump = {}) {
-    const evaluation = pump.results?.npshEvaluation || {};
+    const props = pump.props || {};
     const status = cleanText(
-      pump.results?.operatingRegion
-      || pump.results?.npshMarginBasisRegion
-      || evaluation.marginCriteria?.operatingRegionStatus
-      || evaluation.criteria?.operatingRegionStatus
+      props.npshMarginRegionBasis
+      || props.npshMarginOperatingRegion
+      || props.marginRegionBasis
       || ''
     ).toUpperCase();
-    return status === 'POR' ? 'por' : 'aor';
+    return status === 'AOR' ? 'aor' : 'por';
   }
 
   function pumpHasUserDefinedMarginValues(props = {}) {
@@ -2042,11 +2100,132 @@
     return PUMP_NPSH_MARGIN_BASIS_OPTIONS.includes(raw) ? raw : PUMP_NPSH_MARGIN_GENERAL_PURPOSE;
   }
 
+  function marginPresetDefinitionForBasis(basis = '') {
+    const selectedBasis = basis || PUMP_NPSH_MARGIN_GENERAL_PURPOSE;
+    return PUMP_NPSH_MARGIN_PRESETS[selectedBasis] || PUMP_NPSH_MARGIN_PRESETS[PUMP_NPSH_MARGIN_GENERAL_PURPOSE];
+  }
+
   function marginPresetForPump(pump = {}, basis = '') {
     const selectedBasis = basis || marginBasisForPump(pump);
     if (selectedBasis === PUMP_NPSH_MARGIN_USER_DEFINED) return null;
-    const preset = PUMP_NPSH_MARGIN_PRESETS[selectedBasis] || PUMP_NPSH_MARGIN_PRESETS[PUMP_NPSH_MARGIN_GENERAL_PURPOSE];
+    const preset = marginPresetDefinitionForBasis(selectedBasis);
     return preset?.[marginRegionKey(pump)] || preset?.aor || preset?.por || null;
+  }
+
+  function marginCriteriaDetailsForPump(pump = {}, basis = '') {
+    const selectedBasis = basis || marginBasisForPump(pump);
+    const props = pump.props || {};
+    const regionKey = marginRegionKey(pump);
+    if (selectedBasis === PUMP_NPSH_MARGIN_USER_DEFINED) {
+      const ratio = firstNumber(props.minNpshMarginRatio);
+      const margin = firstNumber(props.minNpshMargin);
+      return {
+        basis: selectedBasis,
+        regionKey: 'user',
+        userDefined: true,
+        consultManufacturer: false,
+        ratio,
+        margin,
+        hasRatio: ratio !== null,
+        hasMargin: margin !== null
+      };
+    }
+    const preset = marginPresetDefinitionForBasis(selectedBasis);
+    const criteria = preset?.[regionKey] || preset?.aor || preset?.por || {};
+    const ratio = firstNumber(criteria?.ratio);
+    const margin = firstNumber(criteria?.margin);
+    return {
+      basis: PUMP_NPSH_MARGIN_PRESETS[selectedBasis] ? selectedBasis : PUMP_NPSH_MARGIN_GENERAL_PURPOSE,
+      regionKey,
+      userDefined: false,
+      consultManufacturer: !!preset?.consultManufacturer,
+      ratio,
+      margin,
+      hasRatio: ratio !== null,
+      hasMargin: margin !== null
+    };
+  }
+
+  function describeMarginCriteria(details = {}) {
+    const region = details.regionKey === 'aor' ? 'AOR' : details.regionKey === 'por' ? 'POR' : 'user';
+    if (details.userDefined) {
+      if (!details.hasRatio && !details.hasMargin) {
+        return 'User Defined basis requires at least Min NPSH Ratio or Min NPSH Margin before margin acceptance can be calculated.';
+      }
+      if (details.hasRatio && details.hasMargin) {
+        return 'User Defined basis will use the larger required NPSHa from ratio and absolute margin criteria.';
+      }
+      return details.hasRatio
+        ? 'User Defined basis will use the Min NPSH Ratio criterion only.'
+        : 'User Defined basis will use the Min NPSH Margin criterion only.';
+    }
+    if (details.consultManufacturer) {
+      return `${details.basis}: ANSI/HI lists this service as Consult manufacturer for ${region}; no numeric default is published. Use manufacturer/project-specific criteria or select User Defined when numeric evidence is available.`;
+    }
+    if (details.hasRatio && details.hasMargin) {
+      return `${details.basis}: ${region} criteria include both Min NPSH Ratio and Min NPSH Margin. The calculation uses the more conservative requirement.`;
+    }
+    if (details.hasRatio) {
+      return `${details.basis}: ${region} criteria specify Min NPSH Ratio only; Min NPSH Margin is not specified by the ANSI/HI table.`;
+    }
+    if (details.hasMargin) {
+      return `${details.basis}: ${region} criteria specify Min NPSH Margin only; Min NPSH Ratio is not specified by the ANSI/HI table.`;
+    }
+    return `${details.basis || 'Selected basis'}: no numeric NPSH margin criterion is available for ${region}; review the selected service basis.`;
+  }
+
+  function updateMarginCriteriaPresentation(taskWindow, pumpId) {
+    if (!taskWindow?.querySelector) return false;
+    const id = resolvePumpId(pumpId);
+    const pump = runtimeModel()?.[id] || {};
+    const select = taskWindow.querySelector('select[data-field="npshMarginBasis"]');
+    const basis = cleanText(select?.value) || marginBasisForPump(pump);
+    const pseudoPump = { ...pump, props: { ...(pump.props || {}), npshMarginBasis: basis } };
+    const details = marginCriteriaDetailsForPump(pseudoPump, basis);
+    const ratioInput = taskWindow.querySelector('input[data-field="minNpshMarginRatio"]');
+    const marginInput = taskWindow.querySelector('input[data-field="minNpshMargin"]');
+    const note = taskWindow.querySelector('[data-npsh-margin-criteria-note="true"]');
+    const missingText = details.consultManufacturer ? 'Consult manufacturer' : 'Not specified';
+    let changed = false;
+    [
+      [ratioInput, details.hasRatio, 'Min NPSH Ratio'],
+      [marginInput, details.hasMargin, 'Min NPSH Margin']
+    ].forEach(([input, hasValue, label]) => {
+      if (!input) return;
+      const nextPlaceholder = details.userDefined ? '' : (hasValue ? '' : missingText);
+      const nextTitle = details.userDefined
+        ? `${label} is editable for User Defined basis.`
+        : hasValue
+          ? `${label} is specified by the selected ANSI/HI basis.`
+          : `${label} is ${missingText.toLowerCase()} for the selected ANSI/HI basis.`;
+      if (input.placeholder !== nextPlaceholder) {
+        input.placeholder = nextPlaceholder;
+        changed = true;
+      }
+      if (input.title !== nextTitle) {
+        input.title = nextTitle;
+        changed = true;
+      }
+    });
+    if (note) {
+      const nextState = details.consultManufacturer
+        ? 'consult'
+        : details.hasRatio && details.hasMargin
+          ? 'complete'
+          : details.hasRatio || details.hasMargin
+            ? 'partial'
+            : 'missing';
+      const nextText = describeMarginCriteria(details);
+      if (note.dataset.state !== nextState) {
+        note.dataset.state = nextState;
+        changed = true;
+      }
+      if (note.textContent !== nextText) {
+        note.textContent = nextText;
+        changed = true;
+      }
+    }
+    return changed;
   }
 
   function formatMarginRatioInputValue(pumpId) {
@@ -2122,6 +2301,7 @@
         changed = true;
       }
     });
+    changed = updateMarginCriteriaPresentation(taskWindow, pumpId) || changed;
     return changed;
   }
 
@@ -2295,12 +2475,16 @@
       readOnly: marginBasis !== PUMP_NPSH_MARGIN_USER_DEFINED,
       ariaLabel: 'Min NPSH Margin'
     });
+    const criteriaNote = document.createElement('p');
+    criteriaNote.className = 'pump-manual-npshr-criteria-note';
+    criteriaNote.dataset.npshMarginCriteriaNote = 'true';
     body.append(
       manualField.fieldNode,
       datumField.fieldNode,
       marginBasisField.fieldNode,
       ratioField.fieldNode,
-      marginField.fieldNode
+      marginField.fieldNode,
+      criteriaNote
     );
 
     const onResize = () => clampChartTaskWindowToViewport(taskWindow);
@@ -2323,6 +2507,7 @@
         ratioField.inputNode.value = formatNumericInputValue(firstNumber(marginPresetForPump(pseudoPump, basis)?.ratio), 6);
         marginField.inputNode.value = formatNumericInputValue(firstNumber(marginPresetForPump(pseudoPump, basis)?.margin), 6);
       }
+      updateMarginCriteriaPresentation(taskWindow, id);
     };
     [manualField.inputNode, datumField.inputNode, ratioField.inputNode, marginField.inputNode].forEach((inputNode) => {
       inputNode.addEventListener('input', () => scheduleManualNpshrLinkedRefresh(id, 'input'));
@@ -2339,6 +2524,7 @@
 
     taskWindow.append(header, body);
     document.body.appendChild(taskWindow);
+    updateMarginCriteriaPresentation(taskWindow, id);
     initializeChartTaskWindowDrag(taskWindow, header);
     bringChartTaskWindowToFront(taskWindow);
     clampChartTaskWindowToViewport(taskWindow);

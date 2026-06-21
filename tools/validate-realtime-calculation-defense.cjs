@@ -308,7 +308,7 @@ assert(
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
-  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane4')
+  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane5')
     < index.indexOf('engineering-realtime-calculation-defense.js?v=20260621-manual-npshr-autosolve1'),
   'Pump edit fast lane must load before realtime calculation defense.'
 );
@@ -317,11 +317,11 @@ assert(
   'Manifest must document the realtime calculation defense cache key.'
 );
 assert(
-  index.includes('engineering-parameter-task-runtime.js?v=20260621-parameter-route-full-width2'),
+  index.includes('engineering-parameter-task-runtime.js?v=20260621-parameter-route-full-width3'),
   'Index must load the Parameter Task runtime with the refresh-capable cache key.'
 );
 assert(
-  manifest.includes('Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=20260621-parameter-route-full-width2'),
+  manifest.includes('Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=20260621-parameter-route-full-width3'),
   'Manifest must document the Parameter Task runtime cache key.'
 );
 

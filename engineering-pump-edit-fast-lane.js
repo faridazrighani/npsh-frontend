@@ -1,7 +1,7 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-pump-edit-fast-lane.v4';
-  const CACHE_KEY = '20260621-pump-edit-fast-lane4';
+  const VERSION = 'engineering-pump-edit-fast-lane.v5';
+  const CACHE_KEY = '20260621-pump-edit-fast-lane5';
   const PUMP_WINDOW_SELECTOR = [
     '.persistent-object-properties-task-window',
     '#taskWindow',
@@ -40,9 +40,28 @@
   const PUMP_NPSH_MARGIN_PRESETS = {
     'General Purpose': { por: { ratio: 1.05, margin: 0.6 }, aor: { ratio: 1.1, margin: 1.0 } },
     'Petroleum/Hydrocarbon': { por: { ratio: 1.1, margin: 1.0 }, aor: { ratio: 1.1, margin: 1.0 } },
+    'Oil & Gas - Consult Manufacturer': { por: {}, aor: {}, consultManufacturer: true },
     'Chemical Process': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.2, margin: 1.0 } },
+    'Chemical Process - S < 210': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.1, margin: 0.6 } },
+    'Chemical Process - S >= 210': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.2, margin: 1.0 } },
+    'Power Plant - Boiler Feed <225 kW': { por: { ratio: 1.1 }, aor: { ratio: 1.3 } },
+    'Power Plant - Boiler Feed 225-500 kW': { por: { ratio: 1.2 }, aor: { ratio: 1.5 } },
+    'Power Plant - Condensate': { por: { ratio: 1.0 }, aor: { ratio: 1.0 } },
+    'Power Plant - Circulation/Cooling Water': { por: { ratio: 1.05 }, aor: { margin: 1.0 } },
+    'Power Plant - Cooling Tower/Other': { por: { ratio: 1.1 }, aor: { ratio: 1.3 } },
     'Water/Wastewater': { por: { ratio: 1.1, margin: 1.0 }, aor: { ratio: 1.2, margin: 1.5 } },
+    'Wastewater - Cast Iron <45 kW': { por: { ratio: 1.1, margin: 1.0 }, aor: { ratio: 1.2, margin: 1.5 } },
+    'Wastewater - Stainless Steel <45 kW': { por: { ratio: 1.05, margin: 1.0 }, aor: { ratio: 1.1, margin: 1.5 } },
+    'Wastewater - Cast Iron >=45 kW': { por: { ratio: 1.2, margin: 1.0 }, aor: { ratio: 1.3, margin: 1.5 } },
+    'Wastewater - Stainless Steel >=45 kW': { por: { ratio: 1.1, margin: 1.0 }, aor: { ratio: 1.2, margin: 1.5 } },
+    'Water - Stainless/Al Bronze <75 kW': { por: { ratio: 1.05, margin: 1.0 }, aor: { ratio: 1.1, margin: 1.5 } },
+    'Water - Stainless/Al Bronze >=75 kW': { por: { ratio: 1.1, margin: 1.0 }, aor: { ratio: 1.2, margin: 1.5 } },
+    'Pulp & Paper Stock <6% - S <145': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.1, margin: 0.6 } },
+    'Pulp & Paper Stock <6% - S >=145': { por: { ratio: 1.2, margin: 1.0 }, aor: { ratio: 1.2, margin: 1.0 } },
     'Building Services': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.1, margin: 0.6 } },
+    'Building Services - S <145': { por: { ratio: 1.0 }, aor: { ratio: 1.0 } },
+    'Building Services - S >=145': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.1, margin: 0.6 } },
+    'Slurry': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.1, margin: 0.6 } },
     'Irrigation': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.2, margin: 1.0 } }
   };
   let chartTimer = 0;
@@ -215,19 +234,54 @@
       || pump?.results?.operatingRegion
       || pump?.results?.npshMarginBasisRegion
     ).toUpperCase();
-    return status === 'POR' ? 'por' : 'aor';
+    return status === 'AOR' ? 'aor' : 'por';
+  }
+
+  function criteriaTerms(criteria = {}) {
+    const ratio = finiteNumber(criteria.ratio);
+    const margin = finiteNumber(criteria.margin);
+    const hasRatio = ratio !== null && ratio > 0;
+    const hasMargin = margin !== null && margin >= 0;
+    return {
+      ratio: hasRatio ? ratio : null,
+      margin: hasMargin ? margin : null,
+      hasRatio,
+      hasMargin,
+      valid: hasRatio || hasMargin
+    };
+  }
+
+  function requiredNpshaByCriteria(npshr, criteria = {}) {
+    const terms = criteriaTerms(criteria);
+    const candidates = [];
+    const requiredByRatio = terms.hasRatio ? npshr * terms.ratio : null;
+    const requiredByMargin = terms.hasMargin ? npshr + terms.margin : null;
+    if (requiredByRatio !== null) candidates.push(requiredByRatio);
+    if (requiredByMargin !== null) candidates.push(requiredByMargin);
+    return { requiredByRatio, requiredByMargin, required: candidates.length ? Math.max(...candidates) : null };
+  }
+
+  function maxAllowableNpshrByCriteria(npsha, criteria = {}) {
+    const terms = criteriaTerms(criteria);
+    const candidates = [];
+    const maxNpshrByRatio = terms.hasRatio ? npsha / terms.ratio : null;
+    const maxNpshrByMargin = terms.hasMargin ? npsha - terms.margin : null;
+    if (maxNpshrByRatio !== null) candidates.push(maxNpshrByRatio);
+    if (maxNpshrByMargin !== null) candidates.push(maxNpshrByMargin);
+    return { maxNpshrByRatio, maxNpshrByMargin, maxAllowable: candidates.length ? Math.min(...candidates) : null };
   }
 
   function standardMarginCriteria(basis, pump, evaluation) {
     const preset = PUMP_NPSH_MARGIN_PRESETS[basis] || PUMP_NPSH_MARGIN_PRESETS[PUMP_NPSH_MARGIN_GENERAL_PURPOSE];
     const selected = preset?.[pumpNpshRegionKey(pump, evaluation)] || preset?.aor || preset?.por;
+    const terms = criteriaTerms(selected);
     return {
       basis: preset === PUMP_NPSH_MARGIN_PRESETS[PUMP_NPSH_MARGIN_GENERAL_PURPOSE] && !PUMP_NPSH_MARGIN_PRESETS[basis]
         ? PUMP_NPSH_MARGIN_GENERAL_PURPOSE
         : basis,
-      ratio: firstFinite(selected?.ratio, 1.1) || 1.1,
-      margin: firstFinite(selected?.margin, 1.0) || 1.0,
-      valid: true
+      ratio: terms.hasRatio ? terms.ratio : '',
+      margin: terms.hasMargin ? terms.margin : '',
+      valid: !preset?.consultManufacturer && terms.valid
     };
   }
 
@@ -246,7 +300,7 @@
       basis,
       ratio,
       margin,
-      valid: ratio !== null && margin !== null
+      valid: ratio !== null || margin !== null
     };
   }
 
@@ -310,13 +364,15 @@
       pump.results.npshRequired = evaluation.npshr;
     }
     if (npsha !== null && npshr !== null && criteria.valid) {
-      const required = Math.max(npshr * criteria.ratio, npshr + criteria.margin);
+      const requiredTerms = requiredNpshaByCriteria(npshr, criteria);
+      const allowableTerms = maxAllowableNpshrByCriteria(npsha, criteria);
+      const required = requiredTerms.required;
       const margin = npsha - npshr;
       const ratio = npshr > 0 ? npsha / npshr : null;
       const excess = npsha - required;
-      const maxNpshrByRatio = criteria.ratio > 0 ? npsha / criteria.ratio : null;
-      const maxNpshrByMargin = npsha - criteria.margin;
-      const maxAllowableNpshr = maxNpshrByRatio !== null ? Math.min(maxNpshrByRatio, maxNpshrByMargin) : null;
+      const maxNpshrByRatio = allowableTerms.maxNpshrByRatio;
+      const maxNpshrByMargin = allowableTerms.maxNpshrByMargin;
+      const maxAllowableNpshr = allowableTerms.maxAllowable;
       const status = npsha < npshr ? 'Cavitation Risk' : (npsha < required ? 'Warning' : 'Safe');
       const manualStatus = maxAllowableNpshr !== null ? (npshr <= maxAllowableNpshr ? 'Safe' : 'Warning') : 'Review Required';
       evaluation.requiredNpsha = round(required, 6);

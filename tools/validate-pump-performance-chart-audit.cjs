@@ -5,6 +5,7 @@ const path = require('node:path');
 const rootDir = path.resolve(__dirname, '..');
 const auditPath = path.join(rootDir, 'engineering-pump-performance-chart-audit.js');
 const indexPath = path.join(rootDir, 'index.html');
+const appBundlePath = path.join(rootDir, 'app.bundle.min.js');
 
 globalThis.__npshGlobalModel = {};
 globalThis.__npshConnections = [];
@@ -266,7 +267,16 @@ assert(
   'Index must cache-bust the pump performance chart audit runtime.'
 );
 assert(
-  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260621-canonical-chart22'),
+  index.includes('engineering-pump-performance-canonical-chart.js?v=20260621-canonical-chart25'),
+  'Index must load the canonical pump runtime in the critical shell so Pump Datum - NPSHR uses current margin-basis defaults before the first pump click.'
+);
+assert(
+  index.indexOf('app.bundle.min.js?v=20260621-npsh-margin-options1')
+    < index.indexOf('engineering-pump-performance-canonical-chart.js?v=20260621-canonical-chart25'),
+  'Canonical pump runtime must load after the app bundle so it can override stale app-bundle pump handlers.'
+);
+assert(
+  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260621-canonical-chart25'),
   'Audit runtime must load the canonical operational chart renderer after audit guards.'
 );
 assert.strictEqual(typeof audit.loadCanonicalChartRenderer, 'function', 'Audit runtime must expose canonical renderer loader.');
@@ -295,6 +305,7 @@ else globalThis.document = previousDocument;
 
 const canonicalPath = path.join(rootDir, 'engineering-pump-performance-canonical-chart.js');
 const canonicalSource = fs.readFileSync(canonicalPath, 'utf8');
+const appBundleSource = fs.readFileSync(appBundlePath, 'utf8');
 const canonical = require(canonicalPath);
 assert(canonicalSource.includes('EngineeringPerformanceRefreshGovernor'), 'Canonical chart renderer must use the performance governor when available.');
 assert(!canonicalSource.includes('[0, 40, 120, 260, 520, 900]'), 'Canonical chart renderer must not schedule six repeated renders per update.');
@@ -324,6 +335,19 @@ assert(canonicalSource.includes('NPSH Margin Basis'), 'Pump Datum - NPSHR task w
 assert(canonicalSource.includes("field: 'npshMarginBasis'"), 'Pump Datum - NPSHR task window must bind NPSH Margin Basis to pump.props.npshMarginBasis.');
 assert(canonicalSource.includes('Min NPSH Ratio'), 'Pump Datum - NPSHR task window must expose Min NPSH Ratio.');
 assert(canonicalSource.includes('Min NPSH Margin'), 'Pump Datum - NPSHR task window must expose Min NPSH Margin.');
+assert(canonicalSource.includes('pump-manual-npshr-criteria-note'), 'Pump Datum - NPSHR task window must explain partial or consult-manufacturer ANSI/HI margin criteria.');
+assert(canonicalSource.includes('Consult manufacturer'), 'Pump Datum - NPSHR task window must label consult-manufacturer bases instead of silently showing blank criteria.');
+assert(canonicalSource.includes('Not specified'), 'Pump Datum - NPSHR task window must label criteria that are not specified by the selected ANSI/HI basis.');
+assert(canonicalSource.includes('The calculation uses the more conservative requirement'), 'Pump Datum - NPSHR task window must explain how dual ratio/margin criteria are applied.');
+assert(canonicalSource.includes('Power Plant - Boiler Feed <225 kW'), 'Pump Datum - NPSHR margin-basis options must include Power Plant clusters from the ANSI/HI table.');
+assert(canonicalSource.includes('Pulp & Paper Stock <6% - S <145'), 'Pump Datum - NPSHR margin-basis options must include Pulp & Paper clusters from the ANSI/HI table.');
+assert(canonicalSource.includes("'Slurry'"), 'Pump Datum - NPSHR margin-basis options must include Slurry from the ANSI/HI table.');
+assert(canonicalSource.includes('props.npshMarginRegionBasis'), 'Pump Datum - NPSHR must only use an explicit margin-region override before choosing AOR.');
+assert(!canonicalSource.includes('pump.results?.operatingRegion\n      || pump.results?.npshMarginBasisRegion'), 'Pump Datum - NPSHR must not auto-switch defaults to AOR from pump-curve/runtime operating-region state.');
+assert(appBundleSource.includes('Power Plant - Boiler Feed <225 kW'), 'Main app bundle margin-basis dropdown must include Power Plant clusters.');
+assert(appBundleSource.includes('Pulp & Paper Stock <6% - S <145'), 'Main app bundle margin-basis dropdown must include Pulp & Paper clusters.');
+assert(appBundleSource.includes('"Slurry"'), 'Main app bundle margin-basis dropdown must include Slurry.');
+assert(appBundleSource.includes('npshMarginBasis:PUMP_NPSH_MARGIN_GENERAL_PURPOSE'), 'Main app bundle new pump defaults must use General Purpose margin basis.');
 assert(canonicalSource.includes('createFormulaDefenseMenuButton'), 'Pump context menu must gain a Pump Formula Defense task-window menu item.');
 assert(canonicalSource.includes('data-pump-formula-defense-task-menu'), 'Pump Formula Defense must be exposed from the pump context menu.');
 assert(canonicalSource.includes('openPumpFormulaDefenseTaskWindow'), 'Pump Formula Defense context menu item must reuse the existing task-window opener.');
@@ -348,7 +372,7 @@ assert(canonicalSource.includes('Curve Mode:'), 'Canonical footer metadata must 
 assert(canonicalSource.includes('chart.bottom + (compact ? 38 : 44)'), 'X-axis label must be positioned from the plot footer, not absolute canvas bottom.');
 assert(canonicalSource.includes('chart.bottom + 58'), 'Compact footer metadata must be below the x-axis label.');
 assert(!canonicalSource.includes('height - 44 + index * 11'), 'Footer metadata must not return to the old axis-overlap position.');
-assert.strictEqual(canonical.version, 'pump-performance-canonical-chart.v20', 'Canonical chart runtime must expose the smart engineering chart version.');
+assert.strictEqual(canonical.version, 'pump-performance-canonical-chart.v23', 'Canonical chart runtime must expose the smart engineering chart version.');
 assert.strictEqual(typeof canonical.ensureRuntimeGuards, 'function', 'Canonical chart runtime must expose self-healing realtime guards.');
 assert.strictEqual(typeof canonical.openTaskWindow, 'function', 'Canonical chart runtime must expose a disabled Pump Performance Chart task-window guard.');
 assert.strictEqual(typeof canonical.syncEntryPoints, 'function', 'Canonical chart runtime must expose entry-point synchronization for menu/buttons.');
@@ -369,7 +393,7 @@ globalThis.updatePumpChart = function overwrittenPumpChartRenderer() {
 canonical.ensureRuntimeGuards();
 assert.strictEqual(
   globalThis.updatePumpChart.__pumpPerformanceCanonicalChartVersion,
-  'pump-performance-canonical-chart.v20',
+  'pump-performance-canonical-chart.v23',
   'Canonical renderer must reclaim updatePumpChart after any late override.'
 );
 
@@ -424,7 +448,7 @@ globalThis.__npshGlobalModel['P-100'].results.flow = 50;
 globalThis.__npshGlobalModel['P-100'].results.head = 24;
 
 globalThis.__engineeringPumpEditFastLane = {
-  version: 'engineering-pump-edit-fast-lane.v4',
+  version: 'engineering-pump-edit-fast-lane.v5',
   mode: 'chart',
   field: 'designHead',
   pumpId: 'P-100',
@@ -536,7 +560,7 @@ assert.strictEqual(staleRebuiltChartModel.series.pumpHead[1].value, 33, 'Rebuilt
 assert.strictEqual(staleRebuiltChartModel.sourceAudit.frontendChartRebuilt, true, 'Rebuilt chart must retain audit evidence.');
 
 globalThis.__engineeringPumpEditFastLane = {
-  version: 'engineering-pump-edit-fast-lane.v4',
+  version: 'engineering-pump-edit-fast-lane.v5',
   mode: 'chart',
   field: 'designHead',
   pumpId: 'P-100',
@@ -583,7 +607,7 @@ setModel({
   }
 });
 globalThis.__engineeringPumpEditFastLane = {
-  version: 'engineering-pump-edit-fast-lane.v4',
+  version: 'engineering-pump-edit-fast-lane.v5',
   mode: 'chart',
   field: 'bepFlow',
   pumpId: 'P-100',

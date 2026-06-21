@@ -353,7 +353,7 @@ ribbonTools.forEach((tool) => {
   );
 });
 assert(
-  index.includes('app.bundle.min.js?v=20260608-global-ribbon-placement-lock5'),
+  index.includes('app.bundle.min.js?v=20260621-npsh-margin-options1'),
   'Index must load the core app bundle with the canvas properties policy cache key.'
 );
 assert(

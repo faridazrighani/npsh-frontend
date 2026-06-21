@@ -210,7 +210,7 @@ globalThis.__npshGlobalModel = {
             { title: 'Suction Loss', formula: 'HL = pipe major + fitting/valve minor', substitution: '0.800 + 0.450 = 1.250 m', result: 1.25, unit: 'm' },
             { title: 'NPSHa', formula: 'NPSHa = Hs - Hv', substitution: '8.000 - 1.000', result: 7, unit: 'm' },
             { title: 'NPSHr', formula: 'NPSHr = manual input', substitution: 'Manual NPSHr = 4.000 m', result: 4, unit: 'm' },
-            { title: 'Required NPSHa', formula: 'Required NPSHa = max(NPSHr x margin ratio, NPSHr + absolute margin)', substitution: 'max(4.000 x 1.050, 4.000 + 0.600) = 4.600 m', result: 4.6, unit: 'm' },
+            { title: 'Required NPSHa', formula: 'Required NPSHa = governing available ANSI/HI margin criterion', substitution: 'max(4.000 x 1.050, 4.000 + 0.600) = 4.600 m', result: 4.6, unit: 'm' },
             { title: 'Margin and Ratio', formula: 'Margin = NPSHa - NPSHr; Ratio = NPSHa / NPSHr; Excess = NPSHa - Required NPSHa', substitution: '7.000 - 4.000 = 3.000 m; 7.000 / 4.000 = 1.750; 7.000 - 4.600 = 2.400 m', result: 2.4, unit: 'm' }
           ]
         }
@@ -266,10 +266,10 @@ assert.equal(routeSourceCell.textContent, 'P-100 -> PIPE-2 -> SNK-100', 'Existin
 assert.equal(snkValueCell.textContent, 'H=30.353 m; Q=50 m3/h; P=1.744 bar a; z=29.085 m', 'Existing Route Trace SNK row must be hydrated from live sink boundary data when it was blank.');
 assert.equal(snkSourceCell.textContent, 'SNK-100 downstream boundary -> system head', 'Existing Route Trace SNK row must cite its downstream boundary source.');
 const matrixRows = runtime.buildCalculationMatrixRows('P-100');
-assert(matrixRows.some((row) => row.output === 'Required NPSHa' && /max\(NPSHr x margin ratio/.test(row.formula)), 'Matrix must include required NPSHa formula basis.');
+assert(matrixRows.some((row) => row.output === 'Required NPSHa' && /governing available ANSI\/HI margin criterion/.test(row.formula)), 'Matrix must include required NPSHa formula basis.');
 assert(matrixRows.some((row) => row.output === 'Suction Loss' && /Suction Pipe\/Fitting\/Valve/.test(row.connectedTo)), 'Matrix must connect suction loss to the PFV path.');
 assert(matrixRows.some((row) => row.output === 'Discharge Loss' && row.result === '2.5 m'), 'Matrix must include discharge loss as a live output row.');
-assert(matrixRows.some((row) => row.output === 'Maximum Allowable NPSHr' && /NPSHr,max = min/.test(row.formula)), 'Matrix must include maximum allowable NPSHr as a design output.');
+assert(matrixRows.some((row) => row.output === 'Maximum Allowable NPSHr' && /governing route-calculated allowable NPSHr/.test(row.formula)), 'Matrix must include maximum allowable NPSHr as a design output.');
 assert(matrixRows.some((row) => row.output === 'Manual NPSHr Comparison' && row.result === 'Safe'), 'Matrix must compare Manual NPSHr when available.');
 assert(matrixRows.some((row) => row.output === 'Route Calculation Status' && row.result === 'Calculated'), 'Matrix must expose route calculation status.');
 assert(!matrixRows.some((row) => /Operating Region|Pump Head Curve/i.test(row.output)), 'Matrix rows must drop pump-curve-only outputs.');
@@ -324,11 +324,11 @@ assert(runtimeSource.includes('Maximum Allowable NPSHr'), 'Runtime must expose m
 assert(runtimeSource.includes('EngineeringPerformanceRefreshGovernor'), 'Runtime must delegate scheduled open-window refreshes to the performance governor when available.');
 assert(!runtimeSource.includes("scheduleOpenFormulaDefenseWindowRefresh('', { reason: 'guard-loop'"), 'Runtime guard loop must not trigger repeated visual refreshes.');
 assert(
-  index.includes('engineering-pump-formula-defense-live-audit.js?v=20260621-pump-defense-route-design3'),
+  index.includes('engineering-pump-formula-defense-live-audit.js?v=20260621-pump-defense-route-design4'),
   'Index must cache-bust Pump Formula Defense live audit runtime.'
 );
 assert(
-  manifest.includes('Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260621-pump-defense-route-design3'),
+  manifest.includes('Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260621-pump-defense-route-design4'),
   'Manifest must document Pump Formula Defense live audit cache key.'
 );
 

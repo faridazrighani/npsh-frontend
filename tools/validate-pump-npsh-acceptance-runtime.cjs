@@ -21,7 +21,7 @@ const marginRuntimeSource = fs.readFileSync(marginRuntimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 
 assert(
-  index.includes('engineering-pump-npsh-acceptance-runtime.js?v=20260621-pump-npsh-acceptance2'),
+  index.includes('engineering-pump-npsh-acceptance-runtime.js?v=20260621-pump-npsh-acceptance3'),
   'Pump NPSH acceptance runtime must be loaded from index.html.'
 );
 assert(
@@ -29,10 +29,10 @@ assert(
   'NPSH margin bridge must not block the initial HTML parse as a synchronous script.'
 );
 assert(
-  index.indexOf("'engineering-npsh-margin-runtime.js?v=20260621-npsh-margin2'") >
+  index.indexOf("'engineering-npsh-margin-runtime.js?v=20260621-npsh-margin3'") >
     index.indexOf('const realtimeScripts = [') &&
-    index.indexOf("'engineering-npsh-margin-runtime.js?v=20260621-npsh-margin2'") <
-    index.indexOf("'engineering-pump-npsh-acceptance-runtime.js?v=20260621-pump-npsh-acceptance2'"),
+    index.indexOf("'engineering-npsh-margin-runtime.js?v=20260621-npsh-margin3'") <
+    index.indexOf("'engineering-pump-npsh-acceptance-runtime.js?v=20260621-pump-npsh-acceptance3'"),
   'NPSH margin bridge must load through realtimeScripts before Pump NPSH Acceptance.'
 );
 assert(
@@ -88,12 +88,12 @@ vm.runInContext(runtimeSource, context, { filename: runtimePath });
 
 assert.strictEqual(
   context.EngineeringPumpNpshAcceptanceRuntime.version,
-  'pump-npsh-acceptance.v2',
+  'pump-npsh-acceptance.v3',
   'Runtime should expose its locked version.'
 );
 assert.strictEqual(
   context.getEffectivePumpNpshMarginCriteria.__pumpNpshAcceptanceVersion,
-  'pump-npsh-acceptance.v2',
+  'pump-npsh-acceptance.v3',
   'Runtime should guard getEffectivePumpNpshMarginCriteria.'
 );
 

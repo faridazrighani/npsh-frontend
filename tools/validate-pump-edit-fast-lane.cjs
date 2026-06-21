@@ -99,8 +99,8 @@ globalThis.__npshGlobalModel = {
 
 const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const runtime = require(runtimePath);
-assert.equal(runtime.version, 'engineering-pump-edit-fast-lane.v4', 'Pump edit fast lane runtime must expose v4.');
-assert.equal(runtime.cacheKey, '20260621-pump-edit-fast-lane4', 'Pump edit fast lane cache key must match index.');
+assert.equal(runtime.version, 'engineering-pump-edit-fast-lane.v5', 'Pump edit fast lane runtime must expose v4.');
+assert.equal(runtime.cacheKey, '20260621-pump-edit-fast-lane5', 'Pump edit fast lane cache key must match index.');
 assert(runtimeSource.includes('pump-manual-npshr-task-window'), 'Fast lane must accept the compact Manual NPSHr task window as a pump edit surface.');
 assert(runtimeSource.includes('\\bPUMP[-_]\\d+\\b'), 'Fast lane must recognize canonical PUMP-100 style pump ids in task titles.');
 assert.equal(typeof runtime.classifyInput, 'function', 'Pump edit fast lane must expose classifyInput().');
@@ -213,10 +213,10 @@ const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(realtimeSource.includes('EngineeringPumpEditFastLane'), 'Realtime defense must delegate pump edits to the fast lane.');
 assert(
-  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane4')
+  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane5')
     < index.indexOf('engineering-realtime-calculation-defense.js?v=20260621-manual-npshr-autosolve1'),
   'Fast lane runtime must load before realtime defense.'
 );
-assert(manifest.includes('Pump edit fast lane cache key: engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane4'), 'Manifest must document Pump edit fast lane cache key.');
+assert(manifest.includes('Pump edit fast lane cache key: engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane5'), 'Manifest must document Pump edit fast lane cache key.');
 
 console.log('Pump edit fast lane validation passed.');

@@ -258,9 +258,39 @@
   }
 
   function criteriaAvailabilityStatus(ratioLimit, absoluteMarginLimit) {
-    return ratioLimit !== null && absoluteMarginLimit !== null
+    return ratioLimit !== null || absoluteMarginLimit !== null
       ? 'Calculated'
       : 'Margin criteria required';
+  }
+
+  function requiredNpshaCandidates(npshr, ratioLimit, absoluteMarginLimit) {
+    const candidates = [];
+    if (npshr !== null && ratioLimit !== null && ratioLimit > 0) {
+      candidates.push({ label: `${formatNumber(npshr, 3)} x ${formatNumber(ratioLimit, 3)}`, value: npshr * ratioLimit });
+    }
+    if (npshr !== null && absoluteMarginLimit !== null && absoluteMarginLimit >= 0) {
+      candidates.push({ label: `${formatNumber(npshr, 3)} + ${formatNumber(absoluteMarginLimit, 3)}`, value: npshr + absoluteMarginLimit });
+    }
+    return candidates;
+  }
+
+  function allowableNpshrCandidates(npsha, ratioLimit, absoluteMarginLimit) {
+    const candidates = [];
+    if (npsha !== null && ratioLimit !== null && ratioLimit > 0) {
+      candidates.push({ label: `${formatNumber(npsha, 4)} / ${formatNumber(ratioLimit, 3)}`, value: npsha / ratioLimit });
+    }
+    if (npsha !== null && absoluteMarginLimit !== null && absoluteMarginLimit >= 0) {
+      candidates.push({ label: `${formatNumber(npsha, 4)} - ${formatNumber(absoluteMarginLimit, 3)}`, value: npsha - absoluteMarginLimit });
+    }
+    return candidates;
+  }
+
+  function formatGoverningExpression(candidates, result, mode) {
+    if (!candidates.length) return 'Margin criteria required';
+    const lhs = candidates.length > 1
+      ? `${mode}(${candidates.map((candidate) => candidate.label).join(', ')})`
+      : candidates[0].label;
+    return result !== null ? `${lhs} = ${formatNumber(result, 4)} m` : lhs;
   }
 
   function writeResultIfUseful(results, key, value, overwriteIncomplete = false) {
@@ -559,8 +589,8 @@
     const npshr = firstNumber(evaluation.npshr, results.npshr, props.designNpshr);
     const npshMargin = firstNumber(evaluation.npshMargin, results.npshMargin, interpretation.margin, npsha !== null && npshr !== null ? npsha - npshr : null);
     const npshRatio = firstNumber(evaluation.npshRatio, results.npshRatio, interpretation.ratio, npsha !== null && npshr ? npsha / npshr : null);
-    const requiredNpsha = firstNumber(evaluation.requiredNpsha, results.requiredNpsha, interpretation.requiredNpsha);
-    const npshExcess = firstNumber(evaluation.npshExcess, results.npshExcess, interpretation.npshExcess, npsha !== null && requiredNpsha !== null ? npsha - requiredNpsha : null);
+    let requiredNpsha = firstNumber(evaluation.requiredNpsha, results.requiredNpsha, interpretation.requiredNpsha);
+    let npshExcess = firstNumber(evaluation.npshExcess, results.npshExcess, interpretation.npshExcess);
     const suctionLoss = firstNumber(evaluation.suctionLoss, results.suctionLoss, losses.total);
     const suctionMajor = firstNumber(losses.major);
     const suctionMinor = firstNumber(losses.minor);
@@ -576,6 +606,13 @@
     const ratioLimit = firstNumber(criteria.ratio, interpretation.marginRatioLimit, props.minNpshMarginRatio);
     const absoluteMarginLimit = firstNumber(criteria.margin, interpretation.absoluteMarginLimit, props.minNpshMargin);
     const marginCriteriaStatus = criteriaAvailabilityStatus(ratioLimit, absoluteMarginLimit);
+    const computedRequiredCandidates = requiredNpshaCandidates(npshr, ratioLimit, absoluteMarginLimit).map((candidate) => candidate.value);
+    if (requiredNpsha === null && computedRequiredCandidates.length) {
+      requiredNpsha = Math.max(...computedRequiredCandidates);
+    }
+    if (npshExcess === null && npsha !== null && requiredNpsha !== null) {
+      npshExcess = npsha - requiredNpsha;
+    }
     const maxNpshrByRatio = firstNumber(
       evaluation.maxNpshrByRatio,
       results.maxNpshrByRatio,
@@ -592,7 +629,9 @@
       evaluation.maxAllowableNpshr,
       results.maxAllowableNpshr,
       interpretation.maxAllowableNpshr,
-      maxNpshrByRatio !== null && maxNpshrByMargin !== null ? Math.min(maxNpshrByRatio, maxNpshrByMargin) : null
+      [maxNpshrByRatio, maxNpshrByMargin].filter((value) => value !== null).length
+        ? Math.min(...[maxNpshrByRatio, maxNpshrByMargin].filter((value) => value !== null))
+        : null
     );
     const hydraulicStatus = firstCompleteStatus(evaluation.hydraulicStatus, evaluation.status, results.hydraulicNpshStatus, results.cavitationStatus, interpretation.hydraulicStatus, statusFromNpshNumbers(npsha, npshr, requiredNpsha));
     const engineeringStatus = firstCompleteStatus(evaluation.engineeringStatus, results.engineeringStatus, results.status, interpretation.engineeringStatus, hydraulicStatus);
@@ -773,8 +812,8 @@
     addCalculationMatrixRow(rows, {
       output: 'Required NPSHa',
       input: 'NPSHr, effective ratio, and effective absolute margin',
-      formula: 'Required NPSHa = max(NPSHr x margin ratio, NPSHr + absolute margin)',
-      substitution: requiredNpshaStep?.substitution || `max(${formatNumber(npshr, 3)} x ${formatNumber(ratioLimit, 3)}, ${formatNumber(npshr, 3)} + ${formatNumber(absoluteMarginLimit, 3)})`,
+      formula: 'Required NPSHa = governing available ANSI/HI margin criterion',
+      substitution: requiredNpshaStep?.substitution || formatGoverningExpression(requiredNpshaCandidates(npshr, ratioLimit, absoluteMarginLimit), requiredNpsha, 'max'),
       result: formatTraceResult(requiredNpshaStep, requiredNpsha, 'm', 4),
       connectedTo: 'NPSHr + acceptance criteria -> Hydraulic NPSH Status',
       step: requiredNpshaStep
@@ -782,8 +821,8 @@
     addCalculationMatrixRow(rows, {
       output: 'Maximum Allowable NPSHr',
       input: 'Route-calculated NPSHa and selected NPSH margin criteria',
-      formula: 'NPSHr,max = min(NPSHa / margin ratio, NPSHa - absolute margin)',
-      substitution: `min(${formatNumber(npsha, 4)} / ${formatNumber(ratioLimit, 3)}, ${formatNumber(npsha, 4)} - ${formatNumber(absoluteMarginLimit, 3)}) = ${formatNumber(maxAllowableNpshr, 4)} m`,
+      formula: 'NPSHr,max = governing route-calculated allowable NPSHr from selected ANSI/HI criterion',
+      substitution: formatGoverningExpression(allowableNpshrCandidates(npsha, ratioLimit, absoluteMarginLimit), maxAllowableNpshr, 'min'),
       result: formatWithUnit(maxAllowableNpshr, 'm', 4),
       connectedTo: 'NPSHa + acceptance criteria -> allowable pump NPSHr ceiling'
     });

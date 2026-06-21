@@ -1,7 +1,7 @@
 (function installEngineeringAnalysisReportLiveRuntime(root) {
   'use strict';
 
-  const VERSION = '2026.06-analysis-report-live15';
+  const VERSION = '2026.06-analysis-report-live16';
   const REFRESH_MS = 3000;
   const ACTIVE_SELECTOR = '.journal-analysis-task-window, .journal-analysis-report-panel';
   const RESPONSIVE_STYLE_ID = 'engineeringAnalysisReportLiveResponsiveStyle';
@@ -528,7 +528,7 @@
       npshTraceInterpretation.marginRatioLimit,
       pumpResults.npshMarginRatioLimit,
       pumpProps.minNpshMarginRatio,
-      1.1
+      1.05
     );
     const absoluteMarginLimit = firstNumber(
       npsh.marginCriteria?.margin,
@@ -536,11 +536,12 @@
       npshTraceInterpretation.absoluteMarginLimit,
       pumpResults.npshMarginLimit,
       pumpProps.minNpshMargin,
-      1.0
+      0.6
     );
-    const computedRequiredNpsha = npshr !== null && marginRatioLimit !== null && absoluteMarginLimit !== null
-      ? Math.max(npshr * marginRatioLimit, npshr + absoluteMarginLimit)
-      : null;
+    const requiredCandidates = [];
+    if (npshr !== null && marginRatioLimit !== null && marginRatioLimit > 0) requiredCandidates.push(npshr * marginRatioLimit);
+    if (npshr !== null && absoluteMarginLimit !== null && absoluteMarginLimit >= 0) requiredCandidates.push(npshr + absoluteMarginLimit);
+    const computedRequiredNpsha = requiredCandidates.length ? Math.max(...requiredCandidates) : null;
     const npshMargin = firstNumber(npsh.npshMargin, pumpResults.npshMargin, npsha !== null && npshr !== null ? npsha - npshr : null);
     const npshRatio = firstNumber(npsh.npshRatio, pumpResults.npshRatio, npsha !== null && npshr ? npsha / npshr : null);
     const requiredNpsha = firstNumber(npsh.requiredNpsha, pumpResults.requiredNpsha, computedRequiredNpsha);
@@ -557,7 +558,9 @@
       npsh.maxAllowableNpshr,
       pumpResults.maxAllowableNpshr,
       npshTraceInterpretation.maxAllowableNpshr,
-      maxNpshrByRatio !== null && maxNpshrByMargin !== null ? Math.min(maxNpshrByRatio, maxNpshrByMargin) : null
+      [maxNpshrByRatio, maxNpshrByMargin].filter(value => value !== null).length
+        ? Math.min(...[maxNpshrByRatio, maxNpshrByMargin].filter(value => value !== null))
+        : null
     );
     const suctionLoss = firstNumber(npsh.suctionLoss, pipeMetric(suctionPipe, 'totalLoss'), pumpResults.suctionLoss);
     const dischargeLoss = firstNumber(routeDischargeLoss(pumpResults, npsh), pipeMetric(dischargePipe, 'totalLoss'));
@@ -625,7 +628,7 @@
     set('Pump - Required NPSHa / NPSH Excess', `${withUnit(requiredNpsha, 'm', 6)} / ${withUnit(npshExcess, 'm', 6)}`, requiredNpsha);
     set('Pump - Maximum Allowable NPSHr', withUnit(maxAllowableNpshr, 'm', 9), maxAllowableNpshr);
     set('Pump - Max Allowable NPSHr', withUnit(maxAllowableNpshr, 'm', 9), maxAllowableNpshr);
-    set('Pump - Maximum Allowable NPSHr Formula', 'NPSHr,max = min(NPSHa / margin ratio, NPSHa - absolute margin)', null);
+    set('Pump - Maximum Allowable NPSHr Formula', 'NPSHr,max = governing allowable NPSHr from selected ANSI/HI margin criterion', null);
     set('Pump - Max NPSHr by Ratio', withUnit(maxNpshrByRatio, 'm', 9), maxNpshrByRatio);
     set('Pump - Max NPSHr by Margin', withUnit(maxNpshrByMargin, 'm', 9), maxNpshrByMargin);
     set('NPSHa, NPSHr, Required NPSHa, and NPSH Excess', `NPSHa=${withUnit(npsha, 'm', 6)}; NPSHr=${withUnit(npshr, 'm', 6)}; Required=${withUnit(requiredNpsha, 'm', 6)}; Excess=${withUnit(npshExcess, 'm', 6)}`, npsha);
