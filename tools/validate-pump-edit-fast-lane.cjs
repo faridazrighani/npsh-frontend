@@ -97,16 +97,20 @@ globalThis.__npshGlobalModel = {
   }
 };
 
+const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const runtime = require(runtimePath);
-assert.equal(runtime.version, 'engineering-pump-edit-fast-lane.v2', 'Pump edit fast lane runtime must expose v2.');
-assert.equal(runtime.cacheKey, '20260614-pump-edit-fast-lane2', 'Pump edit fast lane cache key must match index.');
+assert.equal(runtime.version, 'engineering-pump-edit-fast-lane.v5', 'Pump edit fast lane runtime must expose v4.');
+assert.equal(runtime.cacheKey, '20260621-pump-edit-fast-lane5', 'Pump edit fast lane cache key must match index.');
+assert(runtimeSource.includes('pump-manual-npshr-task-window'), 'Fast lane must accept the compact Manual NPSHr task window as a pump edit surface.');
+assert(runtimeSource.includes('\\bPUMP[-_]\\d+\\b'), 'Fast lane must recognize canonical PUMP-100 style pump ids in task titles.');
 assert.equal(typeof runtime.classifyInput, 'function', 'Pump edit fast lane must expose classifyInput().');
 assert.equal(typeof runtime.handleRealtimeInput, 'function', 'Pump edit fast lane must expose realtime input handler.');
 assert.equal(typeof runtime.applyLocalNpsh, 'function', 'Pump edit fast lane must expose local NPSH recalculation.');
 
 const manualNpshrInput = new FakeInput({ key: 'manualNpshr', value: '3.000' });
 const manualClass = runtime.classifyInput(manualNpshrInput);
-assert.equal(manualClass.backend, 'none', 'Manual NPSHr edit should not trigger backend/network recalculation.');
+assert.equal(manualClass.backend, 'defer', 'Manual NPSHr edit should request backend/network recalculation after local preview.');
+assert.equal(manualClass.delayMs, 90, 'Manual NPSHr backend recalculation should use the fast committed-input debounce.');
 
 let backendRequests = 0;
 let staleMarks = 0;
@@ -114,12 +118,17 @@ const manualResult = runtime.handleRealtimeInput({ target: manualNpshrInput, isT
   markUserCalculationIntent: () => true,
   markInputLatencyShield: () => true,
   markStale: () => { staleMarks += 1; },
-  requestAutoSolve: () => { backendRequests += 1; }
+  requestAutoSolve: (pumpId, reason, options = {}) => {
+    backendRequests += 1;
+    assert.equal(pumpId, 'P-100');
+    assert.match(reason, /Manual NPSHr changed/i);
+    assert.equal(options.delayMs, 90, 'Manual NPSHr autosolve should recalculate immediately after commit.');
+  }
 });
 assert.equal(manualResult.handled, true, 'Manual NPSHr edit must be handled by the fast lane.');
-assert.equal(manualResult.backend, 'none', 'Manual NPSHr fast lane result must not request backend.');
-assert.equal(backendRequests, 0, 'Manual NPSHr fast lane must not request autosolve.');
-assert.equal(staleMarks, 0, 'Manual NPSHr fast lane must not mark network route stale.');
+assert.equal(manualResult.backend, 'defer', 'Manual NPSHr fast lane result must request backend autosolve.');
+assert.equal(backendRequests, 1, 'Manual NPSHr fast lane must request one autosolve.');
+assert.equal(staleMarks, 1, 'Manual NPSHr fast lane must mark the connected route stale before autosolve.');
 assert.equal(globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.npshr, 3, 'Manual NPSHr must update local NPSHr.');
 assert.equal(globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.npshMargin, 3.4656, 'Manual NPSHr must update local NPSH margin.');
 assert(Math.abs(globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.npshRatio - 2.1552) < 0.00001, 'Manual NPSHr must update local NPSH ratio.');
@@ -140,8 +149,8 @@ runtime.handleRealtimeInput({ target: designHeadInput, isTrusted: true, type: 'i
 });
 assert.equal(globalThis.__npshGlobalModel['P-100'].props.designHead, 26, 'Design Head must update pump props immediately.');
 assert.equal(globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.pumpHead, 26, 'Design Head must update local pump head immediately.');
-assert.equal(backendRequests, 1, 'Design Head must request one deferred backend recalculation.');
-assert.equal(staleMarks, 1, 'Design Head must mark backend result stale once.');
+assert.equal(backendRequests, 2, 'Design Head must request one additional deferred backend recalculation.');
+assert.equal(staleMarks, 2, 'Design Head must mark backend result stale once after Manual NPSHr.');
 
 const designFlowInput = new FakeInput({ key: 'designFlow', value: '70' });
 const designFlowClass = runtime.classifyInput(designFlowInput);
@@ -204,10 +213,10 @@ const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(realtimeSource.includes('EngineeringPumpEditFastLane'), 'Realtime defense must delegate pump edits to the fast lane.');
 assert(
-  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
-    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1'),
+  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane5')
+    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260621-manual-npshr-autosolve1'),
   'Fast lane runtime must load before realtime defense.'
 );
-assert(manifest.includes('Pump edit fast lane cache key: engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2'), 'Manifest must document Pump edit fast lane cache key.');
+assert(manifest.includes('Pump edit fast lane cache key: engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane5'), 'Manifest must document Pump edit fast lane cache key.');
 
 console.log('Pump edit fast lane validation passed.');

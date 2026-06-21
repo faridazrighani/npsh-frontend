@@ -310,6 +310,7 @@
     'sink-pump-npsh-ratio': { i18nKey: 'trace.sink.pumpNpshRatio', en: 'Pump NPSH Ratio', id: 'Rasio NPSH Pompa' },
     'sink-pump-npsha': { i18nKey: 'trace.sink.pumpNpsha', en: 'Pump NPSHa', id: 'NPSHa Pompa' },
     'sink-pump-npshr': { i18nKey: 'trace.sink.pumpNpshr', en: 'Pump NPSHr', id: 'NPSHr Pompa' },
+    'sink-required-boundary-head': { i18nKey: 'trace.sink.requiredBoundaryHead', en: 'Required Boundary Head', id: 'Head Boundary Dibutuhkan' },
     'sink-required-system-head': { i18nKey: 'trace.sink.requiredSystemHead', en: 'Required System Head', id: 'Head Sistem Dibutuhkan' },
     'sink-stagnation-pressure': { i18nKey: 'trace.sink.stagnationPressure', en: 'Pipe Endpoint Stagnation Pressure', id: 'Tekanan Stagnasi Endpoint Pipa' },
     'sink-static-pressure': { i18nKey: 'trace.sink.staticPressure', en: 'Pipe Endpoint Static Pressure', id: 'Tekanan Statik Endpoint Pipa' },

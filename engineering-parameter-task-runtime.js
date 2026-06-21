@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const VERSION = "2026.06-parameter-task-blocks3";
+  const VERSION = "2026.06-parameter-task-blocks4";
   const STYLE_ID = "engineeringParameterTaskRuntimeStyle";
   const TRIGGER_SELECTOR = "[data-parameter-task-trigger]";
   const SECTION_SELECTOR = ".pump-live-param-section";
@@ -337,9 +337,9 @@
       requiredNpsha: evaluation.requiredNpsha ?? evaluation.requiredNpshaForMargin ?? results.requiredNpsha,
       npshrSource: displayText(evaluation.npshrSource || results.npshrSource || props.npshrSourceMode || props.curveDataSource, "-"),
       dataConfidence: displayText(evaluation.dataConfidence || results.dataConfidence || results.npshrDataConfidence, "-"),
-      marginBasis: displayText(evaluation.npshMarginBasis || props.npshMarginBasis || marginCriteria.basis, "Selected margin basis"),
-      minRatio: marginCriteria.minRatio ?? evaluation.minNpshMarginRatio ?? props.minNpshMarginRatio,
-      minMargin: marginCriteria.minMargin ?? evaluation.minNpshMargin ?? props.minNpshMargin,
+      marginBasis: displayText(marginCriteria.basis || evaluation.npshMarginBasis || props.npshMarginBasis, "Selected margin basis"),
+      minRatio: marginCriteria.ratio ?? marginCriteria.minRatio ?? evaluation.minNpshMarginRatio ?? props.minNpshMarginRatio,
+      minMargin: marginCriteria.margin ?? marginCriteria.minMargin ?? evaluation.minNpshMargin ?? props.minNpshMargin,
       warnings: [
         ...(Array.isArray(results.warnings) ? results.warnings : []),
         ...(Array.isArray(evaluation.warnings) ? evaluation.warnings : [])
@@ -394,7 +394,7 @@
     formulas.append(
       createCodeLine("NPSH Margin = NPSHa - NPSHr"),
       createCodeLine("NPSH Ratio = NPSHa / NPSHr"),
-      createCodeLine("Required NPSHa = max(NPSHr x minimum ratio, NPSHr + minimum margin)")
+      createCodeLine("Required NPSHa = governing selected NPSH margin criterion")
     );
     content.appendChild(formulas);
     content.appendChild(createTable(["Status", "Kondisi", "Apa yang dilakukan aplikasi"], [
@@ -694,7 +694,7 @@
       ["NPSH Available", formatLiveOrValue(snapshot.live.npsha, snapshot.npsha, "m", 4), npshaStep ? `${npshaStep.formula}; ${npshaStep.substitution}` : "NPSHa = pressure head + elevation/velocity head - suction loss - vapor pressure head."],
       ["NPSH Required", formatLiveOrValue(snapshot.live.npshr, snapshot.npshr, "m", 4), npshrStep ? `${npshrStep.formula}; ${npshrStep.substitution}` : "NPSHr dari data/curve pompa pada flow operasi."],
       ["NPSH Margin", formatLiveOrValue(snapshot.live.npshMargin, snapshot.npshMargin, "m", 4, true), marginStep ? marginStep.substitution : "Margin = NPSHa - NPSHr."],
-      ["Required NPSHa", formatValue(snapshot.requiredNpsha, "m", 4), requiredStep ? requiredStep.substitution : "Required NPSHa = max(NPSHr x ratio minimum, NPSHr + margin minimum)."],
+      ["Required NPSHa", formatValue(snapshot.requiredNpsha, "m", 4), requiredStep ? requiredStep.substitution : "Required NPSHa = governing selected criterion from the available ratio/margin basis."],
       ["NPSH Ratio", formatLiveOrValue(snapshot.live.npshRatio, snapshot.npshRatio, "", 4), marginStep ? marginStep.substitution : "Ratio = NPSHa / NPSHr."]
     ];
     const content = createNode("div");
@@ -778,8 +778,8 @@
     layout.dataset.parameterTaskBlock = block;
     layout.append(
       createRouteSummaryCard(block, snapshot),
-      createFluidBasisCard(snapshot.fluid),
       createPipeTraceCard(block, snapshot),
+      createFluidBasisCard(snapshot.fluid),
       block === "suction" ? createSuctionResultCard(snapshot) : createDischargeResultCard(snapshot)
     );
     return layout;
@@ -932,6 +932,10 @@
   color: #17395a;
   font-size: 11.5px;
   line-height: 1.45;
+}
+.parameter-task-layout.parameter-suction-layout,
+.parameter-task-layout.parameter-discharge-layout {
+  grid-template-columns: minmax(0, 1fr);
 }
 .parameter-task-card {
   min-width: 0;

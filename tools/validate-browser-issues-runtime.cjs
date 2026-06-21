@@ -36,7 +36,7 @@ assert(indexHtml.includes('engineering-browser-issues-runtime.js?v=20260620-orph
 assert(indexHtml.includes('style.min.css?v=20260608-browser-issues1'), 'index.html must cache-bust browser-issues CSS cleanup.');
 assert.strictEqual(typeof runtime.repairFormFieldLabels, 'function', 'Browser issues runtime must expose orphan form-field label cleanup.');
 assert.strictEqual(typeof runtime.repairBrowserIssues, 'function', 'Browser issues runtime must expose a combined browser-issues repair pass.');
-assert(indexHtml.includes('engineering-canvas-context-dock.js?v=20260619-mobile-performance-overlay1'), 'index.html must cache-bust canvas context dock browser issues cleanup.');
+assert(indexHtml.includes('engineering-canvas-context-dock.js?v=20260621-pipe-left-click-menu1'), 'index.html must cache-bust canvas context dock browser issues cleanup.');
 assert(indexHtml.includes('engineering-literature-pdf-viewer.js?v=20260609-literature-access3'), 'index.html must cache-bust literature PDF access diagnostics cleanup.');
 assert(indexHtml.includes('__chromium_devtools_metrics_reporter'), 'index.html must install the Chromium DevTools metrics reporter guard early.');
 assert(indexHtml.includes("typeof window.__chromium_devtools_metrics_reporter === 'function'"), 'Chromium DevTools metrics reporter guard must preserve real reporter functions.');
@@ -56,7 +56,7 @@ assert(indexHtml.includes('function scheduleInitialAppLoad') || indexHtml.includ
 assert(indexHtml.includes('requestIdleCallback') && indexHtml.includes('window.setTimeout(startInitialShellLoad, 250)'), 'Initial app-shell load should use idle scheduling with a timer fallback.');
 assert(!indexHtml.includes('<script src="engineering-npsh-margin-runtime.js'), 'NPSH margin bridge must not load as a synchronous first-load script.');
 assert(
-  indexHtml.indexOf("'engineering-npsh-margin-runtime.js?v=20260602-npsh-margin1'") >
+  indexHtml.indexOf("'engineering-npsh-margin-runtime.js?v=20260621-npsh-margin3'") >
     indexHtml.indexOf('const realtimeScripts = ['),
   'NPSH margin bridge must load through the deferred realtime script path.'
 );

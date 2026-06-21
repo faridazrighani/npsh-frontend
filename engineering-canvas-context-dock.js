@@ -9,8 +9,8 @@
 })(typeof window !== 'undefined' ? window : globalThis, function createCanvasContextDock(root) {
   'use strict';
 
-  const VERSION = 'engineering-canvas-context-dock.v2';
-  const CACHE_KEY = '20260619-mobile-performance-overlay1';
+  const VERSION = 'engineering-canvas-context-dock.v3';
+  const CACHE_KEY = '20260621-pipe-left-click-menu1';
   const DOCK_ID = 'canvasContextDock';
   const STYLE_ID = 'canvas-context-dock-style';
   const STORAGE_KEY = 'npsh.canvasContextDock.expanded';
@@ -1038,8 +1038,36 @@
     return pipe && isInsideCanvas(pipe) ? pipe : null;
   }
 
+  function selectableKind(element) {
+    if (!element?.matches) return '';
+    if (element.matches(CANVAS_PIPE_SELECTOR)) return 'pipe';
+    if (element.matches(CANVAS_OBJECT_SELECTOR)) return 'object';
+    return '';
+  }
+
+  function cssEscape(value) {
+    const text = asString(value);
+    if (root.CSS?.escape) return root.CSS.escape(text);
+    return text.replace(/["\\]/g, '\\$&');
+  }
+
+  function findPipeLineElement(pipeId) {
+    const documentRef = root.document;
+    if (!documentRef || !pipeId) return null;
+    const pipe = documentRef.querySelector(`${CANVAS_PIPE_SELECTOR}[data-pipe-id="${cssEscape(pipeId)}"]`);
+    return pipe && isInsideCanvas(pipe) ? pipe : null;
+  }
+
+  function getPointerStartSelectableElement() {
+    const state = getCanvasPropertiesPolicyState();
+    const start = state.pointerStart;
+    if (!start?.selectable) return null;
+    if (start.kind === 'pipe' && start.pipeId) return findPipeLineElement(start.pipeId);
+    return start.target && isInsideCanvas(start.target) ? start.target : null;
+  }
+
   function eventTargetsCanvasSelectable(event) {
-    return !!getCanvasSelectableElement(event);
+    return !!(getCanvasSelectableElement(event) || getPointerStartSelectableElement());
   }
 
   function eventTargetsToolbarPlacement(event) {
@@ -1057,7 +1085,14 @@
     }
     const selectable = getCanvasSelectableElement(event);
     if (selectable) {
-      state.pointerStart = { ...point, selectable: true, target: selectable };
+      const kind = selectableKind(selectable);
+      state.pointerStart = {
+        ...point,
+        selectable: true,
+        target: selectable,
+        kind,
+        pipeId: kind === 'pipe' ? asString(selectable.dataset?.pipeId) : ''
+      };
       markCanvasSelectionOnly('canvas-left-select', 650);
     }
   }
@@ -1073,6 +1108,14 @@
       start.dragging = true;
       markCanvasSelectionOnly('canvas-object-drag', CANVAS_OBJECT_DRAG_SETTLE_MS);
     }
+  }
+
+  function isPointerWithinClickSlop(event, start) {
+    if (!start) return false;
+    const point = getEventClientPoint(event);
+    const dx = point.x - start.x;
+    const dy = point.y - start.y;
+    return Math.sqrt(dx * dx + dy * dy) <= CANVAS_LEFT_CONTEXT_MENU_MAX_MOVE_PX;
   }
 
   function handleCanvasPropertiesPolicyPointerEnd() {
@@ -1093,25 +1136,21 @@
 
   function shouldDispatchLeftClickCanvasContextMenu(event) {
     if (!isLeftButtonEvent(event)) return false;
-    const selectable = getCanvasSelectableElement(event);
+    const selectable = getCanvasSelectableElement(event) || getPointerStartSelectableElement();
     if (!selectable) return false;
     const target = event?.target;
     if (target?.closest?.('#canvasContextMenu, #taskWindow, .task-window, input, select, textarea, button, a')) return false;
     const state = getCanvasPropertiesPolicyState();
     const start = state.pointerStart;
+    if (start?.contextMenuDispatched) return false;
     if (start?.toolbarPlacement) return false;
     if (start?.dragging) return false;
-    if (start?.selectable) {
-      const point = getEventClientPoint(event);
-      const dx = point.x - start.x;
-      const dy = point.y - start.y;
-      if (Math.sqrt(dx * dx + dy * dy) > CANVAS_LEFT_CONTEXT_MENU_MAX_MOVE_PX) return false;
-    }
+    if (start?.selectable && !isPointerWithinClickSlop(event, start)) return false;
     return true;
   }
 
   function dispatchLeftClickCanvasContextMenu(event) {
-    const selectable = getCanvasSelectableElement(event);
+    const selectable = getCanvasSelectableElement(event) || getPointerStartSelectableElement();
     if (!selectable || typeof root.MouseEvent !== 'function') return false;
     const point = getEventClientPoint(event);
     markCanvasSelectionOnly('canvas-left-context-menu', CANVAS_CONTEXT_MENU_SETTLE_MS);
@@ -1123,6 +1162,8 @@
       button: 2
     });
     selectable.dispatchEvent(contextEvent);
+    const state = getCanvasPropertiesPolicyState();
+    if (state.pointerStart) state.pointerStart.contextMenuDispatched = true;
     return true;
   }
 
@@ -1134,10 +1175,69 @@
     dispatchLeftClickCanvasContextMenu(event);
   }
 
+  function shouldDispatchPipePointerEndContextMenu(event) {
+    if (!isLeftButtonEvent(event)) return false;
+    const state = getCanvasPropertiesPolicyState();
+    const start = state.pointerStart;
+    if (!state.active || !start?.selectable || start.kind !== 'pipe' || !start.pipeId) return false;
+    if (start.contextMenuDispatched || start.toolbarPlacement || start.dragging) return false;
+    return isPointerWithinClickSlop(event, start) && !!getPointerStartSelectableElement();
+  }
+
+  function handlePipePointerEndContextMenu(event) {
+    if (!shouldDispatchPipePointerEndContextMenu(event)) return;
+    event.preventDefault?.();
+    event.stopPropagation?.();
+    event.stopImmediatePropagation?.();
+    dispatchLeftClickCanvasContextMenu(event);
+  }
+
   function handleCanvasPropertiesPolicyContextMenu(event) {
     if (eventTargetsCanvasSelectable(event)) {
       markCanvasSelectionOnly('canvas-context-menu', CANVAS_CONTEXT_MENU_SETTLE_MS);
     }
+  }
+
+  function isCanvasBackgroundTarget(target) {
+    const canvas = root.document?.getElementById('canvas');
+    if (!canvas || !target) return false;
+    if (target === canvas || target?.id === 'svg-lines') return true;
+    if (!canvas.contains(target)) return false;
+    return !target.closest?.([
+      CANVAS_OBJECT_SELECTOR,
+      CANVAS_PIPE_SELECTOR,
+      '.port',
+      '#canvasContextMenu',
+      '#taskWindow',
+      '.task-window',
+      'input',
+      'select',
+      'textarea',
+      'button',
+      'a'
+    ].join(','));
+  }
+
+  function hasSelectedPipeLine() {
+    const documentRef = root.document;
+    if (!documentRef) return false;
+    return Array.from(documentRef.querySelectorAll(CANVAS_PIPE_SELECTOR)).some((pipe) => {
+      const stroke = asString(pipe.getAttribute('stroke')).toLowerCase();
+      const strokeWidth = finiteNumber(pipe.getAttribute('stroke-width'));
+      return stroke === '#ffb703' || strokeWidth === 8;
+    });
+  }
+
+  function clearSelectedPipeOnCanvasBackgroundClick(event) {
+    if (!isLeftButtonEvent(event) || !isCanvasBackgroundTarget(event?.target) || !hasSelectedPipeLine()) return false;
+    if (typeof root.clearSelection === 'function') root.clearSelection();
+    if (typeof root.renderSidebar === 'function') root.renderSidebar(null);
+    if (typeof root.drawConnections === 'function') root.drawConnections();
+    return true;
+  }
+
+  function handleCanvasBackgroundClick(event) {
+    clearSelectedPipeOnCanvasBackgroundClick(event);
   }
 
   function installCanvasPropertiesOpenPolicyEventBridge() {
@@ -1155,8 +1255,12 @@
     ['pointerup', 'mouseup', 'click'].forEach((eventName) => {
       documentRef.addEventListener(eventName, handleCanvasPropertiesPolicyPointerEnd, true);
     });
+    ['pointerup', 'mouseup'].forEach((eventName) => {
+      documentRef.addEventListener(eventName, handlePipePointerEndContextMenu, true);
+    });
     documentRef.addEventListener('click', handleCanvasPropertiesPolicyClickForContextMenu, true);
     documentRef.addEventListener('contextmenu', handleCanvasPropertiesPolicyContextMenu, true);
+    documentRef.addEventListener('click', handleCanvasBackgroundClick, true);
   }
 
   function renderSummary(parent, state) {
@@ -1360,6 +1464,7 @@
     cacheKey: CACHE_KEY,
     buildDockState,
     allowCanvasPropertiesCommandOpen,
+    clearSelectedPipeOnCanvasBackgroundClick,
     focusRouteNode,
     formatValue,
     clearCanvasSelectionOnly,

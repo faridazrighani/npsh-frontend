@@ -1,6 +1,9 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-performance-canonical-chart.v13';
+  const VERSION = 'pump-performance-canonical-chart.v23';
+  const PUMP_FORMULA_DEFENSE_RELOCATION_STYLE_ID = 'pump-formula-defense-relocation-style';
+  const PUMP_MANUAL_NPSHR_RELOCATION_STYLE_ID = 'pump-manual-npshr-relocation-style';
+  const PUMP_DEVELOPMENT_UI_SUPPRESSION_STYLE_ID = 'pump-development-ui-suppression-style';
   const CANVAS_SELECTORS = [
     '#pumpChart',
     '#captionAuditPumpChartCanvas',
@@ -15,7 +18,7 @@
     'npsh:linked-views-refreshed',
     'npsh:realtime-autosolve-complete'
   ];
-  const PUMP_CHART_INPUT_PATTERN = /\b(inputMode|optimizationMode|npshrSourceMode|npshAssessmentMode|npshMarginBasis|designFlow|designHead|designEfficiency|designNpshr|bepFlow|porMinPercent|porMaxPercent|aorMinPercent|aorMaxPercent|minNpshMarginRatio|minNpshMargin|speed|curveDataSource|curveSourceNote|curveData|flow|head|eff|npshr|pressure|elevation|density|viscosity|vaporPressure|segments|length|diameter|roughness|fittingType|fittingQuantity|fittingK|minorLoss|additionalK)\b/i;
+  const PUMP_CHART_INPUT_PATTERN = /\b(inputMode|optimizationMode|npshrSourceMode|npshAssessmentMode|npshMarginBasis|designFlow|designHead|designEfficiency|designNpshr|manualNpshr|suctionElevation|pumpDatumElevation|bepFlow|porMinPercent|porMaxPercent|aorMinPercent|aorMaxPercent|minNpshMarginRatio|minNpshMargin|speed|curveDataSource|curveSourceNote|curveData|flow|head|eff|npshr|pressure|elevation|density|viscosity|vaporPressure|segments|length|diameter|roughness|fittingType|fittingQuantity|fittingK|minorLoss|additionalK)\b/i;
   const RUNTIME_PATCH_FLAG_KEYS = [
     '__engineeringRealtimeCalculationDefenseUpdatePatched',
     '__engineeringRealtimeCalculationDefenseOriginal',
@@ -32,6 +35,7 @@
   let scheduledRenderTimer = 0;
   let pendingRenderPumpId = '';
   let chartTaskWindowCounter = 0;
+  let manualNpshrTaskWindowCounter = 0;
   let lastPumpContextMenuId = '';
 
   const STYLES = {
@@ -39,6 +43,63 @@
     systemHead: { label: 'System Curve', color: '#dc2626', width: 2, dash: [6, 5] },
     npsha: { label: 'NPSHa', color: '#0f766e', width: 1.8 },
     npshr: { label: 'NPSHr', color: '#b45309', width: 1.8 }
+  };
+  const PUMP_NPSH_MARGIN_USER_DEFINED = 'User Defined';
+  const PUMP_NPSH_MARGIN_GENERAL_PURPOSE = 'General Purpose';
+  const PUMP_NPSH_MARGIN_BASIS_OPTIONS = [
+    'General Purpose',
+    'Petroleum/Hydrocarbon',
+    'Oil & Gas - Consult Manufacturer',
+    'Chemical Process',
+    'Chemical Process - S < 210',
+    'Chemical Process - S >= 210',
+    'Power Plant - Boiler Feed <225 kW',
+    'Power Plant - Boiler Feed 225-500 kW',
+    'Power Plant - Condensate',
+    'Power Plant - Circulation/Cooling Water',
+    'Power Plant - Cooling Tower/Other',
+    'Water/Wastewater',
+    'Wastewater - Cast Iron <45 kW',
+    'Wastewater - Stainless Steel <45 kW',
+    'Wastewater - Cast Iron >=45 kW',
+    'Wastewater - Stainless Steel >=45 kW',
+    'Water - Stainless/Al Bronze <75 kW',
+    'Water - Stainless/Al Bronze >=75 kW',
+    'Pulp & Paper Stock <6% - S <145',
+    'Pulp & Paper Stock <6% - S >=145',
+    'Building Services',
+    'Building Services - S <145',
+    'Building Services - S >=145',
+    'Slurry',
+    'Irrigation',
+    'User Defined'
+  ];
+  const PUMP_NPSH_MARGIN_PRESETS = {
+    'General Purpose': { por: { ratio: 1.05, margin: 0.6 }, aor: { ratio: 1.1, margin: 1.0 } },
+    'Petroleum/Hydrocarbon': { por: { ratio: 1.1, margin: 1.0 }, aor: { ratio: 1.1, margin: 1.0 } },
+    'Oil & Gas - Consult Manufacturer': { por: {}, aor: {}, consultManufacturer: true },
+    'Chemical Process': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.2, margin: 1.0 } },
+    'Chemical Process - S < 210': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.1, margin: 0.6 } },
+    'Chemical Process - S >= 210': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.2, margin: 1.0 } },
+    'Power Plant - Boiler Feed <225 kW': { por: { ratio: 1.1 }, aor: { ratio: 1.3 } },
+    'Power Plant - Boiler Feed 225-500 kW': { por: { ratio: 1.2 }, aor: { ratio: 1.5 } },
+    'Power Plant - Condensate': { por: { ratio: 1.0 }, aor: { ratio: 1.0 } },
+    'Power Plant - Circulation/Cooling Water': { por: { ratio: 1.05 }, aor: { margin: 1.0 } },
+    'Power Plant - Cooling Tower/Other': { por: { ratio: 1.1 }, aor: { ratio: 1.3 } },
+    'Water/Wastewater': { por: { ratio: 1.1, margin: 1.0 }, aor: { ratio: 1.2, margin: 1.5 } },
+    'Wastewater - Cast Iron <45 kW': { por: { ratio: 1.1, margin: 1.0 }, aor: { ratio: 1.2, margin: 1.5 } },
+    'Wastewater - Stainless Steel <45 kW': { por: { ratio: 1.05, margin: 1.0 }, aor: { ratio: 1.1, margin: 1.5 } },
+    'Wastewater - Cast Iron >=45 kW': { por: { ratio: 1.2, margin: 1.0 }, aor: { ratio: 1.3, margin: 1.5 } },
+    'Wastewater - Stainless Steel >=45 kW': { por: { ratio: 1.1, margin: 1.0 }, aor: { ratio: 1.2, margin: 1.5 } },
+    'Water - Stainless/Al Bronze <75 kW': { por: { ratio: 1.05, margin: 1.0 }, aor: { ratio: 1.1, margin: 1.5 } },
+    'Water - Stainless/Al Bronze >=75 kW': { por: { ratio: 1.1, margin: 1.0 }, aor: { ratio: 1.2, margin: 1.5 } },
+    'Pulp & Paper Stock <6% - S <145': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.1, margin: 0.6 } },
+    'Pulp & Paper Stock <6% - S >=145': { por: { ratio: 1.2, margin: 1.0 }, aor: { ratio: 1.2, margin: 1.0 } },
+    'Building Services': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.1, margin: 0.6 } },
+    'Building Services - S <145': { por: { ratio: 1.0 }, aor: { ratio: 1.0 } },
+    'Building Services - S >=145': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.1, margin: 0.6 } },
+    'Slurry': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.1, margin: 0.6 } },
+    'Irrigation': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.2, margin: 1.0 } }
   };
 
   function runtimeModel() {
@@ -1698,6 +1759,82 @@
 .pump-performance-chart-task-window.task-window-minimized .task-window-body {
   display: none;
 }
+.pump-manual-npshr-task-window {
+  width: min(360px, calc(100vw - 24px));
+  min-width: min(300px, calc(100vw - 24px));
+  min-height: 0;
+  height: auto;
+  resize: none;
+  overflow: hidden;
+}
+.pump-manual-npshr-task-window .task-window-header {
+  cursor: move;
+}
+.pump-manual-npshr-task-body {
+  padding: 12px;
+  background: #f8fbff;
+}
+.pump-manual-npshr-field {
+  display: grid;
+  grid-template-columns: minmax(104px, 1fr) minmax(120px, 1.4fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin: 0;
+  color: #25455f;
+  font-size: 12px;
+  line-height: 1.3;
+}
+.pump-manual-npshr-field + .pump-manual-npshr-field {
+  margin-top: 10px;
+}
+.pump-manual-npshr-field input,
+.pump-manual-npshr-field select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  padding: 4px 8px;
+  border: 1px solid #c8d7e5;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #14283a;
+  font: inherit;
+}
+.pump-manual-npshr-field input:read-only {
+  background: #eef6ff;
+  color: #31536d;
+}
+.pump-manual-npshr-field input:focus,
+.pump-manual-npshr-field select:focus {
+  border-color: #2879b8;
+  box-shadow: 0 0 0 2px rgba(40, 121, 184, 0.16);
+  outline: none;
+}
+.pump-manual-npshr-unit {
+  color: #355c76;
+  white-space: nowrap;
+}
+.pump-manual-npshr-criteria-note {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border: 1px solid #cfddea;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #274963;
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+.pump-manual-npshr-criteria-note[data-state="partial"] {
+  border-color: #e8d8a8;
+  background: #fff9e8;
+  color: #5b4a14;
+}
+.pump-manual-npshr-criteria-note[data-state="consult"],
+.pump-manual-npshr-criteria-note[data-state="missing"] {
+  border-color: #e6b8b8;
+  background: #fff6f6;
+  color: #74312f;
+}
 @media (max-width: 760px) {
   .pump-performance-chart-task-window {
     left: 8px !important;
@@ -1705,6 +1842,16 @@
     width: calc(100vw - 16px);
     min-width: 0;
     height: min(560px, calc(100vh - 24px));
+  }
+  .pump-manual-npshr-task-window {
+    left: 8px !important;
+    right: 8px !important;
+    width: calc(100vw - 16px);
+    min-width: 0;
+  }
+  .pump-manual-npshr-field {
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
 }
 `;
@@ -1919,12 +2066,489 @@
     return canvas;
   }
 
+  function cleanText(value) {
+    return String(value ?? '').replace(/\s+/g, ' ').trim();
+  }
+
+  function formatNumericInputValue(value, digits = 6) {
+    const number = toNumber(value);
+    return number === null ? '' : Number(number.toFixed(digits)).toString();
+  }
+
+  function marginRegionKey(pump = {}) {
+    const props = pump.props || {};
+    const status = cleanText(
+      props.npshMarginRegionBasis
+      || props.npshMarginOperatingRegion
+      || props.marginRegionBasis
+      || ''
+    ).toUpperCase();
+    return status === 'AOR' ? 'aor' : 'por';
+  }
+
+  function pumpHasUserDefinedMarginValues(props = {}) {
+    return firstNumber(props.minNpshMarginRatio) !== null || firstNumber(props.minNpshMargin) !== null;
+  }
+
+  function marginBasisForPump(pump = {}) {
+    const props = pump.props || {};
+    const raw = cleanText(props.npshMarginBasis);
+    if (!raw) return PUMP_NPSH_MARGIN_GENERAL_PURPOSE;
+    if (raw === PUMP_NPSH_MARGIN_USER_DEFINED && !pumpHasUserDefinedMarginValues(props)) {
+      return PUMP_NPSH_MARGIN_GENERAL_PURPOSE;
+    }
+    return PUMP_NPSH_MARGIN_BASIS_OPTIONS.includes(raw) ? raw : PUMP_NPSH_MARGIN_GENERAL_PURPOSE;
+  }
+
+  function marginPresetDefinitionForBasis(basis = '') {
+    const selectedBasis = basis || PUMP_NPSH_MARGIN_GENERAL_PURPOSE;
+    return PUMP_NPSH_MARGIN_PRESETS[selectedBasis] || PUMP_NPSH_MARGIN_PRESETS[PUMP_NPSH_MARGIN_GENERAL_PURPOSE];
+  }
+
+  function marginPresetForPump(pump = {}, basis = '') {
+    const selectedBasis = basis || marginBasisForPump(pump);
+    if (selectedBasis === PUMP_NPSH_MARGIN_USER_DEFINED) return null;
+    const preset = marginPresetDefinitionForBasis(selectedBasis);
+    return preset?.[marginRegionKey(pump)] || preset?.aor || preset?.por || null;
+  }
+
+  function marginCriteriaDetailsForPump(pump = {}, basis = '') {
+    const selectedBasis = basis || marginBasisForPump(pump);
+    const props = pump.props || {};
+    const regionKey = marginRegionKey(pump);
+    if (selectedBasis === PUMP_NPSH_MARGIN_USER_DEFINED) {
+      const ratio = firstNumber(props.minNpshMarginRatio);
+      const margin = firstNumber(props.minNpshMargin);
+      return {
+        basis: selectedBasis,
+        regionKey: 'user',
+        userDefined: true,
+        consultManufacturer: false,
+        ratio,
+        margin,
+        hasRatio: ratio !== null,
+        hasMargin: margin !== null
+      };
+    }
+    const preset = marginPresetDefinitionForBasis(selectedBasis);
+    const criteria = preset?.[regionKey] || preset?.aor || preset?.por || {};
+    const ratio = firstNumber(criteria?.ratio);
+    const margin = firstNumber(criteria?.margin);
+    return {
+      basis: PUMP_NPSH_MARGIN_PRESETS[selectedBasis] ? selectedBasis : PUMP_NPSH_MARGIN_GENERAL_PURPOSE,
+      regionKey,
+      userDefined: false,
+      consultManufacturer: !!preset?.consultManufacturer,
+      ratio,
+      margin,
+      hasRatio: ratio !== null,
+      hasMargin: margin !== null
+    };
+  }
+
+  function describeMarginCriteria(details = {}) {
+    const region = details.regionKey === 'aor' ? 'AOR' : details.regionKey === 'por' ? 'POR' : 'user';
+    if (details.userDefined) {
+      if (!details.hasRatio && !details.hasMargin) {
+        return 'User Defined basis requires at least Min NPSH Ratio or Min NPSH Margin before margin acceptance can be calculated.';
+      }
+      if (details.hasRatio && details.hasMargin) {
+        return 'User Defined basis will use the larger required NPSHa from ratio and absolute margin criteria.';
+      }
+      return details.hasRatio
+        ? 'User Defined basis will use the Min NPSH Ratio criterion only.'
+        : 'User Defined basis will use the Min NPSH Margin criterion only.';
+    }
+    if (details.consultManufacturer) {
+      return `${details.basis}: ANSI/HI lists this service as Consult manufacturer for ${region}; no numeric default is published. Use manufacturer/project-specific criteria or select User Defined when numeric evidence is available.`;
+    }
+    if (details.hasRatio && details.hasMargin) {
+      return `${details.basis}: ${region} criteria include both Min NPSH Ratio and Min NPSH Margin. The calculation uses the more conservative requirement.`;
+    }
+    if (details.hasRatio) {
+      return `${details.basis}: ${region} criteria specify Min NPSH Ratio only; Min NPSH Margin is not specified by the ANSI/HI table.`;
+    }
+    if (details.hasMargin) {
+      return `${details.basis}: ${region} criteria specify Min NPSH Margin only; Min NPSH Ratio is not specified by the ANSI/HI table.`;
+    }
+    return `${details.basis || 'Selected basis'}: no numeric NPSH margin criterion is available for ${region}; review the selected service basis.`;
+  }
+
+  function updateMarginCriteriaPresentation(taskWindow, pumpId) {
+    if (!taskWindow?.querySelector) return false;
+    const id = resolvePumpId(pumpId);
+    const pump = runtimeModel()?.[id] || {};
+    const select = taskWindow.querySelector('select[data-field="npshMarginBasis"]');
+    const basis = cleanText(select?.value) || marginBasisForPump(pump);
+    const pseudoPump = { ...pump, props: { ...(pump.props || {}), npshMarginBasis: basis } };
+    const details = marginCriteriaDetailsForPump(pseudoPump, basis);
+    const ratioInput = taskWindow.querySelector('input[data-field="minNpshMarginRatio"]');
+    const marginInput = taskWindow.querySelector('input[data-field="minNpshMargin"]');
+    const note = taskWindow.querySelector('[data-npsh-margin-criteria-note="true"]');
+    const missingText = details.consultManufacturer ? 'Consult manufacturer' : 'Not specified';
+    let changed = false;
+    [
+      [ratioInput, details.hasRatio, 'Min NPSH Ratio'],
+      [marginInput, details.hasMargin, 'Min NPSH Margin']
+    ].forEach(([input, hasValue, label]) => {
+      if (!input) return;
+      const nextPlaceholder = details.userDefined ? '' : (hasValue ? '' : missingText);
+      const nextTitle = details.userDefined
+        ? `${label} is editable for User Defined basis.`
+        : hasValue
+          ? `${label} is specified by the selected ANSI/HI basis.`
+          : `${label} is ${missingText.toLowerCase()} for the selected ANSI/HI basis.`;
+      if (input.placeholder !== nextPlaceholder) {
+        input.placeholder = nextPlaceholder;
+        changed = true;
+      }
+      if (input.title !== nextTitle) {
+        input.title = nextTitle;
+        changed = true;
+      }
+    });
+    if (note) {
+      const nextState = details.consultManufacturer
+        ? 'consult'
+        : details.hasRatio && details.hasMargin
+          ? 'complete'
+          : details.hasRatio || details.hasMargin
+            ? 'partial'
+            : 'missing';
+      const nextText = describeMarginCriteria(details);
+      if (note.dataset.state !== nextState) {
+        note.dataset.state = nextState;
+        changed = true;
+      }
+      if (note.textContent !== nextText) {
+        note.textContent = nextText;
+        changed = true;
+      }
+    }
+    return changed;
+  }
+
+  function formatMarginRatioInputValue(pumpId) {
+    const pump = runtimeModel()?.[resolvePumpId(pumpId)] || {};
+    const basis = marginBasisForPump(pump);
+    const value = basis === PUMP_NPSH_MARGIN_USER_DEFINED
+      ? firstNumber(pump.props?.minNpshMarginRatio)
+      : firstNumber(marginPresetForPump(pump, basis)?.ratio);
+    return formatNumericInputValue(value, 6);
+  }
+
+  function formatMarginAbsoluteInputValue(pumpId) {
+    const pump = runtimeModel()?.[resolvePumpId(pumpId)] || {};
+    const basis = marginBasisForPump(pump);
+    const value = basis === PUMP_NPSH_MARGIN_USER_DEFINED
+      ? firstNumber(pump.props?.minNpshMargin)
+      : firstNumber(marginPresetForPump(pump, basis)?.margin);
+    return formatNumericInputValue(value, 6);
+  }
+
+  function formatManualNpshrInputValue(pumpId) {
+    const pump = runtimeModel()?.[resolvePumpId(pumpId)] || {};
+    const evaluation = pump.results?.npshEvaluation || {};
+    const value = firstNumber(
+      pump.props?.manualNpshr,
+      pump.props?.designNpshr,
+      evaluation.npshr,
+      pump.results?.npshr,
+      pump.results?.npshRequired
+    );
+    return formatNumericInputValue(value, 6);
+  }
+
+  function formatPumpDatumInputValue(pumpId) {
+    const pump = runtimeModel()?.[resolvePumpId(pumpId)] || {};
+    const evaluation = pump.results?.npshEvaluation || {};
+    const tracePump = evaluation.calculationTrace?.pump || {};
+    const value = firstNumber(
+      pump.props?.suctionElevation,
+      pump.props?.elevation,
+      tracePump.elevation
+    );
+    return formatNumericInputValue(value, 6);
+  }
+
+  function refreshManualNpshrTaskWindow(taskWindow, pumpId) {
+    if (!taskWindow?.querySelector) return false;
+    let changed = false;
+    [
+      ['manualNpshr', formatManualNpshrInputValue(pumpId)],
+      ['suctionElevation', formatPumpDatumInputValue(pumpId)],
+      ['minNpshMarginRatio', formatMarginRatioInputValue(pumpId)],
+      ['minNpshMargin', formatMarginAbsoluteInputValue(pumpId)]
+    ].forEach(([field, nextValue]) => {
+      const input = taskWindow.querySelector(`input[data-field="${field}"]`);
+      if (!input || document.activeElement === input || input.value === nextValue) return;
+      input.value = nextValue;
+      changed = true;
+    });
+    const pump = runtimeModel()?.[resolvePumpId(pumpId)] || {};
+    const basis = marginBasisForPump(pump);
+    const select = taskWindow.querySelector('select[data-field="npshMarginBasis"]');
+    if (select && document.activeElement !== select && select.value !== basis) {
+      select.value = basis;
+      changed = true;
+    }
+    const userDefined = basis === PUMP_NPSH_MARGIN_USER_DEFINED;
+    ['minNpshMarginRatio', 'minNpshMargin'].forEach((field) => {
+      const input = taskWindow.querySelector(`input[data-field="${field}"]`);
+      if (!input) return;
+      if (input.readOnly === userDefined) {
+        input.readOnly = !userDefined;
+        changed = true;
+      }
+    });
+    changed = updateMarginCriteriaPresentation(taskWindow, pumpId) || changed;
+    return changed;
+  }
+
+  function scheduleManualNpshrLinkedRefresh(pumpId, eventType = 'input') {
+    scheduleRender(pumpId, { force: true, delayMs: eventType === 'change' ? 80 : 16, reason: 'manual npshr task input' });
+    try {
+      root.EngineeringAnalysisReportLiveRuntime?.scheduleRefresh?.(80);
+    } catch (error) {
+      // Analysis report refresh is best-effort.
+    }
+    try {
+      root.EngineeringPumpFormulaDefenseLiveAudit?.scheduleRefresh?.(pumpId);
+    } catch (error) {
+      // Formula Defense refresh is best-effort.
+    }
+  }
+
+  function ensureManualNpshrTaskWindow(pumpId) {
+    if (typeof document === 'undefined') return null;
+    installChartTaskWindowStyles();
+    const id = resolvePumpId(pumpId);
+    const selector = `.pump-manual-npshr-task-window[data-pump-node-id="${cssEscape(id)}"]`;
+    const existing = document.querySelector(selector);
+    if (existing) {
+      refreshManualNpshrTaskWindow(existing, id);
+      bringChartTaskWindowToFront(existing);
+      clampChartTaskWindowToViewport(existing);
+      existing.focus?.({ preventScroll: true });
+      const existingInput = existing.querySelector('input[data-field="manualNpshr"]');
+      existingInput?.focus?.({ preventScroll: true });
+      existingInput?.select?.();
+      return existing;
+    }
+
+    manualNpshrTaskWindowCounter += 1;
+    const offset = (manualNpshrTaskWindowCounter - 1) % 4 * 20;
+    const taskWindow = document.createElement('section');
+    taskWindow.className = 'task-window pump-manual-npshr-task-window task-window-user-positioned';
+    taskWindow.dataset.kind = 'pump-manual-npshr';
+    taskWindow.dataset.pumpNodeId = id;
+    taskWindow.dataset.nodeId = id;
+    taskWindow.setAttribute('role', 'dialog');
+    taskWindow.setAttribute('aria-modal', 'false');
+    taskWindow.setAttribute('aria-label', 'Pump Datum - NPSHR');
+    taskWindow.setAttribute('tabindex', '-1');
+
+    const pumpProperties = document.getElementById('taskWindow');
+    const anchor = pumpProperties && !pumpProperties.hidden ? pumpProperties.getBoundingClientRect() : null;
+    const width = Math.min(360, Math.max(300, window.innerWidth - 24));
+    const fallbackLeft = window.innerWidth <= 760 ? 8 : 96 + offset;
+    const left = anchor ? Math.min(anchor.right + 14, window.innerWidth - width - 8) : fallbackLeft;
+    taskWindow.style.left = `${Math.max(8, left > 8 ? left : fallbackLeft)}px`;
+    taskWindow.style.top = `${Math.max(8, (anchor?.top || 112) + offset)}px`;
+    taskWindow.style.right = 'auto';
+
+    const header = document.createElement('div');
+    header.className = 'task-window-header pump-manual-npshr-window-header';
+    const title = document.createElement('span');
+    title.textContent = `Pump Datum - NPSHR - ${id || '-'}`;
+    const actions = document.createElement('div');
+    actions.className = 'task-window-actions';
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'task-window-close';
+    close.textContent = 'X';
+    close.setAttribute('aria-label', 'Close Pump Datum - NPSHR window');
+    actions.append(close);
+    header.append(title, actions);
+
+    const body = document.createElement('div');
+    body.className = 'task-window-body pump-manual-npshr-task-body';
+    const createNumericField = ({ label, field, key, name, value, unitText = 'm', min = '', step = '0.001', readOnly = false, ariaLabel = label }) => {
+      const fieldNode = document.createElement('label');
+      fieldNode.className = 'pump-manual-npshr-field';
+      const labelText = document.createElement('span');
+      labelText.textContent = label;
+      const inputNode = document.createElement('input');
+      inputNode.type = 'number';
+      inputNode.inputMode = 'decimal';
+      if (min !== '') inputNode.min = min;
+      inputNode.step = step;
+      inputNode.name = name;
+      inputNode.dataset.key = key;
+      inputNode.dataset.field = field;
+      inputNode.dataset.node = id;
+      inputNode.dataset.nodeId = id;
+      inputNode.dataset.pumpNodeId = id;
+      inputNode.value = value;
+      inputNode.readOnly = !!readOnly;
+      inputNode.setAttribute('aria-label', ariaLabel);
+      const unit = document.createElement('span');
+      unit.className = 'pump-manual-npshr-unit';
+      unit.textContent = unitText;
+      fieldNode.append(labelText, inputNode, unit);
+      return { fieldNode, inputNode };
+    };
+    const createSelectField = ({ label, field, key, name, value, options, ariaLabel = label }) => {
+      const fieldNode = document.createElement('label');
+      fieldNode.className = 'pump-manual-npshr-field';
+      const labelText = document.createElement('span');
+      labelText.textContent = label;
+      const selectNode = document.createElement('select');
+      selectNode.name = name;
+      selectNode.dataset.key = key;
+      selectNode.dataset.field = field;
+      selectNode.dataset.node = id;
+      selectNode.dataset.nodeId = id;
+      selectNode.dataset.pumpNodeId = id;
+      selectNode.setAttribute('aria-label', ariaLabel);
+      options.forEach((optionValue) => {
+        const option = document.createElement('option');
+        option.value = optionValue;
+        option.textContent = optionValue;
+        selectNode.appendChild(option);
+      });
+      selectNode.value = value;
+      const unit = document.createElement('span');
+      unit.className = 'pump-manual-npshr-unit';
+      unit.textContent = '';
+      fieldNode.append(labelText, selectNode, unit);
+      return { fieldNode, selectNode };
+    };
+    const pump = runtimeModel()?.[id] || {};
+    const marginBasis = marginBasisForPump(pump);
+    const manualField = createNumericField({
+      label: 'Manual NPSHr',
+      field: 'manualNpshr',
+      key: 'designNpshr',
+      name: 'design-npshr',
+      value: formatManualNpshrInputValue(id),
+      min: '0',
+      ariaLabel: 'Manual NPSHr'
+    });
+    const datumField = createNumericField({
+      label: 'Pump Datum Elev.',
+      field: 'suctionElevation',
+      key: 'suctionElevation',
+      name: 'pump-datum-elevation',
+      value: formatPumpDatumInputValue(id),
+      ariaLabel: 'Pump Datum Elev.'
+    });
+    const marginBasisField = createSelectField({
+      label: 'NPSH Margin Basis',
+      field: 'npshMarginBasis',
+      key: 'npshMarginBasis',
+      name: 'npsh-margin-basis',
+      value: marginBasis,
+      options: PUMP_NPSH_MARGIN_BASIS_OPTIONS,
+      ariaLabel: 'NPSH Margin Basis'
+    });
+    const ratioField = createNumericField({
+      label: 'Min NPSH Ratio',
+      field: 'minNpshMarginRatio',
+      key: 'minNpshMarginRatio',
+      name: 'min-npsh-margin-ratio',
+      value: formatMarginRatioInputValue(id),
+      unitText: '-',
+      min: '1',
+      step: '0.001',
+      readOnly: marginBasis !== PUMP_NPSH_MARGIN_USER_DEFINED,
+      ariaLabel: 'Min NPSH Ratio'
+    });
+    const marginField = createNumericField({
+      label: 'Min NPSH Margin',
+      field: 'minNpshMargin',
+      key: 'minNpshMargin',
+      name: 'min-npsh-margin',
+      value: formatMarginAbsoluteInputValue(id),
+      min: '0',
+      step: '0.001',
+      readOnly: marginBasis !== PUMP_NPSH_MARGIN_USER_DEFINED,
+      ariaLabel: 'Min NPSH Margin'
+    });
+    const criteriaNote = document.createElement('p');
+    criteriaNote.className = 'pump-manual-npshr-criteria-note';
+    criteriaNote.dataset.npshMarginCriteriaNote = 'true';
+    body.append(
+      manualField.fieldNode,
+      datumField.fieldNode,
+      marginBasisField.fieldNode,
+      ratioField.fieldNode,
+      marginField.fieldNode,
+      criteriaNote
+    );
+
+    const onResize = () => clampChartTaskWindowToViewport(taskWindow);
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    close.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+      taskWindow.remove();
+    });
+    const updateMarginFieldsFromBasis = () => {
+      const basis = marginBasisField.selectNode.value || PUMP_NPSH_MARGIN_GENERAL_PURPOSE;
+      const userDefined = basis === PUMP_NPSH_MARGIN_USER_DEFINED;
+      ratioField.inputNode.readOnly = !userDefined;
+      marginField.inputNode.readOnly = !userDefined;
+      if (!userDefined) {
+        const pseudoPump = { ...(runtimeModel()?.[id] || {}), props: { ...((runtimeModel()?.[id] || {}).props || {}), npshMarginBasis: basis } };
+        ratioField.inputNode.value = formatNumericInputValue(firstNumber(marginPresetForPump(pseudoPump, basis)?.ratio), 6);
+        marginField.inputNode.value = formatNumericInputValue(firstNumber(marginPresetForPump(pseudoPump, basis)?.margin), 6);
+      }
+      updateMarginCriteriaPresentation(taskWindow, id);
+    };
+    [manualField.inputNode, datumField.inputNode, ratioField.inputNode, marginField.inputNode].forEach((inputNode) => {
+      inputNode.addEventListener('input', () => scheduleManualNpshrLinkedRefresh(id, 'input'));
+      inputNode.addEventListener('change', () => scheduleManualNpshrLinkedRefresh(id, 'change'));
+    });
+    marginBasisField.selectNode.addEventListener('input', () => {
+      updateMarginFieldsFromBasis();
+      scheduleManualNpshrLinkedRefresh(id, 'input');
+    });
+    marginBasisField.selectNode.addEventListener('change', () => {
+      updateMarginFieldsFromBasis();
+      scheduleManualNpshrLinkedRefresh(id, 'change');
+    });
+
+    taskWindow.append(header, body);
+    document.body.appendChild(taskWindow);
+    updateMarginCriteriaPresentation(taskWindow, id);
+    initializeChartTaskWindowDrag(taskWindow, header);
+    bringChartTaskWindowToFront(taskWindow);
+    clampChartTaskWindowToViewport(taskWindow);
+    taskWindow.focus?.({ preventScroll: true });
+    manualField.inputNode.focus?.({ preventScroll: true });
+    manualField.inputNode.select?.();
+    return taskWindow;
+  }
+
   function hideCanvasContextMenu() {
     const menu = document.getElementById('canvasContextMenu');
     if (!menu) return;
+    releaseCanvasContextMenuFocus(menu);
     menu.style.display = 'none';
     menu.setAttribute('aria-hidden', 'true');
     document.body?.classList?.remove('context-menu-open');
+  }
+
+  function releaseCanvasContextMenuFocus(menu) {
+    if (typeof document === 'undefined' || !menu) return false;
+    const active = document.activeElement;
+    if (!active || active === document.body || !menu.contains(active)) return false;
+    active.blur?.();
+    return true;
   }
 
   function capturePumpContextMenuTarget(event) {
@@ -1933,42 +2557,329 @@
     lastPumpContextMenuId = runtimeModel()?.[id]?.type === 'pump' ? id : '';
   }
 
-  function createChartMenuButton(pumpId) {
+  function createManualNpshrMenuButton(pumpId) {
     const button = document.createElement('button');
     button.type = 'button';
     button.setAttribute('role', 'menuitem');
     button.tabIndex = -1;
-    button.textContent = 'Pump Performance Chart';
-    button.dataset.pumpPerformanceChartTaskMenu = 'true';
+    button.textContent = 'Pump Datum - NPSHR';
+    button.dataset.pumpManualNpshrTaskMenu = 'true';
     button.dataset.pumpNodeId = pumpId;
     button.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
       hideCanvasContextMenu();
-      root.openPumpPerformanceChartTaskWindow?.(pumpId);
+      root.openPumpManualNpshrTaskWindow?.(pumpId);
     });
     return button;
   }
 
-  function injectPumpContextMenuChartButton() {
+  function createFormulaDefenseMenuButton(pumpId) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.setAttribute('role', 'menuitem');
+    button.tabIndex = -1;
+    button.textContent = 'Pump Formula Defense';
+    button.dataset.pumpFormulaDefenseTaskMenu = 'true';
+    button.dataset.pumpNodeId = pumpId;
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      hideCanvasContextMenu();
+      root.openPumpFormulaDefenseTaskWindow?.(pumpId);
+    });
+    return button;
+  }
+
+  function insertMenuButtonAfter(menu, button, anchor) {
+    if (!menu || !button) return false;
+    if (anchor?.nextSibling) menu.insertBefore(button, anchor.nextSibling);
+    else menu.appendChild(button);
+    return true;
+  }
+
+  function insertMenuButtonBefore(menu, button, anchor) {
+    if (!menu || !button) return false;
+    if (anchor) menu.insertBefore(button, anchor);
+    else menu.appendChild(button);
+    return true;
+  }
+
+  function installPumpDevelopmentUiSuppressionStyles() {
+    if (typeof document === 'undefined' || document.getElementById(PUMP_DEVELOPMENT_UI_SUPPRESSION_STYLE_ID)) return false;
+    const style = document.createElement('style');
+    style.id = PUMP_DEVELOPMENT_UI_SUPPRESSION_STYLE_ID;
+    style.textContent = `
+#canvasContextMenu [data-pump-performance-chart-task-menu="true"],
+#canvasContextMenu [data-pump-object-properties-suppressed="true"],
+.pump-performance-chart-task-window {
+  display: none !important;
+}
+`;
+    document.head?.appendChild(style);
+    return true;
+  }
+
+  function pumpIdFromOpenArgs(args = []) {
+    const model = runtimeModel();
+    const first = args[0];
+    const direct = typeof first === 'string'
+      ? first
+      : (first?.dataset?.nodeId || first?.dataset?.node || first?.dataset?.pumpNodeId || first?.nodeId || first?.id || '');
+    if (direct && model?.[direct]?.type === 'pump') return direct;
+    if (direct) return '';
+    try {
+      if (typeof currentSelectedNode !== 'undefined' && model?.[currentSelectedNode]?.type === 'pump') return currentSelectedNode;
+    } catch (error) {
+      // Protected builds can hide direct globals.
+    }
+    return '';
+  }
+
+  function closePumpObjectPropertiesTaskWindows(pumpId = '') {
+    if (typeof document === 'undefined') return false;
+    const model = runtimeModel();
+    let changed = false;
+    const windows = Array.from(document.querySelectorAll('#taskWindow, .persistent-object-properties-task-window, .object-properties-task'));
+    windows.forEach((windowNode) => {
+      const id = windowNode.dataset?.nodeId || windowNode.dataset?.taskNodeId || windowNode.dataset?.pumpNodeId || '';
+      if (!id || model?.[id]?.type !== 'pump') return;
+      if (pumpId && id !== pumpId) return;
+      const title = windowNode.querySelector?.('.task-window-header, #taskWindowTitle')?.textContent || windowNode.textContent || '';
+      if (!/Pump Object Properties/i.test(title)) return;
+      if (windowNode.id === 'taskWindow') {
+        windowNode.hidden = true;
+        windowNode.setAttribute('aria-hidden', 'true');
+      } else {
+        windowNode.remove();
+      }
+      changed = true;
+    });
+    return changed;
+  }
+
+  function closePumpPerformanceChartTaskWindows(pumpId = '') {
+    if (typeof document === 'undefined') return false;
+    const selector = pumpId
+      ? `.pump-performance-chart-task-window[data-pump-node-id="${cssEscape(pumpId)}"]`
+      : '.pump-performance-chart-task-window';
+    const windows = Array.from(document.querySelectorAll(selector));
+    windows.forEach((windowNode) => {
+      disconnectChartTaskWindowResizeObserver(windowNode);
+      windowNode.remove();
+    });
+    const modal = document.getElementById('fullEditor');
+    const modalCanvas = modal?.querySelector?.('.modal-chart-wrap canvas');
+    const modalPumpId = modalCanvas?.dataset?.pumpId || '';
+    const shouldCloseModal = !!(modal && modalCanvas && (!pumpId || !modalPumpId || modalPumpId === pumpId));
+    if (shouldCloseModal) {
+      modal.style.display = 'none';
+      modal.innerHTML = '';
+    }
+    return windows.length > 0 || shouldCloseModal;
+  }
+
+  function suppressPumpObjectPropertiesMenuButton(menu) {
+    if (!menu) return false;
+    const buttons = Array.from(menu.querySelectorAll('button[role="menuitem"]'));
+    let changed = false;
+    buttons.forEach((button) => {
+      if (!/User Task Object Properties/i.test(button.textContent || '')) return;
+      if (document.activeElement === button || button.contains?.(document.activeElement)) releaseCanvasContextMenuFocus(menu);
+      button.dataset.pumpObjectPropertiesSuppressed = 'true';
+      button.hidden = true;
+      button.disabled = true;
+      button.tabIndex = -1;
+      button.setAttribute('aria-hidden', 'true');
+      button.remove();
+      changed = true;
+    });
+    return changed;
+  }
+
+  function suppressPumpPerformanceChartMenuButtons(menu) {
+    if (!menu) return false;
+    const buttons = Array.from(menu.querySelectorAll('button[role="menuitem"]'));
+    let changed = false;
+    buttons.forEach((button) => {
+      if (button.dataset?.pumpPerformanceChartTaskMenu !== 'true' && !/^Pump Performance Chart$/i.test((button.textContent || '').trim())) return;
+      if (document.activeElement === button || button.contains?.(document.activeElement)) releaseCanvasContextMenuFocus(menu);
+      button.hidden = true;
+      button.disabled = true;
+      button.tabIndex = -1;
+      button.setAttribute('aria-hidden', 'true');
+      button.remove();
+      changed = true;
+    });
+    return changed;
+  }
+
+  function installPumpManualNpshrRelocationStyles() {
+    if (typeof document === 'undefined' || document.getElementById(PUMP_MANUAL_NPSHR_RELOCATION_STYLE_ID)) return false;
+    const style = document.createElement('style');
+    style.id = PUMP_MANUAL_NPSHR_RELOCATION_STYLE_ID;
+    style.textContent = `
+#taskWindow [data-pump-manual-npshr-relocated-row="true"],
+.object-properties-task [data-pump-manual-npshr-relocated-row="true"],
+.persistent-object-properties-task-window [data-pump-manual-npshr-relocated-row="true"],
+#taskWindow input[data-key="manualNpshr"],
+.object-properties-task input[data-key="manualNpshr"],
+.persistent-object-properties-task-window input[data-key="manualNpshr"],
+#taskWindow input[data-key="designNpshr"],
+.object-properties-task input[data-key="designNpshr"],
+.persistent-object-properties-task-window input[data-key="designNpshr"],
+#taskWindow input[name="design-npshr"],
+.object-properties-task input[name="design-npshr"],
+.persistent-object-properties-task-window input[name="design-npshr"] {
+  display: none !important;
+}
+`;
+    document.head?.appendChild(style);
+    return true;
+  }
+
+  function hideManualNpshrPropertiesInputs(scope = null) {
+    if (typeof document === 'undefined') return false;
+    const selector = [
+      '#taskWindow input[data-key="manualNpshr"]',
+      '.object-properties-task input[data-key="manualNpshr"]',
+      '.persistent-object-properties-task-window input[data-key="manualNpshr"]',
+      '#taskWindow input[data-key="designNpshr"]',
+      '.object-properties-task input[data-key="designNpshr"]',
+      '.persistent-object-properties-task-window input[data-key="designNpshr"]',
+      '#taskWindow input[name="design-npshr"]',
+      '.object-properties-task input[name="design-npshr"]',
+      '.persistent-object-properties-task-window input[name="design-npshr"]'
+    ].join(', ');
+    const searchRoot = scope || document;
+    const candidates = [];
+    if (searchRoot?.nodeType === 1 && searchRoot.matches?.(selector)) candidates.push(searchRoot);
+    candidates.push(...Array.from(searchRoot?.querySelectorAll?.(selector) || []));
+    let changed = false;
+    candidates.forEach((input) => {
+      if (input.closest?.('.pump-manual-npshr-task-window')) return;
+      const row = input.closest?.('tr, .prop-row, .form-row, .field-row, .pump-live-param-row, label')
+        || input.closest?.('div');
+      const target = row || input;
+      if (target.dataset?.pumpManualNpshrRelocatedRow !== 'true') {
+        if (target.dataset) target.dataset.pumpManualNpshrRelocatedRow = 'true';
+        changed = true;
+      }
+      if (!target.hidden || target.getAttribute('aria-hidden') !== 'true') {
+        target.hidden = true;
+        target.setAttribute('aria-hidden', 'true');
+        changed = true;
+      }
+      if (!input.hidden || input.getAttribute('aria-hidden') !== 'true' || input.tabIndex !== -1) {
+        input.hidden = true;
+        input.tabIndex = -1;
+        input.setAttribute('aria-hidden', 'true');
+        input.dataset.pumpManualNpshrRelocatedFromProperties = 'true';
+        changed = true;
+      }
+    });
+    return changed;
+  }
+
+  function installPumpFormulaDefenseRelocationStyles() {
+    if (typeof document === 'undefined' || document.getElementById(PUMP_FORMULA_DEFENSE_RELOCATION_STYLE_ID)) return false;
+    const style = document.createElement('style');
+    style.id = PUMP_FORMULA_DEFENSE_RELOCATION_STYLE_ID;
+    style.textContent = `
+#taskWindow [data-pump-formula-defense],
+.object-properties-task [data-pump-formula-defense],
+.persistent-object-properties-task-window [data-pump-formula-defense] {
+  display: none !important;
+}
+`;
+    document.head?.appendChild(style);
+    return true;
+  }
+
+  function hidePumpFormulaDefensePropertiesButtons(scope = null) {
+    if (typeof document === 'undefined') return false;
+    const selector = '#taskWindow [data-pump-formula-defense], .object-properties-task [data-pump-formula-defense], .persistent-object-properties-task-window [data-pump-formula-defense]';
+    const searchRoot = scope || document;
+    const candidates = [];
+    if (searchRoot?.nodeType === 1 && searchRoot.matches?.(selector)) candidates.push(searchRoot);
+    candidates.push(...Array.from(searchRoot?.querySelectorAll?.(selector) || []));
+    let changed = false;
+    candidates.forEach((button) => {
+      if (button.dataset?.pumpFormulaDefenseTaskMenu === 'true') return;
+      if (!button.hidden || button.getAttribute('aria-hidden') !== 'true' || button.tabIndex !== -1) {
+        button.hidden = true;
+        button.tabIndex = -1;
+        button.setAttribute('aria-hidden', 'true');
+        button.dataset.pumpFormulaDefenseRelocatedFromProperties = 'true';
+        changed = true;
+      }
+    });
+    return changed;
+  }
+
+  function syncPumpContextMenuAnalysisButtons() {
     if (typeof document === 'undefined') return false;
     if (!lastPumpContextMenuId) return false;
     const pumpId = resolvePumpId(lastPumpContextMenuId);
     if (!pumpId || runtimeModel()?.[pumpId]?.type !== 'pump') return false;
     const menu = document.getElementById('canvasContextMenu');
     if (!menu || menu.getAttribute('aria-hidden') === 'true' || menu.style.display === 'none') return false;
-    if (menu.querySelector('[data-pump-performance-chart-task-menu="true"]')) return false;
-    const button = createChartMenuButton(pumpId);
-    const buttons = Array.from(menu.querySelectorAll('button[role="menuitem"]'));
-    const propertiesButton = buttons.find((item) => /User Task Object Properties/i.test(item.textContent || ''));
-    if (propertiesButton?.nextSibling) menu.insertBefore(button, propertiesButton.nextSibling);
-    else menu.appendChild(button);
-    return true;
+    let changed = false;
+    changed = suppressPumpObjectPropertiesMenuButton(menu) || changed;
+    changed = suppressPumpPerformanceChartMenuButtons(menu) || changed;
+
+    let manualNpshrButton = menu.querySelector('[data-pump-manual-npshr-task-menu="true"]');
+    if (manualNpshrButton) {
+      manualNpshrButton.dataset.pumpNodeId = pumpId;
+    } else {
+      manualNpshrButton = createManualNpshrMenuButton(pumpId);
+      const firstStandardButton = Array.from(menu.querySelectorAll('button[role="menuitem"]'))
+        .find((item) => item !== manualNpshrButton && !item.dataset?.pumpFormulaDefenseTaskMenu);
+      insertMenuButtonBefore(menu, manualNpshrButton, firstStandardButton || null);
+      changed = true;
+    }
+
+    let defenseButton = menu.querySelector('[data-pump-formula-defense-task-menu="true"]');
+    if (defenseButton) {
+      defenseButton.dataset.pumpNodeId = pumpId;
+    } else {
+      defenseButton = createFormulaDefenseMenuButton(pumpId);
+      insertMenuButtonAfter(menu, defenseButton, manualNpshrButton);
+      changed = true;
+    }
+
+    const orderedButtons = Array.from(menu.querySelectorAll('button[role="menuitem"]'));
+    const firstStandardButton = orderedButtons.find((item) => (
+      item !== manualNpshrButton
+      && item !== defenseButton
+      && item.dataset?.pumpFormulaDefenseTaskMenu !== 'true'
+      && item.dataset?.pumpManualNpshrTaskMenu !== 'true'
+    ));
+    if (firstStandardButton && orderedButtons.indexOf(manualNpshrButton) > orderedButtons.indexOf(firstStandardButton)) {
+      insertMenuButtonBefore(menu, manualNpshrButton, firstStandardButton);
+      changed = true;
+    }
+    const reorderedButtons = Array.from(menu.querySelectorAll('button[role="menuitem"]'));
+    if (reorderedButtons.indexOf(defenseButton) !== reorderedButtons.indexOf(manualNpshrButton) + 1) {
+      insertMenuButtonAfter(menu, defenseButton, manualNpshrButton);
+      changed = true;
+    }
+    return changed;
   }
 
   function syncPumpPerformanceChartEntryPoints() {
-    installChartTaskWindowStyles();
-    return injectPumpContextMenuChartButton();
+    const changed = [
+      installChartTaskWindowStyles(),
+      installPumpDevelopmentUiSuppressionStyles(),
+      installPumpManualNpshrRelocationStyles(),
+      installPumpFormulaDefenseRelocationStyles(),
+      hideManualNpshrPropertiesInputs(),
+      hidePumpFormulaDefensePropertiesButtons(),
+      closePumpObjectPropertiesTaskWindows(),
+      closePumpPerformanceChartTaskWindows(),
+      syncPumpContextMenuAnalysisButtons()
+    ].some(Boolean);
+    return changed;
   }
 
   function bindChartTaskEntryPoints() {
@@ -1989,7 +2900,8 @@
       const shouldSync = records.some((record) => Array.from(record.addedNodes || []).some((node) => (
         node.nodeType === 1
         && (node.matches?.('#canvasContextMenu')
-          || node.querySelector?.('#canvasContextMenu'))
+          || node.matches?.('#taskWindow, .object-properties-task, .persistent-object-properties-task-window, .pump-performance-chart-task-window, [data-pump-formula-defense], input[data-key="designNpshr"], input[data-key="manualNpshr"], input[name="design-npshr"]')
+          || node.querySelector?.('#canvasContextMenu, #taskWindow, .object-properties-task, .persistent-object-properties-task-window, .pump-performance-chart-task-window, [data-pump-formula-defense], input[data-key="designNpshr"], input[data-key="manualNpshr"], input[name="design-npshr"]'))
       )));
       if (shouldSync) scheduleSync();
     });
@@ -2031,6 +2943,32 @@
     return true;
   }
 
+  function wrapPumpObjectPropertiesOpener(name) {
+    const current = root[name];
+    if (typeof current !== 'function' || current.__pumpObjectPropertiesSuppressedVersion === VERSION) return false;
+    const wrapped = function pumpObjectPropertiesSuppressedWrapper(...args) {
+      const pumpId = pumpIdFromOpenArgs(args);
+      if (pumpId) {
+        closePumpObjectPropertiesTaskWindows(pumpId);
+        return null;
+      }
+      return current.apply(this, args);
+    };
+    markCanonicalFunction(wrapped, `${name}PumpSuppressed`);
+    wrapped.__pumpObjectPropertiesSuppressedVersion = VERSION;
+    wrapped.__pumpPerformanceCanonicalChartOriginal = current;
+    copyRuntimePatchFlags(wrapped, current);
+    root[name] = wrapped;
+    return true;
+  }
+
+  function wrapPumpObjectPropertiesOpeners() {
+    return [
+      wrapPumpObjectPropertiesOpener('requestObjectPropertiesTaskWindowOpen'),
+      wrapPumpObjectPropertiesOpener('openObjectPropertiesTaskWindow')
+    ].some(Boolean);
+  }
+
   function installChartEndpoints() {
     let changed = false;
     if (typeof root.updatePumpChart !== 'function' || root.updatePumpChart.__pumpPerformanceCanonicalChartVersion !== VERSION) {
@@ -2045,24 +2983,28 @@
     }
 
     if (typeof root.openPumpPerformanceCurveWindow !== 'function' || root.openPumpPerformanceCurveWindow.__pumpPerformanceCanonicalChartVersion !== VERSION) {
-      root.openPumpPerformanceCurveWindow = markCanonicalFunction(function openPumpCanonicalPerformanceCurveWindow(pumpId) {
+      root.openPumpPerformanceCurveWindow = markCanonicalFunction(function openPumpCanonicalPerformanceCurveWindowDisabled(pumpId) {
         const id = resolvePumpId(pumpId);
-        ensureModal(id);
-        const chartModel = render(id);
-        scheduleRender(id, { force: true, delayMs: 140, reason: 'openPumpPerformanceCurveWindow' });
-        return chartModel;
-      }, 'openPumpPerformanceCurveWindow');
+        closePumpPerformanceChartTaskWindows(id);
+        return null;
+      }, 'openPumpPerformanceCurveWindowDisabled');
       changed = true;
     }
 
     if (typeof root.openPumpPerformanceChartTaskWindow !== 'function' || root.openPumpPerformanceChartTaskWindow.__pumpPerformanceCanonicalChartVersion !== VERSION) {
-      root.openPumpPerformanceChartTaskWindow = markCanonicalFunction(function openPumpCanonicalPerformanceChartTaskWindow(pumpId) {
+      root.openPumpPerformanceChartTaskWindow = markCanonicalFunction(function openPumpCanonicalPerformanceChartTaskWindowDisabled(pumpId) {
         const id = resolvePumpId(pumpId);
-        ensureTaskWindow(id);
-        const chartModel = render(id);
-        scheduleRender(id, { force: true, delayMs: 16, reason: 'openPumpPerformanceChartTaskWindow' });
-        return chartModel;
-      }, 'openPumpPerformanceChartTaskWindow');
+        closePumpPerformanceChartTaskWindows(id);
+        return null;
+      }, 'openPumpPerformanceChartTaskWindowDisabled');
+      changed = true;
+    }
+
+    if (typeof root.openPumpManualNpshrTaskWindow !== 'function' || root.openPumpManualNpshrTaskWindow.__pumpPerformanceCanonicalChartVersion !== VERSION) {
+      root.openPumpManualNpshrTaskWindow = markCanonicalFunction(function openPumpCanonicalManualNpshrTaskWindow(pumpId) {
+        const id = resolvePumpId(pumpId);
+        return ensureManualNpshrTaskWindow(id);
+      }, 'openPumpManualNpshrTaskWindow');
       changed = true;
     }
     return changed;
@@ -2109,6 +3051,7 @@
       }, 'updateSimulation'),
       wrapFunctionAfter('updatePumpResultReadouts', () => scheduleRender(), 'updatePumpResultReadouts'),
       installChartEndpoints(),
+      wrapPumpObjectPropertiesOpeners(),
       bindRealtimeEvents(),
       bindLiveInputRefresh(),
       bindChartTaskEntryPoints()
@@ -2169,7 +3112,11 @@
     buildChartModel,
     scheduleRender,
     ensureRuntimeGuards,
-    openTaskWindow: ensureTaskWindow,
+    openTaskWindow: (pumpId) => {
+      closePumpPerformanceChartTaskWindows(resolvePumpId(pumpId));
+      return null;
+    },
+    openManualNpshrWindow: ensureManualNpshrTaskWindow,
     syncEntryPoints: syncPumpPerformanceChartEntryPoints
   };
 

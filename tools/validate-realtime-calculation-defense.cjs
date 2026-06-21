@@ -123,7 +123,7 @@ globalThis.EngineeringParameterTaskRuntime = {
 };
 
 const runtime = require(runtimePath);
-assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v9', 'Realtime defense runtime should expose v9.');
+assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v10', 'Realtime defense runtime should expose v10.');
 assert.equal(runtime.autosolvePolicy?.mode, 'realtime-autosolve-first', 'Realtime defense must declare realtime autosolve as the primary calculation policy.');
 assert.equal(runtime.autosolvePolicy?.manualCommandRole, 'validate-refresh-evidence', 'Manual command must be treated as evidence validation/refresh.');
 assert.equal(runtime.debounceForSourceEvent('input'), 240, 'Input debounce must keep numeric edits responsive.');
@@ -135,6 +135,34 @@ assert.equal(typeof runtime.publishCanonicalCalculationState, 'function', 'Realt
 assert.equal(typeof runtime.scheduleLinkedViewRefresh, 'function', 'Realtime defense runtime should expose frame-batched linked view refresh.');
 assert.equal(typeof runtime.currentCalculationTransaction, 'function', 'Realtime defense runtime should expose current calculation transaction.');
 assert.equal(typeof runtime.markFailed, 'function', 'Realtime defense runtime should expose backend failure state marker.');
+assert.equal(typeof runtime.isCalculationField, 'function', 'Realtime defense runtime should expose calculation field classification for regression validation.');
+
+function fakeInput({ nodeId = 'P-100', field = '', id = '', name = '', inPumpCurveTable = false } = {}) {
+  return {
+    name,
+    id,
+    type: 'number',
+    disabled: false,
+    readOnly: false,
+    dataset: { nodeId, field },
+    getAttribute: () => '',
+    matches: (selector) => /input|select|textarea/.test(selector),
+    closest: (selector) => {
+      if (selector === '#pumpCurveTable' || selector.includes('#pumpCurveTable')) return inPumpCurveTable ? { id: 'pumpCurveTable' } : null;
+      if (selector.includes('data-node') || selector.includes('data-task-node-id') || selector.includes('task-window')) {
+        return { dataset: { nodeId } };
+      }
+      return null;
+    }
+  };
+}
+
+assert.equal(runtime.isCalculationField(fakeInput({ field: 'manualNpshr' })), true, 'Manual NPSHr must remain a route-only calculation input.');
+assert.equal(runtime.isCalculationField(fakeInput({ field: 'suctionElevation' })), true, 'Pump Datum Elev. must remain a route-only calculation input.');
+assert.equal(runtime.isCalculationField(fakeInput({ field: 'designFlow' })), false, 'Legacy designFlow must not trigger route-only autosolve.');
+assert.equal(runtime.isCalculationField(fakeInput({ field: 'curveData', inPumpCurveTable: true })), false, 'Pump curve table edits must not trigger route-only autosolve.');
+assert.equal(runtime.isCalculationField(fakeInput({ nodeId: 'SNK-100', field: 'pressure' })), false, 'SNK pressure must be ignored while Flow Demand Boundary is active.');
+assert.equal(runtime.isCalculationField(fakeInput({ nodeId: 'SNK-100', field: 'demandFlow' })), true, 'SNK demandFlow must trigger autosolve while Flow Demand Boundary is active.');
 
 const realtimeSource = fs.readFileSync(runtimePath, 'utf8');
 assert(
@@ -164,6 +192,7 @@ assert(realtimeSource.includes('EngineeringPerformanceRefreshGovernor'), 'Realti
 assert(realtimeSource.includes('EngineeringPumpEditFastLane'), 'Realtime defense must delegate Pump Object Properties edits to the fast lane before scheduling backend autosolve.');
 assert(realtimeSource.includes('CALCULATION_INPUT_SURFACE_SELECTOR'), 'Realtime defense must centralize calculation input surface coverage.');
 assert(realtimeSource.includes('.persistent-object-properties-task-window'), 'Realtime defense must autosolve persistent Object Properties input edits.');
+assert(realtimeSource.includes('manualNpshr'), 'Realtime defense must treat compact Manual NPSHr as a calculation input.');
 assert(realtimeSource.includes("calculationMode: 'realtime-input'"), 'Realtime defense events must explicitly identify realtime-input mode.');
 assert(realtimeSource.includes('publishCalculationStatusState'), 'Realtime defense must use a lightweight stale/calculating publisher before backend results are current.');
 assert(realtimeSource.includes('statusOnly: true'), 'Stale/calculating calculation-state events must avoid rebuilding full canonical trace rows.');
@@ -303,24 +332,24 @@ runtime.flushAutoSolve().then(async () => {
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(
-  index.includes('engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1'),
+  index.includes('engineering-realtime-calculation-defense.js?v=20260621-route-only-pump-fields1'),
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
-  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260614-pump-edit-fast-lane2')
-    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1'),
+  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane5')
+    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260621-route-only-pump-fields1'),
   'Pump edit fast lane must load before realtime calculation defense.'
 );
 assert(
-  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260617-realtime-current-without-solve1'),
+  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260621-route-only-pump-fields1'),
   'Manifest must document the realtime calculation defense cache key.'
 );
 assert(
-  index.includes('engineering-parameter-task-runtime.js?v=20260611-parameter-blocks3'),
+  index.includes('engineering-parameter-task-runtime.js?v=20260621-parameter-route-full-width3'),
   'Index must load the Parameter Task runtime with the refresh-capable cache key.'
 );
 assert(
-  manifest.includes('Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=20260611-parameter-blocks3'),
+  manifest.includes('Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=20260621-parameter-route-full-width3'),
   'Manifest must document the Parameter Task runtime cache key.'
 );
 

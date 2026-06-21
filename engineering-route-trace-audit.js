@@ -1,5 +1,5 @@
 (function registerEngineeringRouteTraceAudit(root) {
-  const VERSION = '2026.06-route-trace-audit-v28';
+  const VERSION = '2026.06-route-trace-audit-v29';
   const PANEL_ID = 'engineeringRouteTraceAuditPanel';
   const PANEL_BODY_ID = 'engineeringRouteTraceAuditPanelBody';
   const MENU_BUTTON_ID = 'menu-tools-route-trace-audit';
@@ -677,6 +677,19 @@
     return setTextIfChanged(valueCell, value) ? 1 : 0;
   }
 
+  function setSinkPropertyRowValues(windowNode, labels, value) {
+    return labels.reduce((changed, label) => changed + setSinkPropertyRowValue(windowNode, label, value), 0);
+  }
+
+  function setSinkPropertyRowsTitle(windowNode, labels, title) {
+    return labels.reduce((changed, label) => {
+      const row = sinkPropertyRowByLabel(windowNode, label);
+      if (!row || row.title === title) return changed;
+      row.title = title;
+      return changed + 1;
+    }, 0);
+  }
+
   function hideSinkPropertyRows(windowNode, labels, hidden, reason) {
     return labels.reduce((changed, label) => changed + setRowHiddenForSinkMode(sinkPropertyRowByLabel(windowNode, label), hidden, reason), 0);
   }
@@ -872,12 +885,30 @@
       const isFreeOutlet = kind === 'free-outlet';
       const isOutletPressure = kind === 'outlet-pressure';
       const pressureText = formatCanvasValue(canonical.pressureAbsBar, 'bar a');
+      const requiredBoundaryHeadText = formatCanvasValue(
+        firstFiniteValue(
+          sink.node?.results?.requiredBoundaryHead,
+          sink.node?.results?.calculationTrace?.boundary?.requiredBoundaryHead
+        ),
+        'm'
+      );
 
       changed += removeLegacyGeneratedSinkPropertyRows(windowNode);
       changed += lockSinkPropertyWindowLayout(windowNode);
       changed += setSinkPropertyRowValue(windowNode, 'Calculated Abs. Pressure', pressureText);
       changed += setSinkPropertyRowValue(windowNode, 'Boundary Abs. Pressure', pressureText);
+      changed += setSinkPropertyRowValues(windowNode, ['Required Boundary P', 'Required Sink P abs'], pressureText);
+      changed += setSinkPropertyRowValues(windowNode, ['Required Boundary Head', 'Required Sink Head'], requiredBoundaryHeadText);
       changed += setSinkPropertyRowValue(windowNode, 'Boundary Mode', sinkBoundaryModeFormLabel(canonical.mode));
+      changed += setSinkPropertyRowsTitle(
+        windowNode,
+        ['Calculated Abs. Pressure', 'Boundary Abs. Pressure'],
+        isFlowDemand
+          ? 'Flow Demand output: required absolute boundary pressure solved from required boundary head, elevation, and pipe pressure type.'
+          : isFreeOutlet
+          ? 'Free Outlet output: atmospheric absolute pressure, fixed at 0 bar g / 1.01325 bar a.'
+          : 'Outlet Pressure output: absolute boundary pressure converted from the selected pressure basis.'
+      );
 
       changed += hideSinkPropertyRows(
         windowNode,
@@ -887,7 +918,7 @@
       );
       changed += hideSinkPropertyRows(
         windowNode,
-        ['Required Boundary P', 'Required Sink P abs'],
+        ['Required Boundary P', 'Required Sink P abs', 'Required Boundary Head', 'Required Sink Head'],
         !isFlowDemand,
         'only-flow-demand'
       );
@@ -912,8 +943,8 @@
       changed += hideSinkPropertyRows(
         windowNode,
         ['Elevation', 'Sink Elevation', 'SNK Elevation'],
-        isFlowDemand,
-        'flow-demand-elevation-inherited'
+        false,
+        'active-boundary-elevation'
       );
 
       const ignoredRow = sinkPropertyRowByLabel(windowNode, 'Ignored Flow Demand');

@@ -53,7 +53,7 @@ async function waitForNpshApp(page) {
   await page.waitForFunction(() => (
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.updateSimulation === 'function'
-    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v9'
+    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v10'
     && window.CanvasContextDock?.version === 'engineering-canvas-context-dock.v2'
     && window.EngineeringRouteTraceAudit?.version
     && window.EngineeringDefenseExportPackage?.schemaVersion === 'defense-export-package.v1'
@@ -508,8 +508,7 @@ test('Analysis Report live cells refresh from current calculation state without 
       zipHeader: Array.from(bytes.slice(0, 4)).map((byte) => byte.toString(16).padStart(2, '0')).join('')
     };
   });
-  expect(workbookSnapshot.sheetNames).toContain('Case Status Summary');
-  expect(workbookSnapshot.sheetNames.length).toBeGreaterThan(2);
+  expect(workbookSnapshot.sheetNames).toEqual(['Report Text', 'Journal vs Application Comparis']);
   expect(workbookSnapshot.byteLength).toBeGreaterThan(1200);
   expect(workbookSnapshot.zipHeader).toBe('504b0304');
 
@@ -606,6 +605,13 @@ test('Simulasi 4 desktop chain renders actual methanol NPSH-risk fixture', async
 
 test('Manual NPSHr UI edit previews Simulasi 4 locally and refreshes linked report values', async ({ page }) => {
   const caseData = loadJournalCase('simulation-case-4');
+  const ariaHiddenFocusWarnings = [];
+  page.on('console', (message) => {
+    const text = message.text();
+    if (/Blocked aria-hidden/i.test(text) && /canvasContextMenu/i.test(text)) {
+      ariaHiddenFocusWarnings.push(text);
+    }
+  });
 
   await waitForNpshApp(page);
   await loadProject(page, caseData);
@@ -617,17 +623,56 @@ test('Manual NPSHr UI edit previews Simulasi 4 locally and refreshes linked repo
   await page.evaluate(({ entry, report, pumpId }) => {
     window.openJournalAnalysisTaskWindow(entry, report);
     window.currentSelectedNode = pumpId;
-    window.__npshExplicitObjectPropertiesOpenUntil = Date.now() + 2000;
-    window.requestObjectPropertiesTaskWindowOpen?.(pumpId);
-    window.openObjectPropertiesTaskWindow?.(pumpId);
-    const taskWindow = document.querySelector(`.persistent-object-properties-task-window[data-node-id="${pumpId}"]`);
-    window.renderSidebar?.(pumpId, { taskWindow, skipDismissedGuard: true });
+    window.renderSidebar?.(pumpId, { skipDismissedGuard: true });
     window.EngineeringAnalysisReportLiveRuntime?.refresh?.();
   }, { entry: caseData.entry, report: caseData.report, pumpId: caseData.pumpId });
 
   await page.waitForSelector('.journal-analysis-task-window .journal-analysis-comparison-table', { timeout: 10000 });
-  const npshrInput = page.locator(`.persistent-object-properties-task-window[data-node-id="${caseData.pumpId}"] input[data-key="designNpshr"], .persistent-object-properties-task-window[data-node-id="${caseData.pumpId}"] input[name="design-npshr"]`).first();
+  await expect(page.locator(`.persistent-object-properties-task-window[data-node-id="${caseData.pumpId}"], #taskWindow[data-node-id="${caseData.pumpId}"]`)).toHaveCount(0);
+  await page.waitForFunction(() => typeof window.openPumpManualNpshrTaskWindow === 'function', null, { timeout: 10000 });
+  await page.evaluate((pumpId) => {
+    const escape = window.CSS?.escape || ((value) => String(value).replace(/["\\]/g, '\\$&'));
+    const candidates = Array.from(document.querySelectorAll(`[data-id="${escape(pumpId)}"]`));
+    const target = candidates.find((node) => node.classList?.contains('pfd-object') || node.closest?.('svg')) || candidates[0];
+    if (!target) throw new Error(`Pump object ${pumpId} was not found on the canvas.`);
+    const rect = target.getBoundingClientRect();
+    target.dispatchEvent(new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      button: 2,
+      buttons: 2,
+      clientX: rect.left + Math.max(4, rect.width / 2),
+      clientY: rect.top + Math.max(4, rect.height / 2)
+    }));
+    window.EngineeringPumpPerformanceCanonicalChart?.syncEntryPoints?.();
+  }, caseData.pumpId);
+  await page.waitForFunction(() => {
+    const items = Array.from(document.querySelectorAll('#canvasContextMenu button[role="menuitem"]'))
+      .map((button) => button.textContent.replace(/\s+/g, ' ').trim());
+    return items.includes('Pump Datum - NPSHR') && items.includes('Pump Formula Defense');
+  }, null, { timeout: 10000 });
+  const pumpMenuItems = await page.locator('#canvasContextMenu button[role="menuitem"]').evaluateAll((buttons) => (
+    buttons.map((button) => button.textContent.replace(/\s+/g, ' ').trim())
+  ));
+  expect(pumpMenuItems).not.toContain('User Task Object Properties');
+  expect(pumpMenuItems).not.toContain('Pump Performance Chart');
+  const pumpMenuCoreOrder = pumpMenuItems.filter((item) => [
+    'Pump Datum - NPSHR',
+    'Pump Formula Defense',
+    'Connect',
+    'Delete Object'
+  ].includes(item));
+  expect(pumpMenuCoreOrder).toEqual([
+    'Pump Datum - NPSHR',
+    'Pump Formula Defense',
+    'Connect',
+    'Delete Object'
+  ]);
+  await page.locator('#canvasContextMenu button[role="menuitem"]').filter({ hasText: /^Pump Datum - NPSHR$/ }).click();
+  const npshrInput = page.locator(`.pump-manual-npshr-task-window[data-pump-node-id="${caseData.pumpId}"] input[data-field="manualNpshr"]`).first();
   await expect(npshrInput).toBeVisible({ timeout: 10000 });
+  expect(ariaHiddenFocusWarnings).toEqual([]);
 
   const requestsBeforeEdit = page.__desktopFlowChainRequests.length;
 
