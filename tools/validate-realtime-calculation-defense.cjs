@@ -332,16 +332,16 @@ runtime.flushAutoSolve().then(async () => {
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(
-  index.includes('engineering-realtime-calculation-defense.js?v=20260621-manual-npshr-autosolve1'),
+  index.includes('engineering-realtime-calculation-defense.js?v=20260621-route-only-pump-fields1'),
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
   index.indexOf('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane5')
-    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260621-manual-npshr-autosolve1'),
+    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260621-route-only-pump-fields1'),
   'Pump edit fast lane must load before realtime calculation defense.'
 );
 assert(
-  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260621-manual-npshr-autosolve1'),
+  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260621-route-only-pump-fields1'),
   'Manifest must document the realtime calculation defense cache key.'
 );
 assert(
