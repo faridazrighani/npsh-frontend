@@ -54,7 +54,7 @@ const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 
-assert.equal(runtime.version, '2026.06-route-trace-audit-v28', 'Route trace runtime should expose the SNK boundary mode canvas lock version.');
+assert.equal(runtime.version, '2026.06-route-trace-audit-v29', 'Route trace runtime should expose the SNK boundary mode canvas lock version.');
 assert.equal(typeof runtime.sinkCanonicalValues, 'function', 'SNK canonical value helper should be exported for audit completeness checks.');
 assert.equal(typeof runtime.sinkModeDisplayValue, 'function', 'SNK mode display helper should be exported for audit completeness checks.');
 assert.equal(typeof runtime.syncSinkPropertyWindowCanonicalReadouts, 'function', 'SNK properties readout sync should be exported for audit completeness checks.');
@@ -112,6 +112,7 @@ globalThis.globalModel['SNK-300'] = {
 };
 assert.equal(runtime.sinkModeDisplayValue(globalThis.globalModel['SNK-300'], null), 'Flow Demand', 'Flow Demand mode should keep the concise canvas label.');
 assert.equal(runtime.sinkCanonicalValues(globalThis.globalModel['SNK-300']).pressureAbsBar, 2.5, 'Flow Demand mode should keep required solved pressure as the canvas pressure.');
+assert.equal(runtime.sinkCanonicalValues(globalThis.globalModel['SNK-300']).elevation, 7, 'Flow Demand mode should keep SNK elevation as an active visible boundary input.');
 
 globalThis.globalModel['SNK-400'] = {
   type: 'sink',
@@ -159,7 +160,10 @@ assert(runtimeSource.includes("formatCanvasValue(canonical.pressureAbsBar, 'bar 
 assert(runtimeSource.includes("hideSinkPropertyRows("), 'SNK property window should hide mode-ignored rows.');
 assert(runtimeSource.includes("'ignored-when-not-flow-demand'"), 'SNK Flow Demand property row should be hidden when the selected mode is not Flow Demand.');
 assert(runtimeSource.includes("'only-outlet-pressure-boundary'"), 'SNK pressure input rows should be hidden unless Outlet Pressure Boundary is selected.');
-assert(runtimeSource.includes("'flow-demand-elevation-inherited'"), 'SNK Elevation row should be hidden as an inherited/internal value in Flow Demand mode.');
+assert(!runtimeSource.includes("'flow-demand-elevation-inherited'"), 'SNK Elevation row must not be hidden as inherited/internal in Flow Demand mode.');
+assert(runtimeSource.includes("'active-boundary-elevation'"), 'SNK Elevation row should be explicitly kept visible for all selected sink boundary modes.');
+assert(runtimeSource.includes("setSinkPropertyRowValues(windowNode, ['Required Boundary P', 'Required Sink P abs']"), 'Flow Demand properties should sync required boundary pressure readouts.');
+assert(runtimeSource.includes("setSinkPropertyRowValues(windowNode, ['Required Boundary Head', 'Required Sink Head']"), 'Flow Demand properties should sync required boundary head readouts.');
 assert(runtimeSource.includes('function removeLegacyGeneratedSinkPropertyRows'), 'SNK property window sync should remove old generated rows that changed the original SINK layout.');
 assert(runtimeSource.includes("const labels = ['Evaluated Flow', 'Outlet Pressure Assumption'];"), 'SNK property window should remove previous generated Evaluated Flow and Outlet Pressure Assumption rows.');
 assert(!runtimeSource.includes("upsertSinkPropertyReadout(windowNode, 'Evaluated Flow'"), 'SNK property window should not inject Evaluated Flow into the old SINK conditions layout.');
@@ -180,7 +184,7 @@ assert(runtimeSource.includes('function syncSinkBoundaryModeOptions'), 'SNK Boun
 assert(!runtimeSource.includes('cloneNode'), 'SNK task window layout lock should not clone property rows.');
 assert(!runtimeSource.includes('sinkPropertyReadoutContainer'), 'SNK task window layout lock should not search for insertion containers.');
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260616-snk-outlet-feasibility1'),
+  index.includes('engineering-route-trace-audit.js?v=20260621-snk-boundary-logic1'),
   'Index must load the route trace audit runtime with the SNK boundary mode lock cache key.'
 );
 assert(
