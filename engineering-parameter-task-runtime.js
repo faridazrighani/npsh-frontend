@@ -778,8 +778,8 @@
     layout.dataset.parameterTaskBlock = block;
     layout.append(
       createRouteSummaryCard(block, snapshot),
-      createFluidBasisCard(snapshot.fluid),
       createPipeTraceCard(block, snapshot),
+      createFluidBasisCard(snapshot.fluid),
       block === "suction" ? createSuctionResultCard(snapshot) : createDischargeResultCard(snapshot)
     );
     return layout;
@@ -932,6 +932,10 @@
   color: #17395a;
   font-size: 11.5px;
   line-height: 1.45;
+}
+.parameter-task-layout.parameter-suction-layout,
+.parameter-task-layout.parameter-discharge-layout {
+  grid-template-columns: minmax(0, 1fr);
 }
 .parameter-task-card {
   min-width: 0;
