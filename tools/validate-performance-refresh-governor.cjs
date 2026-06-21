@@ -121,7 +121,7 @@ assert(
   index.includes('engineering-route-trace-audit.js?v=20260621-snk-boundary-logic1')
     && index.includes('engineering-performance-refresh-governor.js?v=20260614-refresh-governor4')
     && index.includes('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane5')
-    && index.includes('engineering-realtime-calculation-defense.js?v=20260621-manual-npshr-autosolve1'),
+    && index.includes('engineering-realtime-calculation-defense.js?v=20260621-route-only-pump-fields1'),
   'index.html must keep route audit, governor, pump edit fast lane, and realtime defense cache-busted.'
 );
 assert(index.includes('engineering-bilingual-improvements.js?v=20260617-bilingual-realtime-first2'), 'index.html must cache-bust the realtime-first bilingual runtime.');
@@ -133,14 +133,14 @@ assert(
   index.indexOf('engineering-performance-refresh-governor.js?v=20260614-refresh-governor4')
       < index.indexOf('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane5')
     && index.indexOf('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane5')
-      < index.indexOf('engineering-realtime-calculation-defense.js?v=20260621-manual-npshr-autosolve1'),
+      < index.indexOf('engineering-realtime-calculation-defense.js?v=20260621-route-only-pump-fields1'),
   'Performance Refresh Governor and Pump edit fast lane must load before realtime defense starts scheduling linked view refreshes.'
 );
 assert(
   index.indexOf('engineering-route-trace-audit.js?v=20260621-snk-boundary-logic1')
     > index.indexOf('const diagnosticScripts = [')
     && index.indexOf('engineering-route-trace-audit.js?v=20260621-snk-boundary-logic1')
-      > index.indexOf('engineering-realtime-calculation-defense.js?v=20260621-manual-npshr-autosolve1'),
+      > index.indexOf('engineering-realtime-calculation-defense.js?v=20260621-route-only-pump-fields1'),
   'Route trace audit must remain deferred with diagnostic scripts so PageSpeed critical-path work stays calculation-only.'
 );
 assert.equal(
