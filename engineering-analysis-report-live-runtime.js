@@ -1,7 +1,7 @@
 (function installEngineeringAnalysisReportLiveRuntime(root) {
   'use strict';
 
-  const VERSION = '2026.06-analysis-report-live13';
+  const VERSION = '2026.06-analysis-report-live14';
   const REFRESH_MS = 3000;
   const ACTIVE_SELECTOR = '.journal-analysis-task-window, .journal-analysis-report-panel';
   const RESPONSIVE_STYLE_ID = 'engineeringAnalysisReportLiveResponsiveStyle';
@@ -522,7 +522,7 @@
       npshTraceInterpretation.absoluteMarginLimit,
       pumpResults.npshMarginLimit,
       pumpProps.minNpshMargin,
-      0.6
+      1.0
     );
     const computedRequiredNpsha = npshr !== null && marginRatioLimit !== null && absoluteMarginLimit !== null
       ? Math.max(npshr * marginRatioLimit, npshr + absoluteMarginLimit)
@@ -561,11 +561,17 @@
     const routeCalculationStatus = cleanText(npsh.routeCalculationStatus || pumpResults.routeCalculationStatus || npshTraceInterpretation.routeCalculationStatus || (pumpFlow !== null ? 'Calculated' : 'Input Required'));
     const npshaCalculationStatus = cleanText(npsh.npshaCalculationStatus || pumpResults.npshaCalculationStatus || npshTraceInterpretation.npshaCalculationStatus || (npsha !== null ? 'Calculated' : 'Input Required'));
     const requiredPumpHeadStatus = cleanText(npsh.requiredPumpHeadStatus || pumpResults.requiredPumpHeadStatus || npshTraceInterpretation.requiredPumpHeadStatus || (pumpHead !== null ? 'Calculated' : 'Input Required'));
-    const maxAllowableNpshrStatus = cleanText(npsh.maxAllowableNpshrStatus || pumpResults.maxAllowableNpshrStatus || npshTraceInterpretation.maxAllowableNpshrStatus || (maxAllowableNpshr !== null ? 'Calculated' : 'Review Required'));
+    const rawMaxAllowableNpshrStatus = cleanText(npsh.maxAllowableNpshrStatus || pumpResults.maxAllowableNpshrStatus || npshTraceInterpretation.maxAllowableNpshrStatus || '');
+    const maxAllowableNpshrStatus = maxAllowableNpshr !== null
+      ? (/review|required|input/i.test(rawMaxAllowableNpshrStatus) ? 'Calculated' : (rawMaxAllowableNpshrStatus || 'Calculated'))
+      : (rawMaxAllowableNpshrStatus || 'Review Required');
     const computedManualComparisonStatus = npshr !== null
       ? (maxAllowableNpshr !== null ? (npshr <= maxAllowableNpshr ? 'Safe' : 'Warning') : 'Review Required')
       : 'Not Provided';
-    const manualNpshrComparisonStatus = cleanText(npsh.manualNpshrComparisonStatus || pumpResults.manualNpshrComparisonStatus || npshTraceInterpretation.manualNpshrComparisonStatus || computedManualComparisonStatus);
+    const rawManualNpshrComparisonStatus = cleanText(npsh.manualNpshrComparisonStatus || pumpResults.manualNpshrComparisonStatus || npshTraceInterpretation.manualNpshrComparisonStatus || '');
+    const manualNpshrComparisonStatus = maxAllowableNpshr !== null && npshr !== null
+      ? computedManualComparisonStatus
+      : (rawManualNpshrComparisonStatus || computedManualComparisonStatus);
     const vendorCurveVerificationStatus = cleanText(npsh.vendorCurveVerificationStatus || pumpResults.vendorCurveVerificationStatus || npshTraceInterpretation.vendorCurveVerificationStatus || 'Not Required for route calculation');
     const suctionPressure = firstNumber(npsh.suctionPressureAbs, pumpResults.suctionPressure);
     const dischargePressure = firstNumber(pumpResults.dischargePressure);

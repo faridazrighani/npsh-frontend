@@ -35,6 +35,16 @@
     'npshAssessmentMode',
     'optimizationMode'
   ]);
+  const PUMP_NPSH_MARGIN_USER_DEFINED = 'User Defined';
+  const PUMP_NPSH_MARGIN_GENERAL_PURPOSE = 'General Purpose';
+  const PUMP_NPSH_MARGIN_PRESETS = {
+    'General Purpose': { por: { ratio: 1.05, margin: 0.6 }, aor: { ratio: 1.1, margin: 1.0 } },
+    'Petroleum/Hydrocarbon': { por: { ratio: 1.1, margin: 1.0 }, aor: { ratio: 1.1, margin: 1.0 } },
+    'Chemical Process': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.2, margin: 1.0 } },
+    'Water/Wastewater': { por: { ratio: 1.1, margin: 1.0 }, aor: { ratio: 1.2, margin: 1.5 } },
+    'Building Services': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.1, margin: 0.6 } },
+    'Irrigation': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.2, margin: 1.0 } }
+  };
   let chartTimer = 0;
   let readoutTimer = 0;
   let previewSequence = 0;
@@ -197,12 +207,46 @@
     return pressureHead + (sourceElevation - pumpDatum) + velocityHead - suctionLoss - vaporHead;
   }
 
+  function pumpNpshRegionKey(pump, evaluation) {
+    const status = normalizeText(
+      evaluation?.operatingRegion
+      || evaluation?.marginCriteria?.operatingRegionStatus
+      || evaluation?.criteria?.operatingRegionStatus
+      || pump?.results?.operatingRegion
+      || pump?.results?.npshMarginBasisRegion
+    ).toUpperCase();
+    return status === 'POR' ? 'por' : 'aor';
+  }
+
+  function standardMarginCriteria(basis, pump, evaluation) {
+    const preset = PUMP_NPSH_MARGIN_PRESETS[basis] || PUMP_NPSH_MARGIN_PRESETS[PUMP_NPSH_MARGIN_GENERAL_PURPOSE];
+    const selected = preset?.[pumpNpshRegionKey(pump, evaluation)] || preset?.aor || preset?.por;
+    return {
+      basis: preset === PUMP_NPSH_MARGIN_PRESETS[PUMP_NPSH_MARGIN_GENERAL_PURPOSE] && !PUMP_NPSH_MARGIN_PRESETS[basis]
+        ? PUMP_NPSH_MARGIN_GENERAL_PURPOSE
+        : basis,
+      ratio: firstFinite(selected?.ratio, 1.1) || 1.1,
+      margin: firstFinite(selected?.margin, 1.0) || 1.0,
+      valid: true
+    };
+  }
+
   function marginCriteria(pump, evaluation) {
     const criteria = evaluation.marginCriteria || evaluation.criteria || {};
+    const basis = normalizeText(pump.props?.npshMarginBasis || criteria.basis || PUMP_NPSH_MARGIN_GENERAL_PURPOSE) || PUMP_NPSH_MARGIN_GENERAL_PURPOSE;
+    if (basis !== PUMP_NPSH_MARGIN_USER_DEFINED) {
+      return standardMarginCriteria(basis, pump, evaluation);
+    }
+    const ratio = firstFinite(pump.props?.minNpshMarginRatio, criteria.ratio);
+    const margin = firstFinite(pump.props?.minNpshMargin, criteria.margin);
+    if (ratio === null && margin === null) {
+      return standardMarginCriteria(PUMP_NPSH_MARGIN_GENERAL_PURPOSE, pump, evaluation);
+    }
     return {
-      basis: pump.props?.npshMarginBasis || criteria.basis || 'General Purpose',
-      ratio: firstFinite(pump.props?.minNpshMarginRatio, criteria.ratio, 1.05) || 1.05,
-      margin: firstFinite(pump.props?.minNpshMargin, criteria.margin, 0.6) || 0.6
+      basis,
+      ratio,
+      margin,
+      valid: ratio !== null && margin !== null
     };
   }
 
@@ -265,27 +309,47 @@
       pump.results.npshr = evaluation.npshr;
       pump.results.npshRequired = evaluation.npshr;
     }
-    if (npsha !== null && npshr !== null) {
+    if (npsha !== null && npshr !== null && criteria.valid) {
       const required = Math.max(npshr * criteria.ratio, npshr + criteria.margin);
       const margin = npsha - npshr;
       const ratio = npshr > 0 ? npsha / npshr : null;
       const excess = npsha - required;
+      const maxNpshrByRatio = criteria.ratio > 0 ? npsha / criteria.ratio : null;
+      const maxNpshrByMargin = npsha - criteria.margin;
+      const maxAllowableNpshr = maxNpshrByRatio !== null ? Math.min(maxNpshrByRatio, maxNpshrByMargin) : null;
       const status = npsha < npshr ? 'Cavitation Risk' : (npsha < required ? 'Warning' : 'Safe');
+      const manualStatus = maxAllowableNpshr !== null ? (npshr <= maxAllowableNpshr ? 'Safe' : 'Warning') : 'Review Required';
       evaluation.requiredNpsha = round(required, 6);
       evaluation.npshMargin = round(margin, 6);
       evaluation.npshRatio = round(ratio, 6);
       evaluation.npshExcess = round(excess, 6);
+      evaluation.maxNpshrByRatio = round(maxNpshrByRatio, 6);
+      evaluation.maxNpshrByMargin = round(maxNpshrByMargin, 6);
+      evaluation.maxAllowableNpshr = round(maxAllowableNpshr, 6);
       evaluation.hydraulicStatus = status;
       evaluation.engineeringStatus = status;
       evaluation.status = status;
       evaluation.marginCriteria = criteria;
+      evaluation.maxAllowableNpshrStatus = 'Calculated';
+      evaluation.manualNpshrComparisonStatus = manualStatus;
       pump.results.requiredNpsha = evaluation.requiredNpsha;
       pump.results.npshMargin = evaluation.npshMargin;
       pump.results.npshRatio = evaluation.npshRatio;
       pump.results.npshExcess = evaluation.npshExcess;
+      pump.results.maxNpshrByRatio = evaluation.maxNpshrByRatio;
+      pump.results.maxNpshrByMargin = evaluation.maxNpshrByMargin;
+      pump.results.maxAllowableNpshr = evaluation.maxAllowableNpshr;
       pump.results.hydraulicNpshStatus = status;
       pump.results.engineeringStatus = status;
       pump.results.cavitationStatus = status;
+      pump.results.maxAllowableNpshrStatus = evaluation.maxAllowableNpshrStatus;
+      pump.results.manualNpshrComparisonStatus = evaluation.manualNpshrComparisonStatus;
+    } else if (npsha !== null && npshr !== null) {
+      evaluation.marginCriteria = criteria;
+      evaluation.maxAllowableNpshrStatus = 'Margin criteria required';
+      evaluation.manualNpshrComparisonStatus = 'Margin criteria required';
+      pump.results.maxAllowableNpshrStatus = evaluation.maxAllowableNpshrStatus;
+      pump.results.manualNpshrComparisonStatus = evaluation.manualNpshrComparisonStatus;
     }
     const head = firstFinite(pump.props?.designHead, evaluation.pumpHead, pump.results.pumpHeadAtFlow, pump.results.head);
     if (flow !== null) {
@@ -343,6 +407,8 @@
     if (lower.includes('npsh ratio')) return formatNumber(evaluation.npshRatio, 4);
     if (lower.includes('effective npsh ratio')) return formatNumber(marginCriteria(pump, evaluation).ratio, 3);
     if (lower.includes('effective npsh margin')) return `${formatNumber(marginCriteria(pump, evaluation).margin, 3)} m`;
+    if (lower.includes('maximum allowable npshr') || lower.includes('max allowable npshr')) return `${formatNumber(evaluation.maxAllowableNpshr, 4)} m`;
+    if (lower.includes('manual npshr comparison')) return evaluation.manualNpshrComparisonStatus || '-';
     return null;
   }
 

@@ -337,9 +337,9 @@
       requiredNpsha: evaluation.requiredNpsha ?? evaluation.requiredNpshaForMargin ?? results.requiredNpsha,
       npshrSource: displayText(evaluation.npshrSource || results.npshrSource || props.npshrSourceMode || props.curveDataSource, "-"),
       dataConfidence: displayText(evaluation.dataConfidence || results.dataConfidence || results.npshrDataConfidence, "-"),
-      marginBasis: displayText(evaluation.npshMarginBasis || props.npshMarginBasis || marginCriteria.basis, "Selected margin basis"),
-      minRatio: marginCriteria.minRatio ?? evaluation.minNpshMarginRatio ?? props.minNpshMarginRatio,
-      minMargin: marginCriteria.minMargin ?? evaluation.minNpshMargin ?? props.minNpshMargin,
+      marginBasis: displayText(marginCriteria.basis || evaluation.npshMarginBasis || props.npshMarginBasis, "Selected margin basis"),
+      minRatio: marginCriteria.ratio ?? marginCriteria.minRatio ?? evaluation.minNpshMarginRatio ?? props.minNpshMarginRatio,
+      minMargin: marginCriteria.margin ?? marginCriteria.minMargin ?? evaluation.minNpshMargin ?? props.minNpshMargin,
       warnings: [
         ...(Array.isArray(results.warnings) ? results.warnings : []),
         ...(Array.isArray(evaluation.warnings) ? evaluation.warnings : [])

@@ -2,6 +2,7 @@
   "use strict";
 
   const userDefined = "User Defined";
+  const generalPurpose = "General Purpose";
   const marginPdf = "book_pdf/Hydraulic_Institute_2024_Rotodynamic_Pumps_Guideline_for_NPSH_Margin.pdf";
   const presets = Object.freeze({
     "General Purpose": {
@@ -49,12 +50,15 @@
     const configuredUserDefined = typeof global.PUMP_NPSH_MARGIN_USER_DEFINED === "string"
       ? global.PUMP_NPSH_MARGIN_USER_DEFINED
       : userDefined;
-    const basis = rawProps.npshMarginBasis || configuredUserDefined;
+    const basis = rawProps.npshMarginBasis || generalPurpose;
 
     if (basis === configuredUserDefined) {
       const ratio = numberOrNull(rawProps.minNpshMarginRatio);
       const margin = numberOrNull(rawProps.minNpshMargin);
       const valid = Number.isFinite(ratio) && Number.isFinite(margin);
+      if (!valid && !Number.isFinite(ratio) && !Number.isFinite(margin)) {
+        return getEffectivePumpNpshMarginCriteria({ ...rawProps, npshMarginBasis: generalPurpose }, regionStatus);
+      }
       return {
         basis,
         regionBasis: "user",

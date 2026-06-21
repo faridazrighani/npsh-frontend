@@ -262,11 +262,11 @@ globalThis.updatePumpChart('P-100');
 assert.strictEqual(lateRendererCalls, 0, 'Audit chart draw must not call the old fallback renderer.');
 
 assert(
-  index.includes('engineering-pump-performance-chart-audit.js?v=20260621-pump-chart-audit27'),
+  index.includes('engineering-pump-performance-chart-audit.js?v=20260621-pump-chart-audit28'),
   'Index must cache-bust the pump performance chart audit runtime.'
 );
 assert(
-  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260621-canonical-chart21'),
+  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260621-canonical-chart22'),
   'Audit runtime must load the canonical operational chart renderer after audit guards.'
 );
 assert.strictEqual(typeof audit.loadCanonicalChartRenderer, 'function', 'Audit runtime must expose canonical renderer loader.');
@@ -320,6 +320,10 @@ assert(canonicalSource.includes('pump-manual-npshr-task-window'), 'Manual NPSHr 
 assert(canonicalSource.includes('Pump Datum Elev.'), 'Manual NPSHr task window must include Pump Datum Elev. input label.');
 assert(canonicalSource.includes("field: 'suctionElevation'"), 'Manual NPSHr task window must bind Pump Datum Elev. to pump.props.suctionElevation.');
 assert(canonicalSource.includes('formatPumpDatumInputValue'), 'Manual NPSHr task window must hydrate Pump Datum Elev. from the current pump datum.');
+assert(canonicalSource.includes('NPSH Margin Basis'), 'Pump Datum - NPSHR task window must expose NPSH Margin Basis.');
+assert(canonicalSource.includes("field: 'npshMarginBasis'"), 'Pump Datum - NPSHR task window must bind NPSH Margin Basis to pump.props.npshMarginBasis.');
+assert(canonicalSource.includes('Min NPSH Ratio'), 'Pump Datum - NPSHR task window must expose Min NPSH Ratio.');
+assert(canonicalSource.includes('Min NPSH Margin'), 'Pump Datum - NPSHR task window must expose Min NPSH Margin.');
 assert(canonicalSource.includes('createFormulaDefenseMenuButton'), 'Pump context menu must gain a Pump Formula Defense task-window menu item.');
 assert(canonicalSource.includes('data-pump-formula-defense-task-menu'), 'Pump Formula Defense must be exposed from the pump context menu.');
 assert(canonicalSource.includes('openPumpFormulaDefenseTaskWindow'), 'Pump Formula Defense context menu item must reuse the existing task-window opener.');
@@ -344,7 +348,7 @@ assert(canonicalSource.includes('Curve Mode:'), 'Canonical footer metadata must 
 assert(canonicalSource.includes('chart.bottom + (compact ? 38 : 44)'), 'X-axis label must be positioned from the plot footer, not absolute canvas bottom.');
 assert(canonicalSource.includes('chart.bottom + 58'), 'Compact footer metadata must be below the x-axis label.');
 assert(!canonicalSource.includes('height - 44 + index * 11'), 'Footer metadata must not return to the old axis-overlap position.');
-assert.strictEqual(canonical.version, 'pump-performance-canonical-chart.v19', 'Canonical chart runtime must expose the smart engineering chart version.');
+assert.strictEqual(canonical.version, 'pump-performance-canonical-chart.v20', 'Canonical chart runtime must expose the smart engineering chart version.');
 assert.strictEqual(typeof canonical.ensureRuntimeGuards, 'function', 'Canonical chart runtime must expose self-healing realtime guards.');
 assert.strictEqual(typeof canonical.openTaskWindow, 'function', 'Canonical chart runtime must expose a disabled Pump Performance Chart task-window guard.');
 assert.strictEqual(typeof canonical.syncEntryPoints, 'function', 'Canonical chart runtime must expose entry-point synchronization for menu/buttons.');
@@ -365,7 +369,7 @@ globalThis.updatePumpChart = function overwrittenPumpChartRenderer() {
 canonical.ensureRuntimeGuards();
 assert.strictEqual(
   globalThis.updatePumpChart.__pumpPerformanceCanonicalChartVersion,
-  'pump-performance-canonical-chart.v19',
+  'pump-performance-canonical-chart.v20',
   'Canonical renderer must reclaim updatePumpChart after any late override.'
 );
 

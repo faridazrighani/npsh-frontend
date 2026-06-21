@@ -1,8 +1,9 @@
 !function (global) {
   "use strict";
 
-  const VERSION = "pump-npsh-acceptance.v1";
+  const VERSION = "pump-npsh-acceptance.v2";
   const USER_DEFINED = "User Defined";
+  const GENERAL_PURPOSE = "General Purpose";
   const MARGIN_PDF = "book_pdf/Hydraulic_Institute_2024_Rotodynamic_Pumps_Guideline_for_NPSH_Margin.pdf";
   const DEFAULT_RANGE = Object.freeze({
     porMinPercent: 70,
@@ -161,12 +162,15 @@
     const configuredUserDefined = typeof global.PUMP_NPSH_MARGIN_USER_DEFINED === "string"
       ? global.PUMP_NPSH_MARGIN_USER_DEFINED
       : USER_DEFINED;
-    const basis = rawProps.npshMarginBasis || configuredUserDefined;
+    const basis = rawProps.npshMarginBasis || GENERAL_PURPOSE;
 
     if (basis === configuredUserDefined) {
       const ratio = numberOrNull(rawProps.minNpshMarginRatio);
       const margin = numberOrNull(rawProps.minNpshMargin);
       const valid = Number.isFinite(ratio) && Number.isFinite(margin);
+      if (!valid && !Number.isFinite(ratio) && !Number.isFinite(margin)) {
+        return getEffectivePumpNpshMarginCriteria({ ...rawProps, npshMarginBasis: GENERAL_PURPOSE }, regionStatus);
+      }
       return {
         basis,
         regionBasis: "user",

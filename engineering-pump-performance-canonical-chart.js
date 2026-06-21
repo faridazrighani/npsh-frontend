@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-performance-canonical-chart.v19';
+  const VERSION = 'pump-performance-canonical-chart.v20';
   const PUMP_FORMULA_DEFENSE_RELOCATION_STYLE_ID = 'pump-formula-defense-relocation-style';
   const PUMP_MANUAL_NPSHR_RELOCATION_STYLE_ID = 'pump-manual-npshr-relocation-style';
   const PUMP_DEVELOPMENT_UI_SUPPRESSION_STYLE_ID = 'pump-development-ui-suppression-style';
@@ -43,6 +43,25 @@
     systemHead: { label: 'System Curve', color: '#dc2626', width: 2, dash: [6, 5] },
     npsha: { label: 'NPSHa', color: '#0f766e', width: 1.8 },
     npshr: { label: 'NPSHr', color: '#b45309', width: 1.8 }
+  };
+  const PUMP_NPSH_MARGIN_USER_DEFINED = 'User Defined';
+  const PUMP_NPSH_MARGIN_GENERAL_PURPOSE = 'General Purpose';
+  const PUMP_NPSH_MARGIN_BASIS_OPTIONS = [
+    'General Purpose',
+    'Petroleum/Hydrocarbon',
+    'Chemical Process',
+    'Water/Wastewater',
+    'Building Services',
+    'Irrigation',
+    'User Defined'
+  ];
+  const PUMP_NPSH_MARGIN_PRESETS = {
+    'General Purpose': { por: { ratio: 1.05, margin: 0.6 }, aor: { ratio: 1.1, margin: 1.0 } },
+    'Petroleum/Hydrocarbon': { por: { ratio: 1.1, margin: 1.0 }, aor: { ratio: 1.1, margin: 1.0 } },
+    'Chemical Process': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.2, margin: 1.0 } },
+    'Water/Wastewater': { por: { ratio: 1.1, margin: 1.0 }, aor: { ratio: 1.2, margin: 1.5 } },
+    'Building Services': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.1, margin: 0.6 } },
+    'Irrigation': { por: { ratio: 1.1, margin: 0.6 }, aor: { ratio: 1.2, margin: 1.0 } }
   };
 
   function runtimeModel() {
@@ -1730,7 +1749,8 @@
 .pump-manual-npshr-field + .pump-manual-npshr-field {
   margin-top: 10px;
 }
-.pump-manual-npshr-field input {
+.pump-manual-npshr-field input,
+.pump-manual-npshr-field select {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
@@ -1742,7 +1762,12 @@
   color: #14283a;
   font: inherit;
 }
-.pump-manual-npshr-field input:focus {
+.pump-manual-npshr-field input:read-only {
+  background: #eef6ff;
+  color: #31536d;
+}
+.pump-manual-npshr-field input:focus,
+.pump-manual-npshr-field select:focus {
   border-color: #2879b8;
   box-shadow: 0 0 0 2px rgba(40, 121, 184, 0.16);
   outline: none;
@@ -1982,6 +2007,66 @@
     return canvas;
   }
 
+  function cleanText(value) {
+    return String(value ?? '').replace(/\s+/g, ' ').trim();
+  }
+
+  function formatNumericInputValue(value, digits = 6) {
+    const number = toNumber(value);
+    return number === null ? '' : Number(number.toFixed(digits)).toString();
+  }
+
+  function marginRegionKey(pump = {}) {
+    const evaluation = pump.results?.npshEvaluation || {};
+    const status = cleanText(
+      pump.results?.operatingRegion
+      || pump.results?.npshMarginBasisRegion
+      || evaluation.marginCriteria?.operatingRegionStatus
+      || evaluation.criteria?.operatingRegionStatus
+      || ''
+    ).toUpperCase();
+    return status === 'POR' ? 'por' : 'aor';
+  }
+
+  function pumpHasUserDefinedMarginValues(props = {}) {
+    return firstNumber(props.minNpshMarginRatio) !== null || firstNumber(props.minNpshMargin) !== null;
+  }
+
+  function marginBasisForPump(pump = {}) {
+    const props = pump.props || {};
+    const raw = cleanText(props.npshMarginBasis);
+    if (!raw) return PUMP_NPSH_MARGIN_GENERAL_PURPOSE;
+    if (raw === PUMP_NPSH_MARGIN_USER_DEFINED && !pumpHasUserDefinedMarginValues(props)) {
+      return PUMP_NPSH_MARGIN_GENERAL_PURPOSE;
+    }
+    return PUMP_NPSH_MARGIN_BASIS_OPTIONS.includes(raw) ? raw : PUMP_NPSH_MARGIN_GENERAL_PURPOSE;
+  }
+
+  function marginPresetForPump(pump = {}, basis = '') {
+    const selectedBasis = basis || marginBasisForPump(pump);
+    if (selectedBasis === PUMP_NPSH_MARGIN_USER_DEFINED) return null;
+    const preset = PUMP_NPSH_MARGIN_PRESETS[selectedBasis] || PUMP_NPSH_MARGIN_PRESETS[PUMP_NPSH_MARGIN_GENERAL_PURPOSE];
+    return preset?.[marginRegionKey(pump)] || preset?.aor || preset?.por || null;
+  }
+
+  function formatMarginRatioInputValue(pumpId) {
+    const pump = runtimeModel()?.[resolvePumpId(pumpId)] || {};
+    const basis = marginBasisForPump(pump);
+    const value = basis === PUMP_NPSH_MARGIN_USER_DEFINED
+      ? firstNumber(pump.props?.minNpshMarginRatio)
+      : firstNumber(marginPresetForPump(pump, basis)?.ratio);
+    return formatNumericInputValue(value, 6);
+  }
+
+  function formatMarginAbsoluteInputValue(pumpId) {
+    const pump = runtimeModel()?.[resolvePumpId(pumpId)] || {};
+    const basis = marginBasisForPump(pump);
+    const value = basis === PUMP_NPSH_MARGIN_USER_DEFINED
+      ? firstNumber(pump.props?.minNpshMargin)
+      : firstNumber(marginPresetForPump(pump, basis)?.margin);
+    return formatNumericInputValue(value, 6);
+  }
+
   function formatManualNpshrInputValue(pumpId) {
     const pump = runtimeModel()?.[resolvePumpId(pumpId)] || {};
     const evaluation = pump.results?.npshEvaluation || {};
@@ -1992,7 +2077,7 @@
       pump.results?.npshr,
       pump.results?.npshRequired
     );
-    return value === null ? '' : Number(value.toFixed(6)).toString();
+    return formatNumericInputValue(value, 6);
   }
 
   function formatPumpDatumInputValue(pumpId) {
@@ -2004,7 +2089,7 @@
       pump.props?.elevation,
       tracePump.elevation
     );
-    return value === null ? '' : Number(value.toFixed(6)).toString();
+    return formatNumericInputValue(value, 6);
   }
 
   function refreshManualNpshrTaskWindow(taskWindow, pumpId) {
@@ -2012,12 +2097,30 @@
     let changed = false;
     [
       ['manualNpshr', formatManualNpshrInputValue(pumpId)],
-      ['suctionElevation', formatPumpDatumInputValue(pumpId)]
+      ['suctionElevation', formatPumpDatumInputValue(pumpId)],
+      ['minNpshMarginRatio', formatMarginRatioInputValue(pumpId)],
+      ['minNpshMargin', formatMarginAbsoluteInputValue(pumpId)]
     ].forEach(([field, nextValue]) => {
       const input = taskWindow.querySelector(`input[data-field="${field}"]`);
       if (!input || document.activeElement === input || input.value === nextValue) return;
       input.value = nextValue;
       changed = true;
+    });
+    const pump = runtimeModel()?.[resolvePumpId(pumpId)] || {};
+    const basis = marginBasisForPump(pump);
+    const select = taskWindow.querySelector('select[data-field="npshMarginBasis"]');
+    if (select && document.activeElement !== select && select.value !== basis) {
+      select.value = basis;
+      changed = true;
+    }
+    const userDefined = basis === PUMP_NPSH_MARGIN_USER_DEFINED;
+    ['minNpshMarginRatio', 'minNpshMargin'].forEach((field) => {
+      const input = taskWindow.querySelector(`input[data-field="${field}"]`);
+      if (!input) return;
+      if (input.readOnly === userDefined) {
+        input.readOnly = !userDefined;
+        changed = true;
+      }
     });
     return changed;
   }
@@ -2062,7 +2165,7 @@
     taskWindow.dataset.nodeId = id;
     taskWindow.setAttribute('role', 'dialog');
     taskWindow.setAttribute('aria-modal', 'false');
-    taskWindow.setAttribute('aria-label', 'Manual NPSHr');
+    taskWindow.setAttribute('aria-label', 'Pump Datum - NPSHR');
     taskWindow.setAttribute('tabindex', '-1');
 
     const pumpProperties = document.getElementById('taskWindow');
@@ -2077,20 +2180,20 @@
     const header = document.createElement('div');
     header.className = 'task-window-header pump-manual-npshr-window-header';
     const title = document.createElement('span');
-    title.textContent = `Manual NPSHr - ${id || '-'}`;
+    title.textContent = `Pump Datum - NPSHR - ${id || '-'}`;
     const actions = document.createElement('div');
     actions.className = 'task-window-actions';
     const close = document.createElement('button');
     close.type = 'button';
     close.className = 'task-window-close';
     close.textContent = 'X';
-    close.setAttribute('aria-label', 'Close Manual NPSHr window');
+    close.setAttribute('aria-label', 'Close Pump Datum - NPSHR window');
     actions.append(close);
     header.append(title, actions);
 
     const body = document.createElement('div');
     body.className = 'task-window-body pump-manual-npshr-task-body';
-    const createNumericField = ({ label, field, key, name, value, min = '', step = '0.001', ariaLabel = label }) => {
+    const createNumericField = ({ label, field, key, name, value, unitText = 'm', min = '', step = '0.001', readOnly = false, ariaLabel = label }) => {
       const fieldNode = document.createElement('label');
       fieldNode.className = 'pump-manual-npshr-field';
       const labelText = document.createElement('span');
@@ -2107,13 +2210,42 @@
       inputNode.dataset.nodeId = id;
       inputNode.dataset.pumpNodeId = id;
       inputNode.value = value;
+      inputNode.readOnly = !!readOnly;
       inputNode.setAttribute('aria-label', ariaLabel);
       const unit = document.createElement('span');
       unit.className = 'pump-manual-npshr-unit';
-      unit.textContent = 'm';
+      unit.textContent = unitText;
       fieldNode.append(labelText, inputNode, unit);
       return { fieldNode, inputNode };
     };
+    const createSelectField = ({ label, field, key, name, value, options, ariaLabel = label }) => {
+      const fieldNode = document.createElement('label');
+      fieldNode.className = 'pump-manual-npshr-field';
+      const labelText = document.createElement('span');
+      labelText.textContent = label;
+      const selectNode = document.createElement('select');
+      selectNode.name = name;
+      selectNode.dataset.key = key;
+      selectNode.dataset.field = field;
+      selectNode.dataset.node = id;
+      selectNode.dataset.nodeId = id;
+      selectNode.dataset.pumpNodeId = id;
+      selectNode.setAttribute('aria-label', ariaLabel);
+      options.forEach((optionValue) => {
+        const option = document.createElement('option');
+        option.value = optionValue;
+        option.textContent = optionValue;
+        selectNode.appendChild(option);
+      });
+      selectNode.value = value;
+      const unit = document.createElement('span');
+      unit.className = 'pump-manual-npshr-unit';
+      unit.textContent = '';
+      fieldNode.append(labelText, selectNode, unit);
+      return { fieldNode, selectNode };
+    };
+    const pump = runtimeModel()?.[id] || {};
+    const marginBasis = marginBasisForPump(pump);
     const manualField = createNumericField({
       label: 'Manual NPSHr',
       field: 'manualNpshr',
@@ -2131,7 +2263,45 @@
       value: formatPumpDatumInputValue(id),
       ariaLabel: 'Pump Datum Elev.'
     });
-    body.append(manualField.fieldNode, datumField.fieldNode);
+    const marginBasisField = createSelectField({
+      label: 'NPSH Margin Basis',
+      field: 'npshMarginBasis',
+      key: 'npshMarginBasis',
+      name: 'npsh-margin-basis',
+      value: marginBasis,
+      options: PUMP_NPSH_MARGIN_BASIS_OPTIONS,
+      ariaLabel: 'NPSH Margin Basis'
+    });
+    const ratioField = createNumericField({
+      label: 'Min NPSH Ratio',
+      field: 'minNpshMarginRatio',
+      key: 'minNpshMarginRatio',
+      name: 'min-npsh-margin-ratio',
+      value: formatMarginRatioInputValue(id),
+      unitText: '-',
+      min: '1',
+      step: '0.001',
+      readOnly: marginBasis !== PUMP_NPSH_MARGIN_USER_DEFINED,
+      ariaLabel: 'Min NPSH Ratio'
+    });
+    const marginField = createNumericField({
+      label: 'Min NPSH Margin',
+      field: 'minNpshMargin',
+      key: 'minNpshMargin',
+      name: 'min-npsh-margin',
+      value: formatMarginAbsoluteInputValue(id),
+      min: '0',
+      step: '0.001',
+      readOnly: marginBasis !== PUMP_NPSH_MARGIN_USER_DEFINED,
+      ariaLabel: 'Min NPSH Margin'
+    });
+    body.append(
+      manualField.fieldNode,
+      datumField.fieldNode,
+      marginBasisField.fieldNode,
+      ratioField.fieldNode,
+      marginField.fieldNode
+    );
 
     const onResize = () => clampChartTaskWindowToViewport(taskWindow);
     window.addEventListener('resize', onResize);
@@ -2143,9 +2313,28 @@
       window.removeEventListener('orientationchange', onResize);
       taskWindow.remove();
     });
-    [manualField.inputNode, datumField.inputNode].forEach((inputNode) => {
+    const updateMarginFieldsFromBasis = () => {
+      const basis = marginBasisField.selectNode.value || PUMP_NPSH_MARGIN_GENERAL_PURPOSE;
+      const userDefined = basis === PUMP_NPSH_MARGIN_USER_DEFINED;
+      ratioField.inputNode.readOnly = !userDefined;
+      marginField.inputNode.readOnly = !userDefined;
+      if (!userDefined) {
+        const pseudoPump = { ...(runtimeModel()?.[id] || {}), props: { ...((runtimeModel()?.[id] || {}).props || {}), npshMarginBasis: basis } };
+        ratioField.inputNode.value = formatNumericInputValue(firstNumber(marginPresetForPump(pseudoPump, basis)?.ratio), 6);
+        marginField.inputNode.value = formatNumericInputValue(firstNumber(marginPresetForPump(pseudoPump, basis)?.margin), 6);
+      }
+    };
+    [manualField.inputNode, datumField.inputNode, ratioField.inputNode, marginField.inputNode].forEach((inputNode) => {
       inputNode.addEventListener('input', () => scheduleManualNpshrLinkedRefresh(id, 'input'));
       inputNode.addEventListener('change', () => scheduleManualNpshrLinkedRefresh(id, 'change'));
+    });
+    marginBasisField.selectNode.addEventListener('input', () => {
+      updateMarginFieldsFromBasis();
+      scheduleManualNpshrLinkedRefresh(id, 'input');
+    });
+    marginBasisField.selectNode.addEventListener('change', () => {
+      updateMarginFieldsFromBasis();
+      scheduleManualNpshrLinkedRefresh(id, 'change');
     });
 
     taskWindow.append(header, body);

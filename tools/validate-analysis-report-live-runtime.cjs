@@ -10,8 +10,8 @@ const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const CASE_FILE = path.join(FRONTEND_ROOT, "journals", "simulasi_1", "simulasi_performansi_pompa_air_umpan_tangki_deaerator.untirta");
 const LOGO_FILE = path.join(FRONTEND_ROOT, "png", "untirta-universitas-sultanagengtirtayasa880x870.png");
-const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260621-analysis-report-design-contract1";
-const VERSION = "2026.06-analysis-report-live13";
+const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260621-analysis-report-design-contract2";
+const VERSION = "2026.06-analysis-report-live14";
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
 function assert(condition, message) {

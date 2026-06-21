@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-formula-defense-live-audit.v8';
+  const VERSION = 'pump-formula-defense-live-audit.v9';
   const WINDOW_SELECTOR = '.pump-formula-defense-task-window';
   const BADGE_SELECTOR = '[data-pump-formula-defense-live-badges]';
   const SUMMARY_SELECTOR = '[data-pump-formula-defense-vendor-summary]';
@@ -255,6 +255,12 @@
     if (npsha <= npshr) return 'Cavitation Risk';
     if (requiredNpsha !== null && npsha < requiredNpsha) return 'Warning';
     return 'Safe';
+  }
+
+  function criteriaAvailabilityStatus(ratioLimit, absoluteMarginLimit) {
+    return ratioLimit !== null && absoluteMarginLimit !== null
+      ? 'Calculated'
+      : 'Margin criteria required';
   }
 
   function writeResultIfUseful(results, key, value, overwriteIncomplete = false) {
@@ -556,6 +562,7 @@
     const vaporPressureHead = firstNumber(trace.basis?.vaporPressureHead, vaporHeadStep?.result);
     const ratioLimit = firstNumber(criteria.ratio, interpretation.marginRatioLimit, props.minNpshMarginRatio);
     const absoluteMarginLimit = firstNumber(criteria.margin, interpretation.absoluteMarginLimit, props.minNpshMargin);
+    const marginCriteriaStatus = criteriaAvailabilityStatus(ratioLimit, absoluteMarginLimit);
     const maxNpshrByRatio = firstNumber(
       evaluation.maxNpshrByRatio,
       results.maxNpshrByRatio,
@@ -586,10 +593,14 @@
       || (npsha !== null ? 'Calculated' : 'Input Required');
     const requiredPumpHeadStatus = firstCompleteStatus(evaluation.requiredPumpHeadStatus, results.requiredPumpHeadStatus, interpretation.requiredPumpHeadStatus)
       || (requiredPumpHead !== null ? 'Calculated' : 'Input Required');
-    const maxAllowableNpshrStatus = firstCompleteStatus(evaluation.maxAllowableNpshrStatus, results.maxAllowableNpshrStatus, interpretation.maxAllowableNpshrStatus)
-      || (maxAllowableNpshr !== null ? 'Calculated' : 'Review Required');
-    const manualNpshrComparisonStatus = firstCompleteStatus(evaluation.manualNpshrComparisonStatus, results.manualNpshrComparisonStatus, interpretation.manualNpshrComparisonStatus)
-      || (npshr !== null && maxAllowableNpshr !== null ? (npshr <= maxAllowableNpshr ? 'Safe' : 'Warning') : (npshr === null ? 'Manual NPSHr not provided' : 'Review Required'));
+    const rawMaxAllowableNpshrStatus = firstCompleteStatus(evaluation.maxAllowableNpshrStatus, results.maxAllowableNpshrStatus, interpretation.maxAllowableNpshrStatus);
+    const maxAllowableNpshrStatus = maxAllowableNpshr !== null
+      ? (/review|required/i.test(rawMaxAllowableNpshrStatus) ? 'Calculated' : (rawMaxAllowableNpshrStatus || 'Calculated'))
+      : (rawMaxAllowableNpshrStatus || marginCriteriaStatus);
+    const rawManualNpshrComparisonStatus = firstCompleteStatus(evaluation.manualNpshrComparisonStatus, results.manualNpshrComparisonStatus, interpretation.manualNpshrComparisonStatus);
+    const manualNpshrComparisonStatus = npshr !== null && maxAllowableNpshr !== null
+      ? (npshr <= maxAllowableNpshr ? 'Safe' : 'Warning')
+      : (rawManualNpshrComparisonStatus || (npshr === null ? 'Manual NPSHr not provided' : marginCriteriaStatus));
     const vendorCurveVerificationStatus = firstText(evaluation.vendorCurveVerificationStatus, results.vendorCurveVerificationStatus, interpretation.vendorCurveVerificationStatus, 'Not Required for route calculation');
 
     addCalculationMatrixRow(rows, {
@@ -899,6 +910,10 @@
   function buildSummary(pumpId) {
     const { pump, results, evaluation, trace, rows, steps } = pumpResult(pumpId);
     const props = pump.props || {};
+    const criteria = evaluation.marginCriteria || evaluation.criteria || trace.interpretation?.criteria || {};
+    const ratioLimit = firstNumber(criteria.ratio, trace.interpretation?.marginRatioLimit, props.minNpshMarginRatio);
+    const absoluteMarginLimit = firstNumber(criteria.margin, trace.interpretation?.absoluteMarginLimit, props.minNpshMargin);
+    const marginCriteriaStatus = criteriaAvailabilityStatus(ratioLimit, absoluteMarginLimit);
     const action = results.actionReadinessBackend || results.backendActionReadiness || results.actionReadinessFrontend || {};
     const exportReady = root.EngineeringDefenseExportPackage ? 'Ready' : 'Unavailable';
     const releaseIntegrity = root.EngineeringLibraryGovernance ? 'Loaded' : 'Not loaded';
@@ -909,9 +924,20 @@
     const calculationBasis = firstText(results.solveMode, evaluation.solveMode, results.flowBasis, evaluation.flowBasis, 'Route/design calculation');
     const npshrSource = firstText(evaluation.npshrSource, results.npshrSource, props.npshrSourceMode, 'Manual NPSHr');
     const maxAllowableNpshr = firstNumber(evaluation.maxAllowableNpshr, results.maxAllowableNpshr, trace.interpretation?.maxAllowableNpshr);
+    const npshr = firstNumber(evaluation.npshr, results.npshr, props.manualNpshr, props.designNpshr);
     const routeStatus = firstCompleteStatus(evaluation.routeCalculationStatus, results.routeCalculationStatus, trace.interpretation?.routeCalculationStatus) || '-';
-    const maxNpshrStatus = firstCompleteStatus(evaluation.maxAllowableNpshrStatus, results.maxAllowableNpshrStatus, trace.interpretation?.maxAllowableNpshrStatus) || '-';
-    const manualNpshrCheck = firstCompleteStatus(evaluation.manualNpshrComparisonStatus, results.manualNpshrComparisonStatus, trace.interpretation?.manualNpshrComparisonStatus) || '-';
+    const rawMaxNpshrStatus = firstCompleteStatus(evaluation.maxAllowableNpshrStatus, results.maxAllowableNpshrStatus, trace.interpretation?.maxAllowableNpshrStatus);
+    const maxNpshrStatus = maxAllowableNpshr !== null
+      ? (/review|required/i.test(rawMaxNpshrStatus) ? 'Calculated' : (rawMaxNpshrStatus || 'Calculated'))
+      : (rawMaxNpshrStatus || marginCriteriaStatus);
+    const rawManualNpshrCheck = firstCompleteStatus(evaluation.manualNpshrComparisonStatus, results.manualNpshrComparisonStatus, trace.interpretation?.manualNpshrComparisonStatus);
+    const manualNpshrCheck = npshr !== null && maxAllowableNpshr !== null
+      ? (npshr <= maxAllowableNpshr ? 'Safe' : 'Warning')
+      : (rawManualNpshrCheck || (npshr === null ? 'Manual NPSHr not provided' : marginCriteriaStatus));
+    const marginBasis = firstText(criteria.basis, trace.interpretation?.marginBasis, props.npshMarginBasis, 'General Purpose');
+    const maxAllowableNpshrDisplay = maxAllowableNpshr !== null
+      ? formatWithUnit(maxAllowableNpshr, 'm', 4)
+      : marginCriteriaStatus;
     const vendorCurveVerification = firstText(evaluation.vendorCurveVerificationStatus, results.vendorCurveVerificationStatus, trace.interpretation?.vendorCurveVerificationStatus, 'Not Required for route calculation');
     return {
       pageLock,
@@ -923,8 +949,11 @@
       routeStatus,
       maxNpshrStatus,
       manualNpshrCheck,
+      marginBasis,
+      marginCriteriaStatus,
       vendorCurveVerification,
       maxAllowableNpshr,
+      maxAllowableNpshrDisplay,
       rowCount: rows.length,
       stepCount: steps.length
     };
@@ -1041,7 +1070,8 @@
         <div><span style="color:#64748b;">NPSHr Source</span><strong style="display:block;">${escapeHtml(summary.npshrSource)}</strong></div>
         <div><span style="color:#64748b;">Trace Rows</span><strong style="display:block;">${escapeHtml(summary.rowCount)} / ${escapeHtml(summary.stepCount)}</strong></div>
         <div><span style="color:#64748b;">Route Status</span><strong style="display:block;">${escapeHtml(summary.routeStatus)}</strong></div>
-        <div><span style="color:#64748b;">Max Allowable NPSHr</span><strong style="display:block;">${escapeHtml(formatWithUnit(summary.maxAllowableNpshr, 'm', 4))}</strong></div>
+        <div><span style="color:#64748b;">NPSH Margin Basis</span><strong style="display:block;">${escapeHtml(summary.marginBasis)}</strong></div>
+        <div><span style="color:#64748b;">Max Allowable NPSHr</span><strong style="display:block;">${escapeHtml(summary.maxAllowableNpshrDisplay)}</strong></div>
         <div><span style="color:#64748b;">Manual NPSHr Check</span><strong style="display:block;">${escapeHtml(summary.manualNpshrCheck)}</strong></div>
       </div>
       <div style="margin-top:6px;font-size:10.5px;color:#475569;">Vendor curve verification: <strong>${escapeHtml(summary.vendorCurveVerification)}</strong></div>

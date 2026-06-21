@@ -56,7 +56,7 @@ assert(indexHtml.includes('function scheduleInitialAppLoad') || indexHtml.includ
 assert(indexHtml.includes('requestIdleCallback') && indexHtml.includes('window.setTimeout(startInitialShellLoad, 250)'), 'Initial app-shell load should use idle scheduling with a timer fallback.');
 assert(!indexHtml.includes('<script src="engineering-npsh-margin-runtime.js'), 'NPSH margin bridge must not load as a synchronous first-load script.');
 assert(
-  indexHtml.indexOf("'engineering-npsh-margin-runtime.js?v=20260602-npsh-margin1'") >
+  indexHtml.indexOf("'engineering-npsh-margin-runtime.js?v=20260621-npsh-margin2'") >
     indexHtml.indexOf('const realtimeScripts = ['),
   'NPSH margin bridge must load through the deferred realtime script path.'
 );
