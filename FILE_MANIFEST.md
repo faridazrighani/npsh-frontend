@@ -155,7 +155,7 @@ NPSH margin runtime load placement: deferred realtimeScripts path before Pump NP
 Pump readiness visibility cache key: engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3
 Pump readiness visibility load placement: support-lazy feature script for developer panel hiding, not critical first-paint script
 Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260621-pump-defense-route-design1
-Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260621-pump-chart-audit25
+Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260621-pump-chart-audit26
 Pump performance canonical chart cache key: engineering-pump-performance-canonical-chart.js?v=20260621-canonical-chart20
 Google auth runtime cache key: engineering-google-auth-runtime.js?v=20260620-google-auth-lazy1
 Literature PDF viewer cache key: engineering-literature-pdf-viewer.js?v=20260609-literature-access3
