@@ -316,11 +316,11 @@ assert(
   'Manifest must document the realtime calculation defense cache key.'
 );
 assert(
-  index.includes('engineering-parameter-task-runtime.js?v=20260611-parameter-blocks3'),
+  index.includes('engineering-parameter-task-runtime.js?v=20260621-parameter-route-full-width1'),
   'Index must load the Parameter Task runtime with the refresh-capable cache key.'
 );
 assert(
-  manifest.includes('Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=20260611-parameter-blocks3'),
+  manifest.includes('Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=20260621-parameter-route-full-width1'),
   'Manifest must document the Parameter Task runtime cache key.'
 );
 
