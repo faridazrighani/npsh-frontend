@@ -305,6 +305,7 @@ else globalThis.document = previousDocument;
 
 const canonicalPath = path.join(rootDir, 'engineering-pump-performance-canonical-chart.js');
 const canonicalSource = fs.readFileSync(canonicalPath, 'utf8');
+const canonicalSourceNormalized = canonicalSource.replace(/\r\n/g, '\n');
 const appBundleSource = fs.readFileSync(appBundlePath, 'utf8');
 const canonical = require(canonicalPath);
 assert(canonicalSource.includes('EngineeringPerformanceRefreshGovernor'), 'Canonical chart renderer must use the performance governor when available.');
@@ -328,7 +329,7 @@ assert(canonicalSource.includes("button.textContent = 'Pump Datum - NPSHR'"), 'P
 assert(canonicalSource.includes('data-pump-manual-npshr-task-menu'), 'Manual NPSHr must be exposed from the pump context menu.');
 assert(canonicalSource.includes('openPumpManualNpshrTaskWindow'), 'Manual NPSHr context menu item must open the dedicated task window.');
 assert(canonicalSource.includes('pump-manual-npshr-task-window'), 'Manual NPSHr must render in a dedicated compact task window.');
-assert(canonicalSource.includes("field: 'manualNpshr',\n      key: 'manualNpshr'"), 'Manual NPSHr task input must use manualNpshr as its canonical data key.');
+assert(canonicalSourceNormalized.includes("field: 'manualNpshr',\n      key: 'manualNpshr'"), 'Manual NPSHr task input must use manualNpshr as its canonical data key.');
 assert(canonicalSource.includes("name: 'manual-npshr'"), 'Manual NPSHr task input must not keep the legacy design-npshr input name.');
 assert(canonicalSource.includes('Pump Datum Elev.'), 'Manual NPSHr task window must include Pump Datum Elev. input label.');
 assert(canonicalSource.includes("field: 'suctionElevation'"), 'Manual NPSHr task window must bind Pump Datum Elev. to pump.props.suctionElevation.');
