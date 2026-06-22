@@ -20,6 +20,11 @@
         return fluidName === 'water' || fluidName === 'air';
     }
 
+    function isWaterPropertyCorrelationFluid(fluidBasis) {
+        const fluidName = String(fluidBasis?.fluidName || fluidBasis?.name || '').trim().toLowerCase();
+        return fluidName === 'water';
+    }
+
     function sumRange(start, end, term) {
         let total = 0;
         for (let index = start; index < end; index += 1) total += term(index);
@@ -152,8 +157,55 @@
         return fluid;
     }
 
-    function getFluidPropsAtSourceTemperature(source, fluidBasis) {
+    function applyWaterCorrelationProperties(target, water, temp, sourceLabel) {
+        target.fluidName = target.fluidName || 'Water';
+        target.temp = temp;
+        target.density = water.density;
+        target.sg = water.density / WATER_REFERENCE_DENSITY_KGM3;
+        target.vaporPressure = water.vaporPressure;
+        target.dynViscosity = water.dynamicViscosity;
+        target.dynamicViscosity = water.dynamicViscosity;
+        target.viscosity = water.kinematicViscosity;
+        target.kinematicViscosity = water.kinematicViscosity;
+        target.specificHeat = water.specificHeat;
+        target.bulkModulus = water.bulkModulus;
+        target.thermalConductivity = water.thermalConductivity;
+        target.dielectricConstant = water.dielectricConstant;
+        target.propertyMethod = `IAPWS-based water property correlation at ${sourceLabel}`;
+        target.sourceTemperatureBasis = sourceLabel;
+        return applyExtendedProperties(target);
+    }
+
+    function getTemperatureResolvedFluidBasisProps(fluidBasis) {
         const base = { ...(fluidBasis || window.globalModel?.FLUID?.props || {}) };
+        const temp = toFiniteNumber(base.temp, NaN);
+        if (!Number.isFinite(temp) || !isWaterPropertyCorrelationFluid(base)) {
+            return applyExtendedProperties(base);
+        }
+        const propertyMethod = String(base.propertyMethod || base.fluidPropertySource || '');
+        const syncRequested = base.temperaturePropertySyncRequested === true
+            || base.temperaturePropertySynced === true
+            || /fluid basis temperature correlation/i.test(propertyMethod);
+        if (/journal|validation basis/i.test(propertyMethod) && !syncRequested) {
+            return applyExtendedProperties(base);
+        }
+        const resolved = applyWaterCorrelationProperties(base, calculateRuntimeWaterProperties(temp), temp, 'Fluid Basis temperature');
+        resolved.fluidPropertySource = 'Fluid Basis temperature correlation';
+        resolved.temperaturePropertySynced = true;
+        return resolved;
+    }
+
+    function syncFluidBasisPropertiesFromTemperature(fluidOrProps) {
+        const props = fluidOrProps?.props || fluidOrProps;
+        if (!props || typeof props !== 'object') return null;
+        const resolved = getTemperatureResolvedFluidBasisProps(props);
+        if (!resolved.temperaturePropertySynced) return null;
+        Object.assign(props, resolved);
+        return resolved;
+    }
+
+    function getFluidPropsAtSourceTemperature(source, fluidBasis) {
+        const base = getTemperatureResolvedFluidBasisProps(fluidBasis || window.globalModel?.FLUID?.props || {});
         const sourceProps = source?.props || {};
         const baseTemperature = toFiniteNumber(base.temp, 25);
         const customTemperature = toFiniteNumber(sourceProps.temp, baseTemperature);
@@ -172,19 +224,12 @@
             return applyExtendedProperties(effective);
         }
 
-        const water = calculateRuntimeWaterProperties(customTemperature);
-        effective.density = water.density;
-        effective.sg = water.density / WATER_REFERENCE_DENSITY_KGM3;
-        effective.vaporPressure = water.vaporPressure;
-        effective.dynViscosity = water.dynamicViscosity;
-        effective.viscosity = water.kinematicViscosity;
-        effective.specificHeat = water.specificHeat;
-        effective.bulkModulus = water.bulkModulus;
-        effective.thermalConductivity = water.thermalConductivity;
-        effective.dielectricConstant = water.dielectricConstant;
-        effective.propertyMethod = 'IAPWS-based water property correlation at SRC custom temperature';
-        effective.sourceTemperatureBasis = 'SRC custom temperature';
-        return applyExtendedProperties(effective);
+        return applyWaterCorrelationProperties(
+            effective,
+            calculateRuntimeWaterProperties(customTemperature),
+            customTemperature,
+            'SRC custom temperature'
+        );
     }
 
     function formatRuntimeReadout(value, digits = 3) {
@@ -536,18 +581,65 @@
         observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
     }
 
+    function installFluidBasisTemperatureSyncGuard() {
+        if (typeof document === 'undefined' || document.documentElement?.dataset.fluidBasisTemperatureSyncGuard === 'true') return;
+        document.documentElement.dataset.fluidBasisTemperatureSyncGuard = 'true';
+        const sync = () => syncFluidBasisPropertiesFromTemperature(window.globalModel?.FLUID);
+        const wrapUpdateSimulation = () => {
+            if (typeof window.updateSimulation !== 'function') return false;
+            if (window.updateSimulation.__fluidBasisTemperatureSyncWrapped) return true;
+            const originalUpdateSimulation = window.updateSimulation;
+            const wrappedUpdateSimulation = function (...args) {
+                sync();
+                return originalUpdateSimulation.apply(this, args);
+            };
+            wrappedUpdateSimulation.__fluidBasisTemperatureSyncWrapped = true;
+            wrappedUpdateSimulation.__originalUpdateSimulation = originalUpdateSimulation;
+            window.updateSimulation = wrappedUpdateSimulation;
+            return true;
+        };
+        sync();
+        if (!wrapUpdateSimulation()) {
+            const timer = window.setInterval(() => {
+                if (wrapUpdateSimulation()) window.clearInterval(timer);
+            }, 120);
+            window.setTimeout(() => window.clearInterval(timer), 5000);
+        }
+        document.addEventListener('input', (event) => {
+            if (event.target?.matches?.('input.prop-input-field[data-key="temp"][data-node="FLUID"], input[data-key="temp"][data-node="FLUID"]')) {
+                if (window.globalModel?.FLUID?.props) window.globalModel.FLUID.props.temperaturePropertySyncRequested = true;
+                sync();
+            }
+        }, true);
+        document.addEventListener('change', (event) => {
+            if (event.target?.matches?.('input.prop-input-field[data-key="temp"][data-node="FLUID"], input[data-key="temp"][data-node="FLUID"]')) {
+                if (window.globalModel?.FLUID?.props) window.globalModel.FLUID.props.temperaturePropertySyncRequested = true;
+                sync();
+                if (typeof window.updateSimulation === 'function') {
+                    window.updateSimulation({ refreshReason: 'solve', trigger: 'fluid-basis-temperature-sync' });
+                }
+            }
+        }, true);
+    }
+
     window.getFluidPropsAtSourceTemperature = getFluidPropsAtSourceTemperature;
     window.calculateEffectiveSourceFluidProperties = getFluidPropsAtSourceTemperature;
+    window.getTemperatureResolvedFluidBasisProps = getTemperatureResolvedFluidBasisProps;
+    window.syncFluidBasisPropertiesFromTemperature = syncFluidBasisPropertiesFromTemperature;
     window.NPSHSourceTemperatureRuntime = {
         getFluidPropsAtSourceTemperature,
+        getTemperatureResolvedFluidBasisProps,
+        syncFluidBasisPropertiesFromTemperature,
         updateSourceTemperaturePreview,
         applySourceTemperatureInput,
         installSourceTemperatureStabilityGuard,
         enforceFluidBasisModeInSourceUi,
         installSourceFluidBasisOnlyUiGuard,
+        installFluidBasisTemperatureSyncGuard,
         sourceCustomTemperatureUiEnabled: SOURCE_CUSTOM_TEMPERATURE_UI_ENABLED,
-        version: '20260601-src-fluid-basis-link-v4'
+        version: '20260622-fluid-basis-temperature-sync-v1'
     };
     installSourceTemperatureStabilityGuard();
     installSourceFluidBasisOnlyUiGuard();
+    installFluidBasisTemperatureSyncGuard();
 }());
