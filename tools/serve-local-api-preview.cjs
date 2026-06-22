@@ -11,6 +11,7 @@ const frontendRoot = path.resolve(__dirname, '..');
 const workspaceRoot = path.resolve(frontendRoot, '..');
 const apiRoot = path.join(workspaceRoot, 'npsh-api');
 const apiServer = path.join(apiRoot, 'server.mjs');
+const localLiveManifestGenerator = path.join(frontendRoot, 'tools', 'generate-local-live-sync-manifest.cjs');
 const args = process.argv.slice(2);
 
 function readFlag(name, fallback) {
@@ -128,6 +129,20 @@ function keepReusableWebServerProcessAlive() {
   });
 }
 
+function refreshLocalLiveSyncManifest() {
+  if (!fs.existsSync(localLiveManifestGenerator)) return;
+  const child = spawn(process.execPath, [localLiveManifestGenerator, '--quiet'], {
+    cwd: frontendRoot,
+    env: process.env,
+    stdio: ['ignore', 'ignore', 'pipe'],
+    windowsHide: true
+  });
+  child.stderr.on('data', chunk => {
+    const text = String(chunk || '').trim();
+    if (text) console.warn(`[local-live-sync] ${text}`);
+  });
+}
+
 async function reuseExistingPreviewServer() {
   if (!(await waitForHealth())) {
     console.error(`Timed out waiting for reusable NPSH preview server at http://${healthHost}:${port}/api/health`);
@@ -138,6 +153,8 @@ async function reuseExistingPreviewServer() {
 }
 
 async function main() {
+  refreshLocalLiveSyncManifest();
+
   if (await healthCheck()) {
     await reuseExistingPreviewServer();
     return;

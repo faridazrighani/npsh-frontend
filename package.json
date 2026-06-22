@@ -6,6 +6,8 @@
   "scripts": {
     "preview:local": "node tools/serve-local-preview.cjs",
     "preview:api": "node tools/serve-local-api-preview.cjs",
+    "sync:local-live": "node tools/generate-local-live-sync-manifest.cjs --verify-assets",
+    "sync:local-live:quick": "node tools/generate-local-live-sync-manifest.cjs",
     "validate:w3-css": "node tools/validate-w3-css-contract.cjs",
     "validate:pump-chart-audit": "node tools/validate-pump-performance-chart-audit.cjs",
     "validate:pump-formula-defense-live-audit": "node tools/validate-pump-formula-defense-live-audit.cjs",

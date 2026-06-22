@@ -29,9 +29,9 @@ assert(
   'NPSH margin bridge must not block the initial HTML parse as a synchronous script.'
 );
 assert(
-  index.indexOf("'engineering-npsh-margin-runtime.js?v=20260621-npsh-margin3'") >
+  index.indexOf("'engineering-npsh-margin-runtime.js?v=20260622-local-live-sync1'") >
     index.indexOf('const realtimeScripts = [') &&
-    index.indexOf("'engineering-npsh-margin-runtime.js?v=20260621-npsh-margin3'") <
+    index.indexOf("'engineering-npsh-margin-runtime.js?v=20260622-local-live-sync1'") <
     index.indexOf("'engineering-pump-npsh-acceptance-runtime.js?v=20260621-pump-npsh-acceptance3'"),
   'NPSH margin bridge must load through realtimeScripts before Pump NPSH Acceptance.'
 );

@@ -27,7 +27,7 @@ const dock = read(DOCK_FILE);
 const literature = read(LITERATURE_FILE);
 const routeAudit = read(ROUTE_AUDIT_FILE);
 const seoRenderer = read(SEO_RENDERER_FILE);
-const llms = read(LLMS_FILE);
+const llms = read(LLMS_FILE).replace(/\r\n/g, '\n');
 const runtime = require(RUNTIME_FILE);
 
 assert.strictEqual(runtime.version, 'engineering-browser-issues-runtime.v1');
@@ -56,7 +56,7 @@ assert(indexHtml.includes('function scheduleInitialAppLoad') || indexHtml.includ
 assert(indexHtml.includes('requestIdleCallback') && indexHtml.includes('window.setTimeout(startInitialShellLoad, 250)'), 'Initial app-shell load should use idle scheduling with a timer fallback.');
 assert(!indexHtml.includes('<script src="engineering-npsh-margin-runtime.js'), 'NPSH margin bridge must not load as a synchronous first-load script.');
 assert(
-  indexHtml.indexOf("'engineering-npsh-margin-runtime.js?v=20260621-npsh-margin3'") >
+  indexHtml.indexOf("'engineering-npsh-margin-runtime.js?v=20260622-local-live-sync1'") >
     indexHtml.indexOf('const realtimeScripts = ['),
   'NPSH margin bridge must load through the deferred realtime script path.'
 );

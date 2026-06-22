@@ -124,7 +124,7 @@ node npsh-api/tools/release-integrity-audit.cjs
 app.bundle.min.js.map sourcesContent: absent
 App bundle cache key: app.bundle.min.js?v=20260621-npsh-margin-options1
 Main style cache key: style.min.css?v=20260608-browser-issues1
-Bilingual terminology runtime cache key: engineering-bilingual-improvements.js?v=20260617-bilingual-realtime-first2
+Bilingual terminology runtime cache key: engineering-bilingual-improvements.js?v=20260622-local-live-sync1
 Source canvas parameter runtime cache key: engineering-src-canvas-parameter-runtime.js?v=20260615-src-flow-basis3
 Decimal display runtime cache key: engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2
 Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=20260621-parameter-route-full-width3
@@ -132,7 +132,7 @@ Local trace fallback runtime cache key: engineering-local-trace-fallback-runtime
 Pipe canvas hydraulic label runtime cache key: engineering-pipe-canvas-hydraulic-label-runtime.js?v=20260621-pipe-label-pump-font1
 Pipe source confidence map runtime cache key: engineering-pipe-source-confidence-map-runtime.js?v=20260611-pipe-source-confidence-map1
 Pump nozzle simplify runtime cache key: engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5
-Analysis Report live runtime cache key: engineering-analysis-report-live-runtime.js?v=20260621-analysis-report-design-contract5
+Analysis Report live runtime cache key: engineering-analysis-report-live-runtime.js?v=20260622-local-live-sync1
 Route audit cache key: engineering-route-trace-audit.js?v=20260621-snk-boundary-logic1
 Simulation case integrity guard cache key: engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3
 Performance refresh governor cache key: engineering-performance-refresh-governor.js?v=20260614-refresh-governor4
@@ -150,12 +150,12 @@ Initial app load placement: Fluid Basis setup prompt is first in body DOM order 
 Defense export cache key: engineering-defense-export-package.js?v=20260603-defensev3
 Pipe Moody chart audit cache key: engineering-pipe-moody-chart-audit.js?v=20260607-pipe-moody-audit2
 Runtime API config: same-origin /api/simulate
-NPSH margin runtime cache key: engineering-npsh-margin-runtime.js?v=20260621-npsh-margin3
+NPSH margin runtime cache key: engineering-npsh-margin-runtime.js?v=20260622-local-live-sync1
 NPSH margin runtime load placement: deferred realtimeScripts path before Pump NPSH Acceptance runtime; no synchronous first-load script tag
 Pump readiness visibility cache key: engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3
 Pump readiness visibility load placement: support-lazy feature script for developer panel hiding, not critical first-paint script
 Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260621-pump-defense-route-design4
-Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260621-pump-chart-audit28
+Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260622-local-live-sync1
 Pump performance canonical chart cache key: engineering-pump-performance-canonical-chart.js?v=20260622-canonical-chart26
 Pump performance canonical chart load phase: critical shell, immediately after app.bundle.min.js, so Pump Datum - NPSHR margin-basis defaults and options are active before the first pump context-menu click
 Google auth runtime cache key: engineering-google-auth-runtime.js?v=20260620-google-auth-lazy1

@@ -263,7 +263,7 @@ globalThis.updatePumpChart('P-100');
 assert.strictEqual(lateRendererCalls, 0, 'Audit chart draw must not call the old fallback renderer.');
 
 assert(
-  index.includes('engineering-pump-performance-chart-audit.js?v=20260621-pump-chart-audit28'),
+  index.includes('engineering-pump-performance-chart-audit.js?v=20260622-local-live-sync1'),
   'Index must cache-bust the pump performance chart audit runtime.'
 );
 assert(
