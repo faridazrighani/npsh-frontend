@@ -50,11 +50,12 @@ function loadJournalCase(caseId) {
 async function waitForNpshApp(page) {
   await page.goto('/');
   await page.keyboard.press('Escape');
+  await page.evaluate(() => window.__npshLoadSupport?.());
   await page.waitForFunction(() => (
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.updateSimulation === 'function'
-    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v10'
-    && window.CanvasContextDock?.version === 'engineering-canvas-context-dock.v2'
+    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v11'
+    && window.CanvasContextDock?.version === 'engineering-canvas-context-dock.v3'
     && window.EngineeringRouteTraceAudit?.version
     && window.EngineeringDefenseExportPackage?.schemaVersion === 'defense-export-package.v1'
     && window.__npshRouteTraceAuditInstalled?.fetchSimulation
@@ -262,12 +263,18 @@ async function analysisReportCellSnapshot(page) {
 }
 
 function formulaRow(snapshot, stepName) {
-  return (snapshot.response.formulaRows || []).find((row) => row.step === stepName) || {};
+  const rows = snapshot?.response?.formulaRows
+    || snapshot?.results?.calculationTrace?.academicFormulaDefenseRows
+    || [];
+  const aliases = stepName === 'System Curve Head'
+    ? ['System Curve Head', 'Required Pump Head']
+    : [stepName];
+  return rows.find((row) => aliases.includes(row.step)) || {};
 }
 
 function systemHead(responseBody) {
   const row = (responseBody.results?.calculationTrace?.academicFormulaDefenseRows || [])
-    .find((item) => item.step === 'System Curve Head');
+    .find((item) => item.step === 'System Curve Head' || item.step === 'Required Pump Head');
   return Number(row?.result);
 }
 
@@ -309,8 +316,8 @@ test('Simulasi 1 desktop chain refreshes route/formula/dependency after SINK edi
   expect(baselineSnapshot.bodyText).toContain('NPSH Available');
   expect(baselineSnapshot.dock.routeNodes).toEqual(['Fluid Basis', 'SRC-100', 'PIPE-1', 'P-100', 'PIPE-2', 'SNK-100']);
   expect(baselineSnapshot.audit.routeTraceText).toContain('SNK-100');
-  expect(formulaRow(baselineSnapshot, 'System Curve Head').substitution).toContain('1.946 + 2.616 + 11.669 = 16.230 m');
-  expect(formulaRow(baselineSnapshot, 'System Curve Head').result).toBeCloseTo(16.23, 3);
+  expect(formulaRow(baseline, 'System Curve Head').substitution).toContain('1.946 + 2.616 + 11.669 = 16.230 m');
+  expect(formulaRow(baseline, 'System Curve Head').result).toBeCloseTo(16.23, 3);
   expect(baselineSnapshot.exportGate.canExport).toBe(true);
 
   const suctionSegmentAudit = await page.evaluate((pumpId) => {
@@ -404,8 +411,8 @@ test('Simulasi 1 desktop chain refreshes route/formula/dependency after SINK edi
   expect(changedSnapshot.pump.backendValidationStatus).toBe('Connected');
   expect(changedSnapshot.pump.dependencyFingerprint).toBe(changed.dependencyManifest.dependencyFingerprint);
   expect(changedSnapshot.response.routeTrace.sections.discharge.pressureDropBar).toBeCloseTo(1.097003, 5);
-  expect(formulaRow(changedSnapshot, 'System Static Head').substitution).toContain('26.315 - 19.369 = 6.946 m');
-  expect(formulaRow(changedSnapshot, 'System Curve Head').substitution).toContain('21.230 m');
+  expect(formulaRow(changed, 'System Static Head').substitution).toContain('26.315 - 19.369 = 6.946 m');
+  expect(formulaRow(changed, 'System Curve Head').substitution).toContain('21.230 m');
   expect(JSON.stringify(changedSnapshot.response.dependencyManifest.sinkImpactMatrix)).toMatch(/sink\.props\.elevation/);
   expect(changedSnapshot.audit.routeTraceText).toContain('Fluid Basis -> SRC-100 -> PIPE-1 -> P-100 -> PIPE-2 -> SNK-100');
   expect(changedSnapshot.exportGate.canExport).toBe(true);
@@ -443,7 +450,7 @@ test('Simulasi 1 desktop chain refreshes route/formula/dependency after SINK edi
       current: changedSnapshot.realtime.status
     },
     routeTraceUpdated: changedSnapshot.audit.routeTraceText,
-    formulaDefenseUpdated: formulaRow(changedSnapshot, 'System Curve Head').substitution,
+    formulaDefenseUpdated: formulaRow(changed, 'System Curve Head').substitution,
     screenshotPath
   }, null, 2));
 });
@@ -687,12 +694,14 @@ test('Manual NPSHr UI edit previews Simulasi 4 locally and refreshes linked repo
     const npsh = results.npshEvaluation || {};
     const margin = Number(npsh.npshMargin ?? results.npshMargin);
     const ratio = Number(npsh.npshRatio ?? results.npshRatio);
+    const freshness = results.calculationFreshness || npsh.calculationFreshness || '';
     if (
-      Number(pump.props?.designNpshr) !== 4
+      Number(pump.props?.manualNpshr) !== 4
+      || Number(pump.props?.designNpshr) !== 4
       || Number(npsh.npshr ?? results.npshr) !== 4
-      || Math.abs(margin - 0.751) > 0.002
-      || Math.abs(ratio - 1.18775) > 0.002
-      || results.calculationFreshness !== 'Local preview'
+      || Math.abs(margin - 0.75) > 0.002
+      || Math.abs(ratio - 1.1875) > 0.002
+      || !['Local preview', 'Current'].includes(freshness)
     ) {
       return false;
     }
@@ -701,16 +710,28 @@ test('Manual NPSHr UI edit previews Simulasi 4 locally and refreshes linked repo
       margin,
       ratio,
       status: npsh.hydraulicStatus || results.hydraulicNpshStatus || npsh.status || results.status || null,
-      freshness: results.calculationFreshness
+      freshness
     };
   }, caseData.pumpId, { timeout: 15000 });
   const localPreview = await localPreviewHandle.jsonValue();
   expect(localPreview.status).toBe('Safe');
-  expect(localPreview.freshness).toBe('Local preview');
+  expect(['Local preview', 'Current']).toContain(localPreview.freshness);
   await expect.poll(() => page.__desktopFlowChainRequests.length, {
-    timeout: 1400,
-    intervals: [300, 400, 700]
-  }).toBe(requestsBeforeEdit);
+    timeout: 15000,
+    intervals: [120, 300, 800, 1500]
+  }).toBeGreaterThan(requestsBeforeEdit);
+  const manualNpshrPayload = page.__desktopFlowChainRequests[page.__desktopFlowChainRequests.length - 1].payload;
+  expect(Number(manualNpshrPayload.model[caseData.pumpId].props.manualNpshr)).toBe(4);
+  await page.waitForFunction((pumpId) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const pump = model[pumpId] || {};
+    const results = pump.results || {};
+    const npsh = results.npshEvaluation || {};
+    return window.__engineeringCalculationDefenseRealtimeState?.status === 'Current'
+      && results.backendValidationStatus === 'Connected'
+      && Number(pump.props?.manualNpshr) === 4
+      && Number(npsh.npshr ?? results.npshr) === 4;
+  }, caseData.pumpId, { timeout: 15000 });
 
   await page.waitForFunction(() => {
     const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -723,8 +744,8 @@ test('Manual NPSHr UI edit previews Simulasi 4 locally and refreshes linked repo
     const marginText = readApp('Pump - NPSH margin') || readApp('Pump - NPSH Margin / Ratio');
     const ratioText = readApp('Pump - NPSH ratio') || readApp('Pump - NPSH Margin / Ratio');
     return /(?:^|\/\s*)4(?:\.0+)?\s*m/i.test(npshrText)
-      && /0\.751\s*m/i.test(marginText)
-      && /1\.18775/i.test(ratioText);
+      && /0\.75(?:0+)?\s*m/i.test(marginText)
+      && /1\.1875/i.test(ratioText);
   }, null, { timeout: 15000 });
 
   const changedReport = await analysisReportCellSnapshot(page);
@@ -732,9 +753,9 @@ test('Manual NPSHr UI edit previews Simulasi 4 locally and refreshes linked repo
   const marginApplication = changedReport.pumpMarginComparison?.application || changedReport.pumpMarginRatioComparison?.application || '';
   const ratioApplication = changedReport.pumpRatioComparison?.application || changedReport.pumpMarginRatioComparison?.application || '';
   expect(localPreview.npshr).toBe(4);
-  expect(localPreview.margin).toBeCloseTo(0.751, 3);
-  expect(localPreview.ratio).toBeCloseTo(1.18775, 4);
+  expect(localPreview.margin).toBeCloseTo(0.75, 3);
+  expect(localPreview.ratio).toBeCloseTo(1.1875, 4);
   expect(npshrApplication).toMatch(/(?:^|\/\s*)4(?:\.0+)? m/);
-  expect(marginApplication).toMatch(/0\.751 m/);
-  expect(ratioApplication).toMatch(/1\.18775/);
+  expect(marginApplication).toMatch(/0\.75(?:0+)? m/);
+  expect(ratioApplication).toMatch(/1\.1875/);
 });

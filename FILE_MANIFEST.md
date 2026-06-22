@@ -137,7 +137,7 @@ Route audit cache key: engineering-route-trace-audit.js?v=20260621-snk-boundary-
 Simulation case integrity guard cache key: engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3
 Performance refresh governor cache key: engineering-performance-refresh-governor.js?v=20260614-refresh-governor4
 Pump edit fast lane cache key: engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane5
-Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260621-route-only-pump-fields1
+Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260622-route-only-manual-npshr1
 Calculation lifecycle runtime cache key: engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1
 Calculation progress overlay cache key: engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1
 Browser issues runtime cache key: engineering-browser-issues-runtime.js?v=20260620-orphan-label-cleanup1
@@ -156,7 +156,7 @@ Pump readiness visibility cache key: engineering-pump-readiness-visibility-runti
 Pump readiness visibility load placement: support-lazy feature script for developer panel hiding, not critical first-paint script
 Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260621-pump-defense-route-design4
 Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260621-pump-chart-audit28
-Pump performance canonical chart cache key: engineering-pump-performance-canonical-chart.js?v=20260621-canonical-chart25
+Pump performance canonical chart cache key: engineering-pump-performance-canonical-chart.js?v=20260622-canonical-chart26
 Pump performance canonical chart load phase: critical shell, immediately after app.bundle.min.js, so Pump Datum - NPSHR margin-basis defaults and options are active before the first pump context-menu click
 Google auth runtime cache key: engineering-google-auth-runtime.js?v=20260620-google-auth-lazy1
 Literature PDF viewer cache key: engineering-literature-pdf-viewer.js?v=20260609-literature-access3

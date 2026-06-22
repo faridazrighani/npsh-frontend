@@ -123,7 +123,7 @@ globalThis.EngineeringParameterTaskRuntime = {
 };
 
 const runtime = require(runtimePath);
-assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v10', 'Realtime defense runtime should expose v10.');
+assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v11', 'Realtime defense runtime should expose v11.');
 assert.equal(runtime.autosolvePolicy?.mode, 'realtime-autosolve-first', 'Realtime defense must declare realtime autosolve as the primary calculation policy.');
 assert.equal(runtime.autosolvePolicy?.manualCommandRole, 'validate-refresh-evidence', 'Manual command must be treated as evidence validation/refresh.');
 assert.equal(runtime.debounceForSourceEvent('input'), 240, 'Input debounce must keep numeric edits responsive.');
@@ -137,14 +137,14 @@ assert.equal(typeof runtime.currentCalculationTransaction, 'function', 'Realtime
 assert.equal(typeof runtime.markFailed, 'function', 'Realtime defense runtime should expose backend failure state marker.');
 assert.equal(typeof runtime.isCalculationField, 'function', 'Realtime defense runtime should expose calculation field classification for regression validation.');
 
-function fakeInput({ nodeId = 'P-100', field = '', id = '', name = '', inPumpCurveTable = false } = {}) {
+function fakeInput({ nodeId = 'P-100', field = '', key = '', id = '', name = '', inPumpCurveTable = false } = {}) {
   return {
     name,
     id,
     type: 'number',
     disabled: false,
     readOnly: false,
-    dataset: { nodeId, field },
+    dataset: { nodeId, field, key },
     getAttribute: () => '',
     matches: (selector) => /input|select|textarea/.test(selector),
     closest: (selector) => {
@@ -158,6 +158,11 @@ function fakeInput({ nodeId = 'P-100', field = '', id = '', name = '', inPumpCur
 }
 
 assert.equal(runtime.isCalculationField(fakeInput({ field: 'manualNpshr' })), true, 'Manual NPSHr must remain a route-only calculation input.');
+assert.equal(
+  runtime.isCalculationField(fakeInput({ field: 'manualNpshr', key: 'designNpshr', name: 'design-npshr' })),
+  true,
+  'Manual NPSHr must win over legacy designNpshr tokens so the compact Pump Datum - NPSHR window still autosolves.'
+);
 assert.equal(runtime.isCalculationField(fakeInput({ field: 'suctionElevation' })), true, 'Pump Datum Elev. must remain a route-only calculation input.');
 assert.equal(runtime.isCalculationField(fakeInput({ field: 'designFlow' })), false, 'Legacy designFlow must not trigger route-only autosolve.');
 assert.equal(runtime.isCalculationField(fakeInput({ field: 'curveData', inPumpCurveTable: true })), false, 'Pump curve table edits must not trigger route-only autosolve.');
@@ -332,16 +337,16 @@ runtime.flushAutoSolve().then(async () => {
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(
-  index.includes('engineering-realtime-calculation-defense.js?v=20260621-route-only-pump-fields1'),
+  index.includes('engineering-realtime-calculation-defense.js?v=20260622-route-only-manual-npshr1'),
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
   index.indexOf('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane5')
-    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260621-route-only-pump-fields1'),
+    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260622-route-only-manual-npshr1'),
   'Pump edit fast lane must load before realtime calculation defense.'
 );
 assert(
-  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260621-route-only-pump-fields1'),
+  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260622-route-only-manual-npshr1'),
   'Manifest must document the realtime calculation defense cache key.'
 );
 assert(

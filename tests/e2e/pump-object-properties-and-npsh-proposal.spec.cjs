@@ -130,7 +130,7 @@ async function waitForNpshApp(page) {
   await page.waitForFunction((expectedPumpAuditVersion) => (
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.updateSimulation === 'function'
-    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v10'
+    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v11'
     && window.EngineeringDefenseExportPackage?.schemaVersion === 'defense-export-package.v1'
     && window.EngineeringPumpFormulaDefenseLiveAudit?.version === expectedPumpAuditVersion
     && window.__npshRouteTraceAuditInstalled?.fetchSimulation
