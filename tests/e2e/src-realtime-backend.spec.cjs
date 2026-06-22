@@ -226,8 +226,8 @@ async function browserSnapshotFromPage(page) {
   return page.evaluate(() => browserSnapshot());
 }
 
-function systemHead(response) {
-  const step = response.results?.calculationTrace?.steps?.find((item) => item.title === 'System Curve Head');
+function requiredPumpHead(response) {
+  const step = response.results?.calculationTrace?.steps?.find((item) => /Required Pump Head/i.test(item.title || ''));
   return Number(step?.result);
 }
 
@@ -263,7 +263,7 @@ test.beforeEach(async ({ page }) => {
           npsha: response.results?.npsha ?? null,
           npshr: response.results?.npshr ?? null,
           margin: response.results?.npshMargin ?? null,
-          systemHead: response.results ? (response.results.calculationTrace?.steps || []).find((step) => step.title === 'System Curve Head')?.result : null
+          requiredPumpHead: response.results ? (response.results.calculationTrace?.steps || []).find((step) => /Required Pump Head/i.test(step.title || ''))?.result : null
         }
       };
     };
@@ -301,7 +301,7 @@ test('SRC elevation, pressure, and temperature changes refresh protected backend
   const baselineSnapshot = await browserSnapshotFromPage(page);
   expect(baselineSnapshot.realtime.status).toBe('Current');
   expect(baselineSnapshot.pumpFreshness).toBe('Current');
-  expect(systemHead(baseline)).toBeGreaterThan(0);
+  expect(requiredPumpHead(baseline)).toBeGreaterThan(0);
   expect(srcTraceStep(baseline).directNpshImpact).toBe(true);
   expect(baseline.srcObjectAudit.routeCalculation.directNpshImpact).toBe(true);
   expect(baseline.dependencyManifest.sourceBoundaryCoverage.status).toBe('pass');
@@ -347,7 +347,7 @@ test('SRC elevation, pressure, and temperature changes refresh protected backend
   expect(changed.calculationId).not.toBe(baseline.calculationId);
   expect(changed.dependencyManifest.dependencyFingerprint).not.toBe(baseline.dependencyManifest.dependencyFingerprint);
   expect(changed.dependencyManifest.priorResultStale).toBe(true);
-  expect(systemHead(changed)).not.toBe(systemHead(baseline));
+  expect(requiredPumpHead(changed)).not.toBe(requiredPumpHead(baseline));
   expect(Number(changed.results.flow)).not.toBe(Number(baseline.results.flow));
   expect(changed.routeTraceFingerprint).not.toBe(baseline.routeTraceFingerprint);
   expect(changed.results.npsha).not.toBe(baseline.results.npsha);
@@ -414,7 +414,7 @@ test('SRC elevation, pressure, and temperature changes refresh protected backend
     baseline: {
       calculationId: baseline.calculationId,
       dependencyFingerprint: baseline.dependencyManifest.dependencyFingerprint,
-      systemHead: systemHead(baseline),
+      requiredPumpHead: requiredPumpHead(baseline),
       flow: baseline.results.flow,
       npsha: baseline.results.npsha,
       npshr: baseline.results.npshr
@@ -423,7 +423,7 @@ test('SRC elevation, pressure, and temperature changes refresh protected backend
       calculationId: changed.calculationId,
       dependencyFingerprint: changed.dependencyManifest.dependencyFingerprint,
       priorResultStale: changed.dependencyManifest.priorResultStale,
-      systemHead: systemHead(changed),
+      requiredPumpHead: requiredPumpHead(changed),
       flow: changed.results.flow,
       npsha: changed.results.npsha,
       npshr: changed.results.npshr
