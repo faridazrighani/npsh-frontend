@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-performance-canonical-chart.v23';
+  const VERSION = 'pump-performance-canonical-chart.v24';
   const PUMP_FORMULA_DEFENSE_RELOCATION_STYLE_ID = 'pump-formula-defense-relocation-style';
   const PUMP_MANUAL_NPSHR_RELOCATION_STYLE_ID = 'pump-manual-npshr-relocation-style';
   const PUMP_DEVELOPMENT_UI_SUPPRESSION_STYLE_ID = 'pump-development-ui-suppression-style';
@@ -2429,8 +2429,8 @@
     const manualField = createNumericField({
       label: 'Manual NPSHr',
       field: 'manualNpshr',
-      key: 'designNpshr',
-      name: 'design-npshr',
+      key: 'manualNpshr',
+      name: 'manual-npshr',
       value: formatManualNpshrInputValue(id),
       min: '0',
       ariaLabel: 'Manual NPSHr'

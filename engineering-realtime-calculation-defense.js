@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-realtime-calculation-defense.v10';
+  const VERSION = 'engineering-realtime-calculation-defense.v11';
   const AUTO_SOLVE_DEBOUNCE_MS = 240;
   const AUTO_SOLVE_CHANGE_DEBOUNCE_MS = 90;
   const INPUT_LATENCY_SHIELD_MS = 1250;
@@ -172,8 +172,9 @@
       return false;
     }
     if (type === 'pump') {
+      if (hasNormalizedField(normalizedText, ROUTE_ONLY_PUMP_CALCULATION_FIELDS)) return true;
       if (hasNormalizedField(normalizedText, LEGACY_PUMP_PERFORMANCE_FIELDS)) return false;
-      return hasNormalizedField(normalizedText, ROUTE_ONLY_PUMP_CALCULATION_FIELDS);
+      return false;
     }
     if (type === 'sink') {
       const fieldKey = sinkFieldKey(normalizedText);

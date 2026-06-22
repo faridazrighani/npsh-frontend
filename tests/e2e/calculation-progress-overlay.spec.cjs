@@ -4,7 +4,7 @@ async function gotoWithProgressOverlay(page) {
   await page.goto('/');
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => (
-    window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v10'
+    window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v11'
     && window.EngineeringCalculationLifecycle?.version === 'engineering-calculation-lifecycle.v1'
     && window.EngineeringCalculationProgressOverlay?.version === 'engineering-calculation-progress-overlay.v1'
   ), null, { timeout: 30000 });

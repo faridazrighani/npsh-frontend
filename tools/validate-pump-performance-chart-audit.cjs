@@ -267,16 +267,16 @@ assert(
   'Index must cache-bust the pump performance chart audit runtime.'
 );
 assert(
-  index.includes('engineering-pump-performance-canonical-chart.js?v=20260621-canonical-chart25'),
+  index.includes('engineering-pump-performance-canonical-chart.js?v=20260622-canonical-chart26'),
   'Index must load the canonical pump runtime in the critical shell so Pump Datum - NPSHR uses current margin-basis defaults before the first pump click.'
 );
 assert(
   index.indexOf('app.bundle.min.js?v=20260621-npsh-margin-options1')
-    < index.indexOf('engineering-pump-performance-canonical-chart.js?v=20260621-canonical-chart25'),
+    < index.indexOf('engineering-pump-performance-canonical-chart.js?v=20260622-canonical-chart26'),
   'Canonical pump runtime must load after the app bundle so it can override stale app-bundle pump handlers.'
 );
 assert(
-  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260621-canonical-chart25'),
+  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260622-canonical-chart26'),
   'Audit runtime must load the canonical operational chart renderer after audit guards.'
 );
 assert.strictEqual(typeof audit.loadCanonicalChartRenderer, 'function', 'Audit runtime must expose canonical renderer loader.');
@@ -328,6 +328,8 @@ assert(canonicalSource.includes("button.textContent = 'Pump Datum - NPSHR'"), 'P
 assert(canonicalSource.includes('data-pump-manual-npshr-task-menu'), 'Manual NPSHr must be exposed from the pump context menu.');
 assert(canonicalSource.includes('openPumpManualNpshrTaskWindow'), 'Manual NPSHr context menu item must open the dedicated task window.');
 assert(canonicalSource.includes('pump-manual-npshr-task-window'), 'Manual NPSHr must render in a dedicated compact task window.');
+assert(canonicalSource.includes("field: 'manualNpshr',\n      key: 'manualNpshr'"), 'Manual NPSHr task input must use manualNpshr as its canonical data key.');
+assert(canonicalSource.includes("name: 'manual-npshr'"), 'Manual NPSHr task input must not keep the legacy design-npshr input name.');
 assert(canonicalSource.includes('Pump Datum Elev.'), 'Manual NPSHr task window must include Pump Datum Elev. input label.');
 assert(canonicalSource.includes("field: 'suctionElevation'"), 'Manual NPSHr task window must bind Pump Datum Elev. to pump.props.suctionElevation.');
 assert(canonicalSource.includes('formatPumpDatumInputValue'), 'Manual NPSHr task window must hydrate Pump Datum Elev. from the current pump datum.');
@@ -372,7 +374,7 @@ assert(canonicalSource.includes('Curve Mode:'), 'Canonical footer metadata must 
 assert(canonicalSource.includes('chart.bottom + (compact ? 38 : 44)'), 'X-axis label must be positioned from the plot footer, not absolute canvas bottom.');
 assert(canonicalSource.includes('chart.bottom + 58'), 'Compact footer metadata must be below the x-axis label.');
 assert(!canonicalSource.includes('height - 44 + index * 11'), 'Footer metadata must not return to the old axis-overlap position.');
-assert.strictEqual(canonical.version, 'pump-performance-canonical-chart.v23', 'Canonical chart runtime must expose the smart engineering chart version.');
+assert.strictEqual(canonical.version, 'pump-performance-canonical-chart.v24', 'Canonical chart runtime must expose the smart engineering chart version.');
 assert.strictEqual(typeof canonical.ensureRuntimeGuards, 'function', 'Canonical chart runtime must expose self-healing realtime guards.');
 assert.strictEqual(typeof canonical.openTaskWindow, 'function', 'Canonical chart runtime must expose a disabled Pump Performance Chart task-window guard.');
 assert.strictEqual(typeof canonical.syncEntryPoints, 'function', 'Canonical chart runtime must expose entry-point synchronization for menu/buttons.');
@@ -393,7 +395,7 @@ globalThis.updatePumpChart = function overwrittenPumpChartRenderer() {
 canonical.ensureRuntimeGuards();
 assert.strictEqual(
   globalThis.updatePumpChart.__pumpPerformanceCanonicalChartVersion,
-  'pump-performance-canonical-chart.v23',
+  'pump-performance-canonical-chart.v24',
   'Canonical renderer must reclaim updatePumpChart after any late override.'
 );
 
