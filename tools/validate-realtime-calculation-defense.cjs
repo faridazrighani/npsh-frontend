@@ -136,6 +136,7 @@ assert.equal(typeof runtime.scheduleLinkedViewRefresh, 'function', 'Realtime def
 assert.equal(typeof runtime.currentCalculationTransaction, 'function', 'Realtime defense runtime should expose current calculation transaction.');
 assert.equal(typeof runtime.markFailed, 'function', 'Realtime defense runtime should expose backend failure state marker.');
 assert.equal(typeof runtime.isCalculationField, 'function', 'Realtime defense runtime should expose calculation field classification for regression validation.');
+assert.equal(typeof runtime.notifyDependencyChanged, 'function', 'Realtime defense runtime should expose the global dependency-change bridge.');
 
 function fakeInput({ nodeId = 'P-100', field = '', key = '', id = '', name = '', inPumpCurveTable = false } = {}) {
   return {
@@ -334,19 +335,42 @@ runtime.flushAutoSolve().then(async () => {
   assert.equal(reportRefreshes > 0, true, 'Autosolve should refresh live Analysis Report cells.');
   assert.equal(parameterRefreshes > 0, true, 'Autosolve should refresh open Parameter Task windows.');
 
+  const callsBeforeDependencyBridge = updateSimulationCalls.length;
+  const dependencyState = runtime.notifyDependencyChanged({
+    dependency: 'fluid-basis.temperature',
+    reason: 'Unit test Fluid Basis temperature dependency changed.',
+    delayMs: 0
+  });
+  assert.equal(
+    dependencyState.state.status,
+    'Calculating',
+    'Dependency bridge should immediately mark impacted pump results Calculating.'
+  );
+  assert.match(
+    dependencyState.pending.requestId,
+    /^rt-/,
+    'Dependency bridge should schedule a protected backend autosolve request.'
+  );
+  await runtime.flushAutoSolve();
+  await new Promise((resolve) => setTimeout(resolve, 430));
+  const dependencyCall = updateSimulationCalls.slice(callsBeforeDependencyBridge).find((call) => call.__engineeringRealtimeAutoSolve);
+  assert(dependencyCall, 'Dependency bridge must call updateSimulation through the realtime autosolve path.');
+  assert.equal(dependencyCall.forceBackend, true, 'Dependency bridge autosolve must force the protected backend refresh.');
+  assert.equal(dependencyCall.realtimeTrigger, 'realtime-input', 'Dependency bridge autosolve must keep realtime-input metadata.');
+
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(
-  index.includes('engineering-realtime-calculation-defense.js?v=20260622-route-only-manual-npshr1'),
+  index.includes('engineering-realtime-calculation-defense.js?v=20260623-global-dependency-logic1'),
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
   index.indexOf('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane5')
-    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260622-route-only-manual-npshr1'),
+    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260623-global-dependency-logic1'),
   'Pump edit fast lane must load before realtime calculation defense.'
 );
 assert(
-  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260622-route-only-manual-npshr1'),
+  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260623-global-dependency-logic1'),
   'Manifest must document the realtime calculation defense cache key.'
 );
 assert(

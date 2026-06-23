@@ -1,37 +1,37 @@
 {
   "schemaVersion": "local-live-sync-manifest.v1",
-  "generatedAt": "2026-06-23T12:30:32.612Z",
+  "generatedAt": "2026-06-23T15:14:09.550Z",
   "purpose": "Keeps the local preview server auditable against the deployed npsh.virsim.id package.",
-  "status": "synced",
+  "status": "review-required",
   "syncChecks": {
     "liveReachable": true,
-    "localIndexMatchesLive": true,
-    "cacheKeysMatch": true,
-    "verifiedLiveAssets": true,
+    "localIndexMatchesLive": false,
+    "cacheKeysMatch": false,
+    "verifiedLiveAssets": false,
     "assetVerificationFailures": 0,
     "apiCommitMatchesOriginMain": true,
-    "frontendCommitMatchesOriginMain": false
+    "frontendCommitMatchesOriginMain": true
   },
   "local": {
     "frontendRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-frontend",
     "apiRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-api",
     "serverUrl": "http://127.0.0.1:4174/",
-    "frontendCommit": "53be44f7e0f84ea20711e60b9978750cf5156a98",
-    "frontendOriginMain": "9c6215d6aa137b0be6cf3e32883cc9a5c663e5ce",
-    "apiCommit": "63f7de1c2a6b1c64f438b0fbbe02568cb797f35f",
-    "apiOriginMain": "63f7de1c2a6b1c64f438b0fbbe02568cb797f35f",
+    "frontendCommit": "56acf8e8437fd4c0051c989c259b306d23ab593b",
+    "frontendOriginMain": "56acf8e8437fd4c0051c989c259b306d23ab593b",
+    "apiCommit": "1390c775f7e81699aace7d3b0c5c140fa4d8709f",
+    "apiOriginMain": "1390c775f7e81699aace7d3b0c5c140fa4d8709f",
     "releaseIntegrity": {
       "schemaVersion": "release-integrity.v1",
-      "rootFingerprint": "836724414ee1cbf6ee131285137a5495d4c6224f53ea894f73ed01a4afb06a78",
+      "rootFingerprint": "746fba59dd910dca234baa25a1d27f49e0b2838550892af5ed82dc82ef1cc065",
       "fileCount": 391,
-      "generatedAt": "2026-06-22T23:30:49.459Z"
+      "generatedAt": "2026-06-23T13:38:22.928Z"
     },
     "index": {
       "path": "index.html",
-      "sizeBytes": 68031,
-      "sha256": "918076346c1589db893882350c675672eadb36ad108d8f3b6d0eea2846010591",
-      "canonicalSizeBytes": 67135,
-      "canonicalSha256": "36d00615c48c644b3362928c599913af5c63e04fefe01b7ae352f8817f91c107",
+      "sizeBytes": 68027,
+      "sha256": "6c41abff2423feac2cbe77baea06221bc714f936bbd63057174b5c19d2d38037",
+      "canonicalSizeBytes": 67131,
+      "canonicalSha256": "9af1b2fdb528711e7858912f9bf9292cc9bab96fbda07717885e4756646401b5",
       "canonicalizedLineEndings": true,
       "cacheKeys": [
         "app.bundle.min.js?v=20260621-npsh-margin-options1",
@@ -64,10 +64,10 @@
         "engineering-pump-performance-canonical-chart.js?v=20260622-canonical-chart26",
         "engineering-pump-performance-chart-audit.js?v=20260622-local-live-sync1",
         "engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3",
-        "engineering-realtime-calculation-defense.js?v=20260622-route-only-manual-npshr1",
+        "engineering-realtime-calculation-defense.js?v=20260623-global-dependency-logic1",
         "engineering-route-trace-audit.js?v=20260621-snk-boundary-logic1",
         "engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3",
-        "engineering-source-temperature-runtime.js?v=20260623-fluid-basis-temperature-lock-warning1",
+        "engineering-source-temperature-runtime.js?v=20260623-fluid-basis-dependency-autosolve1",
         "engineering-src-algorithm-help-runtime.js?v=20260616-src-algorithm-help1",
         "engineering-src-canvas-parameter-runtime.js?v=20260615-src-flow-basis3",
         "style.min.css?v=20260608-browser-issues1"
@@ -377,12 +377,12 @@
       {
         "path": "engineering-realtime-calculation-defense.js",
         "exists": true,
-        "sizeBytes": 65335,
-        "sha256": "a305d348c28ccfbbb492aec23c9bb6072cf4b5004ab42ba6a1cc519ac9a4c505",
-        "canonicalSizeBytes": 63868,
-        "canonicalSha256": "4a6fc8547cee81b8587951cb9889de3d15c9375ca98dcf44b8d388ed287c8c73",
+        "sizeBytes": 67250,
+        "sha256": "c4e4161d04c4af4be5f70e1e07d49dd356d49dceccc98e8bf58d8b38245deb69",
+        "canonicalSizeBytes": 65794,
+        "canonicalSha256": "4bf32af845610dd12116e0001976525a72ec653aff215b9e6d3d2be0a2028f4d",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-realtime-calculation-defense.js?v=20260622-route-only-manual-npshr1"
+        "cacheKey": "engineering-realtime-calculation-defense.js?v=20260623-global-dependency-logic1"
       },
       {
         "path": "engineering-route-trace-audit.js",
@@ -407,12 +407,12 @@
       {
         "path": "engineering-source-temperature-runtime.js",
         "exists": true,
-        "sizeBytes": 40171,
-        "sha256": "aedad82678c65ffbbad908f68c5e41636215723004a33640de3d175cd4d7d800",
-        "canonicalSizeBytes": 40171,
-        "canonicalSha256": "aedad82678c65ffbbad908f68c5e41636215723004a33640de3d175cd4d7d800",
+        "sizeBytes": 41501,
+        "sha256": "499de86f2ac38a5a330f77b41eceb85025661fca56d7129d1c64a594da99195e",
+        "canonicalSizeBytes": 41501,
+        "canonicalSha256": "499de86f2ac38a5a330f77b41eceb85025661fca56d7129d1c64a594da99195e",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-source-temperature-runtime.js?v=20260623-fluid-basis-temperature-lock-warning1"
+        "cacheKey": "engineering-source-temperature-runtime.js?v=20260623-fluid-basis-dependency-autosolve1"
       },
       {
         "path": "engineering-src-algorithm-help-runtime.js",
@@ -438,19 +438,19 @@
         "path": "FILE_MANIFEST.md",
         "exists": true,
         "sizeBytes": 29889,
-        "sha256": "6eea2ee8e5b3211fc48d37738aaf1cfdaa601ef77b54e726bba55ffc827f64fa",
+        "sha256": "4bdbed86178d1ec98d1268c30fae7a03afd4084995485711c9af23f39de14183",
         "canonicalSizeBytes": 29694,
-        "canonicalSha256": "f40470d69de50728ad038090a8fef30836c6d7ed1ffbb476e25293a0efe44ba3",
+        "canonicalSha256": "30a3e7a30b8b7a6c68fc25537ba699351775840eb90fcd52918c744ec974e1d9",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
       {
         "path": "index.html",
         "exists": true,
-        "sizeBytes": 68031,
-        "sha256": "918076346c1589db893882350c675672eadb36ad108d8f3b6d0eea2846010591",
-        "canonicalSizeBytes": 67135,
-        "canonicalSha256": "36d00615c48c644b3362928c599913af5c63e04fefe01b7ae352f8817f91c107",
+        "sizeBytes": 68027,
+        "sha256": "6c41abff2423feac2cbe77baea06221bc714f936bbd63057174b5c19d2d38037",
+        "canonicalSizeBytes": 67131,
+        "canonicalSha256": "9af1b2fdb528711e7858912f9bf9292cc9bab96fbda07717885e4756646401b5",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
@@ -521,7 +521,7 @@
     },
     "apiVersion": {
       "statusCode": 200,
-      "sha256": "40909d304e2b1f7278c3d1ddd3863a702c9918817bfb610a991ba660e0342f6c",
+      "sha256": "d4b0f1c055921f56e9ebc70a7758b736dd6f621901264ad99eba40b65d429776",
       "payload": {
         "ok": true,
         "appName": "GhaniSIM1 NPSH",
@@ -670,385 +670,20 @@
             "parity.fingerprint"
           ]
         },
-        "generatedAt": "2026-06-23T12:30:28.028Z"
+        "generatedAt": "2026-06-23T15:14:09.335Z"
       }
     },
-    "verifiedAssets": [
-      {
-        "cacheKey": "app.bundle.min.js?v=20260621-npsh-margin-options1",
-        "path": "app.bundle.min.js",
-        "liveSizeBytes": 1805452,
-        "liveSha256": "91277bba83eb1cb0c85d8211cf86ce382c648f8a83c07fdf98ec6252503b4220",
-        "liveCanonicalSha256": "91277bba83eb1cb0c85d8211cf86ce382c648f8a83c07fdf98ec6252503b4220",
-        "localSha256": "93e846af91af5006ed0331994e0e39fb76b257c556b2ec60856b6d37dc979499",
-        "localCanonicalSha256": "91277bba83eb1cb0c85d8211cf86ce382c648f8a83c07fdf98ec6252503b4220",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-analysis-report-live-runtime.js?v=20260622-local-live-sync1",
-        "path": "engineering-analysis-report-live-runtime.js",
-        "liveSizeBytes": 91735,
-        "liveSha256": "61ee0ee17f1ff91712364ad46768acc4fc8a92ff6a907bcec5bffb48c39379fe",
-        "liveCanonicalSha256": "31e4eddda7f07c3a8757c377dbc703e9bb421f5ad5f9683851a05b1534367da3",
-        "localSha256": "61ee0ee17f1ff91712364ad46768acc4fc8a92ff6a907bcec5bffb48c39379fe",
-        "localCanonicalSha256": "31e4eddda7f07c3a8757c377dbc703e9bb421f5ad5f9683851a05b1534367da3",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-bilingual-improvements.js?v=20260622-local-live-sync1",
-        "path": "engineering-bilingual-improvements.js",
-        "liveSizeBytes": 174196,
-        "liveSha256": "1006385d6e5c57fc1fd739f2c0c7fc68ba93cf7d9918ed450945f4df1d355b7f",
-        "liveCanonicalSha256": "2325eb629ff7e2255e2f408f7b7da6e06fa63f76101ef8832ef7c770312233f7",
-        "localSha256": "1006385d6e5c57fc1fd739f2c0c7fc68ba93cf7d9918ed450945f4df1d355b7f",
-        "localCanonicalSha256": "2325eb629ff7e2255e2f408f7b7da6e06fa63f76101ef8832ef7c770312233f7",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-browser-issues-runtime.js?v=20260620-orphan-label-cleanup1",
-        "path": "engineering-browser-issues-runtime.js",
-        "liveSizeBytes": 3082,
-        "liveSha256": "bcdda92cd9d4127f7017c76c2d89e61fe794c75a1e19e80d1be3fce13a24d51f",
-        "liveCanonicalSha256": "bcdda92cd9d4127f7017c76c2d89e61fe794c75a1e19e80d1be3fce13a24d51f",
-        "localSha256": "77847b237661954f7a00ff81518b778d1bd7202f9a1f9e2480eb8b1f9baa56b8",
-        "localCanonicalSha256": "bcdda92cd9d4127f7017c76c2d89e61fe794c75a1e19e80d1be3fce13a24d51f",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1",
-        "path": "engineering-calculation-lifecycle-runtime.js",
-        "liveSizeBytes": 16857,
-        "liveSha256": "f88a34615902df7573d0306cc838f778a35da20aac6fb0e965c2b31b3306ed1f",
-        "liveCanonicalSha256": "f88a34615902df7573d0306cc838f778a35da20aac6fb0e965c2b31b3306ed1f",
-        "localSha256": "c4f19b61f9930e5c897acd733239aaebd0330103bc84fcb65ad480f7690733dc",
-        "localCanonicalSha256": "f88a34615902df7573d0306cc838f778a35da20aac6fb0e965c2b31b3306ed1f",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1",
-        "path": "engineering-calculation-progress-overlay.js",
-        "liveSizeBytes": 22362,
-        "liveSha256": "3639d31b47d2c9ed5f599336c370340e197472c48c3210559a2567d692b97343",
-        "liveCanonicalSha256": "3639d31b47d2c9ed5f599336c370340e197472c48c3210559a2567d692b97343",
-        "localSha256": "b22a2386fb31b9cd444b32c8fbbd518eef511e47fc2f2e0229174a22c15e7211",
-        "localCanonicalSha256": "3639d31b47d2c9ed5f599336c370340e197472c48c3210559a2567d692b97343",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-canvas-context-dock.js?v=20260621-pipe-left-click-menu1",
-        "path": "engineering-canvas-context-dock.js",
-        "liveSizeBytes": 53588,
-        "liveSha256": "3052a74ba091998df14a17a06599d106f4d9c574f7258ca11411f91dbcd578dd",
-        "liveCanonicalSha256": "63c8d1f529b7535e5f38eda6eb9620fbe0a3a4ab141f00b32f981fb7f266289d",
-        "localSha256": "3052a74ba091998df14a17a06599d106f4d9c574f7258ca11411f91dbcd578dd",
-        "localCanonicalSha256": "63c8d1f529b7535e5f38eda6eb9620fbe0a3a4ab141f00b32f981fb7f266289d",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-caption-audit-overrides.js?v=20260606-route-schema1",
-        "path": "engineering-caption-audit-overrides.js",
-        "liveSizeBytes": 110479,
-        "liveSha256": "2e7f3a281d5f5b61b4f8287e2dddaf7d6411cc81489e31f123bf534553666152",
-        "liveCanonicalSha256": "4a5c0eabd0b8706957802fa255709681e4da16279fac2d1f9bdc9c40d144d731",
-        "localSha256": "2e7f3a281d5f5b61b4f8287e2dddaf7d6411cc81489e31f123bf534553666152",
-        "localCanonicalSha256": "4a5c0eabd0b8706957802fa255709681e4da16279fac2d1f9bdc9c40d144d731",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2",
-        "path": "engineering-decimal-display-runtime.js",
-        "liveSizeBytes": 13213,
-        "liveSha256": "62d642d178f5c67110ca4adf7745ae550fd454b6dcdb0b9fe9ce2b6bd011b892",
-        "liveCanonicalSha256": "d8059d24684b8af2192e4618a97039d0e819bd73d51bd85009e853bb7986a6d4",
-        "localSha256": "62d642d178f5c67110ca4adf7745ae550fd454b6dcdb0b9fe9ce2b6bd011b892",
-        "localCanonicalSha256": "d8059d24684b8af2192e4618a97039d0e819bd73d51bd85009e853bb7986a6d4",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-defense-export-package.js?v=20260603-defensev3",
-        "path": "engineering-defense-export-package.js",
-        "liveSizeBytes": 39358,
-        "liveSha256": "1d15a2efb0cd516da32c20510d02141ad50ce05426d6aaf34a5432bc38fec05e",
-        "liveCanonicalSha256": "1d15a2efb0cd516da32c20510d02141ad50ce05426d6aaf34a5432bc38fec05e",
-        "localSha256": "fb863173da147e012b4777fde3d0df0aa62f9e5fbfc80e6f06af9836479479b5",
-        "localCanonicalSha256": "1d15a2efb0cd516da32c20510d02141ad50ce05426d6aaf34a5432bc38fec05e",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-formula-defense-ui.js?v=20260613-formula-defense-ui15",
-        "path": "engineering-formula-defense-ui.js",
-        "liveSizeBytes": 103521,
-        "liveSha256": "b4ed3940342544bd2ad4fec5152a3ae478603a92e26c08007b333e9a3ca595a2",
-        "liveCanonicalSha256": "b4ed3940342544bd2ad4fec5152a3ae478603a92e26c08007b333e9a3ca595a2",
-        "localSha256": "b4ed3940342544bd2ad4fec5152a3ae478603a92e26c08007b333e9a3ca595a2",
-        "localCanonicalSha256": "b4ed3940342544bd2ad4fec5152a3ae478603a92e26c08007b333e9a3ca595a2",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-google-auth-runtime.js?v=20260620-google-auth-lazy1",
-        "path": "engineering-google-auth-runtime.js",
-        "liveSizeBytes": 24398,
-        "liveSha256": "13799bbfba9a4926741f1e13422f1d336058a1324f6502cf132b0b9693800660",
-        "liveCanonicalSha256": "13799bbfba9a4926741f1e13422f1d336058a1324f6502cf132b0b9693800660",
-        "localSha256": "0f44cf5085137d759a3ea627dd293e2268cb01a17b596d8390e02c1b9cfe0be4",
-        "localCanonicalSha256": "13799bbfba9a4926741f1e13422f1d336058a1324f6502cf132b0b9693800660",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-library-governance.js?v=20260530-pagespeed3",
-        "path": "engineering-library-governance.js",
-        "liveSizeBytes": 45180,
-        "liveSha256": "efbd8ce0a9a907f5f4d8be095a5f11728ba6d66736555005c0b6f0c04dab99a9",
-        "liveCanonicalSha256": "efbd8ce0a9a907f5f4d8be095a5f11728ba6d66736555005c0b6f0c04dab99a9",
-        "localSha256": "efbd8ce0a9a907f5f4d8be095a5f11728ba6d66736555005c0b6f0c04dab99a9",
-        "localCanonicalSha256": "efbd8ce0a9a907f5f4d8be095a5f11728ba6d66736555005c0b6f0c04dab99a9",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-literature-pdf-viewer.js?v=20260609-literature-access3",
-        "path": "engineering-literature-pdf-viewer.js",
-        "liveSizeBytes": 22221,
-        "liveSha256": "983f74150eb12e5604c07d3ee412a24cde3c2a43e8596c0438d822a6d9ef9ff2",
-        "liveCanonicalSha256": "983f74150eb12e5604c07d3ee412a24cde3c2a43e8596c0438d822a6d9ef9ff2",
-        "localSha256": "4c792df4ca61e9cea4a13ca8731ad7f82fab8efae2dfd75e051f123053975fa8",
-        "localCanonicalSha256": "983f74150eb12e5604c07d3ee412a24cde3c2a43e8596c0438d822a6d9ef9ff2",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-live-parameter-repaint-lock.css?v=20260620-render-blocking-fix1",
-        "path": "engineering-live-parameter-repaint-lock.css",
-        "liveSizeBytes": 1904,
-        "liveSha256": "0a4245f4730146edfac600563f0a936bca8aa1074d9ee5743c3e2c2885858825",
-        "liveCanonicalSha256": "0a4245f4730146edfac600563f0a936bca8aa1074d9ee5743c3e2c2885858825",
-        "localSha256": "0a4245f4730146edfac600563f0a936bca8aa1074d9ee5743c3e2c2885858825",
-        "localCanonicalSha256": "0a4245f4730146edfac600563f0a936bca8aa1074d9ee5743c3e2c2885858825",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-local-trace-fallback-runtime.js?v=20260611-local-trace3",
-        "path": "engineering-local-trace-fallback-runtime.js",
-        "liveSizeBytes": 52593,
-        "liveSha256": "a2473e25af465adf548473e9a5b4afab5ba42238c9ad85c7f35ae326ade2f3ad",
-        "liveCanonicalSha256": "a2473e25af465adf548473e9a5b4afab5ba42238c9ad85c7f35ae326ade2f3ad",
-        "localSha256": "41f545213463ff8b21312fcd9fb73359d701e11a16833ba9384fa3cf70078edf",
-        "localCanonicalSha256": "a2473e25af465adf548473e9a5b4afab5ba42238c9ad85c7f35ae326ade2f3ad",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-npsh-margin-runtime.js?v=20260622-local-live-sync1",
-        "path": "engineering-npsh-margin-runtime.js",
-        "liveSizeBytes": 10925,
-        "liveSha256": "20abc864f07e9fe6588024914ee0aad9cdf477c94341e4e1d6f3587d4166c585",
-        "liveCanonicalSha256": "855332be8bc9e274a983e06f51012dc5710bd65a1540c5d2ff0403e7ba73ef32",
-        "localSha256": "20abc864f07e9fe6588024914ee0aad9cdf477c94341e4e1d6f3587d4166c585",
-        "localCanonicalSha256": "855332be8bc9e274a983e06f51012dc5710bd65a1540c5d2ff0403e7ba73ef32",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-parameter-task-runtime.js?v=20260621-parameter-route-full-width3",
-        "path": "engineering-parameter-task-runtime.js",
-        "liveSizeBytes": 63787,
-        "liveSha256": "71b086a31893a31aa0206c84f6cedb8ab6deec469e1dbc4038c5d89242b1cb40",
-        "liveCanonicalSha256": "932077e2dc9aa69e072f47334311824e14cc523e7872c6bb7944bfa6651d1777",
-        "localSha256": "0488e64838637b707e57d364736b0e91ec0cbb1f4eea3302e144112e53c5cb58",
-        "localCanonicalSha256": "932077e2dc9aa69e072f47334311824e14cc523e7872c6bb7944bfa6651d1777",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-performance-refresh-governor.js?v=20260614-refresh-governor4",
-        "path": "engineering-performance-refresh-governor.js",
-        "liveSizeBytes": 35164,
-        "liveSha256": "017ae26f78867c696d3de60f24b8243d82c80411c24b6b11346ee3ddb6f033c7",
-        "liveCanonicalSha256": "017ae26f78867c696d3de60f24b8243d82c80411c24b6b11346ee3ddb6f033c7",
-        "localSha256": "017ae26f78867c696d3de60f24b8243d82c80411c24b6b11346ee3ddb6f033c7",
-        "localCanonicalSha256": "017ae26f78867c696d3de60f24b8243d82c80411c24b6b11346ee3ddb6f033c7",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-pipe-canvas-hydraulic-label-runtime.js?v=20260621-pipe-label-pump-font1",
-        "path": "engineering-pipe-canvas-hydraulic-label-runtime.js",
-        "liveSizeBytes": 23385,
-        "liveSha256": "6b3ee4b6468400fa5ef56b571c966d23fd1c27d5c1aa49e0d7440339fcce8d43",
-        "liveCanonicalSha256": "6b3ee4b6468400fa5ef56b571c966d23fd1c27d5c1aa49e0d7440339fcce8d43",
-        "localSha256": "b362a2edfd0de6aa39f3f71693a49d255699b921f16c25ce38925f15e5d3c317",
-        "localCanonicalSha256": "6b3ee4b6468400fa5ef56b571c966d23fd1c27d5c1aa49e0d7440339fcce8d43",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-pipe-moody-chart-audit.js?v=20260607-pipe-moody-audit2",
-        "path": "engineering-pipe-moody-chart-audit.js",
-        "liveSizeBytes": 15251,
-        "liveSha256": "d490f40b69ec82e645406566bf881bc3c2024123ef01cb1f2c80a8997cb5214a",
-        "liveCanonicalSha256": "d490f40b69ec82e645406566bf881bc3c2024123ef01cb1f2c80a8997cb5214a",
-        "localSha256": "d490f40b69ec82e645406566bf881bc3c2024123ef01cb1f2c80a8997cb5214a",
-        "localCanonicalSha256": "d490f40b69ec82e645406566bf881bc3c2024123ef01cb1f2c80a8997cb5214a",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-pipe-segments-file-runtime.js?v=20260608-pipe-segments-file1",
-        "path": "engineering-pipe-segments-file-runtime.js",
-        "liveSizeBytes": 16537,
-        "liveSha256": "0aef932eda5e5b6cab25631a48c577c72534017555e3a97d71002d47c22650ac",
-        "liveCanonicalSha256": "0aef932eda5e5b6cab25631a48c577c72534017555e3a97d71002d47c22650ac",
-        "localSha256": "0aef932eda5e5b6cab25631a48c577c72534017555e3a97d71002d47c22650ac",
-        "localCanonicalSha256": "0aef932eda5e5b6cab25631a48c577c72534017555e3a97d71002d47c22650ac",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-pipe-source-confidence-map-runtime.js?v=20260611-pipe-source-confidence-map1",
-        "path": "engineering-pipe-source-confidence-map-runtime.js",
-        "liveSizeBytes": 25192,
-        "liveSha256": "aa778dd4e97399458b25a997e5af24207e2cd434b5e916c7d1d822455b64b7fc",
-        "liveCanonicalSha256": "aa778dd4e97399458b25a997e5af24207e2cd434b5e916c7d1d822455b64b7fc",
-        "localSha256": "aa778dd4e97399458b25a997e5af24207e2cd434b5e916c7d1d822455b64b7fc",
-        "localCanonicalSha256": "aa778dd4e97399458b25a997e5af24207e2cd434b5e916c7d1d822455b64b7fc",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane5",
-        "path": "engineering-pump-edit-fast-lane.js",
-        "liveSizeBytes": 29399,
-        "liveSha256": "efad801add93c6b3388c15d51e43e6d19a7eb2bbbe1a6c3d384b131023ec6782",
-        "liveCanonicalSha256": "ce8dba1a96c44e5e55b4a572a29a2c8ae703d6950c28421710364b3b5b035c05",
-        "localSha256": "efad801add93c6b3388c15d51e43e6d19a7eb2bbbe1a6c3d384b131023ec6782",
-        "localCanonicalSha256": "ce8dba1a96c44e5e55b4a572a29a2c8ae703d6950c28421710364b3b5b035c05",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-pump-formula-defense-live-audit.js?v=20260621-pump-defense-route-design4",
-        "path": "engineering-pump-formula-defense-live-audit.js",
-        "liveSizeBytes": 75662,
-        "liveSha256": "2f587b593210b7c54b7d65eddf8a87edd471674c208e047a44293e518b59b221",
-        "liveCanonicalSha256": "16c856079956972e23994324048e1a4422ec3c207bdf92d561b69f3fcf030117",
-        "localSha256": "17d35c636860f533988b0222d22c203bb94b40007a7d659c8503a46b29bf2f56",
-        "localCanonicalSha256": "16c856079956972e23994324048e1a4422ec3c207bdf92d561b69f3fcf030117",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5",
-        "path": "engineering-pump-nozzle-simplify-runtime.js",
-        "liveSizeBytes": 6806,
-        "liveSha256": "26a1ec0ed82640c55de63e3a14447bc760e1f60cdf4d24b12d769eab9b291711",
-        "liveCanonicalSha256": "26a1ec0ed82640c55de63e3a14447bc760e1f60cdf4d24b12d769eab9b291711",
-        "localSha256": "26a1ec0ed82640c55de63e3a14447bc760e1f60cdf4d24b12d769eab9b291711",
-        "localCanonicalSha256": "26a1ec0ed82640c55de63e3a14447bc760e1f60cdf4d24b12d769eab9b291711",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-pump-npsh-acceptance-runtime.js?v=20260621-pump-npsh-acceptance3",
-        "path": "engineering-pump-npsh-acceptance-runtime.js",
-        "liveSizeBytes": 16896,
-        "liveSha256": "bc6831001c01b0b86a3b9ca2fa59bcaae31e267398e0d384ef8250fe6fbb904d",
-        "liveCanonicalSha256": "bc6831001c01b0b86a3b9ca2fa59bcaae31e267398e0d384ef8250fe6fbb904d",
-        "localSha256": "bfb2e7d0a5058262aa7c3e7a82a6da7334bdcda5bf8c0aae194824703ac9b046",
-        "localCanonicalSha256": "bc6831001c01b0b86a3b9ca2fa59bcaae31e267398e0d384ef8250fe6fbb904d",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-pump-performance-canonical-chart.js?v=20260622-canonical-chart26",
-        "path": "engineering-pump-performance-canonical-chart.js",
-        "liveSizeBytes": 130217,
-        "liveSha256": "4ca3a5aab103679c1f4f19ea13f054aa525de4e502253a4b5bfa471a39157bc7",
-        "liveCanonicalSha256": "4ca3a5aab103679c1f4f19ea13f054aa525de4e502253a4b5bfa471a39157bc7",
-        "localSha256": "738343b62cd50da48686a2900f4bbf9ec722f00bdfc3923e19ad94cb12cc6a98",
-        "localCanonicalSha256": "4ca3a5aab103679c1f4f19ea13f054aa525de4e502253a4b5bfa471a39157bc7",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-pump-performance-chart-audit.js?v=20260622-local-live-sync1",
-        "path": "engineering-pump-performance-chart-audit.js",
-        "liveSizeBytes": 32847,
-        "liveSha256": "10a05b1521ddbf79e18db30161558b9d21a3bc31ab914b53993da8d1d72ad2c3",
-        "liveCanonicalSha256": "a63cb6a6a8fdf70eeb3e952744d574cc6b2b39bd56b22e621ca0027a094ab3f3",
-        "localSha256": "10a05b1521ddbf79e18db30161558b9d21a3bc31ab914b53993da8d1d72ad2c3",
-        "localCanonicalSha256": "a63cb6a6a8fdf70eeb3e952744d574cc6b2b39bd56b22e621ca0027a094ab3f3",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3",
-        "path": "engineering-pump-readiness-visibility-runtime.js",
-        "liveSizeBytes": 4332,
-        "liveSha256": "2d14595821e9bc94b81a702c2c7ff90ce45c9ea7b6b478fc40fc8c917f091e80",
-        "liveCanonicalSha256": "fc633e14c74be2dd435ca6be4a6acdda9932fe5ef7055d9c1cbab46373363da4",
-        "localSha256": "2d14595821e9bc94b81a702c2c7ff90ce45c9ea7b6b478fc40fc8c917f091e80",
-        "localCanonicalSha256": "fc633e14c74be2dd435ca6be4a6acdda9932fe5ef7055d9c1cbab46373363da4",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-realtime-calculation-defense.js?v=20260622-route-only-manual-npshr1",
-        "path": "engineering-realtime-calculation-defense.js",
-        "liveSizeBytes": 63868,
-        "liveSha256": "4a6fc8547cee81b8587951cb9889de3d15c9375ca98dcf44b8d388ed287c8c73",
-        "liveCanonicalSha256": "4a6fc8547cee81b8587951cb9889de3d15c9375ca98dcf44b8d388ed287c8c73",
-        "localSha256": "a305d348c28ccfbbb492aec23c9bb6072cf4b5004ab42ba6a1cc519ac9a4c505",
-        "localCanonicalSha256": "4a6fc8547cee81b8587951cb9889de3d15c9375ca98dcf44b8d388ed287c8c73",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-route-trace-audit.js?v=20260621-snk-boundary-logic1",
-        "path": "engineering-route-trace-audit.js",
-        "liveSizeBytes": 106001,
-        "liveSha256": "d0cfef16e05abbe5e700cb2ef3c5b0e92473023c835eb582aa6ae8f428e6e093",
-        "liveCanonicalSha256": "9403cec3dd458029f4dbf0e87b5b434afb954b3171deba177aafbe827f282c64",
-        "localSha256": "3db1767be4086aa679becf1bd085fa900217a84a127e9caa74271c684fd504d4",
-        "localCanonicalSha256": "9403cec3dd458029f4dbf0e87b5b434afb954b3171deba177aafbe827f282c64",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3",
-        "path": "engineering-simulation-case-integrity-guard.js",
-        "liveSizeBytes": 10332,
-        "liveSha256": "378da7e871e0af9995a43a67a6e09f42f4d0df00910eb5284a43c8a138f58cb1",
-        "liveCanonicalSha256": "378da7e871e0af9995a43a67a6e09f42f4d0df00910eb5284a43c8a138f58cb1",
-        "localSha256": "378da7e871e0af9995a43a67a6e09f42f4d0df00910eb5284a43c8a138f58cb1",
-        "localCanonicalSha256": "378da7e871e0af9995a43a67a6e09f42f4d0df00910eb5284a43c8a138f58cb1",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-source-temperature-runtime.js?v=20260623-fluid-basis-temperature-lock-warning1",
-        "path": "engineering-source-temperature-runtime.js",
-        "liveSizeBytes": 40948,
-        "liveSha256": "309cc43544b9653ebfbeb1256a6c3cfbd2f9d3a532f71a3d7603ed7bfb569bd9",
-        "liveCanonicalSha256": "aedad82678c65ffbbad908f68c5e41636215723004a33640de3d175cd4d7d800",
-        "localSha256": "aedad82678c65ffbbad908f68c5e41636215723004a33640de3d175cd4d7d800",
-        "localCanonicalSha256": "aedad82678c65ffbbad908f68c5e41636215723004a33640de3d175cd4d7d800",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-src-algorithm-help-runtime.js?v=20260616-src-algorithm-help1",
-        "path": "engineering-src-algorithm-help-runtime.js",
-        "liveSizeBytes": 22766,
-        "liveSha256": "4c02e818516cc66c91e6ecdb8070427fe11ac3a70fdc6f96ed01a2a43eacfc14",
-        "liveCanonicalSha256": "4c02e818516cc66c91e6ecdb8070427fe11ac3a70fdc6f96ed01a2a43eacfc14",
-        "localSha256": "4c02e818516cc66c91e6ecdb8070427fe11ac3a70fdc6f96ed01a2a43eacfc14",
-        "localCanonicalSha256": "4c02e818516cc66c91e6ecdb8070427fe11ac3a70fdc6f96ed01a2a43eacfc14",
-        "matched": true
-      },
-      {
-        "cacheKey": "engineering-src-canvas-parameter-runtime.js?v=20260615-src-flow-basis3",
-        "path": "engineering-src-canvas-parameter-runtime.js",
-        "liveSizeBytes": 37650,
-        "liveSha256": "bf88f19070ecb23d6c269bef13711a239d9b8aa56d01fe22ffc37161c85f56dd",
-        "liveCanonicalSha256": "9a02fac9a3923df9b650478263eba3c8a180194f873434a6dfe77cdc2142c2c5",
-        "localSha256": "bf88f19070ecb23d6c269bef13711a239d9b8aa56d01fe22ffc37161c85f56dd",
-        "localCanonicalSha256": "9a02fac9a3923df9b650478263eba3c8a180194f873434a6dfe77cdc2142c2c5",
-        "matched": true
-      },
-      {
-        "cacheKey": "style.min.css?v=20260608-browser-issues1",
-        "path": "style.min.css",
-        "liveSizeBytes": 190637,
-        "liveSha256": "8e4c1ad9f9015faafd3fc48a8911bf5449c7af25cd4ed526260b75004006216e",
-        "liveCanonicalSha256": "8e4c1ad9f9015faafd3fc48a8911bf5449c7af25cd4ed526260b75004006216e",
-        "localSha256": "8e4c1ad9f9015faafd3fc48a8911bf5449c7af25cd4ed526260b75004006216e",
-        "localCanonicalSha256": "8e4c1ad9f9015faafd3fc48a8911bf5449c7af25cd4ed526260b75004006216e",
-        "matched": true
-      }
-    ]
+    "verifiedAssets": []
   },
   "differences": {
-    "cacheKeysMissingOnLive": [],
-    "cacheKeysMissingLocally": [],
+    "cacheKeysMissingOnLive": [
+      "engineering-realtime-calculation-defense.js?v=20260623-global-dependency-logic1",
+      "engineering-source-temperature-runtime.js?v=20260623-fluid-basis-dependency-autosolve1"
+    ],
+    "cacheKeysMissingLocally": [
+      "engineering-realtime-calculation-defense.js?v=20260622-route-only-manual-npshr1",
+      "engineering-source-temperature-runtime.js?v=20260623-fluid-basis-temperature-lock-warning1"
+    ],
     "assetVerificationFailures": []
   },
   "cachePolicy": {

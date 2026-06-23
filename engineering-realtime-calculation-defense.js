@@ -1342,6 +1342,53 @@
     return pendingAutoSolve;
   }
 
+  function notifyDependencyChanged(detail = {}) {
+    const options = detail && typeof detail === 'object' ? detail : { dependency: String(detail || '') };
+    const dependency = String(options.dependency || options.field || 'calculation dependency').trim() || 'calculation dependency';
+    const model = runtimeModel();
+    const requestedNodeId = String(options.nodeId || '').trim();
+    const resolvedNodeId = requestedNodeId
+      || Object.keys(model || {}).find((id) => model[id]?.type === 'pump')
+      || '';
+    const markNodeId = Object.prototype.hasOwnProperty.call(options, 'markNodeId')
+      ? String(options.markNodeId || '')
+      : requestedNodeId;
+    const reason = String(options.reason || `${dependency} changed; protected backend recalculation is required.`);
+    const sourceEvent = options.sourceEvent || 'dependency-change';
+    markUserCalculationIntent(options.intentSource || 'dependency-change', options.target || null);
+    if (options.target) markInputLatencyShield(options.target, resolvedNodeId, reason);
+    const state = options.initialStatus === 'stale'
+      ? markStale(markNodeId, reason)
+      : markCalculating(markNodeId, reason);
+    dispatchRealtimeEvent('npsh:calculation-dependency-changed', {
+      version: VERSION,
+      dependency,
+      nodeId: resolvedNodeId,
+      markedNodeId: markNodeId,
+      reason,
+      sourceEvent,
+      status: state.status,
+      calculationMode: 'realtime-input',
+      updatedAt: new Date().toISOString()
+    });
+    scheduleLinkedViewRefresh(resolvedNodeId, reason);
+    const pending = options.autoSolve === false
+      ? null
+      : requestAutoSolve(resolvedNodeId, reason, {
+        sourceEvent,
+        delayMs: options.delayMs
+      });
+    return {
+      version: VERSION,
+      dependency,
+      nodeId: resolvedNodeId,
+      markedNodeId: markNodeId,
+      state,
+      pending,
+      reason
+    };
+  }
+
   function flushAutoSolve() {
     if (autoSolveTimer && pendingAutoSolve) {
       const pending = pendingAutoSolve;
@@ -1433,6 +1480,7 @@
     markCurrentFromBackend,
     currentCalculationTransaction,
     requestAutoSolve,
+    notifyDependencyChanged,
     flushAutoSolve,
     cancelAutoSolve,
     isCalculationField,

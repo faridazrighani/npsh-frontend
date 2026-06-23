@@ -769,6 +769,81 @@ test('Fluid Basis temperature lock warning appears when journal properties stay 
   expect(warningState.text).toMatch(/locked\/manual\/journal/i);
 });
 
+test('Fluid Basis temperature edit autosolves pump route without solver click', async ({ page }, testInfo) => {
+  const caseData = loadJournalCase('simulation-case-1');
+  await waitForNpshApp(page);
+  await loadProject(page, caseData);
+
+  const baseline = await runProtectedSolve(page, caseData);
+  const baselineSummary = temperatureSummaryFromSimulation(baseline);
+  expectFiniteTemperatureSummary(baselineSummary, 'baseline');
+  expect(baselineSummary.temperature).toBe(100);
+
+  await page.locator('#btn-fluid-basis').click();
+  const temperatureInput = page.locator('#fluid-task-temp').first();
+  await expect(temperatureInput).toBeVisible({ timeout: 10000 });
+
+  const autoResponsePromise = page.waitForResponse((response) => (
+    /\/api\/simulate(?:[?#]|$)/.test(response.url())
+    && response.request().method() === 'POST'
+    && response.status() === 200
+  ), { timeout: 30000 });
+
+  await temperatureInput.click();
+  await temperatureInput.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
+  await temperatureInput.type('80');
+
+  await page.waitForFunction((pumpId) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const results = model[pumpId]?.results || {};
+    const state = window.__engineeringCalculationDefenseRealtimeState || {};
+    return ['Calculating', 'Stale'].includes(results.backendValidationStatus)
+      || ['Calculating', 'Stale'].includes(state.status);
+  }, caseData.pumpId, { timeout: 10000 });
+
+  const autoResponse = await autoResponsePromise;
+  const autoBody = await autoResponse.json();
+
+  await page.waitForFunction(({ pumpId, calculationId, baselineId }) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const results = model[pumpId]?.results || {};
+    const state = window.__engineeringCalculationDefenseRealtimeState || {};
+    const activeId = results.calculationAudit?.calculationId || state.calculationId || null;
+    return activeId === calculationId
+      && activeId !== baselineId
+      && state.status === 'Current'
+      && results.backendValidationStatus === 'Connected';
+  }, {
+    pumpId: caseData.pumpId,
+    calculationId: autoBody.calculationId,
+    baselineId: baseline.calculationId
+  }, { timeout: 15000 });
+
+  const uiProjectState = await collectUiProjectState(page);
+  const directBackend = runDirectBackendSimulation(uiProjectState, caseData.pumpId);
+  const autoSummary = temperatureSummaryFromSimulation(autoBody);
+  const backendSummary = temperatureSummaryFromSimulation(directBackend);
+  expectFiniteTemperatureSummary(autoSummary, 'autosolve');
+  expectTemperatureSummaryClose(autoSummary, backendSummary, 'autosolve backend parity');
+  expect(autoSummary.temperature).toBe(80);
+  expect(autoSummary.npsha).not.toBeCloseTo(baselineSummary.npsha, 4);
+  expect(autoSummary.margin).not.toBeCloseTo(baselineSummary.margin, 4);
+  expect(autoSummary.hLSuction).toBeGreaterThan(0);
+  expect(autoSummary.hLDischarge).toBeGreaterThan(0);
+
+  await testInfo.attach('fluid-temperature-autosolve-without-solver.json', {
+    body: JSON.stringify({
+      caseId: 'simulation-case-1',
+      action: 'Typed Fluid Basis Temperature=80 without clicking solver/validate.',
+      baseline: baselineSummary,
+      autosolve: autoSummary,
+      backend: backendSummary,
+      calculationId: autoBody.calculationId
+    }, null, 2),
+    contentType: 'application/json'
+  });
+});
+
 test('Simulasi 4 desktop chain renders actual methanol NPSH-risk fixture', async ({ page }, testInfo) => {
   const caseData = loadJournalCase('simulation-case-4');
   expect(caseData.entry.sampleFile).toMatch(/simulasi_4/i);

@@ -697,8 +697,36 @@
             '#fluid-task-temp, input.prop-input-field[data-key="temp"][data-node="FLUID"], input[data-key="temp"][data-node="FLUID"]'
         );
         const isCanonicalFluidBasisTemperatureInput = (target) => target?.matches?.(
-            'input.prop-input-field[data-key="temp"][data-node="FLUID"], input[data-key="temp"][data-node="FLUID"]'
+            '#fluid-task-temp, input.prop-input-field[data-key="temp"][data-node="FLUID"], input[data-key="temp"][data-node="FLUID"]'
         );
+        const notifyTemperatureDependencyChanged = (event, target, options = {}) => {
+            const reason = 'Fluid Basis temperature changed; recalculating route hydraulic/NPSH results.';
+            const realtime = window.EngineeringRealtimeCalculationDefense;
+            if (typeof realtime?.notifyDependencyChanged === 'function') {
+                return realtime.notifyDependencyChanged({
+                    dependency: 'fluid-basis.temperature',
+                    reason,
+                    sourceEvent: event?.type || 'fluid-basis-temperature',
+                    target,
+                    initialStatus: 'calculating',
+                    delayMs: options.delayMs
+                });
+            }
+            if (typeof realtime?.markCalculating === 'function') {
+                realtime.markCalculating('', reason);
+            } else if (typeof realtime?.markStale === 'function') {
+                realtime.markStale('', reason);
+            }
+            if (typeof window.updateSimulation === 'function') {
+                return window.updateSimulation({
+                    refreshReason: 'solve',
+                    trigger: 'fluid-basis-temperature-sync',
+                    forceBackend: true,
+                    renderSidebarAfter: true
+                });
+            }
+            return null;
+        };
         const wrapUpdateSimulation = () => {
             if (typeof window.updateSimulation !== 'function') return false;
             if (window.updateSimulation.__fluidBasisTemperatureSyncWrapped) return true;
@@ -731,6 +759,7 @@
                     const fluidNode = getRuntimeFluidBasisNode();
                     if (fluidNode?.props) fluidNode.props.temperaturePropertySyncRequested = true;
                     sync();
+                    notifyTemperatureDependencyChanged(event, event.target);
                 }
                 renderWarningSoon();
             }
@@ -744,9 +773,7 @@
                     sync();
                 }
                 renderWarningSoon();
-                if (shouldAutoSync && typeof window.updateSimulation === 'function') {
-                    window.updateSimulation({ refreshReason: 'solve', trigger: 'fluid-basis-temperature-sync' });
-                }
+                if (shouldAutoSync) notifyTemperatureDependencyChanged(event, event.target, { delayMs: 0 });
             }
         }, true);
     }
