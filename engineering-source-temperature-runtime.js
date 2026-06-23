@@ -25,6 +25,18 @@
         return fluidName === 'water';
     }
 
+    function getRuntimeModel() {
+        return window.globalModel || window.__npshGlobalModel || {};
+    }
+
+    function getRuntimeFluidBasisNode() {
+        return getRuntimeModel().FLUID || null;
+    }
+
+    function getRuntimeFluidBasisProps() {
+        return getRuntimeFluidBasisNode()?.props || {};
+    }
+
     function sumRange(start, end, term) {
         let total = 0;
         for (let index = start; index < end; index += 1) total += term(index);
@@ -177,7 +189,7 @@
     }
 
     function getTemperatureResolvedFluidBasisProps(fluidBasis) {
-        const base = { ...(fluidBasis || window.globalModel?.FLUID?.props || {}) };
+        const base = { ...(fluidBasis || getRuntimeFluidBasisProps() || {}) };
         const temp = toFiniteNumber(base.temp, NaN);
         if (!Number.isFinite(temp) || !isWaterPropertyCorrelationFluid(base)) {
             return applyExtendedProperties(base);
@@ -204,8 +216,96 @@
         return resolved;
     }
 
+    function parseTemperatureFromPropertyMethod(method) {
+        const text = String(method || '');
+        const match = text.match(/(?:at|@)\s*(-?\d+(?:\.\d+)?)\s*(?:deg\s*C|°C|C)\b/i);
+        return match ? toFiniteNumber(match[1], NaN) : NaN;
+    }
+
+    function buildFluidBasisTemperaturePropertyWarning(fluidBasis) {
+        const props = fluidBasis?.props || fluidBasis || getRuntimeFluidBasisProps() || {};
+        const temp = toFiniteNumber(props.temp, NaN);
+        if (!props || typeof props !== 'object' || !Number.isFinite(temp)) return null;
+        const propertyMethod = String(props.propertyMethod || props.fluidPropertySource || '');
+        const alreadySynced = props.temperaturePropertySyncRequested === true
+            || props.temperaturePropertySynced === true
+            || /fluid basis temperature correlation/i.test(propertyMethod);
+        if (alreadySynced) return null;
+        const lockedPropertyBasis = /journal|validation basis|manual|user input|user-defined|custom/i.test(propertyMethod);
+        if (!lockedPropertyBasis) return null;
+
+        const methodTemperature = parseTemperatureFromPropertyMethod(propertyMethod);
+        const methodTemperatureMismatch = Number.isFinite(methodTemperature)
+            && Math.abs(methodTemperature - temp) > 1e-6;
+        let staleWaterLikeProperties = false;
+        if (isWaterPropertyCorrelationFluid(props)) {
+            const expected = calculateRuntimeWaterProperties(temp);
+            const density = toFiniteNumber(props.density, NaN);
+            const viscosity = toFiniteNumber(props.viscosity ?? props.kinematicViscosity, NaN);
+            const vaporPressure = toFiniteNumber(props.vaporPressure, NaN);
+            staleWaterLikeProperties = (
+                Number.isFinite(density)
+                && Math.abs(density - expected.density) > Math.max(0.5, Math.abs(expected.density) * 0.001)
+            ) || (
+                Number.isFinite(viscosity)
+                && Math.abs(viscosity - expected.kinematicViscosity) > Math.max(0.02, Math.abs(expected.kinematicViscosity) * 0.05)
+            ) || (
+                Number.isFinite(vaporPressure)
+                && Math.abs(vaporPressure - expected.vaporPressure) > Math.max(0.005, Math.abs(expected.vaporPressure) * 0.05)
+            );
+        }
+        if (!methodTemperatureMismatch && !staleWaterLikeProperties) return null;
+        return {
+            id: 'fluid-temperature-property-lock',
+            severity: 'warning',
+            temperature: temp,
+            methodTemperature: Number.isFinite(methodTemperature) ? methodTemperature : null,
+            propertyMethod,
+            message: 'Fluid Basis temperature changed while density, viscosity, and vapor pressure are locked/manual/journal values. Apply Fluid Basis temperature correlation or update density, viscosity, and vapor pressure manually before relying on NPSHa.',
+            details: {
+                density: props.density,
+                viscosity: props.viscosity ?? props.kinematicViscosity,
+                vaporPressure: props.vaporPressure
+            }
+        };
+    }
+
+    function getFluidBasisWarningHost() {
+        const input = document.querySelector('#fluid-task-temp, input.prop-input-field[data-key="temp"][data-node="FLUID"], input[data-key="temp"][data-node="FLUID"]');
+        return input?.closest?.('.task-window, [role="dialog"], #taskWindow, body')
+            || document.getElementById('taskWindow')
+            || document.body;
+    }
+
+    function renderFluidBasisTemperaturePropertyWarning() {
+        if (typeof document === 'undefined') return null;
+        const warning = buildFluidBasisTemperaturePropertyWarning(getRuntimeFluidBasisProps());
+        const existing = document.querySelector('[data-fluid-temperature-property-warning="true"]');
+        if (!warning) {
+            existing?.remove();
+            return null;
+        }
+        const host = getFluidBasisWarningHost();
+        if (!host) return warning;
+        const input = host.querySelector?.('#fluid-task-temp, input.prop-input-field[data-key="temp"][data-node="FLUID"], input[data-key="temp"][data-node="FLUID"]');
+        const row = input?.closest?.('.object-task-field-row, .fluid-task-field-row, .field-row, label, div');
+        const notice = existing || document.createElement('div');
+        notice.className = 'fluid-temperature-property-lock-warning';
+        notice.dataset.fluidTemperaturePropertyWarning = 'true';
+        notice.setAttribute('role', 'alert');
+        notice.textContent = warning.message;
+        if (!existing) {
+            if (row?.parentNode) {
+                row.parentNode.insertBefore(notice, row.nextSibling);
+            } else {
+                host.appendChild(notice);
+            }
+        }
+        return warning;
+    }
+
     function getFluidPropsAtSourceTemperature(source, fluidBasis) {
-        const base = getTemperatureResolvedFluidBasisProps(fluidBasis || window.globalModel?.FLUID?.props || {});
+        const base = getTemperatureResolvedFluidBasisProps(fluidBasis || getRuntimeFluidBasisProps() || {});
         const sourceProps = source?.props || {};
         const baseTemperature = toFiniteNumber(base.temp, 25);
         const customTemperature = toFiniteNumber(sourceProps.temp, baseTemperature);
@@ -270,7 +370,8 @@
             '.src-temperature-stability-lock .object-task-field-row[data-prop-key="source-fluid-dynamic-viscosity"],',
             '.src-temperature-stability-lock .object-task-field-row[data-prop-key="source-fluid-specific-weight"],',
             '.src-temperature-stability-lock .object-task-field-row[data-prop-key="source-fluid-vapor-pressure-head"],',
-            '.src-temperature-stability-lock .object-task-field-row[data-prop-key="source-fluid-vapor-pressure"]{contain:layout style}'
+            '.src-temperature-stability-lock .object-task-field-row[data-prop-key="source-fluid-vapor-pressure"]{contain:layout style}',
+            '.fluid-temperature-property-lock-warning{margin:8px 0;padding:8px 10px;border:1px solid #f0b45a;background:#fff8e8;color:#4f3500;border-radius:4px;font-size:12px;line-height:1.35}'
         ].join('\n');
         document.head.appendChild(style);
     }
@@ -584,14 +685,32 @@
     function installFluidBasisTemperatureSyncGuard() {
         if (typeof document === 'undefined' || document.documentElement?.dataset.fluidBasisTemperatureSyncGuard === 'true') return;
         document.documentElement.dataset.fluidBasisTemperatureSyncGuard = 'true';
-        const sync = () => syncFluidBasisPropertiesFromTemperature(window.globalModel?.FLUID);
+        const sync = () => syncFluidBasisPropertiesFromTemperature(getRuntimeFluidBasisNode());
+        const renderWarningSoon = () => {
+            if (typeof window.requestAnimationFrame === 'function') {
+                window.requestAnimationFrame(() => renderFluidBasisTemperaturePropertyWarning());
+            } else {
+                window.setTimeout(() => renderFluidBasisTemperaturePropertyWarning(), 0);
+            }
+        };
+        const isFluidBasisTemperatureInput = (target) => target?.matches?.(
+            '#fluid-task-temp, input.prop-input-field[data-key="temp"][data-node="FLUID"], input[data-key="temp"][data-node="FLUID"]'
+        );
+        const isCanonicalFluidBasisTemperatureInput = (target) => target?.matches?.(
+            'input.prop-input-field[data-key="temp"][data-node="FLUID"], input[data-key="temp"][data-node="FLUID"]'
+        );
         const wrapUpdateSimulation = () => {
             if (typeof window.updateSimulation !== 'function') return false;
             if (window.updateSimulation.__fluidBasisTemperatureSyncWrapped) return true;
             const originalUpdateSimulation = window.updateSimulation;
             const wrappedUpdateSimulation = function (...args) {
                 sync();
-                return originalUpdateSimulation.apply(this, args);
+                const result = originalUpdateSimulation.apply(this, args);
+                if (result && typeof result.finally === 'function') {
+                    return result.finally(() => renderFluidBasisTemperaturePropertyWarning());
+                }
+                renderFluidBasisTemperaturePropertyWarning();
+                return result;
             };
             wrappedUpdateSimulation.__fluidBasisTemperatureSyncWrapped = true;
             wrappedUpdateSimulation.__originalUpdateSimulation = originalUpdateSimulation;
@@ -599,6 +718,7 @@
             return true;
         };
         sync();
+        renderFluidBasisTemperaturePropertyWarning();
         if (!wrapUpdateSimulation()) {
             const timer = window.setInterval(() => {
                 if (wrapUpdateSimulation()) window.clearInterval(timer);
@@ -606,16 +726,25 @@
             window.setTimeout(() => window.clearInterval(timer), 5000);
         }
         document.addEventListener('input', (event) => {
-            if (event.target?.matches?.('input.prop-input-field[data-key="temp"][data-node="FLUID"], input[data-key="temp"][data-node="FLUID"]')) {
-                if (window.globalModel?.FLUID?.props) window.globalModel.FLUID.props.temperaturePropertySyncRequested = true;
-                sync();
+            if (isFluidBasisTemperatureInput(event.target)) {
+                if (isCanonicalFluidBasisTemperatureInput(event.target)) {
+                    const fluidNode = getRuntimeFluidBasisNode();
+                    if (fluidNode?.props) fluidNode.props.temperaturePropertySyncRequested = true;
+                    sync();
+                }
+                renderWarningSoon();
             }
         }, true);
         document.addEventListener('change', (event) => {
-            if (event.target?.matches?.('input.prop-input-field[data-key="temp"][data-node="FLUID"], input[data-key="temp"][data-node="FLUID"]')) {
-                if (window.globalModel?.FLUID?.props) window.globalModel.FLUID.props.temperaturePropertySyncRequested = true;
-                sync();
-                if (typeof window.updateSimulation === 'function') {
+            if (isFluidBasisTemperatureInput(event.target)) {
+                const shouldAutoSync = isCanonicalFluidBasisTemperatureInput(event.target);
+                if (shouldAutoSync) {
+                    const fluidNode = getRuntimeFluidBasisNode();
+                    if (fluidNode?.props) fluidNode.props.temperaturePropertySyncRequested = true;
+                    sync();
+                }
+                renderWarningSoon();
+                if (shouldAutoSync && typeof window.updateSimulation === 'function') {
                     window.updateSimulation({ refreshReason: 'solve', trigger: 'fluid-basis-temperature-sync' });
                 }
             }
@@ -630,6 +759,9 @@
         getFluidPropsAtSourceTemperature,
         getTemperatureResolvedFluidBasisProps,
         syncFluidBasisPropertiesFromTemperature,
+        buildFluidBasisTemperaturePropertyWarning,
+        getFluidBasisTemperaturePropertyWarning: buildFluidBasisTemperaturePropertyWarning,
+        renderFluidBasisTemperaturePropertyWarning,
         updateSourceTemperaturePreview,
         applySourceTemperatureInput,
         installSourceTemperatureStabilityGuard,
@@ -637,7 +769,7 @@
         installSourceFluidBasisOnlyUiGuard,
         installFluidBasisTemperatureSyncGuard,
         sourceCustomTemperatureUiEnabled: SOURCE_CUSTOM_TEMPERATURE_UI_ENABLED,
-        version: '20260622-fluid-basis-temperature-sync-v1'
+        version: '20260623-fluid-basis-temperature-lock-warning-v1'
     };
     installSourceTemperatureStabilityGuard();
     installSourceFluidBasisOnlyUiGuard();

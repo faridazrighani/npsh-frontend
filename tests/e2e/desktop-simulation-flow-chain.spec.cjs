@@ -4,6 +4,8 @@ const zlib = require('node:zlib');
 const { test, expect } = require('@playwright/test');
 
 const frontendRoot = path.resolve(__dirname, '../..');
+const apiRoot = path.resolve(frontendRoot, '..', 'npsh-api');
+const { runBackendNpshSimulation } = require(path.join(apiRoot, 'server/src/engine/frontend-npsh-engine.cjs'));
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -109,6 +111,102 @@ async function runProtectedSolve(page, caseData, { delayNext = false, expectedPr
     expectedPreviousId
   }, { timeout: 15000 });
   return body;
+}
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function finiteOrNull(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function roundMetric(value, digits = 6) {
+  const number = finiteOrNull(value);
+  return number === null ? null : Number(number.toFixed(digits));
+}
+
+async function collectUiProjectState(page) {
+  return page.evaluate(() => {
+    const copyObject = (value) => JSON.parse(JSON.stringify(value || {}));
+    const copyArray = (value) => JSON.parse(JSON.stringify(Array.isArray(value) ? value : []));
+    let state = null;
+    try {
+      state = typeof window.getSimulationState === 'function'
+        ? JSON.parse(window.getSimulationState())
+        : null;
+    } catch {
+      state = null;
+    }
+    return {
+      projectFile: { sourceFormat: 'ui-temperature-e2e-snapshot' },
+      model: copyObject(state?.model || window.__npshGlobalModel || window.globalModel || {}),
+      connections: copyArray(state?.connections || window.__npshConnections || window.connections),
+      sourceLinks: copyArray(state?.sourceLinks || window.sourceLinks),
+      instrumentLinks: copyArray(state?.instrumentLinks || window.instrumentLinks)
+    };
+  });
+}
+
+function runDirectBackendSimulation(projectState, pumpId) {
+  return runBackendNpshSimulation({
+    model: clone(projectState.model || {}),
+    connections: clone(projectState.connections || []),
+    sourceLinks: clone(projectState.sourceLinks || []),
+    instrumentLinks: clone(projectState.instrumentLinks || []),
+    selectedPumpId: pumpId,
+    client: {
+      protectedFrontend: true,
+      mode: 'primary'
+    }
+  }, {
+    projectRoot: apiRoot,
+    pumpId
+  });
+}
+
+function temperatureSummaryFromSimulation(simulation) {
+  const result = simulation?.results || simulation?.result || simulation || {};
+  const trace = result.calculationTrace || {};
+  const basis = trace.basis || {};
+  const systemHeadTrace = trace.systemHead || {};
+  const routeTrace = simulation?.routeTrace || {};
+  const suctionSection = routeTrace.sections?.suction || {};
+  const dischargeSection = routeTrace.sections?.discharge || {};
+  return {
+    temperature: roundMetric(basis.temperature),
+    rho: roundMetric(basis.density),
+    viscosity: roundMetric(basis.viscosity),
+    pvap: roundMetric(basis.vaporPressureBarA),
+    hLSuction: roundMetric(result.suctionLoss ?? systemHeadTrace.suctionLoss ?? suctionSection.totalLossM),
+    hLDischarge: roundMetric(result.dischargeLoss ?? systemHeadTrace.dischargeLoss ?? dischargeSection.totalLossM),
+    hRequired: roundMetric(result.requiredSystemHead ?? systemHeadTrace.requiredHead),
+    npsha: roundMetric(result.npsha),
+    margin: roundMetric(result.npshMargin)
+  };
+}
+
+function expectFiniteTemperatureSummary(summary, label) {
+  for (const key of ['rho', 'viscosity', 'pvap', 'hLSuction', 'hLDischarge', 'hRequired', 'npsha', 'margin']) {
+    expect(Number.isFinite(summary[key]), `${label}.${key} should be finite`).toBe(true);
+  }
+}
+
+function expectTemperatureSummaryClose(actual, expected, label) {
+  const tolerances = {
+    rho: 0.002,
+    viscosity: 0.0005,
+    pvap: 0.0005,
+    hLSuction: 0.002,
+    hLDischarge: 0.002,
+    hRequired: 0.002,
+    npsha: 0.002,
+    margin: 0.002
+  };
+  for (const [key, tolerance] of Object.entries(tolerances)) {
+    expect(Math.abs(actual[key] - expected[key]), `${label}.${key}`).toBeLessThanOrEqual(tolerance);
+  }
 }
 
 async function changeSinkBoundaryInBrowser(page, caseData, { elevation, pressure }) {
@@ -555,6 +653,120 @@ test('Analysis Report live cells refresh from current calculation state without 
       && body.scrollWidth <= body.clientWidth + 2
       && probeRect.right <= bodyRect.right + 2;
   }, null, { timeout: 10000 });
+});
+
+test('Fluid Basis temperature UI solve matches direct backend and reports route losses', async ({ page }, testInfo) => {
+  const caseData = loadJournalCase('simulation-case-1');
+  await waitForNpshApp(page);
+  await loadProject(page, caseData);
+
+  await page.locator('#btn-fluid-basis').click();
+  const temperatureInput = page.locator('#fluid-task-temp').first();
+  await expect(temperatureInput).toBeVisible({ timeout: 10000 });
+
+  const rows = [];
+  for (const temperature of [100, 80, 10]) {
+    await temperatureInput.click();
+    await temperatureInput.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
+    await temperatureInput.type(String(temperature));
+    await temperatureInput.dispatchEvent('input');
+    await temperatureInput.dispatchEvent('change');
+    await page.waitForFunction((nextTemperature) => {
+      const model = window.__npshGlobalModel || window.globalModel || {};
+      return Number(model.FLUID?.props?.temp) === nextTemperature;
+    }, temperature, { timeout: 10000 });
+
+    const uiResponse = await runProtectedSolve(page, caseData);
+    const uiProjectState = await collectUiProjectState(page);
+    const directBackend = runDirectBackendSimulation(uiProjectState, caseData.pumpId);
+    const uiSummary = temperatureSummaryFromSimulation(uiResponse);
+    const backendSummary = temperatureSummaryFromSimulation(directBackend);
+
+    expectFiniteTemperatureSummary(uiSummary, `ui T=${temperature}`);
+    expectFiniteTemperatureSummary(backendSummary, `backend T=${temperature}`);
+    expectTemperatureSummaryClose(uiSummary, backendSummary, `T=${temperature}`);
+    expect(uiSummary.temperature).toBe(temperature);
+    expect(uiSummary.hLSuction).toBeGreaterThan(0);
+    expect(uiSummary.hLDischarge).toBeGreaterThan(0);
+
+    rows.push({
+      temperature,
+      ui: uiSummary,
+      backend: backendSummary,
+      fluidBasis: {
+        propertyMethod: uiProjectState.model.FLUID?.props?.propertyMethod || '',
+        temperaturePropertySynced: uiProjectState.model.FLUID?.props?.temperaturePropertySynced === true,
+        density: roundMetric(uiProjectState.model.FLUID?.props?.density),
+        viscosity: roundMetric(uiProjectState.model.FLUID?.props?.viscosity),
+        vaporPressure: roundMetric(uiProjectState.model.FLUID?.props?.vaporPressure)
+      }
+    });
+  }
+
+  const byTemperature = Object.fromEntries(rows.map((row) => [row.temperature, row]));
+  expect(byTemperature[10].ui.rho).toBeGreaterThan(byTemperature[80].ui.rho);
+  expect(byTemperature[80].ui.rho).toBeGreaterThan(byTemperature[100].ui.rho);
+  expect(byTemperature[10].ui.pvap).toBeLessThan(byTemperature[80].ui.pvap);
+  expect(byTemperature[80].ui.pvap).toBeLessThan(byTemperature[100].ui.pvap);
+  expect(byTemperature[10].ui.npsha).toBeGreaterThan(byTemperature[80].ui.npsha);
+  expect(byTemperature[80].ui.npsha).toBeGreaterThan(byTemperature[100].ui.npsha);
+  expect(byTemperature[10].ui.margin).toBeGreaterThan(byTemperature[80].ui.margin);
+  expect(byTemperature[80].ui.margin).toBeGreaterThan(byTemperature[100].ui.margin);
+
+  await testInfo.attach('fluid-temperature-ui-backend-parity-summary.json', {
+    body: JSON.stringify({
+      caseId: 'simulation-case-1',
+      model: 'UI snapshot after Fluid Basis Temperature edit, then direct backend solve with identical snapshot',
+      requiredFields: ['rho', 'viscosity', 'pvap', 'hLSuction', 'hLDischarge', 'hRequired', 'npsha', 'margin'],
+      rows
+    }, null, 2),
+    contentType: 'application/json'
+  });
+  console.log(JSON.stringify({
+    fluidTemperatureUiBackendParity: 'pass',
+    routeLossesAlwaysReported: true,
+    rows
+  }, null, 2));
+});
+
+test('Fluid Basis temperature lock warning appears when journal properties stay stale', async ({ page }) => {
+  const caseData = loadJournalCase('simulation-case-1');
+  await waitForNpshApp(page);
+  await loadProject(page, caseData);
+
+  await page.locator('#btn-fluid-basis').click();
+  await expect(page.locator('#fluid-task-temp').first()).toBeVisible({ timeout: 10000 });
+
+  const warningState = await page.evaluate(() => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const props = model.FLUID?.props || {};
+    props.fluidName = 'Water';
+    props.temp = 80;
+    props.density = 958.3484;
+    props.viscosity = 0.803;
+    props.kinematicViscosity = 0.803;
+    props.dynViscosity = 0.7696;
+    props.dynamicViscosity = 0.7696;
+    props.vaporPressure = 1.01418;
+    props.propertyMethod = 'Journal Case 6 validation basis: Water at 100 deg C; manual properties locked for fixture validation.';
+    props.fluidPropertySource = 'Journal Case 6 validation basis';
+    delete props.temperaturePropertySyncRequested;
+    delete props.temperaturePropertySynced;
+    const runtime = window.NPSHSourceTemperatureRuntime;
+    const warning = runtime?.getFluidBasisTemperaturePropertyWarning?.() || null;
+    runtime?.renderFluidBasisTemperaturePropertyWarning?.();
+    return {
+      warning,
+      text: document.querySelector('[data-fluid-temperature-property-warning="true"]')?.textContent || ''
+    };
+  });
+
+  expect(warningState.warning?.id).toBe('fluid-temperature-property-lock');
+  expect(warningState.warning?.severity).toBe('warning');
+  expect(warningState.warning?.temperature).toBe(80);
+  expect(warningState.warning?.methodTemperature).toBe(100);
+  expect(warningState.text).toMatch(/density, viscosity, and vapor pressure/i);
+  expect(warningState.text).toMatch(/locked\/manual\/journal/i);
 });
 
 test('Simulasi 4 desktop chain renders actual methanol NPSH-risk fixture', async ({ page }, testInfo) => {
