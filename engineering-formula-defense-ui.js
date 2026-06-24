@@ -670,6 +670,79 @@
   overflow-y: auto;
   border-radius: 8px;
 }
+.pump-formula-defense-layout {
+  container-type: inline-size;
+  container-name: pump-formula-defense;
+}
+.pump-formula-defense-task-window .task-window-body,
+.pump-formula-defense-task-window .pump-formula-defense-body {
+  overflow-x: hidden !important;
+}
+.pump-formula-defense-layout .fluid-help-card {
+  min-width: 0;
+  overflow: hidden;
+}
+.pump-formula-defense-layout .fluid-formula-defense-table-wrap,
+.pump-formula-defense-layout .pump-curve-explanation-table-wrap {
+  max-width: 100%;
+  overflow-x: auto !important;
+  overflow-y: hidden;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+.pump-formula-defense-layout .fluid-formula-defense-table,
+.pump-formula-defense-layout .pump-curve-explanation-table {
+  width: 100% !important;
+  min-width: min(620px, 100%);
+  table-layout: fixed;
+  border-collapse: collapse !important;
+  background: #ffffff !important;
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+}
+.pump-formula-defense-layout .fluid-formula-defense-table th,
+.pump-formula-defense-layout .pump-curve-explanation-table th {
+  padding: 7px 8px !important;
+  border-bottom: 1px solid #d8e6f2 !important;
+  background: #eef6fc !important;
+  color: #123b5a !important;
+  font-weight: 800 !important;
+  text-align: left !important;
+}
+.pump-formula-defense-layout .fluid-formula-defense-table td,
+.pump-formula-defense-layout .pump-curve-explanation-table td {
+  padding: 7px 8px !important;
+  border-bottom: 1px solid #edf2f7 !important;
+  color: #334155 !important;
+}
+.pump-formula-defense-layout .fluid-formula-defense-table tbody tr:nth-child(even) td,
+.pump-formula-defense-layout .pump-curve-explanation-table tbody tr:nth-child(even) td {
+  background: #f8fbfe !important;
+}
+.pump-formula-defense-layout .fluid-formula-defense-table tbody tr:hover td,
+.pump-formula-defense-layout .pump-curve-explanation-table tbody tr:hover td {
+  background: #eef7ff !important;
+}
+.pump-formula-defense-layout .fluid-formula-defense-table th,
+.pump-formula-defense-layout .fluid-formula-defense-table td,
+.pump-formula-defense-layout .pump-curve-explanation-table th,
+.pump-formula-defense-layout .pump-curve-explanation-table td {
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  vertical-align: top !important;
+}
+.pump-formula-defense-layout .fluid-formula-defense-table td:nth-child(2),
+.pump-formula-defense-layout .pump-curve-explanation-table td:nth-child(2) {
+  color: #0f314d !important;
+  font-variant-numeric: tabular-nums;
+}
+.pump-formula-defense-layout .pump-formula-defense-criteria-table,
+.pump-formula-defense-layout .pump-formula-defense-source-table,
+.pump-formula-defense-layout .pump-formula-defense-role-path-table,
+.pump-formula-defense-layout .pump-formula-defense-questions-table {
+  min-width: min(760px, 100%);
+}
 .formula-dependency-visualization {
   display: grid;
   grid-template-columns: repeat(4, minmax(120px, 1fr));
@@ -731,6 +804,10 @@
   }
   .formula-dependency-visualization {
     grid-template-columns: 1fr;
+  }
+  .pump-formula-defense-layout .fluid-formula-defense-table,
+  .pump-formula-defense-layout .pump-curve-explanation-table {
+    min-width: min(620px, 100%);
   }
   .pipe-formula-defense-fitting-breakdown-table {
     min-width: 860px !important;
@@ -794,6 +871,80 @@
     font-size: 10.5px;
     font-weight: 800;
     line-height: 1.25;
+  }
+}
+@container pump-formula-defense (max-width: 620px) {
+  .pump-formula-defense-layout .fluid-formula-defense-table-wrap,
+  .pump-formula-defense-layout .pump-curve-explanation-table-wrap {
+    border: 0 !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+  .pump-formula-defense-layout .fluid-formula-defense-table,
+  .pump-formula-defense-layout .pump-curve-explanation-table {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .pump-formula-defense-layout .fluid-formula-defense-table thead,
+  .pump-formula-defense-layout .pump-curve-explanation-table thead {
+    display: none !important;
+  }
+  .pump-formula-defense-layout .fluid-formula-defense-table,
+  .pump-formula-defense-layout .fluid-formula-defense-table tbody,
+  .pump-formula-defense-layout .fluid-formula-defense-table tr,
+  .pump-formula-defense-layout .fluid-formula-defense-table td,
+  .pump-formula-defense-layout .pump-curve-explanation-table,
+  .pump-formula-defense-layout .pump-curve-explanation-table tbody,
+  .pump-formula-defense-layout .pump-curve-explanation-table tr,
+  .pump-formula-defense-layout .pump-curve-explanation-table td {
+    display: block !important;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+  .pump-formula-defense-layout .fluid-formula-defense-table tr,
+  .pump-formula-defense-layout .pump-curve-explanation-table tr {
+    margin: 7px 0 !important;
+    overflow: hidden;
+    border: 1px solid #d6e3ef !important;
+    border-radius: 6px !important;
+    background: #ffffff !important;
+  }
+  .pump-formula-defense-layout .fluid-formula-defense-table td,
+  .pump-formula-defense-layout .pump-curve-explanation-table td {
+    display: grid !important;
+    grid-template-columns: minmax(96px, 34%) minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+    padding: 7px 8px !important;
+    border-top: 1px solid #e3eef7 !important;
+    border-bottom: 0 !important;
+    background: #ffffff !important;
+    text-align: left !important;
+  }
+  .pump-formula-defense-layout .fluid-formula-defense-table td:first-child,
+  .pump-formula-defense-layout .pump-curve-explanation-table td:first-child {
+    border-top: 0 !important;
+  }
+  .pump-formula-defense-layout .fluid-formula-defense-table td::before,
+  .pump-formula-defense-layout .pump-curve-explanation-table td::before {
+    content: attr(data-label);
+    color: #475569;
+    font-size: 10.5px;
+    font-weight: 800;
+    line-height: 1.25;
+  }
+  .pump-formula-defense-layout .pump-formula-defense-source-table td:nth-child(4),
+  .pump-formula-defense-layout .pump-formula-defense-criteria-table td:nth-child(4),
+  .pump-formula-defense-layout .pump-formula-defense-role-path-table td:nth-child(3),
+  .pump-formula-defense-layout .pump-formula-defense-questions-table td:nth-child(2) {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+  .pump-formula-defense-layout .pump-formula-defense-source-table td:nth-child(4)::before,
+  .pump-formula-defense-layout .pump-formula-defense-criteria-table td:nth-child(4)::before,
+  .pump-formula-defense-layout .pump-formula-defense-role-path-table td:nth-child(3)::before,
+  .pump-formula-defense-layout .pump-formula-defense-questions-table td:nth-child(2)::before {
+    display: block;
   }
 }
 `;
@@ -1125,6 +1276,18 @@
     });
   }
 
+  function enhancePumpFormulaDefenseLayout(scope = document) {
+    if (!scope?.querySelectorAll) return;
+    scopedMatches(scope, '.pump-formula-defense-task-window').forEach((windowNode) => {
+      windowNode.dataset.pumpFormulaDefenseLayout = 'responsive-table-v1';
+      const body = windowNode.querySelector('.pump-formula-defense-body, .task-window-body');
+      body?.classList.add('pump-formula-defense-responsive-body');
+    });
+    scopedMatches(scope, '.pump-formula-defense-layout').forEach((layout) => {
+      layout.dataset.pumpFormulaDefenseLayout = 'responsive-table-v1';
+    });
+  }
+
   function restorePipeSourceMapFormulaCells(scope = document) {
     if (!scope?.querySelectorAll || !hasDocument()) return;
     scopedMatches(scope, '.pipe-formula-defense-source-table td.academic-inline-formula, .pipe-formula-defense-source-table td.formula-defense-inline-equation').forEach((cell) => {
@@ -1163,6 +1326,12 @@
       '.pipe-formula-defense-source-table',
       '.pipe-formula-defense-fitting-breakdown-table'
     ].join(',');
+    const pumpFormulaTables = [
+      '.pump-formula-defense-layout .fluid-formula-defense-table',
+      '.pump-formula-defense-layout .pump-curve-explanation-table',
+      '.pump-formula-defense-task-window .fluid-formula-defense-table',
+      '.pump-formula-defense-task-window .pump-curve-explanation-table'
+    ].join(',');
     scopedMatches(scope, pipeFormulaTables).forEach((table) => {
       table.dataset.formulaDefenseResponsive = 'true';
       const wrapper = table.closest('.pump-curve-explanation-table-wrap, .pipe-formula-defense-fitting-breakdown-wrap, .fluid-formula-defense-table-wrap');
@@ -1179,6 +1348,14 @@
           cell.textContent = cell.textContent || 'No pipe/fitting/valve breakdown is available for the current route.';
         }
       });
+      table.querySelectorAll('code, .academic-inline-formula, .academic-equation-math').forEach(ensureNodeContrast);
+    });
+    scopedMatches(scope, pumpFormulaTables).forEach((table) => {
+      table.dataset.formulaDefenseResponsive = 'true';
+      table.dataset.pumpFormulaDefenseResponsive = 'true';
+      const wrapper = table.closest('.pump-curve-explanation-table-wrap, .fluid-formula-defense-table-wrap');
+      wrapper?.classList.add('formula-defense-responsive-table-wrap', 'pump-formula-defense-table-wrap');
+      ensureTableDataLabels(table);
       table.querySelectorAll('code, .academic-inline-formula, .academic-equation-math').forEach(ensureNodeContrast);
     });
     restorePipeSourceMapFormulaCells(scope);
@@ -2098,6 +2275,7 @@
     patchAcademicRenderer();
     patchPipeFormulaDefenseTraceBuilders();
     enhancePipeFormulaDefenseLayout(scope);
+    enhancePumpFormulaDefenseLayout(scope);
     enhanceFormulaNodes(scope);
     enhanceTables(scope);
     applyPipeSegmentBasisTooltips(scope);

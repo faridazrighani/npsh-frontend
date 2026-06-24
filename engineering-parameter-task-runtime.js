@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const VERSION = "2026.06-parameter-task-blocks4";
+  const VERSION = "2026.06-parameter-task-blocks5-responsive-table";
   const STYLE_ID = "engineeringParameterTaskRuntimeStyle";
   const TRIGGER_SELECTOR = "[data-parameter-task-trigger]";
   const SECTION_SELECTOR = ".pump-live-param-section";
@@ -107,11 +107,14 @@
 
   function createTable(headers = [], rows = [], className = "parameter-task-table") {
     const wrap = createNode("div", "parameter-task-table-wrap");
+    wrap.dataset.parameterTaskTableWrap = "true";
     const table = createNode("table", className);
+    table.dataset.parameterTaskTable = "true";
     const thead = document.createElement("thead");
     const headRow = document.createElement("tr");
     headers.forEach((header) => {
       const th = document.createElement("th");
+      th.scope = "col";
       th.textContent = header;
       headRow.appendChild(th);
     });
@@ -911,8 +914,10 @@
   outline-offset: 1px;
 }
 .parameter-task-window {
-  width: min(760px, calc(100vw - 36px));
+  width: min(860px, calc(100vw - 36px));
   height: min(690px, calc(100dvh - 128px));
+  min-width: min(${MIN_WINDOW_WIDTH}px, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
 }
 .parameter-task-window.task-window-minimized {
   height: 42px !important;
@@ -925,6 +930,8 @@
 }
 .parameter-task-body {
   background: #f6f8fb;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
 }
 .parameter-task-layout {
   display: grid;
@@ -932,6 +939,8 @@
   color: #17395a;
   font-size: 11.5px;
   line-height: 1.45;
+  container-type: inline-size;
+  container-name: parameter-task;
 }
 .parameter-task-layout.parameter-suction-layout,
 .parameter-task-layout.parameter-discharge-layout {
@@ -939,6 +948,7 @@
 }
 .parameter-task-card {
   min-width: 0;
+  overflow: hidden;
   padding: 11px;
   border: 1px solid #d8e6f2;
   border-radius: 8px;
@@ -1020,16 +1030,68 @@
 }
 .parameter-task-table-wrap {
   width: 100%;
-  overflow: auto;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid #e2edf7;
   border-radius: 6px;
   background: #fff;
 }
 .parameter-task-table {
   width: 100%;
+  min-width: 560px;
   border-collapse: collapse;
+  table-layout: fixed;
   font-size: 10.8px;
   line-height: 1.38;
+}
+.parameter-trace-table {
+  min-width: 720px;
+}
+.parameter-segment-table {
+  min-width: 680px;
+}
+.parameter-task-table:not(.parameter-trace-table):not(.parameter-segment-table) th:nth-child(1),
+.parameter-task-table:not(.parameter-trace-table):not(.parameter-segment-table) td:nth-child(1) {
+  width: 24%;
+}
+.parameter-task-table:not(.parameter-trace-table):not(.parameter-segment-table) th:nth-child(2),
+.parameter-task-table:not(.parameter-trace-table):not(.parameter-segment-table) td:nth-child(2) {
+  width: 25%;
+}
+.parameter-trace-table th:nth-child(1),
+.parameter-trace-table td:nth-child(1) {
+  width: 20%;
+}
+.parameter-trace-table th:nth-child(2),
+.parameter-trace-table td:nth-child(2) {
+  width: 27%;
+}
+.parameter-trace-table th:nth-child(3),
+.parameter-trace-table td:nth-child(3) {
+  width: 36%;
+}
+.parameter-trace-table th:nth-child(4),
+.parameter-trace-table td:nth-child(4) {
+  width: 17%;
+}
+.parameter-segment-table th:nth-child(1),
+.parameter-segment-table td:nth-child(1) {
+  width: 22%;
+}
+.parameter-segment-table th:nth-child(2),
+.parameter-segment-table td:nth-child(2) {
+  width: 26%;
+}
+.parameter-segment-table th:nth-child(3),
+.parameter-segment-table td:nth-child(3) {
+  width: 24%;
+}
+.parameter-segment-table th:nth-child(4),
+.parameter-segment-table td:nth-child(4) {
+  width: 28%;
 }
 .parameter-task-table th {
   padding: 7px 8px;
@@ -1038,13 +1100,23 @@
   color: #123b5a;
   text-align: left;
   font-weight: 800;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 .parameter-task-table td {
   padding: 7px 8px;
   border-bottom: 1px solid #edf2f7;
   color: #334155;
   vertical-align: top;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+.parameter-task-table td:nth-child(2),
+.parameter-segment-table td:nth-child(n+2),
+.parameter-trace-table td:nth-child(4) {
+  color: #0f314d;
+  font-variant-numeric: tabular-nums;
 }
 .parameter-task-table tr:last-child td {
   border-bottom: 0;
@@ -1117,14 +1189,72 @@
   }
   .parameter-task-table td {
     display: grid;
-    grid-template-columns: minmax(108px, 42%) 1fr;
+    grid-template-columns: minmax(92px, 34%) minmax(0, 1fr);
     gap: 8px;
     border-bottom: 1px solid #edf2f7;
+  }
+  .parameter-task-table tr td:last-child {
+    border-bottom: 0;
   }
   .parameter-task-table td::before {
     content: attr(data-label);
     color: #64748b;
     font-weight: 800;
+  }
+}
+@container parameter-task (max-width: 620px) {
+  .parameter-task-layout {
+    font-size: 11px;
+  }
+  .parameter-task-table-wrap {
+    border: 0;
+    background: transparent;
+    overflow: visible;
+  }
+  .parameter-task-table {
+    min-width: 0;
+  }
+  .parameter-task-table,
+  .parameter-task-table thead,
+  .parameter-task-table tbody,
+  .parameter-task-table tr,
+  .parameter-task-table th,
+  .parameter-task-table td {
+    display: block;
+    width: auto !important;
+  }
+  .parameter-task-table thead {
+    display: none;
+  }
+  .parameter-task-table tr {
+    margin-bottom: 7px;
+    border: 1px solid #e2edf7;
+    border-radius: 6px;
+    background: #fff;
+    overflow: hidden;
+  }
+  .parameter-task-table td {
+    display: grid;
+    grid-template-columns: minmax(92px, 34%) minmax(0, 1fr);
+    gap: 8px;
+    border-bottom: 1px solid #edf2f7;
+  }
+  .parameter-task-table tr td:last-child {
+    border-bottom: 0;
+  }
+  .parameter-task-table td::before {
+    content: attr(data-label);
+    color: #64748b;
+    font-weight: 800;
+  }
+  .parameter-trace-table td,
+  .parameter-segment-table td:nth-child(4) {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+  .parameter-trace-table td::before,
+  .parameter-segment-table td:nth-child(4)::before {
+    display: block;
   }
 }
 `;
@@ -1154,7 +1284,7 @@
   function positionWindow(windowNode) {
     const offset = (windowCounter % 5) * 24;
     windowCounter += 1;
-    const width = Math.min(760, Math.max(MIN_WINDOW_WIDTH, window.innerWidth - 36));
+    const width = Math.min(860, Math.max(MIN_WINDOW_WIDTH, window.innerWidth - 36));
     const left = Math.max(8, window.innerWidth - width - 18 - offset);
     const top = Math.max(8, 112 + offset);
     windowNode.style.width = `${width}px`;
