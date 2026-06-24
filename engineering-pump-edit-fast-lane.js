@@ -1,7 +1,7 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
   const VERSION = 'engineering-pump-edit-fast-lane.v5';
-  const CACHE_KEY = '20260621-pump-edit-fast-lane5';
+  const CACHE_KEY = '20260624-pump-edit-fast-lane6';
   const PUMP_WINDOW_SELECTOR = [
     '.persistent-object-properties-task-window',
     '#taskWindow',
@@ -18,6 +18,7 @@
     'minNpshMargin'
   ]);
   const CHART_FIELDS = new Set([
+    'inputMode',
     'designFlow',
     'designHead',
     'bepFlow',
@@ -25,6 +26,7 @@
     'porMaxPercent',
     'aorMinPercent',
     'aorMaxPercent',
+    'speed',
     'curveDataSource',
     'curveSourceNote',
     'curveData'
@@ -134,6 +136,8 @@
     if (/\bdesign\s*eff\b|\bdesignefficiency\b|\befficiency\b/.test(lower)) return 'designEfficiency';
     if (/\bdesign\s*flow\b|\bdesignflow\b/.test(lower)) return 'designFlow';
     if (/\bdesign\s*head\b|\bdesignhead\b/.test(lower)) return 'designHead';
+    if (/\binput\s*mode\b|\binputmode\b/.test(lower)) return 'inputMode';
+    if (/\bspeed\b|\brpm\b/.test(lower)) return 'speed';
     if (/\bbep\s*flow\b|\bbepflow\b/.test(lower)) return 'bepFlow';
     if (/\bpor\s*min\b|\bporminpercent\b/.test(lower)) return 'porMinPercent';
     if (/\bpor\s*max\b|\bpormaxpercent\b/.test(lower)) return 'porMaxPercent';
@@ -152,6 +156,7 @@
     const windowNode = target?.closest?.(PUMP_WINDOW_SELECTOR);
     if (!windowNode) return false;
     if (windowNode.classList?.contains?.('pump-manual-npshr-task-window') || windowNode.dataset?.kind === 'pump-manual-npshr') return true;
+    if (resolvePumpId(target)) return true;
     const text = normalizeText(windowNode.querySelector?.('.task-window-header, #taskWindowTitle')?.textContent || windowNode.textContent || '');
     return /Pump Object Properties|\bP-\d+\b|\bPUMP[-_]\d+\b|NPSH Evaluation Report|Pump Datum Elev/i.test(text);
   }
@@ -572,16 +577,18 @@
     scheduleFastChart(result.pumpId, reason);
     scheduleReadoutRefresh(result.pumpId, result.pump, result.evaluation);
     markFastLaneState(result.pumpId, classification, classification.backend === 'defer');
-    if (classification.backend === 'defer' && event?.isTrusted && typeof hooks.requestAutoSolve === 'function') {
+    if (classification.backend === 'defer') {
       const autosolveReason = classification.field === 'manualNpshr'
         ? 'Manual NPSHr changed; recalculating connected route for NPSHa and NPSH status.'
         : 'Pump input changed; backend recalculation deferred until typing settles.';
       hooks.markStale?.(result.pumpId, autosolveReason);
-      hooks.requestAutoSolve(result.pumpId, autosolveReason, {
-        sourceEvent: event.type,
-        delayMs: classification.delayMs || 1000,
-        fastLane: true
-      });
+      if (event?.isTrusted && typeof hooks.requestAutoSolve === 'function') {
+        hooks.requestAutoSolve(result.pumpId, autosolveReason, {
+          sourceEvent: event.type,
+          delayMs: classification.delayMs || 1000,
+          fastLane: true
+        });
+      }
     }
     return {
       handled: true,

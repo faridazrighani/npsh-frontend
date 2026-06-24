@@ -361,24 +361,24 @@ runtime.flushAutoSolve().then(async () => {
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(
-  index.includes('engineering-realtime-calculation-defense.js?v=20260623-global-dependency-logic1'),
+  index.includes('engineering-realtime-calculation-defense.js?v=20260624-global-dependency-logic2'),
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
-  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane5')
-    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260623-global-dependency-logic1'),
+  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260624-pump-edit-fast-lane6')
+    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260624-global-dependency-logic2'),
   'Pump edit fast lane must load before realtime calculation defense.'
 );
 assert(
-  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260623-global-dependency-logic1'),
+  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260624-global-dependency-logic2'),
   'Manifest must document the realtime calculation defense cache key.'
 );
 assert(
-  index.includes('engineering-parameter-task-runtime.js?v=20260621-parameter-route-full-width3'),
+  index.includes('engineering-parameter-task-runtime.js?v=20260624-parameter-table-responsive1'),
   'Index must load the Parameter Task runtime with the refresh-capable cache key.'
 );
 assert(
-  manifest.includes('Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=20260621-parameter-route-full-width3'),
+  manifest.includes('Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=20260624-parameter-table-responsive1'),
   'Manifest must document the Parameter Task runtime cache key.'
 );
 

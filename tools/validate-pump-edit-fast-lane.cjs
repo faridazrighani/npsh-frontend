@@ -100,7 +100,7 @@ globalThis.__npshGlobalModel = {
 const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const runtime = require(runtimePath);
 assert.equal(runtime.version, 'engineering-pump-edit-fast-lane.v5', 'Pump edit fast lane runtime must expose v4.');
-assert.equal(runtime.cacheKey, '20260621-pump-edit-fast-lane5', 'Pump edit fast lane cache key must match index.');
+assert.equal(runtime.cacheKey, '20260624-pump-edit-fast-lane6', 'Pump edit fast lane cache key must match index.');
 assert(runtimeSource.includes('pump-manual-npshr-task-window'), 'Fast lane must accept the compact Manual NPSHr task window as a pump edit surface.');
 assert(runtimeSource.includes('\\bPUMP[-_]\\d+\\b'), 'Fast lane must recognize canonical PUMP-100 style pump ids in task titles.');
 assert.equal(typeof runtime.classifyInput, 'function', 'Pump edit fast lane must expose classifyInput().');
@@ -168,6 +168,22 @@ runtime.handleRealtimeInput({ target: designFlowInput, isTrusted: true, type: 'i
 assert.equal(globalThis.__npshGlobalModel['P-100'].props.designFlow, 70, 'Design Flow must update pump props immediately.');
 assert.equal(globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.flow, 70, 'Design Flow must move the local chart/evaluation duty point immediately.');
 
+const inputModeInput = new FakeInput({ key: 'inputMode', value: 'Advanced', tagName: 'SELECT' });
+const inputModeClass = runtime.classifyInput(inputModeInput);
+assert.equal(inputModeClass.backend, 'defer', 'Input Mode edit should defer backend recalculation until typing settles.');
+
+const speedInput = new FakeInput({ key: 'speed', value: '3600' });
+const speedClass = runtime.classifyInput(speedInput);
+assert.equal(speedClass.backend, 'defer', 'Pump speed edit should defer backend recalculation until typing settles.');
+const backendRequestsBeforeUntrustedSpeed = backendRequests;
+runtime.handleRealtimeInput({ target: speedInput, isTrusted: false, type: 'input' }, {
+  markStale: () => { staleMarks += 1; },
+  requestAutoSolve: () => { backendRequests += 1; }
+});
+assert.equal(globalThis.__npshGlobalModel['P-100'].props.speed, 3600, 'Pump speed must update pump props immediately.');
+assert.equal(staleMarks, 4, 'Programmatic pump speed edits must mark backend result stale.');
+assert.equal(backendRequests, backendRequestsBeforeUntrustedSpeed, 'Programmatic pump speed edits must not autosolve without trusted user input.');
+
 const estimatedSourceInput = new FakeInput({ key: 'npshrSourceMode', value: 'Estimated', tagName: 'SELECT' });
 const estimatedSourceClass = runtime.classifyInput(estimatedSourceInput);
 assert.equal(estimatedSourceClass.backend, 'none', 'NPSHr Source mode should not trigger backend/network recalculation.');
@@ -213,10 +229,10 @@ const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(realtimeSource.includes('EngineeringPumpEditFastLane'), 'Realtime defense must delegate pump edits to the fast lane.');
 assert(
-  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane5')
-    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260623-global-dependency-logic1'),
+  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260624-pump-edit-fast-lane6')
+    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260624-global-dependency-logic2'),
   'Fast lane runtime must load before realtime defense.'
 );
-assert(manifest.includes('Pump edit fast lane cache key: engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane5'), 'Manifest must document Pump edit fast lane cache key.');
+assert(manifest.includes('Pump edit fast lane cache key: engineering-pump-edit-fast-lane.js?v=20260624-pump-edit-fast-lane6'), 'Manifest must document Pump edit fast lane cache key.');
 
 console.log('Pump edit fast lane validation passed.');

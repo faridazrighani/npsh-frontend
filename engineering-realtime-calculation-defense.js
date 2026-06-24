@@ -1406,11 +1406,14 @@
 
     if (typeof document !== 'undefined') {
       const onInput = (event) => {
-        if (!isCalculationInput(event.target) || event.isComposing) return;
-        const nodeId = resolveNodeId(event.target);
-        const reason = 'Input changed; waiting for protected backend recalculation.';
+        const target = event?.target;
+        if (event?.isComposing) return;
         const fastLane = root.EngineeringPumpEditFastLane;
-        if (typeof fastLane?.handleRealtimeInput === 'function') {
+        if (target?.matches?.('input, select, textarea')
+          && !target.disabled
+          && !target.readOnly
+          && target.type !== 'file'
+          && typeof fastLane?.handleRealtimeInput === 'function') {
           const handled = fastLane.handleRealtimeInput(event, {
             markUserCalculationIntent,
             markInputLatencyShield,
@@ -1419,9 +1422,12 @@
           });
           if (handled?.handled) return;
         }
+        if (!isCalculationInput(target)) return;
+        const nodeId = resolveNodeId(target);
+        const reason = 'Input changed; waiting for protected backend recalculation.';
         if (isTrustedUserEdit(event)) {
-          markUserCalculationIntent('trusted-input', event.target);
-          markInputLatencyShield(event.target, nodeId, reason);
+          markUserCalculationIntent('trusted-input', target);
+          markInputLatencyShield(target, nodeId, reason);
         }
         markStale(nodeId, reason);
         if (isTrustedUserEdit(event)) {
