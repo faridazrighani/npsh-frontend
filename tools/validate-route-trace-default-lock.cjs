@@ -12,7 +12,7 @@ const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 
-assert.equal(runtime.version, '2026.06-route-trace-audit-v29', 'Route trace audit runtime should expose the locked v29 version.');
+assert.equal(runtime.version, '2026.06-route-trace-audit-v30', 'Route trace audit runtime should expose the locked v30 version.');
 assert.equal(typeof runtime.openRouteAuditPanel, 'function', 'Dedicated route audit panel should remain available.');
 assert.equal(typeof runtime.pruneDefaultCanvasRouteTraceOverlays, 'function', 'Canvas route trace overlay pruning should be exposed for audit tests.');
 assert.equal(typeof runtime.pruneDefaultPumpRouteTraceRows, 'function', 'Pump route trace row pruning should be exposed for audit tests.');
@@ -360,6 +360,14 @@ try {
   legacyPumpPanel.appendChild(row('Disch. Loss', '11.669 / 1.097'));
   canvas.appendChild(legacyPumpPanel);
 
+  const pressureAssistedPumpPanel = new FakeElement('div');
+  pressureAssistedPumpPanel.classList.add('pump-live-params');
+  pressureAssistedPumpPanel.dataset.nodeId = 'P-ASSIST';
+  pressureAssistedPumpPanel.appendChild(section('Discharge'));
+  pressureAssistedPumpPanel.appendChild(row('Pump Head', '-3.600'));
+  pressureAssistedPumpPanel.appendChild(row('Discharge Press.', '1.799'));
+  canvas.appendChild(pressureAssistedPumpPanel);
+
   const legacySinkPanel = new FakeElement('div');
   legacySinkPanel.classList.add('sink-live-params');
   legacySinkPanel.dataset.nodeId = 'SNK-100';
@@ -397,6 +405,17 @@ try {
 
   global.document = fakeDocument;
   global.globalModel = {
+    'P-ASSIST': {
+      type: 'pump',
+      name: 'P-ASSIST',
+      results: {
+        routeOnlyNpshEvaluation: true,
+        requiredSystemHead: -3.6,
+        requiredSystemHeadRaw: -3.6,
+        pressureAssistedSystemHead: true,
+        solveMode: 'Route-only NPSH design ceiling at fixed route flow'
+      }
+    },
     'SNK-100': {
       type: 'sink',
       name: 'SNK-100',
@@ -446,6 +465,11 @@ try {
     'Legacy loaded pump panels should keep normal pump readouts while removing Route/Suction Loss/Disch. Loss and vapor-pressure rows.'
   );
   assert.deepEqual(
+    labelsIn(pressureAssistedPumpPanel),
+    ['Required Head', 'Discharge Press.'],
+    'Pressure-assisted route-only pump panels should label signed negative head as Required Head, not actual Pump Head.'
+  );
+  assert.deepEqual(
     sectionsIn(legacyPumpPanel),
     ['Suction', 'Discharge'],
     'Legacy loaded pump panels should keep SUCTION/DISCHARGE sections and remove Route Trace section.'
@@ -493,11 +517,11 @@ try {
 }
 
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260621-snk-boundary-logic1'),
+  index.includes('engineering-route-trace-audit.js?v=20260625-pump-required-head-label1'),
   'Index must load the route trace audit runtime with the default-lock cache key.'
 );
 assert(
-  manifest.includes('Route audit cache key: engineering-route-trace-audit.js?v=20260621-snk-boundary-logic1'),
+  manifest.includes('Route audit cache key: engineering-route-trace-audit.js?v=20260625-pump-required-head-label1'),
   'Manifest must document the route trace default-lock cache key.'
 );
 

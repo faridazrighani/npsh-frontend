@@ -1,6 +1,6 @@
 {
   "schemaVersion": "local-live-sync-manifest.v1",
-  "generatedAt": "2026-06-24T23:19:57.562Z",
+  "generatedAt": "2026-06-25T22:09:57.865Z",
   "purpose": "Keeps the local preview server auditable against the deployed npsh.virsim.id package.",
   "status": "review-required",
   "syncChecks": {
@@ -16,8 +16,8 @@
     "frontendRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-frontend",
     "apiRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-api",
     "serverUrl": "http://127.0.0.1:4174/",
-    "frontendCommit": "410b7ab21f46ad95dd253dc0ccd9bba6114e91ce",
-    "frontendOriginMain": "410b7ab21f46ad95dd253dc0ccd9bba6114e91ce",
+    "frontendCommit": "d60584887e667f9faee36c121d16c15d85a29d46",
+    "frontendOriginMain": "d60584887e667f9faee36c121d16c15d85a29d46",
     "apiCommit": "1390c775f7e81699aace7d3b0c5c140fa4d8709f",
     "apiOriginMain": "1390c775f7e81699aace7d3b0c5c140fa4d8709f",
     "releaseIntegrity": {
@@ -28,10 +28,10 @@
     },
     "index": {
       "path": "index.html",
-      "sizeBytes": 68023,
-      "sha256": "c73b7503fc759c0783ed86e59fa98fe7e7037cbe0f5af90912184980a0c7c9e1",
-      "canonicalSizeBytes": 67131,
-      "canonicalSha256": "6602fcd16b13b8b98d1efe743d874590ac9950d36a075e8a102339d068f0bc1b",
+      "sizeBytes": 68028,
+      "sha256": "097c7e08719d5832e423c1954e5a10102083e6638eba69a71a3dfd01d591f2eb",
+      "canonicalSizeBytes": 67137,
+      "canonicalSha256": "1c74369e793fd8170c725c1aec2e36c515696d85ee99bbaae9c77a4c2dee86e4",
       "canonicalizedLineEndings": true,
       "cacheKeys": [
         "app.bundle.min.js?v=20260621-npsh-margin-options1",
@@ -65,7 +65,7 @@
         "engineering-pump-performance-chart-audit.js?v=20260622-local-live-sync1",
         "engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3",
         "engineering-realtime-calculation-defense.js?v=20260624-global-dependency-logic2",
-        "engineering-route-trace-audit.js?v=20260621-snk-boundary-logic1",
+        "engineering-route-trace-audit.js?v=20260625-pump-required-head-label1",
         "engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3",
         "engineering-source-temperature-runtime.js?v=20260623-fluid-basis-dependency-autosolve1",
         "engineering-src-algorithm-help-runtime.js?v=20260616-src-algorithm-help1",
@@ -387,12 +387,12 @@
       {
         "path": "engineering-route-trace-audit.js",
         "exists": true,
-        "sizeBytes": 106611,
-        "sha256": "3db1767be4086aa679becf1bd085fa900217a84a127e9caa74271c684fd504d4",
-        "canonicalSizeBytes": 104294,
-        "canonicalSha256": "9403cec3dd458029f4dbf0e87b5b434afb954b3171deba177aafbe827f282c64",
+        "sizeBytes": 110636,
+        "sha256": "bface2c1d5726d177d7691a96fd4d457c983483348e610142b8e20b747121efd",
+        "canonicalSizeBytes": 108346,
+        "canonicalSha256": "144f59c8b3c6e8f1c9af3f58195f95822ce5784ddc3b02e114de7385c6b14269",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-route-trace-audit.js?v=20260621-snk-boundary-logic1"
+        "cacheKey": "engineering-route-trace-audit.js?v=20260625-pump-required-head-label1"
       },
       {
         "path": "engineering-simulation-case-integrity-guard.js",
@@ -437,20 +437,20 @@
       {
         "path": "FILE_MANIFEST.md",
         "exists": true,
-        "sizeBytes": 30045,
-        "sha256": "d6e698de13d1c5cca3511438a5abe98702a7874a72db0e78ac70436dce84aa7d",
-        "canonicalSizeBytes": 29854,
-        "canonicalSha256": "7026590757ba6620dd15bc225cda9291724d4aaa729d6043966896eeb87ca153",
+        "sizeBytes": 30050,
+        "sha256": "ef6565332a2574eb1552ce394a6103157a83537bc6fd9fb2417a04d0450c89e5",
+        "canonicalSizeBytes": 29860,
+        "canonicalSha256": "30c6b8382ca9b044e0bd368e6ab7d6c4899270e36300840f20e21cf862262eb9",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
       {
         "path": "index.html",
         "exists": true,
-        "sizeBytes": 68023,
-        "sha256": "c73b7503fc759c0783ed86e59fa98fe7e7037cbe0f5af90912184980a0c7c9e1",
-        "canonicalSizeBytes": 67131,
-        "canonicalSha256": "6602fcd16b13b8b98d1efe743d874590ac9950d36a075e8a102339d068f0bc1b",
+        "sizeBytes": 68028,
+        "sha256": "097c7e08719d5832e423c1954e5a10102083e6638eba69a71a3dfd01d591f2eb",
+        "canonicalSizeBytes": 67137,
+        "canonicalSha256": "1c74369e793fd8170c725c1aec2e36c515696d85ee99bbaae9c77a4c2dee86e4",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
@@ -521,7 +521,7 @@
     },
     "apiVersion": {
       "statusCode": 200,
-      "sha256": "b4b63f04b68a249662e9cdaa5515960263ddd566fb794a7644dcda41d44eafb5",
+      "sha256": "c61fb754aa141cd25fb41bdaee75673fbfd64faf1ddf22d3ce90767e73c9ffc3",
       "payload": {
         "ok": true,
         "appName": "GhaniSIM1 NPSH",
@@ -670,7 +670,7 @@
             "parity.fingerprint"
           ]
         },
-        "generatedAt": "2026-06-24T23:19:57.603Z"
+        "generatedAt": "2026-06-25T22:09:58.192Z"
       }
     },
     "verifiedAssets": []
@@ -679,12 +679,14 @@
     "cacheKeysMissingOnLive": [
       "engineering-parameter-task-runtime.js?v=20260624-parameter-table-responsive1",
       "engineering-pump-edit-fast-lane.js?v=20260624-pump-edit-fast-lane6",
-      "engineering-realtime-calculation-defense.js?v=20260624-global-dependency-logic2"
+      "engineering-realtime-calculation-defense.js?v=20260624-global-dependency-logic2",
+      "engineering-route-trace-audit.js?v=20260625-pump-required-head-label1"
     ],
     "cacheKeysMissingLocally": [
       "engineering-parameter-task-runtime.js?v=20260621-parameter-route-full-width3",
       "engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane5",
-      "engineering-realtime-calculation-defense.js?v=20260623-global-dependency-logic1"
+      "engineering-realtime-calculation-defense.js?v=20260623-global-dependency-logic1",
+      "engineering-route-trace-audit.js?v=20260621-snk-boundary-logic1"
     ],
     "assetVerificationFailures": []
   },

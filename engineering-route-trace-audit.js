@@ -1,5 +1,5 @@
 (function registerEngineeringRouteTraceAudit(root) {
-  const VERSION = '2026.06-route-trace-audit-v29';
+  const VERSION = '2026.06-route-trace-audit-v30';
   const PANEL_ID = 'engineeringRouteTraceAuditPanel';
   const PANEL_BODY_ID = 'engineeringRouteTraceAuditPanelBody';
   const MENU_BUTTON_ID = 'menu-tools-route-trace-audit';
@@ -79,6 +79,7 @@
           removed += 1;
         }
       });
+      removed += normalizePumpHeadReadoutLabel(panel);
       removed += syncPumpObjectTooltip(panel);
     });
     return removed;
@@ -177,6 +178,25 @@
   function sourceIdForSinkNode(source, node = source?.node || source || {}, modelRef = model()) {
     if (source?.id) return source.id;
     return Object.entries(modelRef).find(([, candidate]) => candidate === node)?.[0] || '';
+  }
+
+  function sourceIdForPumpPanel(panel, modelRef = model()) {
+    const candidates = [
+      panel?.dataset?.nodeId,
+      panel?.dataset?.objectId,
+      panel?.closest?.('[data-node-id]')?.dataset?.nodeId,
+      panel?.closest?.('[data-object-id]')?.dataset?.objectId,
+      panel?.closest?.('.pfd-object')?.dataset?.nodeId,
+      panel?.closest?.('.pfd-object')?.dataset?.objectId
+    ].filter(Boolean);
+    for (const id of candidates) {
+      if (modelRef[id]?.type === 'pump') return id;
+    }
+    const objectText = normalizeText(panel?.closest?.('.pfd-object')?.textContent || panel?.textContent || '');
+    const matching = Object.entries(modelRef).filter(([id, node]) => (
+      node?.type === 'pump' && (objectText.includes(id) || (node.name && objectText.includes(node.name)))
+    ));
+    return matching.length === 1 ? matching[0][0] : '';
   }
 
   function sinkBoundaryModeRaw(node = {}) {
@@ -971,6 +991,78 @@
     object.setAttribute('data-engineering-runtime-originaltitle', title);
     if (datasetKey) object.dataset[datasetKey] = VERSION;
     return 1;
+  }
+
+  function pumpPanelRowByLabels(panel, labels = []) {
+    if (!panel?.querySelectorAll) return null;
+    const accepted = new Set(labels.map((label) => normalizeText(label)));
+    return Array.from(panel.querySelectorAll('.pump-live-param-row')).find((row) => {
+      const label = normalizeText(row.querySelector('.pump-live-param-label')?.textContent);
+      return accepted.has(label);
+    }) || null;
+  }
+
+  function pumpPanelNumericValue(row) {
+    return finiteNumber(valueWithUnitFromRow(row, '.pump-live-param-value, strong', '.pump-live-param-unit'));
+  }
+
+  function normalizePumpHeadReadoutLabel(panel) {
+    const row = pumpPanelRowByLabels(panel, ['Pump Head', 'Required Head']);
+    const labelElement = row?.querySelector?.('.pump-live-param-label');
+    if (!row || !labelElement) return 0;
+
+    const modelRef = model();
+    const pumpId = sourceIdForPumpPanel(panel, modelRef);
+    const pumpResults = modelRef[pumpId]?.results || {};
+    const npshEvaluation = pumpResults.npshEvaluation || {};
+    const traceSystemHead = pumpResults.calculationTrace?.systemHead
+      || npshEvaluation.calculationTrace?.systemHead
+      || {};
+    const requiredHeadRaw = firstFiniteValue(
+      pumpResults.requiredSystemHeadRaw,
+      npshEvaluation.requiredSystemHeadRaw,
+      traceSystemHead.requiredHeadRaw,
+      pumpResults.requiredSystemHead,
+      npshEvaluation.requiredSystemHead,
+      traceSystemHead.requiredHead
+    );
+    const rowHead = pumpPanelNumericValue(row);
+    const routeOnly = pumpResults.routeOnlyNpshEvaluation === true
+      || /route-only/i.test(firstTextValue(pumpResults.solveMode, npshEvaluation.solveMode));
+    const pressureAssisted = firstBooleanValue(
+      pumpResults.pressureAssistedSystemHead,
+      npshEvaluation.pressureAssistedSystemHead,
+      traceSystemHead.pressureAssisted
+    ) === true || (requiredHeadRaw !== null && requiredHeadRaw < 0) || (rowHead !== null && rowHead < 0);
+    const matchesRequiredHead = requiredHeadRaw !== null
+      && rowHead !== null
+      && Math.abs(rowHead - requiredHeadRaw) <= 0.02;
+    const shouldUseRequiredLabel = routeOnly || (rowHead !== null && rowHead < 0) || (pressureAssisted && matchesRequiredHead);
+    const targetLabel = shouldUseRequiredLabel ? 'Required Head' : 'Pump Head';
+    let changed = 0;
+
+    if (normalizeText(labelElement.textContent) !== targetLabel) {
+      labelElement.textContent = targetLabel;
+      changed += 1;
+    }
+
+    const title = shouldUseRequiredLabel
+      ? 'Signed route-required pump head; negative means source pressure/elevation already exceeds sink head plus route losses.'
+      : '';
+    if (title && row.title !== title) {
+      row.title = title;
+      changed += 1;
+    } else if (!title && row.dataset?.routeTracePumpHeadLabelLock && row.title) {
+      row.title = '';
+      changed += 1;
+    }
+    if (row.dataset) {
+      row.dataset.routeTracePumpHeadLabelLock = VERSION;
+      row.dataset.routeTracePumpHeadLabelMode = shouldUseRequiredLabel
+        ? (pressureAssisted ? 'required-head-pressure-assisted' : 'required-head-route-only')
+        : 'pump-head';
+    }
+    return changed;
   }
 
   function syncPumpObjectTooltip(panel) {
