@@ -1,7 +1,7 @@
 (function initEngineeringPerformanceRefreshGovernor(root) {
   'use strict';
 
-  const VERSION = '2026.06-performance-refresh-governor4';
+  const VERSION = '2026.06-performance-refresh-governor5-head-power-audit';
   const DEFAULT_DELAY_MS = 300;
   const FAST_DELAY_MS = 180;
   const MAX_DELAY_MS = 1500;
@@ -531,6 +531,18 @@
       };
     });
     const pumpProps = pump.props || {};
+    const pumpModeText = [
+      pumpResults.solveMode,
+      pumpResults.flowBasis,
+      evaluation.solveMode,
+      evaluation.flowBasis,
+    ].filter(Boolean).join(' ');
+    const routeOnlyPump = pumpResults.routeOnlyNpshEvaluation === true
+      || evaluation.routeOnlyNpshEvaluation === true
+      || /route-only/i.test(pumpModeText);
+    const actualPumpHead = routeOnlyPump
+      ? firstFiniteValue(evaluation.actualPumpHead, pumpResults.actualPumpHead)
+      : firstFiniteValue(evaluation.actualPumpHead, pumpResults.actualPumpHead, evaluation.pumpHead, pumpResults.head, pumpResults.pumpHeadAtFlow);
     return {
       schemaVersion: 'pump-dependency-contract.v1',
       pumpId: dependencies.pumpId,
@@ -579,7 +591,7 @@
       sink: boundarySnapshot(dependencies.sinkId, 'sink'),
       pumpPerformance: {
         flow: firstFiniteValue(evaluation.flow, pumpResults.fixedFlow, pumpResults.flow),
-        head: firstFiniteValue(evaluation.pumpHead, pumpResults.head, pumpResults.pumpHeadAtFlow),
+        head: actualPumpHead,
         npshr: firstFiniteValue(evaluation.npshr, pumpResults.npshr, pumpProps.designNpshr),
         chartDataHash: hashString(stableStringify(pickFields(pumpResults, [
           'performanceChartData',
@@ -593,7 +605,7 @@
         engineeringStatus: evaluation.engineeringStatus || pumpResults.engineeringStatus || '',
         dataConfidence: evaluation.dataConfidence || pumpResults.dataConfidence || '',
         flow: firstFiniteValue(evaluation.flow, pumpResults.fixedFlow, pumpResults.flow),
-        pumpHead: firstFiniteValue(evaluation.pumpHead, pumpResults.head, pumpResults.pumpHeadAtFlow),
+        pumpHead: actualPumpHead,
         npsha: firstFiniteValue(evaluation.npsha, pumpResults.npsha, pumpResults.npshAvailable),
         npshr: firstFiniteValue(evaluation.npshr, pumpResults.npshr, pumpResults.npshRequired),
         npshMargin: firstFiniteValue(evaluation.npshMargin, pumpResults.npshMargin),
@@ -1033,7 +1045,7 @@
 
   const api = {
     version: VERSION,
-    cacheKey: '20260614-refresh-governor4',
+    cacheKey: '20260626-head-power-audit1',
     VERSION,
     schedule,
     flush,

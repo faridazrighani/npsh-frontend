@@ -18,8 +18,8 @@ const manifest = fs.readFileSync(manifestPath, 'utf8');
 globalThis.document = undefined;
 const governor = require(runtimePath);
 
-assert.equal(governor.version, '2026.06-performance-refresh-governor4', 'Governor must expose the locked runtime version.');
-assert.equal(governor.cacheKey, '20260614-refresh-governor4', 'Governor must expose the cache key used by index.html.');
+assert.equal(governor.version, '2026.06-performance-refresh-governor5-head-power-audit', 'Governor must expose the locked runtime version.');
+assert.equal(governor.cacheKey, '20260626-head-power-audit1', 'Governor must expose the cache key used by index.html.');
 assert.equal(typeof governor.schedule, 'function', 'Governor must expose schedule().');
 assert.equal(typeof governor.flush, 'function', 'Governor must expose flush().');
 assert.equal(typeof governor.patch, 'function', 'Governor must expose patch().');
@@ -118,10 +118,10 @@ assert(source.includes('forceImmediate'), 'Governor must preserve an immediate r
 });
 
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260621-snk-boundary-logic1')
-    && index.includes('engineering-performance-refresh-governor.js?v=20260614-refresh-governor4')
-    && index.includes('engineering-pump-edit-fast-lane.js?v=20260624-pump-edit-fast-lane6')
-    && index.includes('engineering-realtime-calculation-defense.js?v=20260624-global-dependency-logic2'),
+  index.includes('engineering-route-trace-audit.js?v=20260625-pump-required-head-label1')
+    && index.includes('engineering-performance-refresh-governor.js?v=20260626-head-power-audit1')
+    && index.includes('engineering-pump-edit-fast-lane.js?v=20260626-head-power-audit1')
+    && index.includes('engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1'),
   'index.html must keep route audit, governor, pump edit fast lane, and realtime defense cache-busted.'
 );
 assert(index.includes('engineering-bilingual-improvements.js?v=20260622-local-live-sync1'), 'index.html must cache-bust the realtime-first bilingual runtime.');
@@ -130,17 +130,17 @@ assert(bilingualSource.includes('disabled-by-realtime-defense'), 'Bilingual runt
 assert(bilingualSource.includes('REALTIME_FIRST_TEXT_KEYS'), 'Bilingual runtime must prune stale i18n entries for realtime-first labels.');
 assert(bilingualSource.includes('REALTIME_FIRST_LEGACY_TEXT_OVERRIDES'), 'Bilingual runtime must normalize old Solve labels to realtime-first Validate labels.');
 assert(
-  index.indexOf('engineering-performance-refresh-governor.js?v=20260614-refresh-governor4')
-      < index.indexOf('engineering-pump-edit-fast-lane.js?v=20260624-pump-edit-fast-lane6')
-    && index.indexOf('engineering-pump-edit-fast-lane.js?v=20260624-pump-edit-fast-lane6')
-      < index.indexOf('engineering-realtime-calculation-defense.js?v=20260624-global-dependency-logic2'),
+  index.indexOf('engineering-performance-refresh-governor.js?v=20260626-head-power-audit1')
+      < index.indexOf('engineering-pump-edit-fast-lane.js?v=20260626-head-power-audit1')
+    && index.indexOf('engineering-pump-edit-fast-lane.js?v=20260626-head-power-audit1')
+      < index.indexOf('engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1'),
   'Performance Refresh Governor and Pump edit fast lane must load before realtime defense starts scheduling linked view refreshes.'
 );
 assert(
-  index.indexOf('engineering-route-trace-audit.js?v=20260621-snk-boundary-logic1')
+  index.indexOf('engineering-route-trace-audit.js?v=20260625-pump-required-head-label1')
     > index.indexOf('const diagnosticScripts = [')
-    && index.indexOf('engineering-route-trace-audit.js?v=20260621-snk-boundary-logic1')
-      > index.indexOf('engineering-realtime-calculation-defense.js?v=20260624-global-dependency-logic2'),
+    && index.indexOf('engineering-route-trace-audit.js?v=20260625-pump-required-head-label1')
+      > index.indexOf('engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1'),
   'Route trace audit must remain deferred with diagnostic scripts so PageSpeed critical-path work stays calculation-only.'
 );
 assert.equal(
@@ -149,7 +149,7 @@ assert.equal(
   'package.json must expose validate:performance-refresh-governor.'
 );
 assert(manifest.includes('engineering-performance-refresh-governor.js'), 'FILE_MANIFEST must mention the Performance Refresh Governor runtime.');
-assert(manifest.includes('Performance refresh governor cache key: engineering-performance-refresh-governor.js?v=20260614-refresh-governor4'), 'FILE_MANIFEST must document the governor cache key.');
+assert(manifest.includes('Performance refresh governor cache key: engineering-performance-refresh-governor.js?v=20260626-head-power-audit1'), 'FILE_MANIFEST must document the governor cache key.');
 assert(manifest.includes('Performance refresh governor validation: npm run validate:performance-refresh-governor'), 'FILE_MANIFEST must document the governor validator.');
 
 console.log('Performance Refresh Governor validation passed.');

@@ -1,7 +1,7 @@
 (function installEngineeringAnalysisReportLiveRuntime(root) {
   'use strict';
 
-  const VERSION = '2026.06-analysis-report-live16';
+  const VERSION = '2026.06-analysis-report-live17-head-power-audit';
   const REFRESH_MS = 3000;
   const ACTIVE_SELECTOR = '.journal-analysis-task-window, .journal-analysis-report-panel';
   const RESPONSIVE_STYLE_ID = 'engineeringAnalysisReportLiveResponsiveStyle';
@@ -519,7 +519,21 @@
 
     const npshTraceInterpretation = npsh.calculationTrace?.interpretation || {};
     const pumpFlow = firstNumber(npsh.flow, pumpResults.fixedFlow, pumpResults.flow);
-    const pumpHead = firstNumber(npsh.pumpHead, pumpResults.requiredSystemHead, pumpResults.pumpHeadAtFlow, pumpResults.head);
+    const pumpModeText = [
+      pumpResults.solveMode,
+      pumpResults.flowBasis,
+      npsh.solveMode,
+      npsh.flowBasis
+    ].filter(Boolean).join(' ');
+    const routeOnlyPump = pumpResults.routeOnlyNpshEvaluation === true
+      || npsh.routeOnlyNpshEvaluation === true
+      || /route-only/i.test(pumpModeText);
+    const actualPumpHeadAvailable = npsh.actualPumpHeadAvailable === true
+      || pumpResults.actualPumpHeadAvailable === true;
+    const pumpHead = actualPumpHeadAvailable
+      ? firstNumber(npsh.actualPumpHead, pumpResults.actualPumpHead, npsh.pumpHead, pumpResults.pumpHeadAtFlow, pumpResults.head)
+      : (routeOnlyPump ? null : firstNumber(npsh.actualPumpHead, pumpResults.actualPumpHead, npsh.pumpHead, pumpResults.pumpHeadAtFlow, pumpResults.head));
+    const pumpRequiredSystemHead = firstNumber(npsh.requiredSystemHead, pumpResults.requiredSystemHead, routeOnlyPump ? null : pumpHead);
     const npsha = firstNumber(npsh.npsha, pumpResults.npsha);
     const npshr = firstNumber(npsh.npshr, pumpResults.npshr, pumpProps.manualNpshr, pumpProps.designNpshr);
     const marginRatioLimit = firstNumber(
@@ -577,7 +591,7 @@
     const engineeringStatus = chooseCalculatedStatus(rawEngineeringStatus, computedEngineeringStatus, '-');
     const routeCalculationStatus = cleanText(npsh.routeCalculationStatus || pumpResults.routeCalculationStatus || npshTraceInterpretation.routeCalculationStatus || (pumpFlow !== null ? 'Calculated' : 'Input Required'));
     const npshaCalculationStatus = cleanText(npsh.npshaCalculationStatus || pumpResults.npshaCalculationStatus || npshTraceInterpretation.npshaCalculationStatus || (npsha !== null ? 'Calculated' : 'Input Required'));
-    const requiredPumpHeadStatus = cleanText(npsh.requiredPumpHeadStatus || pumpResults.requiredPumpHeadStatus || npshTraceInterpretation.requiredPumpHeadStatus || (pumpHead !== null ? 'Calculated' : 'Input Required'));
+    const requiredPumpHeadStatus = cleanText(npsh.requiredPumpHeadStatus || pumpResults.requiredPumpHeadStatus || npshTraceInterpretation.requiredPumpHeadStatus || (pumpRequiredSystemHead !== null ? 'Calculated' : 'Input Required'));
     const rawMaxAllowableNpshrStatus = cleanText(npsh.maxAllowableNpshrStatus || pumpResults.maxAllowableNpshrStatus || npshTraceInterpretation.maxAllowableNpshrStatus || '');
     const maxAllowableNpshrStatus = maxAllowableNpshr !== null
       ? (/review|required|input/i.test(rawMaxAllowableNpshrStatus) ? 'Calculated' : (rawMaxAllowableNpshrStatus || 'Calculated'))
@@ -592,7 +606,7 @@
     const vendorCurveVerificationStatus = cleanText(npsh.vendorCurveVerificationStatus || pumpResults.vendorCurveVerificationStatus || npshTraceInterpretation.vendorCurveVerificationStatus || 'Not Required for route calculation');
     const suctionPressure = firstNumber(npsh.suctionPressureAbs, pumpResults.suctionPressure);
     const dischargePressure = firstNumber(pumpResults.dischargePressure);
-    const shaftPower = firstNumber(pumpResults.power);
+    const shaftPower = routeOnlyPump && !actualPumpHeadAvailable ? null : firstNumber(pumpResults.power);
     const efficiency = firstNumber(pumpResults.efficiency, pumpProps.designEfficiency);
 
     set('Pump - Pump Datum Elev.', withUnit(pumpProps.suctionElevation, 'm', 6), firstNumber(pumpProps.suctionElevation));
@@ -611,6 +625,8 @@
     set('Pump - Flow Evaluated', withUnit(pumpFlow, 'm3/h', 6), pumpFlow);
     set('Pump - Flow evaluated', withUnit(pumpFlow, 'm3/h', 6), pumpFlow);
     set('Pump - Pump Head', withUnit(pumpHead, 'm', 6), pumpHead);
+    set('Pump - Required System Head', withUnit(pumpRequiredSystemHead, 'm', 6), pumpRequiredSystemHead);
+    set('Pump - Required Head', withUnit(pumpRequiredSystemHead, 'm', 6), pumpRequiredSystemHead);
     set('Pump - Pump head design', withUnit(pumpProps.designHead, 'm', 6), firstNumber(pumpProps.designHead));
     set('Pump - Pump head evaluated', withUnit(pumpHead, 'm', 6), pumpHead);
     set('Pump - Head / Flow', `${withUnit(pumpHead, 'm', 6)} / ${withUnit(pumpFlow, 'm3/h', 6)}`, pumpHead);
@@ -643,7 +659,7 @@
     set('Pump - Dominant Loss', cleanText(npsh.dominantLoss || pumpResults.dominantSuctionLoss), null);
 
     const targetFlow = firstNumber(proposal.targetFlow, proposal.targetFlowM3H, pumpFlow);
-    const requiredHead = firstNumber(proposal.requiredSystemHead, pumpResults.requiredSystemHead, pumpHead);
+    const requiredHead = firstNumber(proposal.requiredSystemHead, pumpResults.requiredSystemHead, pumpRequiredSystemHead, pumpHead);
     const proposalNpsha = firstNumber(proposal.npshaAtDesign, npsha);
     const proposalMaxAllowableNpshr = firstNumber(proposal.maxAllowableNpshr, proposal.allowableNpshrAtDesign, maxAllowableNpshr);
     const proposedNpshr = firstNumber(proposal.proposedNpshr, proposal.proposedProps?.manualNpshr, proposal.proposedProps?.designNpshr);

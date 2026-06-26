@@ -1,7 +1,7 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-pump-edit-fast-lane.v5';
-  const CACHE_KEY = '20260624-pump-edit-fast-lane6';
+  const VERSION = 'engineering-pump-edit-fast-lane.v6';
+  const CACHE_KEY = '20260626-head-power-audit1';
   const PUMP_WINDOW_SELECTOR = [
     '.persistent-object-properties-task-window',
     '#taskWindow',
@@ -331,6 +331,12 @@
     return estimatedNpshrAtFlow(flow, pump.props?.bepFlow || pump.props?.designFlow, designBasis);
   }
 
+  function canPreviewActualHead(pump, evaluation, field) {
+    if (CHART_FIELDS.has(field)) return true;
+    if (evaluation?.actualPumpHeadAvailable === false || pump?.results?.actualPumpHeadAvailable === false) return false;
+    return evaluation?.actualPumpHeadAvailable === true || pump?.results?.actualPumpHeadAvailable === true;
+  }
+
   function markPreviewMetadata(pump, field) {
     if (!pump.results || typeof pump.results !== 'object') return;
     previewSequence += 1;
@@ -412,15 +418,31 @@
       pump.results.maxAllowableNpshrStatus = evaluation.maxAllowableNpshrStatus;
       pump.results.manualNpshrComparisonStatus = evaluation.manualNpshrComparisonStatus;
     }
-    const head = firstFinite(pump.props?.designHead, evaluation.pumpHead, pump.results.pumpHeadAtFlow, pump.results.head);
+    const head = canPreviewActualHead(pump, evaluation, field)
+      ? firstFinite(pump.props?.designHead, evaluation.actualPumpHead, pump.results.actualPumpHead, evaluation.pumpHead, pump.results.pumpHeadAtFlow, pump.results.head)
+      : null;
     if (flow !== null) {
       evaluation.flow = round(flow, 6);
       pump.results.flow = evaluation.flow;
     }
     if (head !== null) {
       evaluation.pumpHead = round(head, 6);
+      evaluation.actualPumpHead = evaluation.pumpHead;
+      evaluation.actualPumpHeadAvailable = true;
       pump.results.head = evaluation.pumpHead;
+      pump.results.actualPumpHead = evaluation.pumpHead;
+      pump.results.actualPumpHeadAvailable = true;
       pump.results.pumpHeadAtFlow = evaluation.pumpHead;
+    } else if (evaluation.actualPumpHeadAvailable === false || pump.results.actualPumpHeadAvailable === false) {
+      evaluation.pumpHead = null;
+      evaluation.actualPumpHead = null;
+      evaluation.actualPumpHeadAvailable = false;
+      pump.results.head = null;
+      pump.results.actualPumpHead = null;
+      pump.results.actualPumpHeadAvailable = false;
+      pump.results.pumpHeadAtFlow = null;
+      pump.results.power = null;
+      pump.results.hydraulicPower = null;
     }
     pump.results.efficiency = firstFinite(pump.props?.designEfficiency, pump.results.efficiency);
     evaluation.calculationFreshness = 'Local preview';

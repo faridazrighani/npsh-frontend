@@ -10,8 +10,8 @@ const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const CASE_FILE = path.join(FRONTEND_ROOT, "journals", "simulasi_1", "simulasi_performansi_pompa_air_umpan_tangki_deaerator.untirta");
 const LOGO_FILE = path.join(FRONTEND_ROOT, "png", "untirta-universitas-sultanagengtirtayasa880x870.png");
-const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260622-local-live-sync1";
-const VERSION = "2026.06-analysis-report-live16";
+const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260626-head-power-audit1";
+const VERSION = "2026.06-analysis-report-live17-head-power-audit";
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
 function assert(condition, message) {
@@ -361,7 +361,12 @@ changedProject.model.FLUID.props.temp = 80;
 changedProject.model.FLUID.props.viscosity = 0.355;
 changedProject.model.FLUID.props.dynViscosity = 0.344;
 changedProject.model["P-100"].results.npshEvaluation.npsha = 7.123456;
-changedProject.model["P-100"].results.npshEvaluation.pumpHead = 31.127;
+changedProject.model["P-100"].results.actualPumpHead = 31.127;
+changedProject.model["P-100"].results.pumpHeadAtFlow = 31.127;
+changedProject.model["P-100"].results.head = 31.127;
+changedProject.model["P-100"].results.actualPumpHeadAvailable = true;
+changedProject.model["P-100"].results.npshEvaluation.actualPumpHead = 31.127;
+changedProject.model["P-100"].results.npshEvaluation.actualPumpHeadAvailable = true;
 changedProject.model["P-100"].results.requiredSystemHead = 31.127;
 const reportDocument = createReportDocument();
 const liveDomApi = loadRuntime(runtime, changedProject.model, reportDocument);

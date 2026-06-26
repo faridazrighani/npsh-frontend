@@ -56,7 +56,7 @@ async function waitForNpshApp(page) {
   await page.waitForFunction(() => (
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.updateSimulation === 'function'
-    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v11'
+    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v12'
     && window.CanvasContextDock?.version === 'engineering-canvas-context-dock.v3'
     && window.EngineeringRouteTraceAudit?.version
     && window.EngineeringDefenseExportPackage?.schemaVersion === 'defense-export-package.v1'
@@ -579,7 +579,12 @@ test('Analysis Report live cells refresh from current calculation state without 
     model.FLUID.props.viscosity = 0.355;
     model.FLUID.props.dynViscosity = 0.344;
     const pump = model[pumpId];
-    pump.results.npshEvaluation.pumpHead = 31.127;
+    pump.results.actualPumpHead = 31.127;
+    pump.results.pumpHeadAtFlow = 31.127;
+    pump.results.head = 31.127;
+    pump.results.actualPumpHeadAvailable = true;
+    pump.results.npshEvaluation.actualPumpHead = 31.127;
+    pump.results.npshEvaluation.actualPumpHeadAvailable = true;
     pump.results.requiredSystemHead = 31.127;
     window.EngineeringAnalysisReportLiveRuntime.refresh();
   }, caseData.pumpId);

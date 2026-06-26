@@ -37,6 +37,7 @@
     "validate:calculation-lifecycle": "node tools/validate-calculation-lifecycle-runtime.cjs",
     "validate:calculation-progress-overlay": "node tools/validate-calculation-progress-overlay.cjs",
     "validate:performance-refresh-governor": "node tools/validate-performance-refresh-governor.cjs",
+    "validate:head-power-audit-guard": "node tools/validate-head-power-audit-guard.cjs",
     "validate:pump-edit-fast-lane": "node tools/validate-pump-edit-fast-lane.cjs",
     "validate:simulation-case-integrity": "node tools/validate-simulation-case-integrity-guard.cjs",
     "test:e2e": "playwright test",

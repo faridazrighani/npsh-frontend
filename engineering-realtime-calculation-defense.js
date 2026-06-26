@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-realtime-calculation-defense.v11';
+  const VERSION = 'engineering-realtime-calculation-defense.v12';
   const AUTO_SOLVE_DEBOUNCE_MS = 240;
   const AUTO_SOLVE_CHANGE_DEBOUNCE_MS = 90;
   const INPUT_LATENCY_SHIELD_MS = 1250;
@@ -343,6 +343,14 @@
     return null;
   }
 
+  function actualPumpHeadFromResults(results = {}, evaluation = {}) {
+    if (evaluation.actualPumpHeadAvailable === false || results.actualPumpHeadAvailable === false) return null;
+    if (evaluation.actualPumpHeadAvailable === true || results.actualPumpHeadAvailable === true) {
+      return firstFinite(evaluation.actualPumpHead, results.actualPumpHead, evaluation.pumpHead, results.pumpHeadAtFlow, results.head);
+    }
+    return firstFinite(evaluation.actualPumpHead, results.actualPumpHead, evaluation.pumpHead, results.pumpHeadAtFlow, results.head);
+  }
+
   function roundTraceNumber(value, digits = 6) {
     const number = finiteNumber(value);
     if (number === null) return null;
@@ -626,6 +634,8 @@
       .forEach(([id, node]) => {
         const results = node.results || {};
         const evaluation = results.npshEvaluation || {};
+        const actualPumpHead = actualPumpHeadFromResults(results, evaluation);
+        const requiredSystemHead = firstFinite(evaluation.requiredSystemHead, results.requiredSystemHead, results.systemHead?.requiredHead);
         pumps[id] = {
           id,
           flow: firstFinite(evaluation.flow, results.flow, results.fixedFlow),
@@ -633,7 +643,12 @@
           npshr: firstFinite(evaluation.npshr, results.npshr),
           npshMargin: firstFinite(evaluation.npshMargin, results.npshMargin),
           npshRatio: firstFinite(evaluation.npshRatio, results.npshRatio),
-          pumpHead: firstFinite(evaluation.pumpHead, results.head, results.pumpHeadAtFlow),
+          pumpHead: actualPumpHead,
+          actualPumpHead,
+          actualPumpHeadAvailable: actualPumpHead !== null
+            && evaluation.actualPumpHeadAvailable !== false
+            && results.actualPumpHeadAvailable !== false,
+          requiredSystemHead,
           backendValidationStatus: results.backendValidationStatus || evaluation.backendValidationStatus || '',
           calculationFreshness: results.calculationFreshness || evaluation.calculationFreshness || ''
         };

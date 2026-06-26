@@ -130,6 +130,8 @@ globalThis.__npshGlobalModel = {
       npshEvaluation: {
         flow: 50,
         pumpHead: 24,
+        actualPumpHead: 24,
+        actualPumpHeadAvailable: true,
         npsha: 7,
         npshr: 4,
         npshMargin: 3,
@@ -232,12 +234,12 @@ globalThis.updateSimulation = (options = {}) => ({ ok: true, options });
 globalThis.shouldSkipBackendSimulationFetch = () => true;
 
 const runtime = require(runtimePath);
-assert.equal(runtime.version, 'pump-formula-defense-live-audit.v10', 'Pump Formula Defense live audit runtime must expose route-design v10.');
+assert.equal(runtime.version, 'pump-formula-defense-live-audit.v11', 'Pump Formula Defense live audit runtime must expose head-power audit v11.');
 assert.equal(typeof runtime.refreshOpenWindows, 'function', 'Runtime must expose open-window refresh.');
 assert.equal(typeof runtime.scheduleRefresh, 'function', 'Runtime must expose scheduled refresh.');
 assert.equal(typeof runtime.ensureRuntimeGuards, 'function', 'Runtime must expose self-healing guard installer.');
 assert.equal(typeof runtime.buildCalculationMatrixRows, 'function', 'Runtime must expose live calculation matrix rows for validation.');
-assert.equal(globalThis.refreshPumpFormulaDefenseWindowContent.__pumpFormulaDefenseLiveAuditVersion, 'pump-formula-defense-live-audit.v10');
+assert.equal(globalThis.refreshPumpFormulaDefenseWindowContent.__pumpFormulaDefenseLiveAuditVersion, 'pump-formula-defense-live-audit.v11');
 
 runtime.refreshOpenWindows('P-100', { reason: 'unit-test' });
 assert(contentRefreshCalls > 0, 'Open Pump Formula Defense windows must rebuild their content when refreshed.');
@@ -251,6 +253,7 @@ assert(matrixPanel, 'Pump Formula Defense window must include a live input-to-ou
 assert(matrixPanel.innerHTML.includes('Matriks Kalkulasi Pump NPSH'), 'Matrix must have the requested calculation-matrix title.');
 assert(matrixPanel.innerHTML.includes('Flow Evaluated'), 'Matrix must link input flow to the displayed flow output.');
 assert(matrixPanel.innerHTML.includes('Required Pump Head'), 'Matrix must show route-calculated required pump head.');
+assert(matrixPanel.innerHTML.includes('Actual Pump Head'), 'Matrix must show actual pump head separately from required pump head.');
 assert(matrixPanel.innerHTML.includes('Discharge Loss'), 'Matrix must show the discharge PFV loss feeding system head.');
 assert(matrixPanel.innerHTML.includes('2.5 m'), 'Matrix must display the live discharge PFV loss number.');
 assert(matrixPanel.innerHTML.includes('reservoir/source boundary velocity is neglected'), 'Matrix must explain why reservoir/source velocity head can be zero.');
@@ -275,7 +278,8 @@ assert(matrixRows.some((row) => row.output === 'Route Calculation Status' && row
 assert(!matrixRows.some((row) => /Operating Region|Pump Head Curve/i.test(row.output)), 'Matrix rows must drop pump-curve-only outputs.');
 
 const trace = globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.calculationTrace;
-assert.equal(trace.formulaDefenseRows.length, 8, 'Pump Formula Defense rows must be rebuilt from live trace steps plus confidence gate.');
+assert.equal(trace.formulaDefenseRows.length, 9, 'Pump Formula Defense rows must be rebuilt from live trace steps plus actual-head and confidence gates.');
+assert(trace.formulaDefenseRows.some((row) => row.step === 'Actual Pump Head'), 'Pump Formula Defense rows must include an Actual Pump Head evidence gate.');
 assert.equal(
   trace.formulaDefenseRows.find((row) => row.step === 'NPSHa')?.result,
   7,
@@ -296,7 +300,7 @@ globalThis.refreshPumpFormulaDefenseWindowContent = () => ({ stale: true });
 runtime.ensureRuntimeGuards();
 assert.equal(
   globalThis.refreshPumpFormulaDefenseWindowContent.__pumpFormulaDefenseLiveAuditVersion,
-  'pump-formula-defense-live-audit.v10',
+  'pump-formula-defense-live-audit.v11',
   'Runtime must reclaim Pump Formula Defense content refresh after late overrides.'
 );
 
@@ -324,11 +328,11 @@ assert(runtimeSource.includes('Maximum Allowable NPSHr'), 'Runtime must expose m
 assert(runtimeSource.includes('EngineeringPerformanceRefreshGovernor'), 'Runtime must delegate scheduled open-window refreshes to the performance governor when available.');
 assert(!runtimeSource.includes("scheduleOpenFormulaDefenseWindowRefresh('', { reason: 'guard-loop'"), 'Runtime guard loop must not trigger repeated visual refreshes.');
 assert(
-  index.includes('engineering-pump-formula-defense-live-audit.js?v=20260621-pump-defense-route-design4'),
+  index.includes('engineering-pump-formula-defense-live-audit.js?v=20260626-head-power-audit1'),
   'Index must cache-bust Pump Formula Defense live audit runtime.'
 );
 assert(
-  manifest.includes('Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260621-pump-defense-route-design4'),
+  manifest.includes('Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260626-head-power-audit1'),
   'Manifest must document Pump Formula Defense live audit cache key.'
 );
 

@@ -4,6 +4,7 @@ const path = require('node:path');
 
 const rootDir = path.resolve(__dirname, '..');
 const runtimePath = path.join(rootDir, 'engineering-realtime-calculation-defense.js');
+const parameterRuntimePath = path.join(rootDir, 'engineering-parameter-task-runtime.js');
 const indexPath = path.join(rootDir, 'index.html');
 const manifestPath = path.join(rootDir, 'FILE_MANIFEST.md');
 
@@ -123,7 +124,7 @@ globalThis.EngineeringParameterTaskRuntime = {
 };
 
 const runtime = require(runtimePath);
-assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v11', 'Realtime defense runtime should expose v11.');
+assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v12', 'Realtime defense runtime should expose v12.');
 assert.equal(runtime.autosolvePolicy?.mode, 'realtime-autosolve-first', 'Realtime defense must declare realtime autosolve as the primary calculation policy.');
 assert.equal(runtime.autosolvePolicy?.manualCommandRole, 'validate-refresh-evidence', 'Manual command must be treated as evidence validation/refresh.');
 assert.equal(runtime.debounceForSourceEvent('input'), 240, 'Input debounce must keep numeric edits responsive.');
@@ -360,26 +361,46 @@ runtime.flushAutoSolve().then(async () => {
 
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
+const parameterRuntime = fs.readFileSync(parameterRuntimePath, 'utf8');
 assert(
-  index.includes('engineering-realtime-calculation-defense.js?v=20260624-global-dependency-logic2'),
+  index.includes('engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1'),
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
-  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260624-pump-edit-fast-lane6')
-    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260624-global-dependency-logic2'),
+  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260626-head-power-audit1')
+    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1'),
   'Pump edit fast lane must load before realtime calculation defense.'
 );
 assert(
-  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260624-global-dependency-logic2'),
+  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1'),
   'Manifest must document the realtime calculation defense cache key.'
 );
 assert(
-  index.includes('engineering-parameter-task-runtime.js?v=20260624-parameter-table-responsive1'),
+  index.includes('engineering-parameter-task-runtime.js?v=20260626-head-power-audit1'),
   'Index must load the Parameter Task runtime with the refresh-capable cache key.'
 );
 assert(
-  manifest.includes('Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=20260624-parameter-table-responsive1'),
+  manifest.includes('Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=20260626-head-power-audit1'),
   'Manifest must document the Parameter Task runtime cache key.'
+);
+assert(
+  parameterRuntime.includes('Static Head')
+    && parameterRuntime.includes('Loss Head')
+    && parameterRuntime.includes('System Head')
+    && parameterRuntime.includes('Required Positive Head')
+    && parameterRuntime.includes('Actual Pump Head'),
+  'Parameter Discharge Block 3 must expose the permanent head ledger labels.'
+);
+assert(
+  parameterRuntime.includes('Pressure-assisted')
+    && parameterRuntime.includes('No positive pump head required at this duty.'),
+  'Parameter Discharge Block 3 must show pressure-assisted guidance when required head is negative.'
+);
+assert(
+  parameterRuntime.includes('Design Duty Mode')
+    && parameterRuntime.includes('Operating Point Mode')
+    && parameterRuntime.includes('H_pump(Q) = H_system(Q)'),
+  'Parameter Discharge Block 3 must distinguish design-duty and operating-point modes.'
 );
 
 console.log('Realtime calculation defense validation passed.');

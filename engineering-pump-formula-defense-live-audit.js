@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-formula-defense-live-audit.v10';
+  const VERSION = 'pump-formula-defense-live-audit.v11';
   const WINDOW_SELECTOR = '.pump-formula-defense-task-window';
   const BADGE_SELECTOR = '[data-pump-formula-defense-live-badges]';
   const SUMMARY_SELECTOR = '[data-pump-formula-defense-vendor-summary]';
@@ -99,6 +99,35 @@
       .test(String(value || ''));
   }
 
+  function ensureActualPumpHeadFormulaDefenseRow(rows = [], evaluation = {}) {
+    if (!Array.isArray(rows)) return false;
+    if (rows.some((row) => normalizeLabel(row?.step || row?.title || row?.output) === 'actual pump head')) return false;
+    const actualPumpHead = firstNumber(evaluation.actualPumpHead, evaluation.pumpHead);
+    const requiredSystemHead = firstNumber(evaluation.requiredSystemHead, evaluation.requiredPumpHead, evaluation.systemHead?.requiredHead);
+    const actualAvailable = evaluation.actualPumpHeadAvailable === true && actualPumpHead !== null;
+    const explicitUnavailable = evaluation.actualPumpHeadAvailable === false;
+    if (!actualAvailable && !explicitUnavailable && requiredSystemHead === null) return false;
+    const insertAfter = rows.findIndex((row) => /required\s+pump\s+head|system\s+curve\s+head/i.test(String(row?.step || row?.title || row?.output || '')));
+    rows.splice(insertAfter >= 0 ? insertAfter + 1 : rows.length, 0, {
+      order: 0,
+      liveAuditFallback: true,
+      step: 'Actual Pump Head',
+      inputSource: 'Pump curve, vendor curve, or test curve at the evaluated duty flow.',
+      formula: 'H_actual(Q) = H_pump(Q) from verified pump performance data',
+      substitution: actualAvailable
+        ? `H_actual=${formatWithUnit(actualPumpHead, 'm', 3)}`
+        : `Not available; H_required=${formatWithUnit(requiredSystemHead, 'm', 3)} is system demand and must not be used as actual pump performance.`,
+      result: actualAvailable ? actualPumpHead : 'Not available',
+      unit: actualAvailable ? 'm' : '',
+      literature: 'ANSI/HI separates system-derived requirements from pump/vendor/test performance data.',
+      defenseNote: 'Pump power and head residual require Actual Pump Head; route-only Required Head can be negative in pressure-assisted duty.'
+    });
+    rows.forEach((row, index) => {
+      row.order = index + 1;
+    });
+    return true;
+  }
+
   function ensureFormulaDefenseRows(evaluation = {}) {
     const trace = evaluation.calculationTrace || {};
     if (!Array.isArray(trace.steps)) return;
@@ -115,6 +144,7 @@
       row?.defenseNote
     ].join(' ')));
     if (existingRows.length && !existingRows.some((row) => row?.liveAuditFallback === true) && !existingHasDeprecatedCurveRows) {
+      ensureActualPumpHeadFormulaDefenseRow(existingRows, evaluation);
       trace.academicFormulaDefenseRows = existingRows;
       trace.formulaDefenseRows = existingRows;
       return;
@@ -141,6 +171,7 @@
         defenseNote: defenseNote(title)
       };
     });
+    ensureActualPumpHeadFormulaDefenseRow(rows, evaluation);
     rows.push({
       order: rows.length + 1,
       liveAuditFallback: true,
@@ -304,6 +335,20 @@
     return false;
   }
 
+  function actualPumpHeadAvailability(results = {}, evaluation = {}) {
+    if (evaluation.actualPumpHeadAvailable === false || results.actualPumpHeadAvailable === false) return false;
+    if (evaluation.actualPumpHeadAvailable === true || results.actualPumpHeadAvailable === true) return true;
+    return null;
+  }
+
+  function actualPumpHeadFromEvaluation(results = {}, evaluation = {}) {
+    const availability = actualPumpHeadAvailability(results, evaluation);
+    if (availability === false) return null;
+    const actualHead = firstNumber(evaluation.actualPumpHead, results.actualPumpHead);
+    if (availability === true) return actualHead;
+    return firstNumber(evaluation.pumpHead, results.pumpHeadAtFlow, results.head);
+  }
+
   function hydratePumpTopLevelResults(pump = {}) {
     const results = pump.results || {};
     const evaluation = results.npshEvaluation || {};
@@ -313,6 +358,11 @@
     const npsha = firstNumber(evaluation.npsha, results.npsha);
     const npshr = firstNumber(evaluation.npshr, results.npshr, pump.props?.designNpshr, pump.props?.manualNpshr);
     const requiredNpsha = firstNumber(evaluation.requiredNpsha, results.requiredNpsha);
+    const actualPumpHeadAvailabilityStatus = actualPumpHeadAvailability(results, evaluation);
+    const actualPumpHead = actualPumpHeadFromEvaluation(results, evaluation);
+    const actualPumpHeadAvailable = actualPumpHeadAvailabilityStatus === null
+      ? (actualPumpHead !== null ? true : null)
+      : actualPumpHeadAvailabilityStatus;
     const hydraulicFromNumbers = statusFromNpshNumbers(npsha, npshr, requiredNpsha);
     const hydraulicStatus = firstCompleteStatus(
       evaluation.hydraulicStatus,
@@ -332,8 +382,10 @@
     [
       ['flow', evaluation.flow],
       ['fixedFlow', evaluation.flow],
-      ['head', firstNumber(evaluation.head, evaluation.pumpHead, evaluation.requiredSystemHead)],
-      ['pumpHeadAtFlow', firstNumber(evaluation.pumpHead, evaluation.requiredSystemHead)],
+      ['head', actualPumpHead],
+      ['actualPumpHead', actualPumpHead],
+      ['pumpHeadAtFlow', actualPumpHead],
+      ['actualPumpHeadAvailable', actualPumpHeadAvailable],
       ['requiredSystemHead', evaluation.requiredSystemHead],
       ['requiredSystemHeadRaw', evaluation.requiredSystemHeadRaw],
       ['requiredSystemHeadPositive', evaluation.requiredSystemHeadPositive],
@@ -363,6 +415,18 @@
     ].forEach(([key, value]) => {
       changed = writeResultIfUseful(results, key, value) || changed;
     });
+    if (actualPumpHeadAvailable === false) {
+      ['head', 'actualPumpHead', 'pumpHeadAtFlow', 'power', 'hydraulicPower'].forEach((key) => {
+        if (results[key] !== null) {
+          results[key] = null;
+          changed = true;
+        }
+      });
+      if (results.actualPumpHeadAvailable !== false) {
+        results.actualPumpHeadAvailable = false;
+        changed = true;
+      }
+    }
     [
       ['routeCalculationStatus', evaluation.routeCalculationStatus],
       ['npshaCalculationStatus', evaluation.npshaCalculationStatus],
@@ -583,8 +647,8 @@
     const marginRatioStep = findTraceStep(steps, 'Margin and Ratio');
 
     const flow = firstNumber(evaluation.flow, results.fixedFlow, results.flow, tracePump.flow, props.designFlow);
-    const pumpHead = firstNumber(evaluation.pumpHead, results.requiredSystemHead, results.pumpHeadAtFlow, results.head, tracePump.head, props.designHead);
-    const requiredPumpHead = firstNumber(evaluation.requiredSystemHead, results.requiredSystemHead, trace.systemHead?.requiredHead, pumpHead);
+    const actualPumpHead = actualPumpHeadFromEvaluation(results, evaluation);
+    const requiredPumpHead = firstNumber(evaluation.requiredSystemHead, results.requiredSystemHead, trace.systemHead?.requiredHead);
     const npsha = firstNumber(evaluation.npsha, results.npsha);
     const npshr = firstNumber(evaluation.npshr, results.npshr, props.designNpshr);
     const npshMargin = firstNumber(evaluation.npshMargin, results.npshMargin, interpretation.margin, npsha !== null && npshr !== null ? npsha - npshr : null);
@@ -680,6 +744,14 @@
       result: formatWithUnit(requiredPumpHead, 'm', 3),
       connectedTo: 'Route calculation -> pump selection/design head',
       step: systemCurveStep
+    });
+    addCalculationMatrixRow(rows, {
+      output: 'Actual Pump Head',
+      input: 'Pump curve, vendor curve, or test curve at the evaluated duty flow',
+      formula: 'H_actual(Q) = H_pump(Q) from verified pump performance data',
+      substitution: actualPumpHead === null ? 'No actual pump performance curve/data is active for this route-only duty.' : `H_actual=${formatWithUnit(actualPumpHead, 'm')}`,
+      result: actualPumpHead === null ? 'Not available' : formatWithUnit(actualPumpHead, 'm', 3),
+      connectedTo: 'Actual Pump Head -> pump power and head residual'
     });
     addCalculationMatrixRow(rows, {
       output: 'Route System Head',
@@ -1371,9 +1443,17 @@
     if (typeof root.applyBackendSimulationPrimaryResults === 'function') {
       root.applyBackendSimulationPrimaryResults(pump, data.results, { nodeResults: data.nodeResults || {} });
     } else {
+      const actualPumpHeadAvailable = data.results.actualPumpHeadAvailable === true;
+      const actualPumpHead = actualPumpHeadAvailable ? firstNumber(data.results.actualPumpHead, data.results.pumpHead) : null;
       pump.results.npshEvaluation = data.results;
       pump.results.flow = data.results.flow;
-      pump.results.head = data.results.pumpHead;
+      pump.results.head = actualPumpHead;
+      pump.results.actualPumpHead = actualPumpHead;
+      pump.results.actualPumpHeadAvailable = actualPumpHeadAvailable;
+      pump.results.pumpHeadAtFlow = actualPumpHead;
+      pump.results.requiredSystemHead = data.results.requiredSystemHead ?? null;
+      pump.results.power = actualPumpHeadAvailable ? data.results.power : null;
+      pump.results.hydraulicPower = actualPumpHeadAvailable ? data.results.hydraulicPower : null;
       pump.results.npsha = data.results.npsha;
       pump.results.npshr = data.results.npshr;
       pump.results.npshMargin = data.results.npshMargin;

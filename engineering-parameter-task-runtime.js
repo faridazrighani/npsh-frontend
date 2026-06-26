@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const VERSION = "2026.06-parameter-task-blocks5-responsive-table";
+  const VERSION = "2026.06-parameter-task-blocks7-head-power-audit";
   const STYLE_ID = "engineeringParameterTaskRuntimeStyle";
   const TRIGGER_SELECTOR = "[data-parameter-task-trigger]";
   const SECTION_SELECTOR = ".pump-live-param-section";
@@ -44,6 +44,22 @@
     if (!match) return null;
     const number = Number(match[0]);
     return Number.isFinite(number) ? number : null;
+  }
+
+  function firstFiniteValue(...values) {
+    for (const value of values) {
+      const number = parseNumber(value);
+      if (Number.isFinite(number)) return number;
+    }
+    return null;
+  }
+
+  function firstTextValue(...values) {
+    for (const value of values) {
+      const text = normalizeText(value);
+      if (text && text !== "-") return text;
+    }
+    return "";
   }
 
   function formatNumber(value, digits = 4, signed = false) {
@@ -287,7 +303,9 @@
       return /\bsuction\b/i.test(label) && /Flow/i.test(text) && /NPSH\s+Available/i.test(text);
     }
     if (block === "discharge") {
-      return /\bdischarge\b/i.test(label) && /Pump\s+Head/i.test(text) && /Discharge\s+Press/i.test(text);
+      return /\bdischarge\b/i.test(label)
+        && /(?:Pump\s+Head|Required\s+Head|Actual\s+Pump\s+Head)/i.test(text)
+        && /Discharge\s+Press/i.test(text);
     }
     return false;
   }
@@ -533,6 +551,69 @@
     return getTraceSteps(evaluation).find((step) => pattern.test(String(step.title || step.label || ""))) || null;
   }
 
+  function traceSystemHead(snapshot = {}) {
+    const evaluation = snapshot.evaluation || {};
+    const results = snapshot.results || {};
+    return evaluation.calculationTrace?.systemHead
+      || results.calculationTrace?.systemHead
+      || results.npshEvaluation?.calculationTrace?.systemHead
+      || {};
+  }
+
+  function traceStepNumber(step) {
+    return firstFiniteValue(step?.result);
+  }
+
+  function pipeTraceTotalLoss(trace = {}) {
+    return firstFiniteValue(
+      trace?.totals?.totalLoss,
+      trace?.hydraulic?.headLoss,
+      trace?.headLoss,
+      trace?.totalLoss
+    );
+  }
+
+  function isRouteOnlyDischargeMode(snapshot = {}) {
+    const results = snapshot.results || {};
+    const evaluation = snapshot.evaluation || {};
+    const modeText = firstTextValue(results.solveMode, evaluation.solveMode, results.flowBasis, evaluation.flowBasis);
+    return results.routeOnlyNpshEvaluation === true
+      || evaluation.routeOnlyNpshEvaluation === true
+      || /route-only/i.test(modeText);
+  }
+
+  function isDesignDutyDischargeMode(snapshot = {}) {
+    const results = snapshot.results || {};
+    const evaluation = snapshot.evaluation || {};
+    const modeText = firstTextValue(results.solveMode, evaluation.solveMode, results.flowBasis, evaluation.flowBasis);
+    return isRouteOnlyDischargeMode(snapshot)
+      || /flow\s*demand|fixed\s*(route\s*)?flow|source.*flow|sink.*demand/i.test(modeText)
+      || firstFiniteValue(results.fixedFlow, evaluation.fixedFlow) !== null;
+  }
+
+  function actualPumpHeadAtDuty(snapshot = {}) {
+    if (isRouteOnlyDischargeMode(snapshot)) return null;
+    const results = snapshot.results || {};
+    const evaluation = snapshot.evaluation || {};
+    return firstFiniteValue(
+      results.pumpHeadAtFlow,
+      evaluation.pumpHeadAtFlow,
+      results.actualPumpHead,
+      evaluation.actualPumpHead,
+      results.head,
+      evaluation.pumpHead,
+      snapshot.props?.designHead
+    );
+  }
+
+  function createPressureAssistedCallout(requiredHead) {
+    if (!(Number.isFinite(requiredHead) && requiredHead < 0)) return null;
+    const callout = createNode("div", "parameter-task-callout parameter-task-callout-warning");
+    callout.appendChild(createNode("strong", "", "Pressure-assisted"));
+    callout.appendChild(createNode("span", "", "No positive pump head required at this duty."));
+    return callout;
+  }
+
   function formatStepResult(step, digits = 4) {
     if (!step) return "-";
     const unit = step.unit || "";
@@ -709,23 +790,76 @@
 
   function createDischargeResultCard(snapshot) {
     const evaluation = snapshot.evaluation;
-    const systemHeadStep = findTraceStep(evaluation, /System Curve Head/i);
+    const results = snapshot.results || {};
+    const systemHead = traceSystemHead(snapshot);
+    const staticStep = findTraceStep(evaluation, /System Static Head/i);
+    const requiredStep = findTraceStep(evaluation, /^(Required Pump Head|System Curve Head)$/i);
+    const requiredPositiveStep = findTraceStep(evaluation, /^Required Pump Head Positive$/i);
     const residualStep = findTraceStep(evaluation, /Head Residual/i);
-    const pumpHead = parseNumber(snapshot.pumpHead);
+    const suctionPipeTrace = snapshot.route?.suctionPipe?.results?.calculationTrace || {};
+    const dischargePipeTrace = snapshot.route?.dischargePipe?.results?.calculationTrace || snapshot.pipeTrace || {};
+    const staticHead = firstFiniteValue(traceStepNumber(staticStep), systemHead.staticHead);
+    const suctionLoss = firstFiniteValue(systemHead.suctionLoss, evaluation.suctionLoss, results.suctionLoss, pipeTraceTotalLoss(suctionPipeTrace));
+    const dischargeLoss = firstFiniteValue(systemHead.dischargeLoss, evaluation.dischargeLoss, results.dischargeLoss, pipeTraceTotalLoss(dischargePipeTrace));
+    const lossHead = Number.isFinite(suctionLoss) && Number.isFinite(dischargeLoss) ? suctionLoss + dischargeLoss : null;
+    const requiredHead = firstFiniteValue(
+      systemHead.requiredHeadRaw,
+      systemHead.requiredHead,
+      traceStepNumber(requiredStep),
+      evaluation.requiredSystemHeadRaw,
+      evaluation.requiredSystemHead,
+      results.requiredSystemHeadRaw,
+      results.requiredSystemHead
+    );
+    const requiredPositiveHead = firstFiniteValue(
+      systemHead.requiredHeadPositive,
+      traceStepNumber(requiredPositiveStep),
+      evaluation.requiredSystemHeadPositive,
+      results.requiredSystemHeadPositive,
+      requiredHead !== null ? Math.max(0.001, requiredHead) : null
+    );
+    const actualPumpHead = actualPumpHeadAtDuty(snapshot);
+    const headResidual = actualPumpHead !== null && requiredHead !== null
+      ? actualPumpHead - requiredHead
+      : (!isRouteOnlyDischargeMode(snapshot)
+        ? firstFiniteValue(systemHead.headResidual, evaluation.headResidual, results.headResidual, traceStepNumber(residualStep))
+        : null);
+    const pressureAssisted = systemHead.pressureAssisted === true
+      || evaluation.pressureAssistedSystemHead === true
+      || results.pressureAssistedSystemHead === true
+      || (requiredHead !== null && requiredHead < 0);
+    const designDutyMode = isDesignDutyDischargeMode(snapshot);
+    const modeLabel = designDutyMode ? "Design Duty Mode" : "Operating Point Mode";
+    const modeFormula = designDutyMode
+      ? "Q ditetapkan oleh source/sink demand; aplikasi menghitung H_required(Q_duty)."
+      : "Q operasi dari perpotongan H_pump(Q) = H_system(Q).";
+    const headUsedForPressure = firstFiniteValue(actualPumpHead, requiredHead, snapshot.pumpHead);
+    const pressureHeadLabel = actualPumpHead !== null && headUsedForPressure !== null && Math.abs(headUsedForPressure - actualPumpHead) <= 0.02
+      ? "Actual Pump Head"
+      : "Required Head";
     const suctionPressure = parseNumber(snapshot.suctionPressure);
     const density = parseNumber(snapshot.fluid.density);
-    const dischargeFromFormula = Number.isFinite(suctionPressure) && Number.isFinite(pumpHead) && Number.isFinite(density)
-      ? suctionPressure + density * 9.81 * pumpHead / 100000
+    const dischargeFromFormula = Number.isFinite(suctionPressure) && Number.isFinite(headUsedForPressure) && Number.isFinite(density)
+      ? suctionPressure + density * 9.81 * headUsedForPressure / 100000
       : null;
     const rows = [
-      ["Pump Head", formatLiveOrValue(snapshot.live.pumpHead, snapshot.pumpHead, "m", 3), systemHeadStep ? `${systemHeadStep.formula}; ${systemHeadStep.substitution}` : "H_pump(Q) dari kurva/data pompa pada flow operasi."],
-      ["Discharge Press.", formatLiveOrValue(snapshot.live.dischargePressure, snapshot.dischargePressure, "bar a", 3), `P_discharge = P_suction + rho x g x H_pump / 100000 = ${formatNumber(suctionPressure, 3)} + ${formatNumber(density, 3)} x 9.81 x ${formatNumber(pumpHead, 3)} / 100000 = ${formatNumber(dischargeFromFormula, 3)} bar a.`],
-      ["System Head Check", formatValue(systemHeadStep?.result, systemHeadStep?.unit || "m", 4), systemHeadStep ? systemHeadStep.substitution : "System head = static head + suction loss + discharge loss."],
-      ["Head Residual", formatValue(residualStep?.result, residualStep?.unit || "m", 4), residualStep ? residualStep.substitution : "Residual = pump head - system head."]
+      ["Mode", modeLabel, modeFormula],
+      ["Static Head", formatValue(staticHead, "m", 4), staticStep ? `${staticStep.formula}; ${staticStep.substitution}` : "H_static = H_discharge boundary - H_suction boundary."],
+      ["Suction Loss", formatValue(suctionLoss, "m", 4), "hL_suction(Q) dari suction pipe/PFV trace."],
+      ["Discharge Loss", formatValue(dischargeLoss, "m", 4), "hL_discharge(Q) dari discharge pipe/PFV trace."],
+      ["Loss Head", formatValue(lossHead, "m", 4), "H_loss = hL_suction + hL_discharge."],
+      ["System Head", formatValue(requiredHead, "m", 4), requiredStep ? `${requiredStep.formula}; ${requiredStep.substitution}` : "H_system(Q) = H_static + H_loss."],
+      ["Required Head", formatValue(requiredHead, "m", 4), "H_required = H_system(Q_eval); pada Design Duty, Q_eval adalah flow yang dipilih user/source/sink."],
+      ["Required Positive Head", formatValue(requiredPositiveHead, "m", 4), requiredPositiveStep ? `${requiredPositiveStep.formula}; ${requiredPositiveStep.substitution}` : "H_required,positive = max(H_required, 0.001 m) untuk seleksi pompa."],
+      ["Actual Pump Head", actualPumpHead === null ? "-" : formatValue(actualPumpHead, "m", 4), actualPumpHead === null ? "Belum ada pump curve/manufacturer head yang dipakai; jangan baca Required Head sebagai Actual Pump Head." : "H_pump(Q) dari pump curve/data pompa pada duty flow."],
+      ["Head Residual", formatValue(headResidual, "m", 4, true), actualPumpHead === null ? "Residual aktual membutuhkan Actual Pump Head dari pump curve." : "Head Residual = Actual Pump Head - Required Head."],
+      ["Discharge Press.", formatLiveOrValue(snapshot.live.dischargePressure, snapshot.dischargePressure, "bar a", 3), `P_discharge = P_suction + rho x g x H_eval / 100000; H_eval = ${pressureHeadLabel} = ${formatNumber(headUsedForPressure, 3)} m; ${formatNumber(suctionPressure, 3)} + ${formatNumber(density, 3)} x 9.81 x ${formatNumber(headUsedForPressure, 3)} / 100000 = ${formatNumber(dischargeFromFormula, 3)} bar a.`]
     ];
     const content = createNode("div");
+    const pressureAssistedCallout = createPressureAssistedCallout(pressureAssisted ? requiredHead : null);
+    if (pressureAssistedCallout) content.appendChild(pressureAssistedCallout);
     content.appendChild(createTable(["Parameter Blok 3", "Nilai", "Histori / Rumus"], rows));
-    content.appendChild(createCard("Formula Trace Discharge/System Head", createTraceStepTable(getTraceSteps(evaluation).filter((step) => /System Static Head|System Curve Head|Head Residual/i.test(step.title || ""))), "parameter-task-nested-card"));
+    content.appendChild(createCard("Formula Trace Discharge/System Head", createTraceStepTable(getTraceSteps(evaluation).filter((step) => /System Static Head|Required Pump Head|Required Pump Head Positive|System Curve Head|Head Residual/i.test(step.title || ""))), "parameter-task-nested-card"));
     return createCard("Histori Angka Parameter Discharge", content);
   }
 
@@ -745,7 +879,7 @@
         npshRatio: readBlockRow(section, /NPSH\s+Ratio/i)
       }
       : {
-        pumpHead: readBlockRow(section, /Pump\s+Head/i),
+        pumpHead: readBlockRow(section, /(?:Pump\s+Head|Required\s+Head|Actual\s+Pump\s+Head)/i),
         dischargePressure: readBlockRow(section, /Discharge\s+Press/i)
       };
     const pipeNode = pipeNodeForBlock(route, block);
@@ -770,7 +904,7 @@
       npshMargin: evaluation.npshMargin ?? results.npshMargin,
       npshRatio: evaluation.npshRatio ?? results.npshRatio,
       requiredNpsha: evaluation.requiredNpsha ?? results.requiredNpsha,
-      pumpHead: evaluation.pumpHead ?? results.head ?? results.pumpHeadAtFlow ?? props.designHead,
+      pumpHead: evaluation.actualPumpHead ?? results.actualPumpHead ?? evaluation.pumpHead ?? results.pumpHeadAtFlow ?? results.head ?? props.designHead,
       dischargePressure: results.dischargePressure
     };
   }
@@ -1017,6 +1151,27 @@
   display: grid;
   gap: 6px;
   margin: 8px 0;
+}
+.parameter-task-callout {
+  display: grid;
+  gap: 2px;
+  margin: 0 0 8px;
+  padding: 8px 9px;
+  border: 1px solid #d8e6f2;
+  border-radius: 6px;
+  background: #f8fbff;
+}
+.parameter-task-callout strong {
+  color: #123b5a;
+  font-size: 11.5px;
+}
+.parameter-task-callout span {
+  color: #475569;
+  font-size: 11px;
+}
+.parameter-task-callout-warning {
+  border-color: #fed7aa;
+  background: #fff7ed;
 }
 .parameter-task-code-line {
   display: block;

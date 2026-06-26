@@ -94,7 +94,7 @@ assert(
   indexSource.indexOf('engineering-route-trace-audit.js?v=20260621-snk-boundary-logic1')
     < indexSource.indexOf('engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3')
     && indexSource.indexOf('engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3')
-    > indexSource.indexOf('engineering-realtime-calculation-defense.js?v=20260624-global-dependency-logic2')
+    > indexSource.indexOf('engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1')
     && indexSource.indexOf('engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3')
     > indexSource.indexOf('const diagnosticScripts = ['),
   'Integrity guard must remain deferred with diagnostics after the realtime path so PageSpeed critical-path work stays calculation-only.'

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "local-live-sync-manifest.v1",
-  "generatedAt": "2026-06-25T22:09:57.865Z",
+  "generatedAt": "2026-06-26T18:35:32.329Z",
   "purpose": "Keeps the local preview server auditable against the deployed npsh.virsim.id package.",
   "status": "review-required",
   "syncChecks": {
@@ -16,8 +16,8 @@
     "frontendRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-frontend",
     "apiRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-api",
     "serverUrl": "http://127.0.0.1:4174/",
-    "frontendCommit": "d60584887e667f9faee36c121d16c15d85a29d46",
-    "frontendOriginMain": "d60584887e667f9faee36c121d16c15d85a29d46",
+    "frontendCommit": "f93120eaeb33d1d5b5954eef5ace9d0cd6433176",
+    "frontendOriginMain": "f93120eaeb33d1d5b5954eef5ace9d0cd6433176",
     "apiCommit": "1390c775f7e81699aace7d3b0c5c140fa4d8709f",
     "apiOriginMain": "1390c775f7e81699aace7d3b0c5c140fa4d8709f",
     "releaseIntegrity": {
@@ -28,14 +28,14 @@
     },
     "index": {
       "path": "index.html",
-      "sizeBytes": 68028,
-      "sha256": "097c7e08719d5832e423c1954e5a10102083e6638eba69a71a3dfd01d591f2eb",
-      "canonicalSizeBytes": 67137,
-      "canonicalSha256": "1c74369e793fd8170c725c1aec2e36c515696d85ee99bbaae9c77a4c2dee86e4",
+      "sizeBytes": 68070,
+      "sha256": "461262cf84e790a7f19f6a376c85ea40903e32fe781a608c299cd525064fa3d7",
+      "canonicalSizeBytes": 67184,
+      "canonicalSha256": "401dca44009bd3cc69eea132131c2cb638f7d01bc3a8071652b914d2196cc1a7",
       "canonicalizedLineEndings": true,
       "cacheKeys": [
         "app.bundle.min.js?v=20260621-npsh-margin-options1",
-        "engineering-analysis-report-live-runtime.js?v=20260622-local-live-sync1",
+        "engineering-analysis-report-live-runtime.js?v=20260626-head-power-audit1",
         "engineering-bilingual-improvements.js?v=20260622-local-live-sync1",
         "engineering-browser-issues-runtime.js?v=20260620-orphan-label-cleanup1",
         "engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1",
@@ -46,25 +46,26 @@
         "engineering-defense-export-package.js?v=20260603-defensev3",
         "engineering-formula-defense-ui.js?v=20260613-formula-defense-ui15",
         "engineering-google-auth-runtime.js?v=20260620-google-auth-lazy1",
+        "engineering-head-power-audit-guard.js?v=20260627-head-power-audit2",
         "engineering-library-governance.js?v=20260530-pagespeed3",
         "engineering-literature-pdf-viewer.js?v=20260609-literature-access3",
         "engineering-live-parameter-repaint-lock.css?v=20260620-render-blocking-fix1",
         "engineering-local-trace-fallback-runtime.js?v=20260611-local-trace3",
         "engineering-npsh-margin-runtime.js?v=20260622-local-live-sync1",
-        "engineering-parameter-task-runtime.js?v=20260624-parameter-table-responsive1",
-        "engineering-performance-refresh-governor.js?v=20260614-refresh-governor4",
+        "engineering-parameter-task-runtime.js?v=20260626-head-power-audit1",
+        "engineering-performance-refresh-governor.js?v=20260626-head-power-audit1",
         "engineering-pipe-canvas-hydraulic-label-runtime.js?v=20260621-pipe-label-pump-font1",
         "engineering-pipe-moody-chart-audit.js?v=20260607-pipe-moody-audit2",
         "engineering-pipe-segments-file-runtime.js?v=20260608-pipe-segments-file1",
         "engineering-pipe-source-confidence-map-runtime.js?v=20260611-pipe-source-confidence-map1",
-        "engineering-pump-edit-fast-lane.js?v=20260624-pump-edit-fast-lane6",
-        "engineering-pump-formula-defense-live-audit.js?v=20260621-pump-defense-route-design4",
+        "engineering-pump-edit-fast-lane.js?v=20260626-head-power-audit1",
+        "engineering-pump-formula-defense-live-audit.js?v=20260626-head-power-audit1",
         "engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5",
         "engineering-pump-npsh-acceptance-runtime.js?v=20260621-pump-npsh-acceptance3",
-        "engineering-pump-performance-canonical-chart.js?v=20260622-canonical-chart26",
-        "engineering-pump-performance-chart-audit.js?v=20260622-local-live-sync1",
+        "engineering-pump-performance-canonical-chart.js?v=20260626-head-power-audit1",
+        "engineering-pump-performance-chart-audit.js?v=20260626-head-power-audit1",
         "engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3",
-        "engineering-realtime-calculation-defense.js?v=20260624-global-dependency-logic2",
+        "engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1",
         "engineering-route-trace-audit.js?v=20260625-pump-required-head-label1",
         "engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3",
         "engineering-source-temperature-runtime.js?v=20260623-fluid-basis-dependency-autosolve1",
@@ -87,12 +88,12 @@
       {
         "path": "engineering-analysis-report-live-runtime.js",
         "exists": true,
-        "sizeBytes": 91735,
-        "sha256": "61ee0ee17f1ff91712364ad46768acc4fc8a92ff6a907bcec5bffb48c39379fe",
-        "canonicalSizeBytes": 90060,
-        "canonicalSha256": "31e4eddda7f07c3a8757c377dbc703e9bb421f5ad5f9683851a05b1534367da3",
+        "sizeBytes": 92827,
+        "sha256": "b43685989471b743fa5a9c5f93237027fadbfb60cc642ab4f550ae85c6a5a33f",
+        "canonicalSizeBytes": 91164,
+        "canonicalSha256": "1d4131592ef3840d55bf809d202a143d378d145c9d08a076a2a7fc7cc9a4ed92",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-analysis-report-live-runtime.js?v=20260622-local-live-sync1"
+        "cacheKey": "engineering-analysis-report-live-runtime.js?v=20260626-head-power-audit1"
       },
       {
         "path": "engineering-bilingual-improvements.js",
@@ -195,6 +196,16 @@
         "cacheKey": "engineering-google-auth-runtime.js?v=20260620-google-auth-lazy1"
       },
       {
+        "path": "engineering-head-power-audit-guard.js",
+        "exists": true,
+        "sizeBytes": 10315,
+        "sha256": "c7f306a530bdf9a48ab22b93780a1c1e7904fb19613b152505670f3040ba01f1",
+        "canonicalSizeBytes": 10315,
+        "canonicalSha256": "c7f306a530bdf9a48ab22b93780a1c1e7904fb19613b152505670f3040ba01f1",
+        "canonicalizedLineEndings": true,
+        "cacheKey": "engineering-head-power-audit-guard.js?v=20260627-head-power-audit2"
+      },
+      {
         "path": "engineering-library-governance.js",
         "exists": true,
         "sizeBytes": 45180,
@@ -247,22 +258,22 @@
       {
         "path": "engineering-parameter-task-runtime.js",
         "exists": true,
-        "sizeBytes": 67203,
-        "sha256": "94b3685c44ed1e98d742d7fe33fbe4e16d929d91710411e233d3d34d9e410f25",
-        "canonicalSizeBytes": 65816,
-        "canonicalSha256": "b92c338e9654bb4901f88c61d3787ef84ec4eb90d4e5d2bd36f9e9962b1b5caa",
+        "sizeBytes": 74564,
+        "sha256": "4a2861101d96923244af04daf06154aae21fbff6d67b858054aba5f781571f7f",
+        "canonicalSizeBytes": 73228,
+        "canonicalSha256": "a0635adc8020e9511e090a554685f79666cb0759b353290b8d60d6341a968095",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-parameter-task-runtime.js?v=20260624-parameter-table-responsive1"
+        "cacheKey": "engineering-parameter-task-runtime.js?v=20260626-head-power-audit1"
       },
       {
         "path": "engineering-performance-refresh-governor.js",
         "exists": true,
-        "sizeBytes": 35164,
-        "sha256": "017ae26f78867c696d3de60f24b8243d82c80411c24b6b11346ee3ddb6f033c7",
-        "canonicalSizeBytes": 35164,
-        "canonicalSha256": "017ae26f78867c696d3de60f24b8243d82c80411c24b6b11346ee3ddb6f033c7",
+        "sizeBytes": 35653,
+        "sha256": "77174b9e9bd6e3598bb4d8166e6705fd22d079e1549a74e0b3b32a2d3a8c9185",
+        "canonicalSizeBytes": 35653,
+        "canonicalSha256": "77174b9e9bd6e3598bb4d8166e6705fd22d079e1549a74e0b3b32a2d3a8c9185",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-performance-refresh-governor.js?v=20260614-refresh-governor4"
+        "cacheKey": "engineering-performance-refresh-governor.js?v=20260626-head-power-audit1"
       },
       {
         "path": "engineering-pipe-canvas-hydraulic-label-runtime.js",
@@ -307,22 +318,22 @@
       {
         "path": "engineering-pump-edit-fast-lane.js",
         "exists": true,
-        "sizeBytes": 29599,
-        "sha256": "165aff4a425a7b087b3a80f322eb4e9fa6a45c3a28fdb2939e5d651bee9b0e67",
-        "canonicalSizeBytes": 29015,
-        "canonicalSha256": "dbf2021c2de468522a8472753d54b44bd42ff6e47c0a2211c2ef30602e7c923d",
+        "sizeBytes": 30741,
+        "sha256": "b27ffac24b2ebafca232be438b34fbbeca38eb88370e3c4c488b35c2c3e84cbf",
+        "canonicalSizeBytes": 30166,
+        "canonicalSha256": "ed17caf9867770e9ed19d3e5d1649a296894062ff38072c4394e1073a458e974",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-pump-edit-fast-lane.js?v=20260624-pump-edit-fast-lane6"
+        "cacheKey": "engineering-pump-edit-fast-lane.js?v=20260626-head-power-audit1"
       },
       {
         "path": "engineering-pump-formula-defense-live-audit.js",
         "exists": true,
-        "sizeBytes": 77052,
-        "sha256": "17d35c636860f533988b0222d22c203bb94b40007a7d659c8503a46b29bf2f56",
-        "canonicalSizeBytes": 75551,
-        "canonicalSha256": "16c856079956972e23994324048e1a4422ec3c207bdf92d561b69f3fcf030117",
+        "sizeBytes": 81655,
+        "sha256": "4ab20e36b39901b532fd8e3980b25d27793a99ba1c29ce67d208e08efe2610f7",
+        "canonicalSizeBytes": 80204,
+        "canonicalSha256": "0a5c5c7cef42c3db8a56453ee7d955d4e6a6dc5379703196420a877f0f49d5d6",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-pump-formula-defense-live-audit.js?v=20260621-pump-defense-route-design4"
+        "cacheKey": "engineering-pump-formula-defense-live-audit.js?v=20260626-head-power-audit1"
       },
       {
         "path": "engineering-pump-nozzle-simplify-runtime.js",
@@ -347,22 +358,22 @@
       {
         "path": "engineering-pump-performance-canonical-chart.js",
         "exists": true,
-        "sizeBytes": 133350,
-        "sha256": "738343b62cd50da48686a2900f4bbf9ec722f00bdfc3923e19ad94cb12cc6a98",
-        "canonicalSizeBytes": 130217,
-        "canonicalSha256": "4ca3a5aab103679c1f4f19ea13f054aa525de4e502253a4b5bfa471a39157bc7",
+        "sizeBytes": 134223,
+        "sha256": "95233e593a44b95676c64d817f6bde901cd49ae83102d6868e6b12d99e42d2c3",
+        "canonicalSizeBytes": 131102,
+        "canonicalSha256": "d33e164c508a506f989742361b3d19239d9b95e9d2225b25efbbb880ebfa2b1d",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-pump-performance-canonical-chart.js?v=20260622-canonical-chart26"
+        "cacheKey": "engineering-pump-performance-canonical-chart.js?v=20260626-head-power-audit1"
       },
       {
         "path": "engineering-pump-performance-chart-audit.js",
         "exists": true,
-        "sizeBytes": 32847,
-        "sha256": "10a05b1521ddbf79e18db30161558b9d21a3bc31ab914b53993da8d1d72ad2c3",
-        "canonicalSizeBytes": 32022,
-        "canonicalSha256": "a63cb6a6a8fdf70eeb3e952744d574cc6b2b39bd56b22e621ca0027a094ab3f3",
+        "sizeBytes": 33295,
+        "sha256": "672686f38afdba0f3af1e4d154fddf3a25654a0748f5ed8973b67b5f13aa11d9",
+        "canonicalSizeBytes": 32476,
+        "canonicalSha256": "4f6274b0759cc8b28ee1c4cdbb166feb5a937cbab6d89045fdf98e5d98b65424",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-pump-performance-chart-audit.js?v=20260622-local-live-sync1"
+        "cacheKey": "engineering-pump-performance-chart-audit.js?v=20260626-head-power-audit1"
       },
       {
         "path": "engineering-pump-readiness-visibility-runtime.js",
@@ -377,12 +388,12 @@
       {
         "path": "engineering-realtime-calculation-defense.js",
         "exists": true,
-        "sizeBytes": 67415,
-        "sha256": "5caef4fe5981a251a1c817ba4d59126dd7d6590460d301de9c99c3daf9d3301b",
-        "canonicalSizeBytes": 65981,
-        "canonicalSha256": "4895d436f526e804e09e73627bdb72961bc0d35ba943997ffd5ffd3d701ac6be",
+        "sizeBytes": 68355,
+        "sha256": "4ab214f54662d1aa4615f25bf703c0077afaf1146d53c36879bd38f7d3eeeb0c",
+        "canonicalSizeBytes": 66940,
+        "canonicalSha256": "4baea98fd7f9d5d67874980b2bc4827894f5992f6154e22d2e74107d375794ba",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-realtime-calculation-defense.js?v=20260624-global-dependency-logic2"
+        "cacheKey": "engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1"
       },
       {
         "path": "engineering-route-trace-audit.js",
@@ -437,20 +448,20 @@
       {
         "path": "FILE_MANIFEST.md",
         "exists": true,
-        "sizeBytes": 30050,
-        "sha256": "ef6565332a2574eb1552ce394a6103157a83537bc6fd9fb2417a04d0450c89e5",
-        "canonicalSizeBytes": 29860,
-        "canonicalSha256": "30c6b8382ca9b044e0bd368e6ab7d6c4899270e36300840f20e21cf862262eb9",
+        "sizeBytes": 31040,
+        "sha256": "5067a6e5015299eed0c18baa80609a8443adf2f2fa6b5c091069bcc22b7a3069",
+        "canonicalSizeBytes": 30863,
+        "canonicalSha256": "cb9188c96a9cec8fb170c20b77d581d8b1c42997d114bcb89707ce3f8d205ee0",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
       {
         "path": "index.html",
         "exists": true,
-        "sizeBytes": 68028,
-        "sha256": "097c7e08719d5832e423c1954e5a10102083e6638eba69a71a3dfd01d591f2eb",
-        "canonicalSizeBytes": 67137,
-        "canonicalSha256": "1c74369e793fd8170c725c1aec2e36c515696d85ee99bbaae9c77a4c2dee86e4",
+        "sizeBytes": 68070,
+        "sha256": "461262cf84e790a7f19f6a376c85ea40903e32fe781a608c299cd525064fa3d7",
+        "canonicalSizeBytes": 67184,
+        "canonicalSha256": "401dca44009bd3cc69eea132131c2cb638f7d01bc3a8071652b914d2196cc1a7",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
@@ -521,7 +532,7 @@
     },
     "apiVersion": {
       "statusCode": 200,
-      "sha256": "c61fb754aa141cd25fb41bdaee75673fbfd64faf1ddf22d3ce90767e73c9ffc3",
+      "sha256": "3b6b70fed8e7b0c24de89b418dab0e1c36a330e3c5ff9cd601512d94fa314eab",
       "payload": {
         "ok": true,
         "appName": "GhaniSIM1 NPSH",
@@ -670,21 +681,32 @@
             "parity.fingerprint"
           ]
         },
-        "generatedAt": "2026-06-25T22:09:58.192Z"
+        "generatedAt": "2026-06-26T18:35:32.297Z"
       }
     },
     "verifiedAssets": []
   },
   "differences": {
     "cacheKeysMissingOnLive": [
-      "engineering-parameter-task-runtime.js?v=20260624-parameter-table-responsive1",
-      "engineering-pump-edit-fast-lane.js?v=20260624-pump-edit-fast-lane6",
-      "engineering-realtime-calculation-defense.js?v=20260624-global-dependency-logic2",
+      "engineering-analysis-report-live-runtime.js?v=20260626-head-power-audit1",
+      "engineering-head-power-audit-guard.js?v=20260627-head-power-audit2",
+      "engineering-parameter-task-runtime.js?v=20260626-head-power-audit1",
+      "engineering-performance-refresh-governor.js?v=20260626-head-power-audit1",
+      "engineering-pump-edit-fast-lane.js?v=20260626-head-power-audit1",
+      "engineering-pump-formula-defense-live-audit.js?v=20260626-head-power-audit1",
+      "engineering-pump-performance-canonical-chart.js?v=20260626-head-power-audit1",
+      "engineering-pump-performance-chart-audit.js?v=20260626-head-power-audit1",
+      "engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1",
       "engineering-route-trace-audit.js?v=20260625-pump-required-head-label1"
     ],
     "cacheKeysMissingLocally": [
+      "engineering-analysis-report-live-runtime.js?v=20260622-local-live-sync1",
       "engineering-parameter-task-runtime.js?v=20260621-parameter-route-full-width3",
+      "engineering-performance-refresh-governor.js?v=20260614-refresh-governor4",
       "engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane5",
+      "engineering-pump-formula-defense-live-audit.js?v=20260621-pump-defense-route-design4",
+      "engineering-pump-performance-canonical-chart.js?v=20260622-canonical-chart26",
+      "engineering-pump-performance-chart-audit.js?v=20260622-local-live-sync1",
       "engineering-realtime-calculation-defense.js?v=20260623-global-dependency-logic1",
       "engineering-route-trace-audit.js?v=20260621-snk-boundary-logic1"
     ],

@@ -123,7 +123,7 @@ async function waitForNpshApp(page) {
   await page.waitForFunction(() => (
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.updateSimulation === 'function'
-    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v11'
+    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v12'
     && window.__npshRouteTraceAuditInstalled?.payloadBuilder
     && window.__npshRouteTraceAuditInstalled?.fetchSimulation
     && window.__npshRouteTraceAuditInstalled?.primaryResultApplier
@@ -207,13 +207,28 @@ async function browserSnapshotFromPage(page) {
 }
 
 function systemHead(response) {
-  const step = response.results?.calculationTrace?.steps?.find((item) => item.title === 'System Curve Head');
-  return Number(step?.result);
+  const trace = response.results?.calculationTrace || {};
+  const step = trace.steps?.find((item) => (
+    item.title === 'System Curve Head'
+    || item.title === 'Required Pump Head'
+    || item.title === 'Required System Head'
+  ));
+  const candidates = [
+    response.results?.requiredSystemHead,
+    trace.systemHead?.requiredHead,
+    step?.result
+  ];
+  const value = candidates.map(Number).find(Number.isFinite);
+  return Number.isFinite(value) ? value : NaN;
 }
 
 function formulaDefenseRow(response, stepName) {
+  const aliases = {
+    'System Curve Head': ['System Curve Head', 'Required Pump Head', 'Required System Head']
+  };
+  const stepNames = aliases[stepName] || [stepName];
   return (response.results?.calculationTrace?.academicFormulaDefenseRows || [])
-    .find((row) => row.step === stepName) || {};
+    .find((row) => stepNames.includes(row.step)) || {};
 }
 
 test.beforeEach(async ({ page }) => {

@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-performance-canonical-chart.v24';
+  const VERSION = 'pump-performance-canonical-chart.v25-head-power-audit';
   const PUMP_FORMULA_DEFENSE_RELOCATION_STYLE_ID = 'pump-formula-defense-relocation-style';
   const PUMP_MANUAL_NPSHR_RELOCATION_STYLE_ID = 'pump-manual-npshr-relocation-style';
   const PUMP_DEVELOPMENT_UI_SUPPRESSION_STYLE_ID = 'pump-development-ui-suppression-style';
@@ -765,8 +765,14 @@
     const bepFlow = live.bepFlow;
     const designHead = live.designHead;
     const designNpshr = live.designNpshr;
+    const modeText = [results.solveMode, results.flowBasis, evaluation.solveMode, evaluation.flowBasis].filter(Boolean).join(' ');
+    const routeOnlyPump = results.routeOnlyNpshEvaluation === true
+      || evaluation.routeOnlyNpshEvaluation === true
+      || /route-only/i.test(modeText);
     const flow = firstNumber(designFlow, evaluation.flow, results.flow, results.fixedFlow, duty.flow);
-    const head = firstNumber(designHead, evaluation.pumpHead, results.head, results.pumpHeadAtFlow, duty.head);
+    const head = routeOnlyPump
+      ? firstNumber(evaluation.actualPumpHead, results.actualPumpHead)
+      : firstNumber(designHead, evaluation.actualPumpHead, results.actualPumpHead, evaluation.pumpHead, results.head, results.pumpHeadAtFlow, duty.head);
     const npsha = firstNumber(evaluation.npsha, results.npsha, duty.npsha);
     if (flow === null || head === null) return null;
 
@@ -1101,8 +1107,14 @@
     const live = livePumpChartInputs(pump);
     const baseRanges = chartData?.ranges || {};
     const baseDuty = chartData?.dutyPoint || {};
+    const modeText = [results.solveMode, results.flowBasis, evaluation.solveMode, evaluation.flowBasis].filter(Boolean).join(' ');
+    const routeOnlyPump = results.routeOnlyNpshEvaluation === true
+      || evaluation.routeOnlyNpshEvaluation === true
+      || /route-only/i.test(modeText);
     const localFlow = firstNumber(live.designFlow, evaluation.flow, results.flow, results.fixedFlow, baseDuty.flow);
-    const localHead = firstNumber(live.designHead, evaluation.pumpHead, results.head, results.pumpHeadAtFlow, baseDuty.head);
+    const localHead = routeOnlyPump
+      ? firstNumber(evaluation.actualPumpHead, results.actualPumpHead)
+      : firstNumber(live.designHead, evaluation.actualPumpHead, results.actualPumpHead, evaluation.pumpHead, results.head, results.pumpHeadAtFlow, baseDuty.head);
     const localNpsha = firstNumber(evaluation.npsha, results.npsha, results.npshAvailable, baseDuty.npsha);
     const propsCurveIsDefault = isDefaultPumpCurve(props.curveData || []);
     const propsPumpHead = propsCurveIsDefault ? [] : normalizePoints(props.curveData, ['head', 'pumpHead', 'value']);

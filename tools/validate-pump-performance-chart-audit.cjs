@@ -48,7 +48,7 @@ function setModel(pump, extras = {}) {
 
 setModel({ props: {}, results: {} });
 let result = audit.compute('P-100');
-assert.strictEqual(result.version, 'pump-performance-chart-audit.v19');
+assert.strictEqual(result.version, 'pump-performance-chart-audit.v20-head-power-audit');
 assert.strictEqual(result.axisMode, 'log-log');
 assert.strictEqual(result.chartHasDrawableCurve, false);
 assert.strictEqual(result.status, 'Curve Data Unavailable');
@@ -256,27 +256,27 @@ globalThis.updatePumpChart = function lateCaptionChartOverride() {
 audit.ensureRuntimeGuards();
 assert.strictEqual(
   globalThis.updatePumpChart.__pumpPerformanceChartAuditVersion,
-  'pump-performance-chart-audit.v19',
+  'pump-performance-chart-audit.v20-head-power-audit',
   'Audit runtime must rewrap late caption chart overrides.'
 );
 globalThis.updatePumpChart('P-100');
 assert.strictEqual(lateRendererCalls, 0, 'Audit chart draw must not call the old fallback renderer.');
 
 assert(
-  index.includes('engineering-pump-performance-chart-audit.js?v=20260622-local-live-sync1'),
+  index.includes('engineering-pump-performance-chart-audit.js?v=20260626-head-power-audit1'),
   'Index must cache-bust the pump performance chart audit runtime.'
 );
 assert(
-  index.includes('engineering-pump-performance-canonical-chart.js?v=20260622-canonical-chart26'),
+  index.includes('engineering-pump-performance-canonical-chart.js?v=20260626-head-power-audit1'),
   'Index must load the canonical pump runtime in the critical shell so Pump Datum - NPSHR uses current margin-basis defaults before the first pump click.'
 );
 assert(
   index.indexOf('app.bundle.min.js?v=20260621-npsh-margin-options1')
-    < index.indexOf('engineering-pump-performance-canonical-chart.js?v=20260622-canonical-chart26'),
+    < index.indexOf('engineering-pump-performance-canonical-chart.js?v=20260626-head-power-audit1'),
   'Canonical pump runtime must load after the app bundle so it can override stale app-bundle pump handlers.'
 );
 assert(
-  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260622-canonical-chart26'),
+  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260626-head-power-audit1'),
   'Audit runtime must load the canonical operational chart renderer after audit guards.'
 );
 assert.strictEqual(typeof audit.loadCanonicalChartRenderer, 'function', 'Audit runtime must expose canonical renderer loader.');
@@ -297,7 +297,7 @@ globalThis.document = {
 assert.doesNotThrow(() => audit.refresh('P-100'), 'Audit refresh must not draw over the canonical chart renderer.');
 assert.strictEqual(
   globalThis.__pumpPerformanceChartAuditLast?.version,
-  'pump-performance-chart-audit.v19',
+  'pump-performance-chart-audit.v20-head-power-audit',
   'Audit refresh should still retain the latest computed audit model.'
 );
 if (previousDocument === undefined) delete globalThis.document;
@@ -375,7 +375,7 @@ assert(canonicalSource.includes('Curve Mode:'), 'Canonical footer metadata must 
 assert(canonicalSource.includes('chart.bottom + (compact ? 38 : 44)'), 'X-axis label must be positioned from the plot footer, not absolute canvas bottom.');
 assert(canonicalSource.includes('chart.bottom + 58'), 'Compact footer metadata must be below the x-axis label.');
 assert(!canonicalSource.includes('height - 44 + index * 11'), 'Footer metadata must not return to the old axis-overlap position.');
-assert.strictEqual(canonical.version, 'pump-performance-canonical-chart.v24', 'Canonical chart runtime must expose the smart engineering chart version.');
+assert.strictEqual(canonical.version, 'pump-performance-canonical-chart.v25-head-power-audit', 'Canonical chart runtime must expose the smart engineering chart version.');
 assert.strictEqual(typeof canonical.ensureRuntimeGuards, 'function', 'Canonical chart runtime must expose self-healing realtime guards.');
 assert.strictEqual(typeof canonical.openTaskWindow, 'function', 'Canonical chart runtime must expose a disabled Pump Performance Chart task-window guard.');
 assert.strictEqual(typeof canonical.syncEntryPoints, 'function', 'Canonical chart runtime must expose entry-point synchronization for menu/buttons.');
@@ -396,7 +396,7 @@ globalThis.updatePumpChart = function overwrittenPumpChartRenderer() {
 canonical.ensureRuntimeGuards();
 assert.strictEqual(
   globalThis.updatePumpChart.__pumpPerformanceCanonicalChartVersion,
-  'pump-performance-canonical-chart.v24',
+  'pump-performance-canonical-chart.v25-head-power-audit',
   'Canonical renderer must reclaim updatePumpChart after any late override.'
 );
 
@@ -451,7 +451,7 @@ globalThis.__npshGlobalModel['P-100'].results.flow = 50;
 globalThis.__npshGlobalModel['P-100'].results.head = 24;
 
 globalThis.__engineeringPumpEditFastLane = {
-  version: 'engineering-pump-edit-fast-lane.v5',
+  version: 'engineering-pump-edit-fast-lane.v6',
   mode: 'chart',
   field: 'designHead',
   pumpId: 'P-100',
@@ -563,7 +563,7 @@ assert.strictEqual(staleRebuiltChartModel.series.pumpHead[1].value, 33, 'Rebuilt
 assert.strictEqual(staleRebuiltChartModel.sourceAudit.frontendChartRebuilt, true, 'Rebuilt chart must retain audit evidence.');
 
 globalThis.__engineeringPumpEditFastLane = {
-  version: 'engineering-pump-edit-fast-lane.v5',
+  version: 'engineering-pump-edit-fast-lane.v6',
   mode: 'chart',
   field: 'designHead',
   pumpId: 'P-100',
@@ -610,7 +610,7 @@ setModel({
   }
 });
 globalThis.__engineeringPumpEditFastLane = {
-  version: 'engineering-pump-edit-fast-lane.v5',
+  version: 'engineering-pump-edit-fast-lane.v6',
   mode: 'chart',
   field: 'bepFlow',
   pumpId: 'P-100',
@@ -638,7 +638,10 @@ globalThis.__engineeringPumpEditFastLane.field = 'designHead';
 globalThis.__npshGlobalModel['P-100'].props.designHead = 30;
 globalThis.__npshGlobalModel['P-100'].results.head = 30;
 globalThis.__npshGlobalModel['P-100'].results.pumpHeadAtFlow = 30;
-globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.pumpHead = 30;
+globalThis.__npshGlobalModel['P-100'].results.actualPumpHead = 30;
+globalThis.__npshGlobalModel['P-100'].results.actualPumpHeadAvailable = true;
+globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.actualPumpHead = 30;
+globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.actualPumpHeadAvailable = true;
 const designHeadPreview = canonical.buildChartModel('P-100');
 const designHeadPoint = designHeadPreview.series.pumpHead.find((point) => point.flow === 70);
 assert(designHeadPoint?.value > designFlowPreview.series.pumpHead.find((point) => point.flow === 70)?.value, 'Design Head edit must raise/lower the local pump head curve immediately.');

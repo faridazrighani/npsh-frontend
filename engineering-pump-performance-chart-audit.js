@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-performance-chart-audit.v19';
+  const VERSION = 'pump-performance-chart-audit.v20-head-power-audit';
   const MIN_CURVE_POINTS = 3;
   const PANEL_SELECTOR = '[data-pump-performance-chart-audit-panel]';
   const CHART_CANVAS_SELECTORS = [
@@ -328,8 +328,14 @@
     const visibleSeries = Object.values(series).filter((item) => item.allowed && item.points.length >= 2);
     const blockedSeries = Object.values(series).filter((item) => !item.allowed && item.rawPointCount > 0);
     const hiddenFallback = Object.values(series).filter((item) => !item.allowed).length > 0;
+    const modeText = [results.solveMode, results.flowBasis, evaluation.solveMode, evaluation.flowBasis].filter(Boolean).join(' ');
+    const routeOnlyPump = results.routeOnlyNpshEvaluation === true
+      || evaluation.routeOnlyNpshEvaluation === true
+      || /route-only/i.test(modeText);
     const flow = toNumber(results.flow ?? evaluation.flow ?? props.designFlow);
-    const head = toNumber(results.head ?? evaluation.pumpHead ?? props.designHead);
+    const head = routeOnlyPump
+      ? toNumber(evaluation.actualPumpHead ?? results.actualPumpHead)
+      : toNumber(results.actualPumpHead ?? evaluation.actualPumpHead ?? results.head ?? evaluation.pumpHead ?? props.designHead);
     const npsha = toNumber(results.npsha ?? evaluation.npsha);
     const npshr = toNumber(results.npshr ?? evaluation.npshr ?? props.designNpshr);
     const margin = toNumber(results.npshMargin ?? evaluation.npshMargin);
@@ -796,7 +802,7 @@
     try {
       const script = document.createElement('script');
       script.id = 'pump-performance-canonical-chart-runtime';
-      script.src = 'engineering-pump-performance-canonical-chart.js?v=20260622-canonical-chart26';
+      script.src = 'engineering-pump-performance-canonical-chart.js?v=20260626-head-power-audit1';
       script.async = false;
       document.body.appendChild(script);
       return true;

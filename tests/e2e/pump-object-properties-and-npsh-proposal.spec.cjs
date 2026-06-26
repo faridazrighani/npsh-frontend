@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 
-const PUMP_FORMULA_DEFENSE_LIVE_AUDIT_VERSION = 'pump-formula-defense-live-audit.v10';
+const PUMP_FORMULA_DEFENSE_LIVE_AUDIT_VERSION = 'pump-formula-defense-live-audit.v11';
 
 function createPipe(name, length, diameter = 0.08, fittingK = 0) {
   return {
@@ -130,7 +130,7 @@ async function waitForNpshApp(page) {
   await page.waitForFunction((expectedPumpAuditVersion) => (
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.updateSimulation === 'function'
-    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v11'
+    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v12'
     && window.EngineeringDefenseExportPackage?.schemaVersion === 'defense-export-package.v1'
     && window.EngineeringPumpFormulaDefenseLiveAudit?.version === expectedPumpAuditVersion
     && window.__npshRouteTraceAuditInstalled?.fetchSimulation
