@@ -12,7 +12,7 @@ const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 
-assert.equal(runtime.version, '2026.06-route-trace-audit-v35', 'Route trace audit runtime should expose the locked route trace version.');
+assert.equal(runtime.version, '2026.06-route-trace-audit-v36', 'Route trace audit runtime should expose the locked route trace version.');
 assert.equal(typeof runtime.openRouteAuditPanel, 'function', 'Dedicated route audit panel should remain available.');
 assert.equal(typeof runtime.pruneDefaultCanvasRouteTraceOverlays, 'function', 'Canvas route trace overlay pruning should be exposed for audit tests.');
 assert.equal(typeof runtime.pruneDefaultPumpRouteTraceRows, 'function', 'Pump route trace row pruning should be exposed for audit tests.');
@@ -435,6 +435,14 @@ try {
   canonicalPumpPanel.appendChild(row('Discharge Loss', '0.282 / 0.027'));
   canvas.appendChild(canonicalPumpPanel);
 
+  const incompletePumpPanel = new FakeElement('div');
+  incompletePumpPanel.classList.add('pump-live-params');
+  incompletePumpPanel.dataset.nodeId = 'P-INCOMPLETE';
+  incompletePumpPanel.appendChild(section('STATUS'));
+  incompletePumpPanel.appendChild(row('Hydraulic NPSH', 'Incomplete'));
+  incompletePumpPanel.appendChild(row('Backend Valid.', 'Connected'));
+  canvas.appendChild(incompletePumpPanel);
+
   const legacySinkPanel = new FakeElement('div');
   legacySinkPanel.classList.add('sink-live-params');
   legacySinkPanel.dataset.nodeId = 'SNK-100';
@@ -508,6 +516,14 @@ try {
         dischargeDutySeverity: 'safe',
         backendValidationStatus: 'Connected',
         solveMode: 'Route-only NPSH design ceiling at fixed route flow'
+      }
+    },
+    'P-INCOMPLETE': {
+      type: 'pump',
+      name: 'P-INCOMPLETE',
+      results: {
+        hydraulicNpshStatus: 'Incomplete',
+        backendValidationStatus: 'Connected'
       }
     },
     'SRC-CANON': {
@@ -679,6 +695,17 @@ try {
   assert.equal(dischargeDutyValue?.dataset.routeTraceStatusTone, 'safe', 'Discharge Duty should expose the backend severity as a stable canvas tone.');
   assert(dischargeDutyValue?.classList.contains('route-trace-status-safe'), 'Discharge Duty should carry the safe tone class for CSS/runtime QA.');
   assert.deepEqual(
+    valuesByLabelIn(incompletePumpPanel, '.pump-live-param-row', '.pump-live-param-label', '.pump-live-param-value'),
+    {
+      'Hydraulic NPSH': 'Incomplete',
+      'Discharge Duty': 'Not Evaluated',
+      'Backend Valid.': 'Connected'
+    },
+    'Incomplete pump canvas panels should still show Discharge Duty as Not Evaluated until head residual is available.'
+  );
+  const incompleteDischargeDutyValue = valueElementByLabelIn(incompletePumpPanel, 'Discharge Duty');
+  assert.equal(incompleteDischargeDutyValue?.dataset.routeTraceStatusTone, 'unknown', 'Incomplete Discharge Duty should use the neutral unknown tone.');
+  assert.deepEqual(
     sectionsIn(legacyPumpPanel),
     ['Suction', 'Discharge'],
     'Legacy loaded pump panels should keep SUCTION/DISCHARGE sections and remove Route Trace section.'
@@ -729,11 +756,11 @@ try {
 }
 
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260628-discharge-duty-status1'),
+  index.includes('engineering-route-trace-audit.js?v=20260628-discharge-duty-status2'),
   'Index must load the route trace audit runtime with the default-lock cache key.'
 );
 assert(
-  manifest.includes('Route audit cache key: engineering-route-trace-audit.js?v=20260628-discharge-duty-status1'),
+  manifest.includes('Route audit cache key: engineering-route-trace-audit.js?v=20260628-discharge-duty-status2'),
   'Manifest must document the route trace default-lock cache key.'
 );
 
