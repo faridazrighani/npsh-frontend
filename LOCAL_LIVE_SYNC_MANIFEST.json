@@ -1,6 +1,6 @@
 {
   "schemaVersion": "local-live-sync-manifest.v1",
-  "generatedAt": "2026-06-28T09:22:12.714Z",
+  "generatedAt": "2026-06-28T09:33:06.068Z",
   "purpose": "Keeps the local preview server auditable against the deployed npsh.virsim.id package.",
   "status": "review-required",
   "syncChecks": {
@@ -16,15 +16,15 @@
     "frontendRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-frontend",
     "apiRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-api",
     "serverUrl": "http://127.0.0.1:4174/",
-    "frontendCommit": "da710a61baa7e6633423c9d1385da6b5b0165dfd",
-    "frontendOriginMain": "da710a61baa7e6633423c9d1385da6b5b0165dfd",
-    "apiCommit": "6c9ee7d135c49e10f1030e6db6198fca467a2016",
-    "apiOriginMain": "6c9ee7d135c49e10f1030e6db6198fca467a2016",
+    "frontendCommit": "ae8dc74cced3ed09d4040c08e4367ccd12c5ead1",
+    "frontendOriginMain": "ae8dc74cced3ed09d4040c08e4367ccd12c5ead1",
+    "apiCommit": "062faa2627980b68ab0b52acdad45990a36aa2b7",
+    "apiOriginMain": "062faa2627980b68ab0b52acdad45990a36aa2b7",
     "releaseIntegrity": {
       "schemaVersion": "release-integrity.v1",
-      "rootFingerprint": "204d4d3bc2bb67c3cc957fd73a1656cc2684aa7012e127d97df8efe36c872e2e",
-      "fileCount": 394,
-      "generatedAt": "2026-06-28T09:18:21.694Z"
+      "rootFingerprint": "59cb4e85dd835c8ec65194e367c57ebfe8ee09233c3031e8b4b7bae17fac5a0d",
+      "fileCount": 402,
+      "generatedAt": "2026-06-28T09:27:31.439Z"
     },
     "index": {
       "path": "index.html",
@@ -543,7 +543,7 @@
     },
     "apiVersion": {
       "statusCode": 200,
-      "sha256": "9ef4ad05722dca147f6ba88972dfedfe94601c88a62c89f6f9b868e6a461c217",
+      "sha256": "86c54a86f75020734cef452019fd365aba6233bebdd43569ceb5d58284870d7a",
       "payload": {
         "ok": true,
         "appName": "GhaniSIM1 NPSH",
@@ -692,7 +692,7 @@
             "parity.fingerprint"
           ]
         },
-        "generatedAt": "2026-06-28T09:22:12.815Z"
+        "generatedAt": "2026-06-28T09:33:06.147Z"
       }
     },
     "verifiedAssets": []
