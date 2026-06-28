@@ -1,5 +1,5 @@
 (function registerEngineeringRouteTraceAudit(root) {
-  const VERSION = '2026.06-route-trace-audit-v36';
+  const VERSION = '2026.06-route-trace-audit-v35';
   const PANEL_ID = 'engineeringRouteTraceAuditPanel';
   const PANEL_BODY_ID = 'engineeringRouteTraceAuditPanelBody';
   const MENU_BUTTON_ID = 'menu-tools-route-trace-audit';
@@ -1556,8 +1556,7 @@
       results.dischargeDutyStatus,
       evaluation.dischargeDutyStatus,
       systemHead.dischargeDutyStatus,
-      derivedDischargeDutyStatus,
-      hydraulicNpshStatus || backendValidationStatus ? 'Not Evaluated' : ''
+      derivedDischargeDutyStatus
     );
     const dischargeDutySeverity = firstTextValue(
       results.dischargeDutySeverity,
