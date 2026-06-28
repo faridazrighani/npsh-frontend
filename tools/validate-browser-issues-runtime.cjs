@@ -36,7 +36,7 @@ assert(indexHtml.includes('engineering-browser-issues-runtime.js?v=20260620-orph
 assert(indexHtml.includes('style.min.css?v=20260608-browser-issues1'), 'index.html must cache-bust browser-issues CSS cleanup.');
 assert.strictEqual(typeof runtime.repairFormFieldLabels, 'function', 'Browser issues runtime must expose orphan form-field label cleanup.');
 assert.strictEqual(typeof runtime.repairBrowserIssues, 'function', 'Browser issues runtime must expose a combined browser-issues repair pass.');
-assert(indexHtml.includes('engineering-canvas-context-dock.js?v=20260621-pipe-left-click-menu1'), 'index.html must cache-bust canvas context dock browser issues cleanup.');
+assert(indexHtml.includes('engineering-canvas-context-dock.js?v=20260628-canvas-dock-scroll-anchor1'), 'index.html must cache-bust canvas context dock browser issues cleanup.');
 assert(indexHtml.includes('engineering-literature-pdf-viewer.js?v=20260609-literature-access3'), 'index.html must cache-bust literature PDF access diagnostics cleanup.');
 assert(indexHtml.includes('__chromium_devtools_metrics_reporter'), 'index.html must install the Chromium DevTools metrics reporter guard early.');
 assert(indexHtml.includes("typeof window.__chromium_devtools_metrics_reporter === 'function'"), 'Chromium DevTools metrics reporter guard must preserve real reporter functions.');
@@ -60,14 +60,20 @@ assert(
     indexHtml.indexOf('const realtimeScripts = ['),
   'NPSH margin bridge must load through the deferred realtime script path.'
 );
-assert(
-  !/startInitialShellLoad\s*=\s*\(\)\s*=>\s*\{[\s\S]*?ensureMainStyles\(\)/.test(indexHtml),
-  'Passive initial app-shell load must not request style.min.css before first interaction.'
-);
+assert(indexHtml.includes('const scheduleInitialCanvasHydration = () => {'), 'Index must schedule no-click canvas runtime hydration after the passive shell load.');
+assert(indexHtml.includes('const initialCanvasHydrationScripts = ['), 'Index must define a no-click initial canvas visual runtime pack.');
+assert(indexHtml.includes("'engineering-pipe-canvas-hydraulic-label-runtime.js?v=20260628-pfv-canvas-anchor1'"), 'Initial canvas visual runtime pack must include PFV hydraulic labels.');
+assert(indexHtml.includes("'engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4'"), 'Initial canvas visual runtime pack must include route trace canvas layout cleanup.');
+assert(indexHtml.includes('window.__npshInitialCanvasHydrationScheduled'), 'Initial canvas hydration must be guarded so it starts only once.');
+assert(indexHtml.includes("ensureStyles().catch(error => console.warn('Initial canvas stylesheet hydration did not load.', error));"), 'Initial canvas hydration must load main CSS plus live repaint-lock CSS without requiring a canvas click.');
+assert(indexHtml.includes('loadScripts(initialCanvasHydrationScripts)'), 'Initial canvas hydration must load the visual canvas runtime pack directly instead of waiting for support-lazy idle chaining.');
+assert(indexHtml.includes('window.__npshInitialCanvasHydrationComplete = true'), 'Initial canvas hydration must expose a completion flag for browser diagnostics.');
+assert(indexHtml.includes('window.setTimeout(loadSupport, 12000)'), 'Initial canvas hydration must still warm the remaining support runtime after visual panels are stable.');
+assert(/loadShell\(\)\s*\.then\(scheduleInitialCanvasHydration\)/.test(indexHtml), 'Passive shell load must trigger initial canvas hydration after the core app is ready.');
 assert(indexHtml.includes('window.__npshLoadRealtime = loadRealtime'), 'Index must expose an internal realtime bootstrap hook for E2E and diagnostics.');
 assert(indexHtml.includes("window.addEventListener('pointerdown', beginInteraction")
   && indexHtml.includes("window.addEventListener('keydown', handleFirstKeydown")
-  && indexHtml.includes("document.addEventListener('keydown', handleFirstKeydown"), 'Realtime runtime must load from the first pointer/key activation instead of passive page-load work.');
+  && indexHtml.includes("document.addEventListener('keydown', handleFirstKeydown"), 'First pointer/key activation must still accelerate runtime hydration while no-click initial hydration runs in the background.');
 assert(indexHtml.includes('@media (max-width:820px){.ribbon{flex-wrap:wrap;align-content:flex-start;overflow-x:hidden;overflow-y:hidden}'), 'Critical CSS must pre-lock the mobile wrapped ribbon to prevent first-load layout shift.');
 assert(indexHtml.includes('@media (max-width:720px){.basis-status-pill,.basis-compact-status{display:none}.main-workspace{flex-direction:column;flex:1 1 auto;min-height:0}'), 'Critical CSS must pre-lock the mobile workspace/canvas layout before the deferred stylesheet arrives.');
 assert(indexHtml.includes('@media (max-width:640px){.menu-bar{font-size:12px;gap:12px;padding:5px 8px;min-height:32px}'), 'Critical CSS must pre-lock mobile menu sizing to match the final stylesheet.');

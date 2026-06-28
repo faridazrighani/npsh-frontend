@@ -1,5 +1,5 @@
 (function registerEngineeringRouteTraceAudit(root) {
-  const VERSION = '2026.06-route-trace-audit-v30';
+  const VERSION = '2026.06-route-trace-audit-v34';
   const PANEL_ID = 'engineeringRouteTraceAuditPanel';
   const PANEL_BODY_ID = 'engineeringRouteTraceAuditPanelBody';
   const MENU_BUTTON_ID = 'menu-tools-route-trace-audit';
@@ -8,12 +8,31 @@
   const CANVAS_OVERLAY_HIDDEN_CLASS = 'route-trace-canvas-overlay-hidden';
   const ROUTE_TRACE_CANVAS_TEXT_PATTERN = /\broute\s+trace\b/i;
   const ROUTE_LOSS_TRACE_CANVAS_TEXT_PATTERN = /\broute\b[\s\S]*suction\s+loss[\s\S]*disch(?:arge)?\.?\s+loss/i;
+  const SOLVER_CANVAS_LAYOUT_REFRESH_HOOKS = [
+    'refreshBackendProtectedSimulationUi',
+    'refreshBackendProtectedRealtimeTaskWindows',
+    'refreshBackendProtectedSelectedObjectTaskWindow',
+    'refreshBackendProtectedPumpChart'
+  ];
+  const SOLVER_CANVAS_LAYOUT_EVENTS = [
+    'npsh:calculation-applying-results',
+    'npsh:linked-views-refreshed',
+    'npsh:calculation-current',
+    'npsh:realtime-autosolve-complete'
+  ];
+  const SOLVER_CANVAS_LAYOUT_SWEEP_DELAYS = [120, 720];
+  const CANVAS_PRUNE_MIN_INTERVAL_MS = 140;
   const PUMP_CANVAS_HIDDEN_ROW_LABELS = new Set([
     'Route',
     'Suction Loss',
     'Disch. Loss',
     'Discharge Loss',
     'Basis Vapor Press.',
+    'Fluid Vapor Press.',
+    'Fluid Vapor Pressure',
+    'NPSH Vapor Press.',
+    'NPSH Vapor Pressure',
+    'Vapor Press.',
     'Vapor Press. Used'
   ]);
   const SINK_CANVAS_HIDDEN_ROW_LABELS = new Set([
@@ -28,12 +47,20 @@
   let canvasOverlayPruneTimer = null;
   let canvasOverlayPrunePending = false;
   let canvasOverlayPruneScope = null;
+  let canvasOverlayLastPruneMs = 0;
   let canvasOverlayRetryTimer = null;
   let canvasOverlayRetryCount = 0;
   const canvasOverlayWrappedFunctions = new Set();
+  const solverCanvasLayoutSweepTimers = [];
   let routeObjectTooltipSyncTimer = null;
   let routeSurfaceRefreshPending = false;
+  let routeTraceInstallRefreshDone = false;
   let sinkPropertyChangeRefreshInstalled = false;
+  let solverCanvasLayoutListenersInstalled = false;
+  let pumpLiveParameterRowBuilderWrapped = null;
+  let sinkLiveParameterRowBuilderWrapped = null;
+  let canonicalLiveParameterRowBuilderTimer = null;
+  let canonicalLiveParameterRowBuilderRetryCount = 0;
   const ATM_PRESSURE_BAR_A = 1.01325;
 
   function model() {
@@ -53,6 +80,123 @@
     return String(value ?? '').replace(/\s+/g, ' ').trim();
   }
 
+  function nowMs() {
+    const value = root.performance?.now?.();
+    return Number.isFinite(value) ? value : Date.now();
+  }
+
+  function normalizedReadoutLabel(value) {
+    return normalizeText(value).replace(/\s*[:：]\s*$/, '');
+  }
+
+  function isHiddenPumpCanvasSectionText(value) {
+    return /^route\s+trace\b/i.test(normalizeText(value));
+  }
+
+  function isHiddenPumpCanvasRowLabel(value) {
+    const label = normalizedReadoutLabel(value);
+    return PUMP_CANVAS_HIDDEN_ROW_LABELS.has(label)
+      || /^(route|suction loss|disch(?:arge)?\.?\s*loss|basis vapor press(?:ure)?\.?|fluid vapor press(?:ure)?\.?|npsh vapor press(?:ure)?\.?|vapor press(?:ure)?\.?|vapor press\.?\s*used)$/i.test(label);
+  }
+
+  function mutationElement(mutation) {
+    const target = mutation?.target;
+    if (target?.nodeType === 1) return target;
+    return target?.parentElement || null;
+  }
+
+  function hasLiveCanvasPanel(element) {
+    return !!(
+      element?.closest?.('.pump-live-params, .sink-live-params')
+      || element?.querySelector?.('.pump-live-params, .sink-live-params')
+    );
+  }
+
+  function hasRouteTraceCanvasText(element) {
+    const text = normalizeText(element?.textContent || '');
+    return ROUTE_TRACE_CANVAS_TEXT_PATTERN.test(text)
+      || ROUTE_LOSS_TRACE_CANVAS_TEXT_PATTERN.test(text)
+      || /basis vapor press|fluid vapor press|npsh vapor press|vapor press\.?\s*used/i.test(text);
+  }
+
+  function isHydraulicCanvasMutation(mutation) {
+    if (!mutation) return false;
+    if (mutation.type === 'childList') {
+      return Array.from(mutation.addedNodes || []).some((node) => {
+        if (node?.nodeType === 1) return hasLiveCanvasPanel(node) || hasRouteTraceCanvasText(node);
+        if (node?.nodeType === 3) return hasRouteTraceCanvasText(node.parentElement);
+        return false;
+      });
+    }
+    const element = mutationElement(mutation);
+    if (!element) return false;
+    if (mutation.type === 'attributes') {
+      const attr = String(mutation.attributeName || '').toLowerCase();
+      const dragOnlyAttr = ['style', 'class', 'transform', 'data-x', 'data-y'].includes(attr);
+      if (dragOnlyAttr && !hasLiveCanvasPanel(element) && !hasRouteTraceCanvasText(element)) return false;
+    }
+    return hasLiveCanvasPanel(element)
+      || hasRouteTraceCanvasText(element)
+      || element.matches?.('[data-caption-audit-route="true"], [data-caption-audit-chart-control="true"]');
+  }
+
+  function isLiveParameterSectionRow(row) {
+    return row?.type === 'section' || row?.isSection === true || row?.kind === 'section';
+  }
+
+  function canonicalPumpLiveParameterRows(rows, args = []) {
+    if (!Array.isArray(rows)) return rows;
+    const canonicalFlow = pumpCanonicalFlowForLiveRows(args[0]);
+    return rows.filter((row) => {
+      const label = normalizedReadoutLabel(row?.label ?? row?.title ?? '');
+      if (isLiveParameterSectionRow(row)) return !isHiddenPumpCanvasSectionText(label);
+      return !isHiddenPumpCanvasRowLabel(label);
+    }).map((row) => {
+      const label = normalizedReadoutLabel(row?.label ?? row?.title ?? '');
+      if (label !== 'Flow' || canonicalFlow === null) return row;
+      return {
+        ...row,
+        value: flowDisplayValueForRow(canonicalFlow, row?.unit || row?.units || 'm3/h'),
+        unit: row?.unit || row?.units || 'm3/h',
+        title: row?.title || 'Route duty flow synchronized with the connected SRC/SNK boundary flow.'
+      };
+    });
+  }
+
+  function canonicalSinkLiveParameterRows(rows) {
+    if (!Array.isArray(rows)) return rows;
+    return rows.filter((row) => {
+      const label = normalizedReadoutLabel(row?.label ?? row?.title ?? '');
+      return !SINK_CANVAS_HIDDEN_ROW_LABELS.has(label);
+    });
+  }
+
+  function patchCanonicalLiveParameterRowBuilder(functionName, canonicalizeRows, wrappedRefName) {
+    const current = root[functionName];
+    if (typeof current !== 'function' || current === wrappedRefName.current) return false;
+    function canonicalLiveParameterRowBuilder(...args) {
+      return canonicalizeRows(current.apply(this, args), args);
+    }
+    canonicalLiveParameterRowBuilder.__routeTraceCanonicalLiveParameterRows = VERSION;
+    canonicalLiveParameterRowBuilder.__routeTraceCanonicalLiveParameterRowsOriginal = current;
+    if (current.__captionAuditPatched) canonicalLiveParameterRowBuilder.__captionAuditPatched = current.__captionAuditPatched;
+    root[functionName] = canonicalLiveParameterRowBuilder;
+    wrappedRefName.current = canonicalLiveParameterRowBuilder;
+    return true;
+  }
+
+  function patchCanonicalLiveParameterRowBuilders() {
+    const pumpRef = { current: pumpLiveParameterRowBuilderWrapped };
+    const sinkRef = { current: sinkLiveParameterRowBuilderWrapped };
+    const changed = [
+      patchCanonicalLiveParameterRowBuilder('buildPumpLiveParameterRows', canonicalPumpLiveParameterRows, pumpRef),
+      patchCanonicalLiveParameterRowBuilder('buildSinkLiveParameterRows', canonicalSinkLiveParameterRows, sinkRef)
+    ].some(Boolean);
+    pumpLiveParameterRowBuilderWrapped = pumpRef.current;
+    sinkLiveParameterRowBuilderWrapped = sinkRef.current;
+    return changed;
+  }
+
   function pruneDefaultPumpRouteTraceRows(scope) {
     if (typeof document === 'undefined') return 0;
     const rootNode = scope?.querySelectorAll ? scope : document;
@@ -67,18 +211,20 @@
         removed += 1;
       });
       panel.querySelectorAll('.pump-live-param-section').forEach((section) => {
-        if (/^route\s+trace$/i.test(normalizeText(section.textContent))) {
+        if (isHiddenPumpCanvasSectionText(section.textContent)) {
           section.remove();
           removed += 1;
         }
       });
       panel.querySelectorAll('.pump-live-param-row').forEach((row) => {
         const label = normalizeText(row.querySelector('.pump-live-param-label')?.textContent);
-        if (PUMP_CANVAS_HIDDEN_ROW_LABELS.has(label)) {
+        if (isHiddenPumpCanvasRowLabel(label)) {
           row.remove();
           removed += 1;
         }
       });
+      removed += ensurePumpStatusCanvasRows(panel);
+      removed += syncPumpCanvasFlowRow(panel);
       removed += normalizePumpHeadReadoutLabel(panel);
       removed += syncPumpObjectTooltip(panel);
     });
@@ -123,6 +269,20 @@
     for (const value of values) {
       const text = normalizeText(value);
       if (text && text !== '-') return text;
+    }
+    return '';
+  }
+
+  function isPlaceholderDisplayText(value) {
+    const text = normalizeText(value).replace(/\s+(m|bar(?:\s+a)?|m3\/h)$/i, '').trim();
+    return !text || text === '-' || text === '–' || text === '—';
+  }
+
+  function firstMeaningfulStatusValue(...values) {
+    for (const value of values) {
+      const text = normalizeText(value);
+      if (!text || text === '-' || /^unknown$/i.test(text) || /^n\/?a$/i.test(text) || /^not available$/i.test(text)) continue;
+      return text;
     }
     return '';
   }
@@ -196,7 +356,9 @@
     const matching = Object.entries(modelRef).filter(([id, node]) => (
       node?.type === 'pump' && (objectText.includes(id) || (node.name && objectText.includes(node.name)))
     ));
-    return matching.length === 1 ? matching[0][0] : '';
+    if (matching.length === 1) return matching[0][0];
+    const allPumps = Object.entries(modelRef).filter(([, node]) => node?.type === 'pump');
+    return allPumps.length === 1 ? allPumps[0][0] : '';
   }
 
   function sinkBoundaryModeRaw(node = {}) {
@@ -409,12 +571,17 @@
       props.elevation
     );
     const sinkHead = sinkHeadForSelectedSinkMode(node, mode, pressureAbsBar, elevation);
-    const operatingFeasibilityStatus = firstTextValue(
+    const boundaryFeasible = firstBooleanValue(
+      results.boundaryFeasible,
+      traceBoundary.boundaryFeasible,
+      tracePumpImpact.boundaryFeasible
+    );
+    const operatingFeasibilityStatus = firstMeaningfulStatusValue(
       results.operatingFeasibilityStatus,
       traceBoundary.operatingFeasibilityStatus,
       tracePumpImpact.operatingFeasibilityStatus
-    );
-    const engineeringStatus = firstTextValue(
+    ) || (boundaryFeasible === true ? 'Safe' : (boundaryFeasible === false ? 'Review Required' : ''));
+    const engineeringStatus = firstMeaningfulStatusValue(
       results.status,
       results.engineeringStatus,
       results.calculationTrace?.status,
@@ -444,11 +611,7 @@
       ),
       engineeringStatus,
       operatingFeasibilityStatus,
-      boundaryFeasible: firstBooleanValue(
-        results.boundaryFeasible,
-        traceBoundary.boundaryFeasible,
-        tracePumpImpact.boundaryFeasible
-      ),
+      boundaryFeasible,
       headResidual: firstFiniteValue(
         results.headResidual,
         traceBoundary.headResidual,
@@ -460,6 +623,161 @@
         tracePumpImpact.maxAllowableSnkElevation
       )
     };
+  }
+
+  function flowDisplayValueForRow(flow, unit = 'm3/h') {
+    const displayUnit = normalizeText(unit || 'm3/h') || 'm3/h';
+    const formatted = formatCanvasValue(flow, displayUnit);
+    return displayUnit && formatted.endsWith(` ${displayUnit}`)
+      ? formatted.slice(0, -displayUnit.length - 1)
+      : formatted;
+  }
+
+  function pumpIdForNode(pumpNode = {}, modelRef = model()) {
+    const directId = normalizeText(pumpNode.id || pumpNode.nodeId || pumpNode.objectId);
+    if (directId && modelRef[directId]?.type === 'pump') return directId;
+    const matching = Object.entries(modelRef || {}).filter(([, candidate]) => candidate === pumpNode);
+    if (matching.length === 1 && matching[0][1]?.type === 'pump') return matching[0][0];
+    const name = normalizeText(pumpNode.name);
+    if (name) {
+      const byName = Object.entries(modelRef || {}).filter(([id, candidate]) => (
+        candidate?.type === 'pump' && (id === name || normalizeText(candidate.name) === name)
+      ));
+      if (byName.length === 1) return byName[0][0];
+    }
+    const allPumps = Object.entries(modelRef || {}).filter(([, candidate]) => candidate?.type === 'pump');
+    return allPumps.length === 1 ? allPumps[0][0] : '';
+  }
+
+  function nodeSolvedFlow(node = {}) {
+    const results = node?.results || {};
+    const evaluation = results.npshEvaluation || {};
+    const trace = results.calculationTrace || {};
+    const boundary = trace.boundary || {};
+    const input = trace.inputBasis || {};
+    const props = node?.props || {};
+    return firstFiniteValue(
+      results.flow,
+      results.outletFlow,
+      results.inletFlow,
+      results.sourceFlow,
+      results.sinkFlow,
+      results.flowDemand,
+      results.evaluatedFlow,
+      evaluation.flow,
+      evaluation.calculationTrace?.basis?.flowM3H,
+      evaluation.calculationTrace?.boundary?.flow,
+      trace.basis?.flowM3H,
+      boundary.flow,
+      boundary.sourceFlow,
+      boundary.outletFlow,
+      boundary.demandFlow,
+      input.flow,
+      input.sourceFlow,
+      input.outletFlow,
+      input.demandFlow,
+      props.flow,
+      props.demandFlow,
+      props.flowDemand,
+      props.outletFlow
+    );
+  }
+
+  function sourceBoundaryFlow(node = {}) {
+    const results = node?.results || {};
+    const trace = results.calculationTrace || {};
+    const boundary = trace.boundary || {};
+    const input = trace.inputBasis || {};
+    const evaluationBoundary = results.npshEvaluation?.calculationTrace?.boundary || {};
+    const props = node?.props || {};
+    return firstFiniteValue(
+      props.flow,
+      props.flowM3h,
+      props.volumetricFlow,
+      results.sourceInputFlow,
+      results.inputFlow,
+      input.flow,
+      input.sourceFlow,
+      boundary.sourceInputFlow,
+      boundary.sourceFlow,
+      evaluationBoundary.sourceFlow,
+      results.flow,
+      results.outletFlow,
+      results.sourceFlow
+    );
+  }
+
+  function sinkBoundaryFlow(node = {}) {
+    const results = node?.results || {};
+    const trace = results.calculationTrace || {};
+    const boundary = trace.boundary || {};
+    const input = trace.inputBasis || {};
+    const props = node?.props || {};
+    return firstFiniteValue(
+      props.demandFlow,
+      props.flow,
+      props.flowDemand,
+      props.outletFlow,
+      results.flowDemand,
+      results.sinkFlow,
+      results.outletFlow,
+      results.flow,
+      boundary.demandFlow,
+      boundary.outletFlow,
+      boundary.flow,
+      input.demandFlow,
+      input.outletFlow,
+      input.flow
+    );
+  }
+
+  function pumpRouteConnections(pumpId, modelRef = model()) {
+    const hydraulic = connectionList(modelRef).filter(isHydraulicConnection);
+    const suctionConnection = hydraulic.find((connection) => connectionTo(connection) === pumpId);
+    const dischargeConnection = hydraulic.find((connection) => connectionFrom(connection) === pumpId);
+    return {
+      suctionConnection,
+      dischargeConnection,
+      suctionBoundary: modelRef[connectionFrom(suctionConnection || {})],
+      dischargeBoundary: modelRef[connectionTo(dischargeConnection || {})],
+      suctionPipe: modelRef[connectionPipeId(suctionConnection || {})],
+      dischargePipe: modelRef[connectionPipeId(dischargeConnection || {})]
+    };
+  }
+
+  function matchingBoundaryFlow(sourceFlow, sinkFlow) {
+    if (sourceFlow !== null && sinkFlow !== null) {
+      return Math.abs(sourceFlow - sinkFlow) <= 0.0005 ? sourceFlow : null;
+    }
+    return firstFiniteValue(sourceFlow, sinkFlow);
+  }
+
+  function pumpRouteDutyFlow(pumpId, pumpNode = {}, modelRef = model()) {
+    const results = pumpNode?.results || {};
+    const evaluation = results.npshEvaluation || {};
+    const route = pumpRouteConnections(pumpId, modelRef);
+    const sourceFlow = sourceBoundaryFlow(route.suctionBoundary);
+    const sinkFlow = sinkBoundaryFlow(route.dischargeBoundary);
+    return firstFiniteValue(
+      matchingBoundaryFlow(sourceFlow, sinkFlow),
+      results.routeTrace?.flow,
+      results.routeTrace?.basis?.flowM3H,
+      results.routeTrace?.sections?.suction?.flowM3H,
+      results.routeTrace?.sections?.discharge?.flowM3H,
+      nodeSolvedFlow(route.suctionPipe),
+      nodeSolvedFlow(route.dischargePipe),
+      evaluation.flow,
+      results.flow,
+      pumpNode?.props?.designFlow,
+      pumpNode?.props?.flow
+    );
+  }
+
+  function pumpCanonicalFlowForLiveRows(pumpNode = {}) {
+    if (!pumpNode || pumpNode.type !== 'pump') return null;
+    const modelRef = model();
+    const pumpId = pumpIdForNode(pumpNode, modelRef);
+    return pumpRouteDutyFlow(pumpId, pumpNode, modelRef);
   }
 
   function formatCanvasValue(value, unit = '') {
@@ -983,6 +1301,82 @@
     return `${value} ${unit}`;
   }
 
+  function valueForExistingPumpRow(row, value) {
+    const unitText = normalizeText(row?.querySelector?.('.pump-live-param-unit')?.textContent);
+    const text = String(value ?? '');
+    if (unitText && text.endsWith(` ${unitText}`)) return text.slice(0, -unitText.length - 1);
+    return text;
+  }
+
+  function createPumpCanvasSection(label) {
+    const section = document.createElement('div');
+    section.className = 'pump-live-param-section';
+    section.dataset.routeTraceAuditPumpReadout = 'true';
+    section.textContent = label;
+    return section;
+  }
+
+  function createPumpCanvasRow(label, value) {
+    const row = document.createElement('div');
+    row.className = 'pump-live-param-row';
+    row.dataset.routeTraceAuditPumpReadout = 'true';
+    const labelElement = document.createElement('span');
+    labelElement.className = 'pump-live-param-label';
+    labelElement.textContent = label;
+    const valueElement = document.createElement('strong');
+    valueElement.className = 'pump-live-param-value';
+    valueElement.textContent = value;
+    row.appendChild(labelElement);
+    row.appendChild(valueElement);
+    return row;
+  }
+
+  function pumpPanelSectionByLabel(panel, label) {
+    if (!panel?.querySelectorAll) return null;
+    const target = normalizeText(label).toUpperCase();
+    return Array.from(panel.querySelectorAll('.pump-live-param-section')).find((section) => (
+      normalizeText(section.textContent).toUpperCase() === target
+    )) || null;
+  }
+
+  function pumpCanvasNodeLabel(node) {
+    const className = String(node?.className || '');
+    if (node?.classList?.contains?.('pump-live-param-section') || /\bpump-live-param-section\b/.test(className)) return normalizeText(node.textContent);
+    return normalizeText(node?.querySelector?.('.pump-live-param-label')?.textContent);
+  }
+
+  function insertPumpCanvasNode(panel, node, anchorLabels = [], beforeFirst = false) {
+    if (!panel || !node) return;
+    if (beforeFirst) {
+      panel.insertBefore(node, panel.firstElementChild || panel.children?.[0] || null);
+      return;
+    }
+    const children = Array.from(panel.children || []);
+    const nodes = Array.from(panel.querySelectorAll?.('.pump-live-param-row, .pump-live-param-section') || []);
+    const anchor = anchorLabels
+      .map((label) => nodes.find((item) => pumpCanvasNodeLabel(item) === label))
+      .find(Boolean);
+    if (!anchor) {
+      panel.appendChild(node);
+      return;
+    }
+    const index = children.indexOf(anchor);
+    const before = index >= 0 ? children[index + 1] : null;
+    if (before) panel.insertBefore(node, before);
+    else panel.appendChild(node);
+  }
+
+  function upsertPumpCanvasSection(panel, label, options = {}) {
+    const existing = pumpPanelSectionByLabel(panel, label);
+    if (existing) {
+      if (normalizeText(existing.textContent) !== label) existing.textContent = label;
+      return existing;
+    }
+    const section = createPumpCanvasSection(label);
+    insertPumpCanvasNode(panel, section, [], options.beforeFirst === true);
+    return section;
+  }
+
   function syncObjectTooltip(object, title, datasetKey) {
     if (!object || !title) return 0;
     const storedTitle = object.getAttribute('data-engineering-runtime-originaltitle') || '';
@@ -1002,6 +1396,96 @@
     }) || null;
   }
 
+  function upsertPumpCanvasRow(panel, label, value, anchorLabels = []) {
+    const existing = pumpPanelRowByLabels(panel, [label]);
+    if (existing) {
+      const valueElement = existing.querySelector('.pump-live-param-value, strong');
+      let changed = false;
+      const existingValue = valueForExistingPumpRow(existing, value);
+      if (valueElement && valueElement.textContent !== existingValue) {
+        valueElement.textContent = existingValue;
+        changed = true;
+      }
+      if (existing.dataset.routeTraceAuditPumpReadout !== 'true') {
+        existing.dataset.routeTraceAuditPumpReadout = 'true';
+        changed = true;
+      }
+      return changed;
+    }
+    const row = createPumpCanvasRow(label, value);
+    insertPumpCanvasNode(panel, row, anchorLabels);
+    return true;
+  }
+
+  function pumpNodeForCanvasPanel(panel, modelRef = model()) {
+    const id = sourceIdForPumpPanel(panel, modelRef);
+    return id && modelRef[id]?.type === 'pump' ? { id, node: modelRef[id] } : null;
+  }
+
+  function pumpCanonicalStatusValues(pump = {}) {
+    const results = pump.results || {};
+    const evaluation = results.npshEvaluation || {};
+    const interpretation = results.calculationTrace?.interpretation
+      || evaluation.calculationTrace?.interpretation
+      || {};
+    const hydraulicNpshStatus = firstMeaningfulStatusValue(
+      results.hydraulicNpshStatus,
+      results.cavitationStatus,
+      evaluation.hydraulicStatus,
+      evaluation.status,
+      interpretation.hydraulicStatus,
+      results.status
+    );
+    const backendValidationStatus = firstMeaningfulStatusValue(
+      results.backendValidationStatus,
+      evaluation.backendValidationStatus,
+      results.backendParity?.status === 'matched' ? 'Connected' : '',
+      results.backendCalculationSource && !/unavailable|timeout/i.test(results.backendCalculationSource) ? 'Connected' : ''
+    );
+    return { hydraulicNpshStatus, backendValidationStatus };
+  }
+
+  function ensurePumpStatusCanvasRows(panel) {
+    const pump = pumpNodeForCanvasPanel(panel)?.node;
+    if (!pump) return 0;
+    const canonical = pumpCanonicalStatusValues(pump);
+    if (!canonical.hydraulicNpshStatus && !canonical.backendValidationStatus) return 0;
+    let changed = 0;
+    upsertPumpCanvasSection(panel, 'STATUS', { beforeFirst: true });
+    if (canonical.hydraulicNpshStatus) {
+      changed += upsertPumpCanvasRow(panel, 'Hydraulic NPSH', canonical.hydraulicNpshStatus, ['STATUS']) ? 1 : 0;
+    }
+    if (canonical.backendValidationStatus) {
+      changed += upsertPumpCanvasRow(panel, 'Backend Valid.', canonical.backendValidationStatus, ['Hydraulic NPSH', 'STATUS']) ? 1 : 0;
+    }
+    return changed;
+  }
+
+  function syncPumpCanvasFlowRow(panel) {
+    const row = pumpPanelRowByLabels(panel, ['Flow']);
+    const valueElement = row?.querySelector?.('.pump-live-param-value, strong');
+    if (!row || !valueElement) return 0;
+    const modelRef = model();
+    const pumpId = sourceIdForPumpPanel(panel, modelRef);
+    const pumpNode = modelRef[pumpId];
+    if (!pumpId || pumpNode?.type !== 'pump') return 0;
+    const canonicalFlow = pumpRouteDutyFlow(pumpId, pumpNode, modelRef);
+    if (canonicalFlow === null) return 0;
+    let changed = 0;
+    const displayValue = valueForExistingPumpRow(row, formatCanvasValue(canonicalFlow, 'm3/h'));
+    if (setTextIfChanged(valueElement, displayValue)) changed += 1;
+    const title = 'Route duty flow synchronized with the connected SRC/SNK boundary flow.';
+    if (row.title !== title) {
+      row.title = title;
+      changed += 1;
+    }
+    if (row.dataset?.routeTracePumpFlowParityLock !== VERSION) {
+      row.dataset.routeTracePumpFlowParityLock = VERSION;
+      changed += 1;
+    }
+    return changed;
+  }
+
   function pumpPanelNumericValue(row) {
     return finiteNumber(valueWithUnitFromRow(row, '.pump-live-param-value, strong', '.pump-live-param-unit'));
   }
@@ -1009,6 +1493,7 @@
   function normalizePumpHeadReadoutLabel(panel) {
     const row = pumpPanelRowByLabels(panel, ['Pump Head', 'Required Head']);
     const labelElement = row?.querySelector?.('.pump-live-param-label');
+    const valueElement = row?.querySelector?.('.pump-live-param-value, strong');
     if (!row || !labelElement) return 0;
 
     const modelRef = model();
@@ -1044,6 +1529,11 @@
     if (normalizeText(labelElement.textContent) !== targetLabel) {
       labelElement.textContent = targetLabel;
       changed += 1;
+    }
+
+    if (shouldUseRequiredLabel && requiredHeadRaw !== null && valueElement && isPlaceholderDisplayText(valueElement.textContent)) {
+      const displayValue = valueForExistingPumpRow(row, formatCanvasValue(requiredHeadRaw, 'm'));
+      if (setTextIfChanged(valueElement, displayValue)) changed += 1;
     }
 
     const title = shouldUseRequiredLabel
@@ -1192,10 +1682,15 @@
           row.title = 'Total sink hydraulic head at the discharge closure';
           row.dataset.routeTraceSinkTerminologyLock = VERSION;
         } else if (label === 'Boundary Feasibility' || label === 'Boundary') {
-          changed += setTextIfChanged(labelElement, 'Boundary') ? 1 : 0;
-          changed += setTextIfChanged(valueElement, canonical.operatingFeasibilityStatus || '-') ? 1 : 0;
-          row.title = 'Pump head feasibility against downstream pressure/elevation boundary';
-          row.dataset.routeTraceSinkTerminologyLock = VERSION;
+          if (!canonical.operatingFeasibilityStatus) {
+            row.remove();
+            changed += 1;
+          } else {
+            changed += setTextIfChanged(labelElement, 'Boundary') ? 1 : 0;
+            changed += setTextIfChanged(valueElement, canonical.operatingFeasibilityStatus) ? 1 : 0;
+            row.title = 'Pump head feasibility against downstream pressure/elevation boundary';
+            row.dataset.routeTraceSinkTerminologyLock = VERSION;
+          }
         } else if (label === 'Head Residual' || label === 'Head Res.') {
           changed += setTextIfChanged(labelElement, 'Head Res.') ? 1 : 0;
           changed += setTextIfChanged(valueElement, valueForExistingSinkRow(row, formatCanvasValue(canonical.headResidual, 'm'))) ? 1 : 0;
@@ -1856,13 +2351,80 @@
     canvasOverlayPruneScope = canvasOverlayPruneScope === document ? document : (scope || document);
     if (canvasOverlayPrunePending) return;
     canvasOverlayPrunePending = true;
+    const elapsedMs = nowMs() - canvasOverlayLastPruneMs;
+    const throttleDelayMs = elapsedMs < CANVAS_PRUNE_MIN_INTERVAL_MS ? CANVAS_PRUNE_MIN_INTERVAL_MS - elapsedMs : 0;
+    const finalDelayMs = Math.max(0, delayMs, throttleDelayMs);
     canvasOverlayPruneTimer = root.setTimeout?.(() => {
       const runScope = canvasOverlayPruneScope || document;
       canvasOverlayPrunePending = false;
       canvasOverlayPruneScope = null;
       canvasOverlayPruneTimer = null;
+      canvasOverlayLastPruneMs = nowMs();
       pruneDefaultCanvasRouteTraceOverlays(runScope);
+    }, finalDelayMs);
+  }
+
+  function runSolverCanvasLayoutStabilization(scope, options = {}) {
+    if (typeof document === 'undefined') return 0;
+    const refreshPipeLabels = options.refreshPipeLabels !== false;
+    const canvas = scope || document.getElementById('canvas') || document;
+    const patchedBuilders = patchCanonicalLiveParameterRowBuilders();
+    const pruned = pruneDefaultCanvasRouteTraceOverlays(canvas);
+    let changed = Array.isArray(pruned) ? pruned.length : (Number(pruned) || 0);
+    if (patchedBuilders) changed += 1;
+    if (refreshPipeLabels && typeof root.refreshPipeCanvasHydraulicLabels === 'function') {
+      try {
+        changed += root.refreshPipeCanvasHydraulicLabels(document) || 0;
+      } catch (error) {
+        console.warn('Unable to refresh PFV hydraulic labels after solver layout stabilization.', error);
+      }
+    }
+    return changed;
+  }
+
+  function scheduleSolverCanvasLayoutStabilization(scope, delayMs = 0, options = {}) {
+    if (typeof document === 'undefined') return;
+    const canvas = scope || document.getElementById('canvas') || document;
+    const timer = root.setTimeout?.(() => {
+      const index = solverCanvasLayoutSweepTimers.indexOf(timer);
+      if (index >= 0) solverCanvasLayoutSweepTimers.splice(index, 1);
+      runSolverCanvasLayoutStabilization(canvas, options);
     }, Math.max(0, delayMs));
+    if (timer) solverCanvasLayoutSweepTimers.push(timer);
+  }
+
+  function clearSolverCanvasLayoutSweepTimers() {
+    while (solverCanvasLayoutSweepTimers.length) {
+      root.clearTimeout?.(solverCanvasLayoutSweepTimers.pop());
+    }
+  }
+
+  function scheduleSolverCanvasLayoutStabilitySweep(scope) {
+    clearSolverCanvasLayoutSweepTimers();
+    SOLVER_CANVAS_LAYOUT_SWEEP_DELAYS.forEach((delayMs) => {
+      scheduleSolverCanvasLayoutStabilization(scope, delayMs, { refreshPipeLabels: true });
+    });
+  }
+
+  function startCanonicalLiveParameterRowBuilderRetryLoop() {
+    if (typeof document === 'undefined' || typeof root.setInterval !== 'function' || canonicalLiveParameterRowBuilderTimer) return false;
+    canonicalLiveParameterRowBuilderRetryCount = 0;
+    canonicalLiveParameterRowBuilderTimer = root.setInterval(() => {
+      canonicalLiveParameterRowBuilderRetryCount += 1;
+      const patched = patchCanonicalLiveParameterRowBuilders();
+      if (patched) {
+        runSolverCanvasLayoutStabilization(document.getElementById('canvas') || document, { refreshPipeLabels: false });
+      }
+      const pumpWrapped = typeof root.buildPumpLiveParameterRows !== 'function'
+        || root.buildPumpLiveParameterRows === pumpLiveParameterRowBuilderWrapped;
+      const sinkWrapped = typeof root.buildSinkLiveParameterRows !== 'function'
+        || root.buildSinkLiveParameterRows === sinkLiveParameterRowBuilderWrapped;
+      if ((pumpWrapped && sinkWrapped && canonicalLiveParameterRowBuilderRetryCount >= 12) || canonicalLiveParameterRowBuilderRetryCount >= 32) {
+        root.clearInterval?.(canonicalLiveParameterRowBuilderTimer);
+        canonicalLiveParameterRowBuilderTimer = null;
+      }
+    }, 220);
+    return true;
   }
 
   function startDefaultCanvasRouteTraceRetryLoop() {
@@ -1871,11 +2433,11 @@
     canvasOverlayRetryTimer = root.setInterval?.(() => {
       canvasOverlayRetryCount += 1;
       pruneDefaultCanvasRouteTraceOverlays(document.getElementById('canvas') || document);
-      if (canvasOverlayRetryCount >= 24) {
+      if (canvasOverlayRetryCount >= 8) {
         root.clearInterval?.(canvasOverlayRetryTimer);
         canvasOverlayRetryTimer = null;
       }
-    }, 250);
+    }, 300);
     return true;
   }
 
@@ -1884,14 +2446,18 @@
     const original = root[functionName];
     if (typeof original !== 'function' || original.__routeTraceCanvasOverlayLockPatched) return false;
     function routeTraceCanvasOverlayLockedFunction(...args) {
+      patchCanonicalLiveParameterRowBuilders();
       const result = original.apply(this, args);
       const prune = () => {
         const canvas = document.getElementById('canvas') || document;
-        scheduleDefaultCanvasRouteTracePrune(canvas, 0);
-        scheduleDefaultCanvasRouteTracePrune(canvas, 80);
-        scheduleDefaultCanvasRouteTracePrune(canvas, 220);
-        scheduleRouteObjectTooltipSync(canvas, 320);
-        scheduleRouteObjectTooltipSync(canvas, 900);
+        patchCanonicalLiveParameterRowBuilders();
+        if (SOLVER_CANVAS_LAYOUT_REFRESH_HOOKS.includes(functionName)) {
+          scheduleSolverCanvasLayoutStabilitySweep(canvas);
+          scheduleRouteObjectTooltipSync(canvas, 360);
+          return;
+        }
+        scheduleDefaultCanvasRouteTracePrune(canvas, 120);
+        scheduleRouteObjectTooltipSync(canvas, 420);
       };
       if (result && typeof result.then === 'function') return result.finally(prune);
       prune();
@@ -1912,8 +2478,19 @@
       'notifyRealtimeTaskWindows',
       'renderToolbarPalette',
       'updateAllObjectOperatingStatusVisuals',
-      'updateSimulation'
+      'updateSimulation',
+      ...SOLVER_CANVAS_LAYOUT_REFRESH_HOOKS
     ].filter((functionName) => patchCanvasOverlayRenderFunction(functionName));
+  }
+
+  function installSolverCanvasLayoutStabilityListeners() {
+    if (typeof document === 'undefined' || solverCanvasLayoutListenersInstalled) return false;
+    solverCanvasLayoutListenersInstalled = true;
+    const handler = () => scheduleSolverCanvasLayoutStabilitySweep(document.getElementById('canvas') || document);
+    SOLVER_CANVAS_LAYOUT_EVENTS.forEach((eventName) => {
+      document.addEventListener(eventName, handler);
+    });
+    return true;
   }
 
   function watchDefaultCanvasRouteTraceOverlays() {
@@ -1929,23 +2506,13 @@
       const overlayUnlocked = isRouteTraceCanvasOverlayUnlocked();
       let shouldPruneCanvas = false;
       for (const mutation of mutations) {
-        if (mutation.type === 'characterData' || mutation.type === 'attributes') {
+        if (isHydraulicCanvasMutation(mutation)) {
           shouldPruneCanvas = !overlayUnlocked;
           shouldSyncTooltips = true;
         }
-        for (const node of mutation.addedNodes || []) {
-          if (node?.nodeType === 1) {
-            shouldPruneCanvas = !overlayUnlocked;
-            shouldSyncTooltips = true;
-          }
-          if (node?.nodeType === 3) {
-            shouldPruneCanvas = !overlayUnlocked;
-            shouldSyncTooltips = true;
-          }
-        }
       }
-      if (shouldSyncTooltips) scheduleRouteObjectTooltipSync(document.getElementById('canvas') || document, 60);
-      if (shouldPruneCanvas) scheduleDefaultCanvasRouteTracePrune(document.getElementById('canvas') || document, 0);
+      if (shouldSyncTooltips) scheduleRouteObjectTooltipSync(document.getElementById('canvas') || document, 120);
+      if (shouldPruneCanvas) scheduleDefaultCanvasRouteTracePrune(document.getElementById('canvas') || document, 80);
     });
     const start = () => {
       const canvas = document.getElementById('canvas');
@@ -2209,7 +2776,7 @@
   function installSinkPropertyChangeRefresh() {
     if (typeof document === 'undefined' || sinkPropertyChangeRefreshInstalled) return false;
     sinkPropertyChangeRefreshInstalled = true;
-    const schedule = () => [0, 80, 240, 640].forEach((delayMs) => root.setTimeout?.(refreshVisibleAuditSurfaces, delayMs));
+    const schedule = () => [140, 620].forEach((delayMs) => root.setTimeout?.(refreshVisibleAuditSurfaces, delayMs));
     const onChange = (event) => {
       const target = event.target;
       const key = normalizeText(target?.dataset?.key || target?.name || target?.id || '');
@@ -2296,7 +2863,7 @@
     function applyBackendSimulationPrimaryResultsWithAudit(pumpNode, backendResult, response, ...rest) {
       const output = original.call(this, pumpNode, backendResult, response, ...rest);
       attachAuditToPumpNode(pumpNode, response, backendResult);
-      [0, 120, 420, 1000].forEach((delayMs) => root.setTimeout?.(refreshVisibleAuditSurfaces, delayMs));
+      [180, 760].forEach((delayMs) => root.setTimeout?.(refreshVisibleAuditSurfaces, delayMs));
       return output;
     }
     applyBackendSimulationPrimaryResultsWithAudit.__routeTraceAuditPatched = true;
@@ -2308,15 +2875,25 @@
     ensureStyles();
     ensureRoutePanel();
     ensureMenuButton();
+    patchCanonicalLiveParameterRowBuilders();
     watchDefaultCanvasRouteTraceOverlays();
     const patchedCanvasOverlayHooks = patchCanvasOverlayRenderHooks();
     pruneDefaultCanvasRouteTraceOverlays(typeof document !== 'undefined' ? document : null);
+    const payloadBuilder = patchPayloadBuilder();
+    const fetchSimulation = patchSimulationFetch();
+    const primaryResultApplier = patchPrimaryResultApplier();
+    const sinkStatusTooltip = patchSinkStatusTooltip();
+    const sinkPropertyChangeRefresh = installSinkPropertyChangeRefresh();
+    const solverCanvasLayoutStability = installSolverCanvasLayoutStabilityListeners();
+    const canonicalLiveParameterRowBuilders = startCanonicalLiveParameterRowBuilderRetryLoop();
     const installed = {
-      payloadBuilder: patchPayloadBuilder(),
-      fetchSimulation: patchSimulationFetch(),
-      primaryResultApplier: patchPrimaryResultApplier(),
-      sinkStatusTooltip: patchSinkStatusTooltip(),
-      sinkPropertyChangeRefresh: installSinkPropertyChangeRefresh(),
+      payloadBuilder,
+      fetchSimulation,
+      primaryResultApplier,
+      sinkStatusTooltip,
+      sinkPropertyChangeRefresh,
+      solverCanvasLayoutStability,
+      canonicalLiveParameterRowBuilders,
       canvasOverlayRenderHooks: patchedCanvasOverlayHooks,
       routePanel: typeof document !== 'undefined' && !!document.getElementById(PANEL_ID),
       menuButton: typeof document !== 'undefined' && !!document.getElementById(MENU_BUTTON_ID),
@@ -2324,7 +2901,18 @@
       routeTracePumpSummaryDefaultHidden: !isRouteTracePumpSummaryUnlocked()
     };
     root.__npshRouteTraceAuditInstalled = installed;
-    refreshVisibleAuditSurfaces();
+    const newInstallActivity = payloadBuilder
+      || fetchSimulation
+      || primaryResultApplier
+      || sinkStatusTooltip
+      || sinkPropertyChangeRefresh
+      || solverCanvasLayoutStability
+      || canonicalLiveParameterRowBuilders
+      || patchedCanvasOverlayHooks.length > 0;
+    if (!routeTraceInstallRefreshDone || newInstallActivity) {
+      routeTraceInstallRefreshDone = true;
+      refreshVisibleAuditSurfaces();
+    }
     return installed;
   }
 

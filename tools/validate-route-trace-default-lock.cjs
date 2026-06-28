@@ -12,7 +12,7 @@ const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 
-assert.equal(runtime.version, '2026.06-route-trace-audit-v30', 'Route trace audit runtime should expose the locked v30 version.');
+assert.equal(runtime.version, '2026.06-route-trace-audit-v34', 'Route trace audit runtime should expose the locked v33 version.');
 assert.equal(typeof runtime.openRouteAuditPanel, 'function', 'Dedicated route audit panel should remain available.');
 assert.equal(typeof runtime.pruneDefaultCanvasRouteTraceOverlays, 'function', 'Canvas route trace overlay pruning should be exposed for audit tests.');
 assert.equal(typeof runtime.pruneDefaultPumpRouteTraceRows, 'function', 'Pump route trace row pruning should be exposed for audit tests.');
@@ -31,7 +31,13 @@ assert(runtimeSource.includes('const ROUTE_TRACE_CANVAS_TEXT_PATTERN = /\\broute
 assert(runtimeSource.includes('const ROUTE_LOSS_TRACE_CANVAS_TEXT_PATTERN = /\\broute\\b[\\s\\S]*suction\\s+loss[\\s\\S]*disch(?:arge)?\\.?\\s+loss/i;'), 'Canvas overlay lock should target Route/Suction Loss/Disch. Loss trace panels.');
 assert(runtimeSource.includes('const PUMP_CANVAS_HIDDEN_ROW_LABELS = new Set(['), 'Pump live panel lock should use the locked hidden-row allowlist.');
 assert(runtimeSource.includes("'Basis Vapor Press.'"), 'Pump live panel lock should hide Basis Vapor Press. rows.');
+assert(runtimeSource.includes("'Fluid Vapor Press.'"), 'Pump live panel lock should hide Fluid Vapor Press. rows.');
+assert(runtimeSource.includes("'NPSH Vapor Press.'"), 'Pump live panel lock should hide NPSH Vapor Press. rows.');
 assert(runtimeSource.includes("'Vapor Press. Used'"), 'Pump live panel lock should hide Vapor Press. Used rows.');
+assert(runtimeSource.includes('function isHiddenPumpCanvasSectionText'), 'Pump live panel lock should remove ROUTE TRACE sections with info/help suffixes.');
+assert(runtimeSource.includes('function isHiddenPumpCanvasRowLabel'), 'Pump live panel lock should normalize route/vapor row labels before hiding them.');
+assert(runtimeSource.includes("upsertPumpCanvasRow(panel, 'Hydraulic NPSH'"), 'Pump canvas panel lock should add a stable Hydraulic NPSH status row when available.');
+assert(runtimeSource.includes("upsertPumpCanvasRow(panel, 'Backend Valid.'"), 'Pump canvas panel lock should add a stable backend validation row when available.');
 assert(runtimeSource.includes('const SINK_CANVAS_HIDDEN_ROW_LABELS = new Set(['), 'SNK canvas panel lock should use the locked hidden-row allowlist.');
 assert(runtimeSource.includes("'Flow Demand'"), 'SNK canvas panel lock should hide the old Flow Demand display row.');
 assert(runtimeSource.includes("'Outlet Flow'"), 'SNK canvas panel lock should hide the old Outlet Flow display row.');
@@ -65,6 +71,25 @@ assert(runtimeSource.includes('function pruneDefaultSinkCanvasRows'), 'Runtime s
 assert(runtimeSource.includes('function ensureDefaultSinkCanvasRows'), 'Runtime should ensure Sink Flow/Sink Elev./Sink Head rows inside sink live panels.');
 assert(runtimeSource.includes('function pruneDefaultCanvasRouteTraceOverlays'), 'Runtime should prune route trace canvas overlays by default.');
 assert(runtimeSource.includes('function watchDefaultCanvasRouteTraceOverlays'), 'Runtime should watch future canvas overlay insertions.');
+assert(runtimeSource.includes('const SOLVER_CANVAS_LAYOUT_REFRESH_HOOKS = ['), 'Canvas layout lock should hook protected solver refresh functions.');
+assert(runtimeSource.includes("'refreshBackendProtectedSimulationUi'"), 'Canvas layout lock should run after protected solver UI refresh.');
+assert(runtimeSource.includes("'refreshBackendProtectedRealtimeTaskWindows'"), 'Canvas layout lock should run after protected realtime task-window refresh.');
+assert(runtimeSource.includes('function canonicalPumpLiveParameterRows'), 'Pump live row builder should filter hidden rows before the canvas panel is rendered.');
+assert(runtimeSource.includes('function canonicalSinkLiveParameterRows'), 'SNK live row builder should filter hidden rows before the canvas panel is rendered.');
+assert(runtimeSource.includes('function syncPumpCanvasFlowRow'), 'Pump canvas Flow row should be synchronized to the route duty flow after solver repaints.');
+assert(runtimeSource.includes('function pumpRouteDutyFlow'), 'Pump route duty flow should prefer matching connected SRC/SNK boundary flow before rounded pump result flow.');
+assert(runtimeSource.includes("patchCanonicalLiveParameterRowBuilder('buildPumpLiveParameterRows'"), 'Pump live row builder should be wrapped by the canonical canvas contract.');
+assert(runtimeSource.includes("patchCanonicalLiveParameterRowBuilder('buildSinkLiveParameterRows'"), 'SNK live row builder should be wrapped by the canonical canvas contract.');
+assert(runtimeSource.includes('function startCanonicalLiveParameterRowBuilderRetryLoop'), 'Canonical row-builder guard should retry after delayed caption-audit installation.');
+assert(runtimeSource.includes('const SOLVER_CANVAS_LAYOUT_SWEEP_DELAYS = [120, 720];'), 'Solver canvas stabilization should be limited to two calm post-result sweeps.');
+assert(runtimeSource.includes('const CANVAS_PRUNE_MIN_INTERVAL_MS = 140;'), 'Canvas pruning should be throttled during drag/attribute churn.');
+assert(runtimeSource.includes('function isHydraulicCanvasMutation'), 'Canvas observer should ignore drag-only mutations and react only to hydraulic panel changes.');
+assert(runtimeSource.includes("['style', 'class', 'transform', 'data-x', 'data-y'].includes(attr)"), 'Canvas observer should ignore style/class drag mutations outside live hydraulic panels.');
+assert(!runtimeSource.includes('[0, 80, 220, 650, 1200]'), 'Solver stabilization must not schedule five repeated layout refreshes.');
+assert(!runtimeSource.includes('canonicalLiveParameterRowBuilderRetryCount >= 80'), 'Canonical row-builder retry loop must not run for 20 seconds.');
+assert(!runtimeSource.includes('[0, 120, 420, 1000].forEach'), 'Backend result application must not schedule four visible audit refreshes.');
+assert(runtimeSource.includes('function scheduleSolverCanvasLayoutStabilitySweep'), 'Canvas layout lock should sweep after delayed solver repaints.');
+assert(runtimeSource.includes('root.refreshPipeCanvasHydraulicLabels'), 'Canvas layout lock should refresh PFV labels after solver repaints when the pipe runtime is present.');
 assert(runtimeSource.includes('characterData: true'), 'Canvas overlay lock should observe text updates in existing panels.');
 assert(runtimeSource.includes('attributes: true'), 'Canvas overlay lock should observe attribute-driven redraws.');
 assert(runtimeSource.includes('routeSurfaceRefreshPending'), 'Route surface refreshes should be throttled for performance.');
@@ -304,7 +329,10 @@ const savedGlobals = {
   clearTimeout: global.clearTimeout,
   setInterval: global.setInterval,
   setTimeout: global.setTimeout,
-  globalModel: global.globalModel
+  globalModel: global.globalModel,
+  connections: global.connections,
+  buildPumpLiveParameterRows: global.buildPumpLiveParameterRows,
+  buildSinkLiveParameterRows: global.buildSinkLiveParameterRows
 };
 
 try {
@@ -368,6 +396,35 @@ try {
   pressureAssistedPumpPanel.appendChild(row('Discharge Press.', '1.799'));
   canvas.appendChild(pressureAssistedPumpPanel);
 
+  const blankRequiredHeadPumpPanel = new FakeElement('div');
+  blankRequiredHeadPumpPanel.classList.add('pump-live-params');
+  blankRequiredHeadPumpPanel.dataset.nodeId = 'P-REQ';
+  blankRequiredHeadPumpPanel.appendChild(section('Discharge'));
+  blankRequiredHeadPumpPanel.appendChild(row('Required Head', '-'));
+  blankRequiredHeadPumpPanel.appendChild(row('Discharge Press.', '5.722'));
+  canvas.appendChild(blankRequiredHeadPumpPanel);
+
+  const canonicalPumpPanel = new FakeElement('div');
+  canonicalPumpPanel.classList.add('pump-live-params');
+  canonicalPumpPanel.dataset.nodeId = 'P-CANON';
+  canonicalPumpPanel.appendChild(section('SUCTION'));
+  canonicalPumpPanel.appendChild(row('Flow', '39.700'));
+  canonicalPumpPanel.appendChild(row('Suction Press.', '2.155'));
+  canonicalPumpPanel.appendChild(row('NPSH Available', '15.3482'));
+  canonicalPumpPanel.appendChild(row('NPSH Required', '1.0000'));
+  canonicalPumpPanel.appendChild(row('NPSH Margin', '+14.3482'));
+  canonicalPumpPanel.appendChild(row('NPSH Ratio', '15.3482'));
+  canonicalPumpPanel.appendChild(row('Fluid Vapor Press.', '0.702'));
+  canonicalPumpPanel.appendChild(row('NPSH Vapor Press.', '0.702'));
+  canonicalPumpPanel.appendChild(section('DISCHARGE'));
+  canonicalPumpPanel.appendChild(row('Pump Head', '-'));
+  canonicalPumpPanel.appendChild(row('Discharge Press.', '5.722'));
+  canonicalPumpPanel.appendChild(section('ROUTE TRACE i'));
+  canonicalPumpPanel.appendChild(row('Route:', 'Fluid Basis -> SRC-100 -> PIPE-1 -> P-100 -> PIPE-2 -> SNK-100'));
+  canonicalPumpPanel.appendChild(row('Suction Loss', '0.014 / 0.001'));
+  canonicalPumpPanel.appendChild(row('Discharge Loss', '0.282 / 0.027'));
+  canvas.appendChild(canonicalPumpPanel);
+
   const legacySinkPanel = new FakeElement('div');
   legacySinkPanel.classList.add('sink-live-params');
   legacySinkPanel.dataset.nodeId = 'SNK-100';
@@ -379,6 +436,7 @@ try {
   legacySinkPanel.appendChild(sinkRow('Vapor Press.', '1.014'));
   legacySinkPanel.appendChild(sinkRow('Vapor Margin', '+0.730'));
   legacySinkPanel.appendChild(sinkRow('Pump NPSH Margin', '+4.100'));
+  legacySinkPanel.appendChild(sinkRow('Boundary', 'Unknown'));
   canvas.appendChild(legacySinkPanel);
 
   const delayedRouteLossTracePanel = new FakeElement('div');
@@ -416,13 +474,63 @@ try {
         solveMode: 'Route-only NPSH design ceiling at fixed route flow'
       }
     },
+    'P-REQ': {
+      type: 'pump',
+      name: 'P-REQ',
+      results: {
+        routeOnlyNpshEvaluation: true,
+        requiredSystemHead: 37.664,
+        requiredSystemHeadRaw: 37.664,
+        solveMode: 'Route-only NPSH design ceiling at fixed route flow'
+      }
+    },
+    'P-CANON': {
+      type: 'pump',
+      name: 'P-CANON',
+      results: {
+        flow: 39.7,
+        npshEvaluation: { flow: 39.7 },
+        routeOnlyNpshEvaluation: true,
+        requiredSystemHead: 37.664,
+        requiredSystemHeadRaw: 37.664,
+        hydraulicNpshStatus: 'Safe',
+        backendValidationStatus: 'Connected',
+        solveMode: 'Route-only NPSH design ceiling at fixed route flow'
+      }
+    },
+    'SRC-CANON': {
+      type: 'source',
+      name: 'SRC-CANON',
+      props: { flow: 39.68 },
+      results: { sourceInputFlow: 39.68 }
+    },
+    'PIPE-SUC-CANON': {
+      type: 'pipe',
+      name: 'PIPE-SUC-CANON',
+      results: { flow: 39.7 }
+    },
+    'PIPE-DIS-CANON': {
+      type: 'pipe',
+      name: 'PIPE-DIS-CANON',
+      results: { flow: 39.7 }
+    },
+    'SNK-CANON': {
+      type: 'sink',
+      name: 'SNK-CANON',
+      props: { demandFlow: 39.68 },
+      results: { flow: 39.68 }
+    },
     'SNK-100': {
       type: 'sink',
       name: 'SNK-100',
       props: { elevation: 10 },
-      results: { boundaryPressure: 1.743707129, calculatedPressure: 1.743707129, hydraulicHead: 20.345 }
+      results: { boundaryPressure: 1.743707129, calculatedPressure: 1.743707129, hydraulicHead: 20.345, operatingFeasibilityStatus: 'Unknown' }
     }
   };
+  global.connections = [
+    { from: 'SRC-CANON', to: 'P-CANON', pipeId: 'PIPE-SUC-CANON', connectionType: 'hydraulic' },
+    { from: 'P-CANON', to: 'SNK-CANON', pipeId: 'PIPE-DIS-CANON', connectionType: 'hydraulic' }
+  ];
   fakeDocument.readyState = 'complete';
   global.MutationObserver = FakeMutationObserver;
   global.getComputedStyle = (element) => ({
@@ -445,10 +553,49 @@ try {
     callback();
     return 1;
   };
+  global.buildPumpLiveParameterRows = () => [
+    { type: 'section', label: 'Status' },
+    { label: 'Hydraulic NPSH', value: 'Safe' },
+    { type: 'section', label: 'Suction' },
+    { label: 'Flow', value: '39.700' },
+    { label: 'Basis Vapor Press.', value: '0.702' },
+    { label: 'Vapor Press. Used', value: '0.702' },
+    { type: 'section', label: 'Discharge' },
+    { label: 'Required Head', value: '37.664' },
+    { type: 'section', label: 'Route Trace' },
+    { label: 'Route', value: 'Fluid Basis -> SRC-100 -> P-100 -> SNK-100' },
+    { label: 'Suction Loss', value: '0.014 / 0.001' },
+    { label: 'Disch. Loss', value: '0.282 / 0.027' }
+  ];
+  global.buildSinkLiveParameterRows = () => [
+    { label: 'Mode', value: 'Outlet Pressure' },
+    { label: 'Outlet Flow', value: '39.700' },
+    { label: 'Sink Flow', value: '39.700' },
+    { label: 'Sink P abs', value: '4.936' },
+    { label: 'Discharge Loss', value: '0.300' },
+    { label: 'Vapor Press.', value: '0.702' },
+    { label: 'Vapor Margin', value: '+4.234' }
+  ];
 
   delete require.cache[require.resolve(runtimePath)];
   const browserRuntime = require(runtimePath);
   browserRuntime.install();
+  const canonicalBuilderRows = global.buildPumpLiveParameterRows(global.globalModel['P-CANON']);
+  assert.deepEqual(
+    canonicalBuilderRows.map((row) => row.label),
+    ['Status', 'Hydraulic NPSH', 'Suction', 'Flow', 'Discharge', 'Required Head'],
+    'Pump row-builder wrapper should remove vapor-pressure and route-trace rows before canvas render.'
+  );
+  assert.deepEqual(
+    canonicalBuilderRows.find((row) => row.label === 'Flow'),
+    { label: 'Flow', value: '39.680', unit: 'm3/h', title: 'Route duty flow synchronized with the connected SRC/SNK boundary flow.' },
+    'Pump row-builder wrapper should synchronize Flow with the connected SRC/SNK boundary duty flow before canvas render.'
+  );
+  assert.deepEqual(
+    global.buildSinkLiveParameterRows().map((row) => row.label),
+    ['Mode', 'Sink Flow', 'Sink P abs'],
+    'SNK row-builder wrapper should remove transient outlet/loss/vapor rows before canvas render.'
+  );
 
   assert(routeOverlay.classList.contains('route-trace-canvas-overlay-hidden'), 'Canvas ROUTE TRACE overlay should be hidden by default.');
   assert.equal(routeOverlay.dataset.routeTraceDefaultLock, 'hidden-default', 'Canvas ROUTE TRACE overlay should carry audit-visible lock metadata.');
@@ -468,6 +615,51 @@ try {
     labelsIn(pressureAssistedPumpPanel),
     ['Required Head', 'Discharge Press.'],
     'Pressure-assisted route-only pump panels should label signed negative head as Required Head, not actual Pump Head.'
+  );
+  assert.deepEqual(
+    valuesByLabelIn(blankRequiredHeadPumpPanel, '.pump-live-param-row', '.pump-live-param-label', '.pump-live-param-value'),
+    {
+      'Required Head': '37.664 m',
+      'Discharge Press.': '5.722'
+    },
+    'Route-only pump canvas panels should backfill blank Required Head from the model/system-head trace.'
+  );
+  assert.deepEqual(
+    sectionsIn(canonicalPumpPanel),
+    ['STATUS', 'SUCTION', 'DISCHARGE'],
+    'Canonical pump canvas panel should keep a stable STATUS/SUCTION/DISCHARGE layout after open and solve refreshes.'
+  );
+  assert.deepEqual(
+    labelsIn(canonicalPumpPanel),
+    [
+      'Hydraulic NPSH',
+      'Backend Valid.',
+      'Flow',
+      'Suction Press.',
+      'NPSH Available',
+      'NPSH Required',
+      'NPSH Margin',
+      'NPSH Ratio',
+      'Required Head',
+      'Discharge Press.'
+    ],
+    'Canonical pump canvas panel should hide vapor-pressure internals and route trace rows while keeping final visible calculation rows.'
+  );
+  assert.deepEqual(
+    valuesByLabelIn(canonicalPumpPanel, '.pump-live-param-row', '.pump-live-param-label', '.pump-live-param-value'),
+    {
+      'Hydraulic NPSH': 'Safe',
+      'Backend Valid.': 'Connected',
+      Flow: '39.680 m3/h',
+      'Suction Press.': '2.155',
+      'NPSH Available': '15.3482',
+      'NPSH Required': '1.0000',
+      'NPSH Margin': '+14.3482',
+      'NPSH Ratio': '15.3482',
+      'Required Head': '37.664 m',
+      'Discharge Press.': '5.722'
+    },
+    'Canonical pump canvas values should remain stable from file open through delayed route-trace cleanup.'
   );
   assert.deepEqual(
     sectionsIn(legacyPumpPanel),
@@ -513,15 +705,18 @@ try {
   global.setInterval = savedGlobals.setInterval;
   global.setTimeout = savedGlobals.setTimeout;
   global.globalModel = savedGlobals.globalModel;
+  global.connections = savedGlobals.connections;
+  global.buildPumpLiveParameterRows = savedGlobals.buildPumpLiveParameterRows;
+  global.buildSinkLiveParameterRows = savedGlobals.buildSinkLiveParameterRows;
   delete require.cache[require.resolve(runtimePath)];
 }
 
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260625-pump-required-head-label1'),
+  index.includes('engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4'),
   'Index must load the route trace audit runtime with the default-lock cache key.'
 );
 assert(
-  manifest.includes('Route audit cache key: engineering-route-trace-audit.js?v=20260625-pump-required-head-label1'),
+  manifest.includes('Route audit cache key: engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4'),
   'Manifest must document the route trace default-lock cache key.'
 );
 

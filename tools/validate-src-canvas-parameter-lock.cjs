@@ -8,7 +8,7 @@ const INDEX_FILE = path.join(FRONTEND_ROOT, "index.html");
 const JOURNALS_DIR = path.join(FRONTEND_ROOT, "journals");
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
-const RUNTIME_CACHE_KEY = "engineering-src-canvas-parameter-runtime.js?v=20260615-src-flow-basis3";
+const RUNTIME_CACHE_KEY = "engineering-src-canvas-parameter-runtime.js?v=20260628-src-stable-values1";
 const DEFAULT_ROW_LABELS = ["Mode", "SRC Input Flow", "Source P abs", "Source Elev.", "Source Head"];
 const ALWAYS_HIDDEN_ROWS = new Set(["Contribution", "Suction Loss", "NPSH at Pump", "Pump NPSHa"]);
 const DYNAMIC_ROWS = new Set(["Dyn Mode", "Target", "Dyn Feed", "Target Net", "Dyn Net", "Target Trend", "Dyn Trend"]);
@@ -96,7 +96,7 @@ function listSimulationUntirtaFiles() {
 }
 
 const runtime = fs.readFileSync(RUNTIME_FILE, "utf8");
-assert(runtime.includes('2026.06-src-canvas-flow-basis-lock3'), "Runtime must keep the source flow canvas basis lock version.");
+assert(runtime.includes('2026.06-src-canvas-flow-basis-lock4'), "Runtime must keep the source flow canvas basis lock version.");
 assert(runtime.includes("isSourceLiveDynamicDisplayActive = isRealtimeDynamicUnlocked"), "Runtime must override the SRC dynamic display gate.");
 assert(runtime.includes("setRealtimeDynamicUnlocked(true)"), "Runtime must unlock SRC dynamic rows when realtime dynamic starts.");
 assert(runtime.includes("setRealtimeDynamicUnlocked(false)"), "Runtime must lock SRC dynamic rows when realtime dynamic stops.");
@@ -122,6 +122,8 @@ assert(runtime.includes("formatTooltipParsedNumber"), "Runtime must format SRC h
 assert(runtime.includes("SOURCE_TOOLTIP_HIDDEN_ROWS"), "Runtime must hide non-core SRC contribution rows from the default tooltip.");
 assert(runtime.includes('"Contribution to tank"'), "Runtime must remove SRC contribution rows from the default hover format.");
 assert(runtime.includes("sourceObserverNormalizePending"), "SRC observer must throttle normalize passes for performance.");
+assert(runtime.includes("sourcePresentationRefreshTimer"), "SRC presentation refreshes must be debounced for stable canvas value updates.");
+assert(!runtime.includes("[0, 80, 240, 700, 1400]"), "SRC presentation refresh must not use the old repeated sweep schedule.");
 assert(runtime.includes('observe(document.getElementById("canvas") || document.body, { childList: true, subtree: true, characterData: true })'), "SRC observer must stay scoped to canvas/body child/text changes.");
 assert(!runtime.includes("observe(document.body, { attributes: true, childList: true, subtree: true, characterData: true })"), "SRC observer must not watch all body attribute changes.");
 assert(runtime.includes("attempts >= 32"), "SRC install retry loop must stay short for performance.");

@@ -11,8 +11,8 @@ const manifestPath = path.join(rootDir, 'FILE_MANIFEST.md');
 
 const runtime = require(runtimePath);
 
-assert.equal(runtime.version, 'engineering-canvas-context-dock.v3', 'Canvas context dock runtime should expose v3.');
-assert.equal(runtime.cacheKey, '20260621-pipe-left-click-menu1', 'Canvas context dock cache key should stay locked.');
+assert.equal(runtime.version, 'engineering-canvas-context-dock.v4', 'Canvas context dock runtime should expose v4.');
+assert.equal(runtime.cacheKey, '20260628-canvas-dock-scroll-anchor1', 'Canvas context dock cache key should stay locked.');
 assert.equal(typeof runtime.buildDockState, 'function', 'Canvas context dock should expose buildDockState for audit tests.');
 assert.equal(typeof runtime.allowCanvasPropertiesCommandOpen, 'function', 'Canvas context dock should expose the explicit command-open hook for object properties.');
 assert.equal(typeof runtime.clearSelectedPipeOnCanvasBackgroundClick, 'function', 'Canvas context dock should expose selected pipe background-clear behavior for tests.');
@@ -20,6 +20,7 @@ assert.equal(typeof runtime.clearCanvasSelectionOnly, 'function', 'Canvas contex
 assert.equal(typeof runtime.resolveRouteNodes, 'function', 'Canvas context dock should expose route resolution for audit tests.');
 assert.equal(typeof runtime.rectsOverlapOrTooClose, 'function', 'Canvas context dock should expose legend collision geometry for audit tests.');
 assert.equal(typeof runtime.syncCanvasStatusLegendVisibility, 'function', 'Canvas context dock should expose Pump Status visibility sync for audit tests.');
+assert.equal(typeof runtime.syncDockViewportAnchor, 'function', 'Canvas context dock should expose viewport anchoring for audit tests.');
 assert.equal(typeof runtime.getStoredExpandedState, 'function', 'Canvas context dock should expose stored expanded state for audit tests.');
 assert.equal(typeof runtime.getEffectiveExpandedState, 'function', 'Canvas context dock should expose effective expanded state for audit tests.');
 assert.equal(typeof runtime.isCanvasSelectionOnlyActive, 'function', 'Canvas context dock should expose canvas select-only active state for audit tests.');
@@ -253,6 +254,16 @@ assert(runtimeSource.includes('@media (max-width: 639px)'), 'Runtime CSS must in
 assert(runtimeSource.includes('position: absolute'), 'Fluid Basis dock should overlay the canvas without contributing to layout shift.');
 assert(runtimeSource.includes('margin: 0;'), 'Fluid Basis dock should not push canvas content during startup.');
 assert(runtimeSource.includes('width: min(940px, calc(100% - 182px));'), 'Desktop dock width should preserve the existing left/right visual footprint.');
+assert(runtimeSource.includes('const DOCK_VIEWPORT_ANCHOR_LEFT_PX = 12'), 'Fluid Basis dock should keep an explicit desktop left viewport anchor.');
+assert(runtimeSource.includes('const DOCK_VIEWPORT_ANCHOR_TOP_PX = 10'), 'Fluid Basis dock should keep an explicit desktop top viewport anchor.');
+assert(runtimeSource.includes('const DOCK_VIEWPORT_ANCHOR_MOBILE_PX = 8'), 'Fluid Basis dock should keep an explicit mobile viewport anchor.');
+assert(runtimeSource.includes('function syncDockViewportAnchor'), 'Fluid Basis dock should sync its canvas-scroll viewport anchor globally.');
+assert(runtimeSource.includes('targetCanvas.scrollLeft'), 'Fluid Basis dock anchor should track canvas horizontal scroll.');
+assert(runtimeSource.includes('targetCanvas.scrollTop'), 'Fluid Basis dock anchor should track canvas vertical scroll.');
+assert(runtimeSource.includes("targetDock.dataset.canvasContextDockScrollAnchor = 'viewport'"), 'Fluid Basis dock should expose viewport-anchor metadata for QA.');
+assert(runtimeSource.includes("canvas.addEventListener('scroll', handleDockAnchorCanvasScroll, { passive: true })"), 'Fluid Basis dock should update anchor on canvas scroll without rerender churn.');
+assert(runtimeSource.includes("dockAnchorObservedCanvas?.removeEventListener?.('scroll', handleDockAnchorCanvasScroll)"), 'Fluid Basis dock should detach stale scroll listeners if the canvas is recreated.');
+assert(runtimeSource.includes('syncDockViewportAnchor(dock, canvas);'), 'Fluid Basis dock render should apply the viewport anchor immediately after refresh/first open.');
 assert(runtimeSource.includes('return false;\n  }\n\n  function getEffectiveExpandedState()'), 'Dock should default to collapsed on first load when no user preference is stored.');
 assert(runtimeSource.includes('if (isMobileViewport()) return false;'), 'Mobile viewports should force the dock into compact/collapsed mode.');
 assert(runtimeSource.includes('if (isMobileViewport()) {\n      scheduleRender(\'mobile-locked-toggle\');\n      return false;'), 'Mobile toggle should not change or persist expanded state.');
@@ -357,7 +368,7 @@ assert(
   'Index must load the core app bundle with the canvas properties policy cache key.'
 );
 assert(
-  index.includes('engineering-canvas-context-dock.js?v=20260621-pipe-left-click-menu1'),
+  index.includes('engineering-canvas-context-dock.js?v=20260628-canvas-dock-scroll-anchor1'),
   'Index must load the canvas context dock runtime with cache key.'
 );
 assert(
@@ -380,7 +391,7 @@ assert(
   'Thesis branding must not intercept pointer events from toolbar placement tools.'
 );
 assert(
-  manifest.includes('Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260621-pipe-left-click-menu1'),
+  manifest.includes('Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260628-canvas-dock-scroll-anchor1'),
   'Manifest must document the canvas context dock cache key.'
 );
 assert(

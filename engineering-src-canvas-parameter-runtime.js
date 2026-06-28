@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const LOCK_VERSION = "2026.06-src-canvas-flow-basis-lock3";
+  const LOCK_VERSION = "2026.06-src-canvas-flow-basis-lock4";
   const ALWAYS_HIDDEN_ROWS = new Set(["Contribution", "Suction Loss", "NPSH at Pump", "Pump NPSHa"]);
   const DYNAMIC_ROWS = new Set(["Dyn Mode", "Target", "Dyn Feed", "Target Net", "Dyn Net", "Target Trend", "Dyn Trend"]);
   const SOURCE_TOOLTIP_HIDDEN_ROWS = new Set(["Contribution to tank", "Dynamic contribution"]);
@@ -18,6 +18,7 @@
   let lastRealtimeMenuPointerAt = 0;
   let pendingRealtimeMenuUnlocked = null;
   let sourceObserverNormalizePending = false;
+  let sourcePresentationRefreshTimer = null;
   const SOURCE_RENDER_HOOKS = new Set();
 
   function normalizeRowLabel(value) {
@@ -624,9 +625,11 @@
 
   function scheduleSourcePresentationRefresh() {
     if (typeof document === "undefined") return;
-    [0, 80, 240, 700, 1400].forEach((delayMs) => {
-      root.setTimeout(() => normalizeRenderedTerminology(document), delayMs);
-    });
+    root.clearTimeout?.(sourcePresentationRefreshTimer);
+    sourcePresentationRefreshTimer = root.setTimeout(() => {
+      sourcePresentationRefreshTimer = null;
+      normalizeRenderedTerminology(document);
+    }, 160);
   }
 
   function patchSourceRenderFunction(functionName) {

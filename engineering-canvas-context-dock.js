@@ -9,14 +9,17 @@
 })(typeof window !== 'undefined' ? window : globalThis, function createCanvasContextDock(root) {
   'use strict';
 
-  const VERSION = 'engineering-canvas-context-dock.v3';
-  const CACHE_KEY = '20260621-pipe-left-click-menu1';
+  const VERSION = 'engineering-canvas-context-dock.v4';
+  const CACHE_KEY = '20260628-canvas-dock-scroll-anchor1';
   const DOCK_ID = 'canvasContextDock';
   const STYLE_ID = 'canvas-context-dock-style';
   const STORAGE_KEY = 'npsh.canvasContextDock.expanded';
   const LEGEND_SELECTOR = '.canvas-status-legend';
   const LEGEND_HIDDEN_CLASS = 'canvas-status-legend-hidden';
   const LEGEND_COLLISION_MARGIN_PX = 12;
+  const DOCK_VIEWPORT_ANCHOR_LEFT_PX = 12;
+  const DOCK_VIEWPORT_ANCHOR_TOP_PX = 10;
+  const DOCK_VIEWPORT_ANCHOR_MOBILE_PX = 8;
   const CANVAS_PROPERTIES_POLICY_STATE_KEY = '__npshCanvasSelectionOnly';
   const CANVAS_PROPERTIES_POLICY_EVENT_FLAG = '__canvasPropertiesOpenPolicyEventsInstalled';
   const CANVAS_OBJECT_SELECTOR = '.pfd-object';
@@ -112,6 +115,7 @@
   let legendVisibilityObserver = null;
   let legendVisibilityObservedDock = null;
   let legendVisibilityObservedLegend = null;
+  let dockAnchorObservedCanvas = null;
   const wrappedFunctions = new Set();
 
   function clone(value) {
@@ -866,6 +870,55 @@
     return Boolean(root.matchMedia && root.matchMedia('(max-width: 639px)').matches);
   }
 
+  function dockViewportAnchorOffsets() {
+    if (isMobileViewport()) {
+      return {
+        left: DOCK_VIEWPORT_ANCHOR_MOBILE_PX,
+        top: DOCK_VIEWPORT_ANCHOR_MOBILE_PX
+      };
+    }
+    return {
+      left: DOCK_VIEWPORT_ANCHOR_LEFT_PX,
+      top: DOCK_VIEWPORT_ANCHOR_TOP_PX
+    };
+  }
+
+  function syncDockViewportAnchor(dock = null, canvas = null) {
+    const documentRef = root.document;
+    if (!documentRef) return { applied: false, reason: 'no-document' };
+    const targetDock = dock || documentRef.getElementById(DOCK_ID);
+    const targetCanvas = canvas || documentRef.getElementById('canvas');
+    if (!targetDock || !targetCanvas) return { applied: false, reason: 'missing-elements' };
+    const offsets = dockViewportAnchorOffsets();
+    const nextLeft = `${Math.max(0, Math.round((targetCanvas.scrollLeft || 0) + offsets.left))}px`;
+    const nextTop = `${Math.max(0, Math.round((targetCanvas.scrollTop || 0) + offsets.top))}px`;
+    const changed = targetDock.style.left !== nextLeft || targetDock.style.top !== nextTop;
+    if (targetDock.style.left !== nextLeft) targetDock.style.left = nextLeft;
+    if (targetDock.style.top !== nextTop) targetDock.style.top = nextTop;
+    targetDock.dataset.canvasContextDockScrollAnchor = 'viewport';
+    targetDock.dataset.canvasContextDockScrollLeft = String(Math.round(targetCanvas.scrollLeft || 0));
+    targetDock.dataset.canvasContextDockScrollTop = String(Math.round(targetCanvas.scrollTop || 0));
+    return {
+      applied: true,
+      changed,
+      left: nextLeft,
+      top: nextTop
+    };
+  }
+
+  function handleDockAnchorCanvasScroll() {
+    syncDockViewportAnchor();
+    scheduleLegendVisibilitySync();
+  }
+
+  function installDockViewportAnchorEvents(canvas) {
+    if (!canvas || dockAnchorObservedCanvas === canvas) return false;
+    dockAnchorObservedCanvas?.removeEventListener?.('scroll', handleDockAnchorCanvasScroll);
+    dockAnchorObservedCanvas = canvas;
+    canvas.addEventListener('scroll', handleDockAnchorCanvasScroll, { passive: true });
+    return true;
+  }
+
   function getStoredExpandedState() {
     if (dockExpanded !== null) return dockExpanded;
     try {
@@ -1340,6 +1393,8 @@
     dock.dataset.tone = state.statusTone;
     dock.dataset.mobileLocked = mobileLocked ? 'true' : 'false';
     dock.className = `canvas-context-dock${expanded ? ' is-expanded' : ''}`;
+    installDockViewportAnchorEvents(canvas);
+    syncDockViewportAnchor(dock, canvas);
     dock.replaceChildren();
 
     const header = createElement('div', 'context-dock-header');
@@ -1367,6 +1422,7 @@
     renderSummary(dock, state);
     renderRoute(dock, state);
     if (expanded) renderExpandedAudit(dock, state);
+    syncDockViewportAnchor(dock, canvas);
     observeLegendVisibilityLayout();
     syncCanvasStatusLegendVisibility();
     scheduleLegendVisibilitySync();
@@ -1483,6 +1539,7 @@
     resolveRouteNodes,
     scheduleRender,
     setExpanded,
+    syncDockViewportAnchor,
     syncCanvasStatusLegendVisibility
   };
 

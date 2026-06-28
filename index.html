@@ -695,8 +695,9 @@
   ];
   const realtimeScripts = [
     'engineering-npsh-margin-runtime.js?v=20260622-local-live-sync1',
-    'engineering-src-canvas-parameter-runtime.js?v=20260615-src-flow-basis3',
+    'engineering-src-canvas-parameter-runtime.js?v=20260628-src-stable-values1',
     'engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2',
+    'engineering-live-parameter-stable-runtime.js?v=20260628-global-stable-values3',
     'engineering-performance-refresh-governor.js?v=20260626-head-power-audit1',
     'engineering-pump-edit-fast-lane.js?v=20260626-head-power-audit1',
     'engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1',
@@ -705,14 +706,14 @@
     'engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1'
   ];
   const statusScripts = [
-    'engineering-canvas-context-dock.js?v=20260621-pipe-left-click-menu1'
+    'engineering-canvas-context-dock.js?v=20260628-canvas-dock-scroll-anchor1'
   ];
   const featureScripts = [
     'engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3',
     'engineering-source-temperature-runtime.js?v=20260623-fluid-basis-dependency-autosolve1',
     'engineering-parameter-task-runtime.js?v=20260626-head-power-audit1',
     'engineering-local-trace-fallback-runtime.js?v=20260611-local-trace3',
-    'engineering-pipe-canvas-hydraulic-label-runtime.js?v=20260621-pipe-label-pump-font1',
+    'engineering-pipe-canvas-hydraulic-label-runtime.js?v=20260628-pfv-canvas-anchor1',
     'engineering-pipe-source-confidence-map-runtime.js?v=20260611-pipe-source-confidence-map1',
     'engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5',
     'engineering-bilingual-improvements.js?v=20260622-local-live-sync1',
@@ -728,12 +729,19 @@
     'engineering-library-governance.js?v=20260530-pagespeed3',
     'engineering-caption-audit-overrides.js?v=20260606-route-schema1',
     'engineering-head-power-audit-guard.js?v=20260627-head-power-audit2',
-    'engineering-route-trace-audit.js?v=20260625-pump-required-head-label1',
+    'engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4',
     'engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3',
     'engineering-defense-export-package.js?v=20260603-defensev3',
     'engineering-pipe-moody-chart-audit.js?v=20260607-pipe-moody-audit2',
     'engineering-pump-formula-defense-live-audit.js?v=20260626-head-power-audit1',
     'engineering-pump-performance-chart-audit.js?v=20260626-head-power-audit1'
+  ];
+  const initialCanvasHydrationScripts = [
+    ...realtimeScripts,
+    ...statusScripts,
+    'engineering-pipe-canvas-hydraulic-label-runtime.js?v=20260628-pfv-canvas-anchor1',
+    'engineering-browser-issues-runtime.js?v=20260620-orphan-label-cleanup1',
+    'engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4'
   ];
   const taskWindow = document.getElementById('taskWindow');
   const syncInitialTaskSheet = () => taskWindow?.classList.toggle('task-window-mobile-sheet', window.matchMedia('(max-width: 639px)').matches);
@@ -883,9 +891,26 @@
   ['#menu-help', '#menu-library', '#menu-tools', '#canvas', '#taskWindow'].forEach(selector => {
     document.querySelector(selector)?.addEventListener('click', beginFeatureInteraction, { once: true, passive: true });
   });
+  const scheduleInitialCanvasHydration = () => {
+    if (window.__npshInitialCanvasHydrationScheduled) return;
+    window.__npshInitialCanvasHydrationScheduled = true;
+    const startInitialCanvasHydration = () => {
+      window.__npshInitialCanvasHydrationStarted = true;
+      ensureStyles().catch(error => console.warn('Initial canvas stylesheet hydration did not load.', error));
+      loadScripts(initialCanvasHydrationScripts)
+        .then(() => {
+          window.__npshInitialCanvasHydrationComplete = true;
+          window.setTimeout(loadSupport, 12000);
+        })
+        .catch(error => console.warn('Initial canvas runtime hydration did not load.', error));
+    };
+    startInitialCanvasHydration();
+  };
   const scheduleInitialAppLoad = () => {
     const startInitialShellLoad = () => {
-      loadShell().catch(error => console.warn('Deferred app shell did not load.', error));
+      loadShell()
+        .then(scheduleInitialCanvasHydration)
+        .catch(error => console.warn('Deferred app shell did not load.', error));
     };
     if (window.requestIdleCallback) {
       window.requestIdleCallback(startInitialShellLoad, { timeout: 1200 });

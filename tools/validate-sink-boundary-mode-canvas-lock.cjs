@@ -54,7 +54,7 @@ const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 
-assert.equal(runtime.version, '2026.06-route-trace-audit-v29', 'Route trace runtime should expose the SNK boundary mode canvas lock version.');
+assert.equal(runtime.version, '2026.06-route-trace-audit-v34', 'Route trace runtime should expose the SNK boundary mode canvas lock version.');
 assert.equal(typeof runtime.sinkCanonicalValues, 'function', 'SNK canonical value helper should be exported for audit completeness checks.');
 assert.equal(typeof runtime.sinkModeDisplayValue, 'function', 'SNK mode display helper should be exported for audit completeness checks.');
 assert.equal(typeof runtime.syncSinkPropertyWindowCanonicalReadouts, 'function', 'SNK properties readout sync should be exported for audit completeness checks.');
@@ -147,8 +147,28 @@ assert.equal(riskCanonical.boundaryFeasible, false, 'SNK canonical state should 
 assert.equal(riskCanonical.headResidual, -261.57, 'SNK canonical state should expose pump head residual.');
 assert.equal(riskCanonical.maxAllowableSnkElevation, -61.57, 'SNK canonical state should expose maximum allowable SNK elevation.');
 
+globalThis.globalModel['SNK-500'] = {
+  type: 'sink',
+  props: {
+    boundaryMode: 'Outlet Pressure Boundary',
+    pressureInputBasis: 'Absolute',
+    pressure: 4.936,
+    elevation: 8
+  },
+  results: {
+    operatingFeasibilityStatus: 'Unknown',
+    boundaryPressure: 4.936,
+    hydraulicHead: 60.112,
+    flow: 39.68
+  }
+};
+const unknownCanonical = runtime.sinkCanonicalValues(globalThis.globalModel['SNK-500']);
+assert.equal(unknownCanonical.operatingFeasibilityStatus, '', 'SNK canonical state should not expose Unknown as a displayable boundary status.');
+assert.equal(unknownCanonical.engineeringStatus, '', 'SNK canonical state should not promote Unknown boundary status into engineering status.');
+
 assert(runtimeSource.includes('if (!panel?.querySelectorAll) return null;'), 'SNK panel row lookup must be null-safe.');
 assert(runtimeSource.includes('function sinkBoundaryModeRaw'), 'Runtime should have an explicit selected SNK boundary mode resolver.');
+assert(runtimeSource.includes('function firstMeaningfulStatusValue'), 'Runtime should filter placeholder status values such as Unknown before canvas display.');
 assert(runtimeSource.includes("if (kind === 'free-outlet') return firstFiniteValue(tracePressureAbs, ATM_PRESSURE_BAR_A);"), 'Free Outlet pressure must not fall back to stale Flow Demand pressure.');
 assert(runtimeSource.includes('sinkHeadForSelectedSinkMode'), 'SNK head should be mode-aware instead of always using stale solved head first.');
 assert(runtimeSource.includes('firstBooleanValue'), 'SNK canonical helper should preserve boundary feasibility booleans.');
@@ -184,7 +204,7 @@ assert(runtimeSource.includes('function syncSinkBoundaryModeOptions'), 'SNK Boun
 assert(!runtimeSource.includes('cloneNode'), 'SNK task window layout lock should not clone property rows.');
 assert(!runtimeSource.includes('sinkPropertyReadoutContainer'), 'SNK task window layout lock should not search for insertion containers.');
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260621-snk-boundary-logic1'),
+  index.includes('engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4'),
   'Index must load the route trace audit runtime with the SNK boundary mode lock cache key.'
 );
 assert(

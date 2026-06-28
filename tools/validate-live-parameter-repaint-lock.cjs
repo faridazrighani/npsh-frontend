@@ -6,6 +6,7 @@ const path = require("node:path");
 
 const FRONTEND_ROOT = path.resolve(__dirname, "..");
 const LOCK_FILE = path.join(FRONTEND_ROOT, "engineering-live-parameter-repaint-lock.css");
+const STABLE_RUNTIME_FILE = path.join(FRONTEND_ROOT, "engineering-live-parameter-stable-runtime.js");
 const STYLE_FILE = path.join(FRONTEND_ROOT, "style.min.css");
 const INDEX_FILE = path.join(FRONTEND_ROOT, "index.html");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
@@ -13,6 +14,7 @@ const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
 
 const LOCK_CACHE_KEY = "engineering-live-parameter-repaint-lock.css?v=20260620-render-blocking-fix1";
+const STABLE_RUNTIME_CACHE_KEY = "engineering-live-parameter-stable-runtime.js?v=20260628-global-stable-values3";
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");
@@ -42,6 +44,7 @@ function assertDeclaration(block, declaration, context) {
 }
 
 const lockCss = read(LOCK_FILE);
+const stableRuntime = read(STABLE_RUNTIME_FILE);
 const styleCss = read(STYLE_FILE);
 const indexHtml = read(INDEX_FILE);
 const packageJson = JSON.parse(read(PACKAGE_FILE));
@@ -49,6 +52,7 @@ const manifest = read(MANIFEST_FILE);
 const uploadReadiness = read(UPLOAD_READINESS_FILE);
 
 assert(indexHtml.includes(LOCK_CACHE_KEY), "index.html must load the live parameter repaint-lock CSS with the locked cache key.");
+assert(indexHtml.includes(STABLE_RUNTIME_CACHE_KEY), "index.html must load the global live parameter stable runtime.");
 assert(
   !indexHtml.includes('<link rel="stylesheet" href="engineering-live-parameter-repaint-lock.css'),
   "Live parameter repaint-lock CSS must not appear as an initial HTML stylesheet."
@@ -74,21 +78,47 @@ assert(
 );
 assert(
   indexHtml.includes("startInitialShellLoad") &&
-    indexHtml.includes("loadShell().catch(error => console.warn('Deferred app shell did not load.', error));"),
-  "Passive initial shell load must still schedule the app shell."
+    /loadShell\(\)\s*\.then\(scheduleInitialCanvasHydration\)\s*\.catch\(error => console\.warn\('Deferred app shell did not load\.', error\)\);/.test(indexHtml),
+  "Passive initial shell load must still schedule the app shell and then hydrate canvas runtimes without a click."
 );
 assert(
-  !/startInitialShellLoad\s*=\s*\(\)\s*=>\s*\{[\s\S]*?ensureMainStyles\(\)/.test(indexHtml),
-  "Passive initial shell load must not request the full main stylesheet before LCP."
+  indexHtml.includes("const scheduleInitialCanvasHydration = () => {") &&
+    indexHtml.includes("ensureStyles().catch(error => console.warn('Initial canvas stylesheet hydration did not load.', error));") &&
+    indexHtml.includes("const initialCanvasHydrationScripts = [") &&
+    indexHtml.includes("loadScripts(initialCanvasHydrationScripts)") &&
+    indexHtml.includes("window.__npshInitialCanvasHydrationComplete = true"),
+  "Initial canvas hydration must load styles and visual canvas runtimes without waiting for pointer/key input."
 );
 assert(manifest.includes(LOCK_CACHE_KEY), "FILE_MANIFEST.md must record the repaint-lock cache key.");
+assert(manifest.includes(STABLE_RUNTIME_CACHE_KEY), "FILE_MANIFEST.md must record the stable live parameter runtime cache key.");
 assert(uploadReadiness.includes("engineering-live-parameter-repaint-lock.css"), "UPLOAD_READINESS.md must list the repaint-lock CSS as a required public asset.");
+assert(uploadReadiness.includes("engineering-live-parameter-stable-runtime.js"), "UPLOAD_READINESS.md must list the stable live parameter runtime as a required public asset.");
 assert(
   packageJson.scripts?.["validate:live-parameter-repaint-lock"] === "node tools/validate-live-parameter-repaint-lock.cjs",
   "package.json must expose validate:live-parameter-repaint-lock."
 );
 
 assert(!/rgba\(/i.test(lockCss), "Repaint-lock CSS must use opaque backgrounds; rgba backgrounds can reveal grid repaint.");
+assert(stableRuntime.includes('const VERSION = "2026.06-live-parameter-stable3"'), "Stable runtime must keep the global live parameter value-update version.");
+assert(stableRuntime.includes("syncMatchingRows"), "Stable runtime must update matching row values in place.");
+assert(stableRuntime.includes("stabilizePanelFromReplacement"), "Stable runtime must preserve panel shells when the app renderer supplies replacements.");
+assert(stableRuntime.includes("shouldAllowStructureReplacement"), "Stable runtime must still allow intentional row-structure changes outside solve/drag lifecycle.");
+assert(stableRuntime.includes("detachedPanels"), "Stable runtime must bridge remove/add replacement cycles.");
+assert(stableRuntime.includes("restoreRemovedPanel"), "Stable runtime must immediately reinsert removed panels during solve/input/drag busy windows.");
+assert(stableRuntime.includes("liveParameterStableRestored"), "Stable runtime must mark restored panels for QA.");
+assert(stableRuntime.includes("freezeAllPanelGeometry"), "Stable runtime must freeze live panel geometry during input, drag, and solver busy windows.");
+assert(stableRuntime.includes("restorePanelGeometry"), "Stable runtime must restore live panel geometry when renderers rewrite style/class attributes.");
+assert(stableRuntime.includes("liveParameterStableGeometryRestored"), "Stable runtime must mark geometry restoration for QA.");
+assert(stableRuntime.includes("pendingPanelAttributes"), "Stable runtime must defer visual shell attributes while busy so only values change live.");
+assert(stableRuntime.includes("liveParameterStableAttributesFlushed"), "Stable runtime must apply pending shell attributes once after the busy window settles.");
+assert(stableRuntime.includes('attributeFilter: ["style", "class"]'), "Stable runtime must watch style/class mutations without observing noisy global attributes.");
+assert(stableRuntime.includes("skipTransientPlaceholder"), "Stable runtime must not overwrite visible values with transient solver placeholders.");
+assert(stableRuntime.includes("setTextIfChanged(valueElement(targetRow)"), "Stable runtime must patch numeric value text without rebuilding panel rows.");
+assert(stableRuntime.includes("npsh:calculation-applying-results"), "Stable runtime must understand solver lifecycle events.");
+assert(stableRuntime.includes("pointermove"), "Stable runtime must avoid repaint churn during canvas drag.");
+assert(stableRuntime.includes('"input", "change"'), "Stable runtime must protect canvas panels while users edit numeric inputs.");
+assert(stableRuntime.includes("MutationObserver"), "Stable runtime must observe late panel insertions.");
+assert(!stableRuntime.includes("innerHTML"), "Stable runtime must not use innerHTML for live canvas parameter panels.");
 
 const livePanelBlock = cssBlockPattern(
   lockCss,

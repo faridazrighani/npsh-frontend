@@ -1,6 +1,6 @@
 {
   "schemaVersion": "local-live-sync-manifest.v1",
-  "generatedAt": "2026-06-26T18:54:13.953Z",
+  "generatedAt": "2026-06-28T09:22:12.714Z",
   "purpose": "Keeps the local preview server auditable against the deployed npsh.virsim.id package.",
   "status": "review-required",
   "syncChecks": {
@@ -16,22 +16,22 @@
     "frontendRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-frontend",
     "apiRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-api",
     "serverUrl": "http://127.0.0.1:4174/",
-    "frontendCommit": "219c241d0fca820488fbe1a284649800d42d2fc3",
-    "frontendOriginMain": "219c241d0fca820488fbe1a284649800d42d2fc3",
-    "apiCommit": "31617e78d9eb2cc9bd3f0d34bb7dfe0e164aab32",
-    "apiOriginMain": "31617e78d9eb2cc9bd3f0d34bb7dfe0e164aab32",
+    "frontendCommit": "da710a61baa7e6633423c9d1385da6b5b0165dfd",
+    "frontendOriginMain": "da710a61baa7e6633423c9d1385da6b5b0165dfd",
+    "apiCommit": "6c9ee7d135c49e10f1030e6db6198fca467a2016",
+    "apiOriginMain": "6c9ee7d135c49e10f1030e6db6198fca467a2016",
     "releaseIntegrity": {
       "schemaVersion": "release-integrity.v1",
-      "rootFingerprint": "746fba59dd910dca234baa25a1d27f49e0b2838550892af5ed82dc82ef1cc065",
-      "fileCount": 391,
-      "generatedAt": "2026-06-23T13:38:22.928Z"
+      "rootFingerprint": "204d4d3bc2bb67c3cc957fd73a1656cc2684aa7012e127d97df8efe36c872e2e",
+      "fileCount": 394,
+      "generatedAt": "2026-06-28T09:18:21.694Z"
     },
     "index": {
       "path": "index.html",
-      "sizeBytes": 68070,
-      "sha256": "461262cf84e790a7f19f6a376c85ea40903e32fe781a608c299cd525064fa3d7",
-      "canonicalSizeBytes": 67184,
-      "canonicalSha256": "401dca44009bd3cc69eea132131c2cb638f7d01bc3a8071652b914d2196cc1a7",
+      "sizeBytes": 69245,
+      "sha256": "97154b18afd11c624a75ea9be7d12b9aeb9feb85e962bc38a6fca70c27ac6fb4",
+      "canonicalSizeBytes": 68376,
+      "canonicalSha256": "83f20d4090ff0c347b6f4eaeeb2cf0a79f43ed0cfd0b3382182ca2be86f15051",
       "canonicalizedLineEndings": true,
       "cacheKeys": [
         "app.bundle.min.js?v=20260621-npsh-margin-options1",
@@ -40,7 +40,7 @@
         "engineering-browser-issues-runtime.js?v=20260620-orphan-label-cleanup1",
         "engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1",
         "engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1",
-        "engineering-canvas-context-dock.js?v=20260621-pipe-left-click-menu1",
+        "engineering-canvas-context-dock.js?v=20260628-canvas-dock-scroll-anchor1",
         "engineering-caption-audit-overrides.js?v=20260606-route-schema1",
         "engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2",
         "engineering-defense-export-package.js?v=20260603-defensev3",
@@ -50,11 +50,12 @@
         "engineering-library-governance.js?v=20260530-pagespeed3",
         "engineering-literature-pdf-viewer.js?v=20260609-literature-access3",
         "engineering-live-parameter-repaint-lock.css?v=20260620-render-blocking-fix1",
+        "engineering-live-parameter-stable-runtime.js?v=20260628-global-stable-values3",
         "engineering-local-trace-fallback-runtime.js?v=20260611-local-trace3",
         "engineering-npsh-margin-runtime.js?v=20260622-local-live-sync1",
         "engineering-parameter-task-runtime.js?v=20260626-head-power-audit1",
         "engineering-performance-refresh-governor.js?v=20260626-head-power-audit1",
-        "engineering-pipe-canvas-hydraulic-label-runtime.js?v=20260621-pipe-label-pump-font1",
+        "engineering-pipe-canvas-hydraulic-label-runtime.js?v=20260628-pfv-canvas-anchor1",
         "engineering-pipe-moody-chart-audit.js?v=20260607-pipe-moody-audit2",
         "engineering-pipe-segments-file-runtime.js?v=20260608-pipe-segments-file1",
         "engineering-pipe-source-confidence-map-runtime.js?v=20260611-pipe-source-confidence-map1",
@@ -66,11 +67,11 @@
         "engineering-pump-performance-chart-audit.js?v=20260626-head-power-audit1",
         "engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3",
         "engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1",
-        "engineering-route-trace-audit.js?v=20260625-pump-required-head-label1",
+        "engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4",
         "engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3",
         "engineering-source-temperature-runtime.js?v=20260623-fluid-basis-dependency-autosolve1",
         "engineering-src-algorithm-help-runtime.js?v=20260616-src-algorithm-help1",
-        "engineering-src-canvas-parameter-runtime.js?v=20260615-src-flow-basis3",
+        "engineering-src-canvas-parameter-runtime.js?v=20260628-src-stable-values1",
         "style.min.css?v=20260608-browser-issues1"
       ]
     },
@@ -138,12 +139,12 @@
       {
         "path": "engineering-canvas-context-dock.js",
         "exists": true,
-        "sizeBytes": 53588,
-        "sha256": "3052a74ba091998df14a17a06599d106f4d9c574f7258ca11411f91dbcd578dd",
-        "canonicalSizeBytes": 52097,
-        "canonicalSha256": "63c8d1f529b7535e5f38eda6eb9620fbe0a3a4ab141f00b32f981fb7f266289d",
+        "sizeBytes": 55931,
+        "sha256": "e8aa37ae047c6b1829fce6019dab605f6c4354f291d723b7957adda77c40174d",
+        "canonicalSizeBytes": 54476,
+        "canonicalSha256": "9be8abc02969d4b7f6b40eb6ea555060169c2e7e04d2fcdbd35d6fd287e721c1",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-canvas-context-dock.js?v=20260621-pipe-left-click-menu1"
+        "cacheKey": "engineering-canvas-context-dock.js?v=20260628-canvas-dock-scroll-anchor1"
       },
       {
         "path": "engineering-caption-audit-overrides.js",
@@ -236,6 +237,16 @@
         "cacheKey": "engineering-live-parameter-repaint-lock.css?v=20260620-render-blocking-fix1"
       },
       {
+        "path": "engineering-live-parameter-stable-runtime.js",
+        "exists": true,
+        "sizeBytes": 19952,
+        "sha256": "9f34513d9657a8df839ccb21ea86dc828bdf51743ce479863575045432cb96f9",
+        "canonicalSizeBytes": 19952,
+        "canonicalSha256": "9f34513d9657a8df839ccb21ea86dc828bdf51743ce479863575045432cb96f9",
+        "canonicalizedLineEndings": true,
+        "cacheKey": "engineering-live-parameter-stable-runtime.js?v=20260628-global-stable-values3"
+      },
+      {
         "path": "engineering-local-trace-fallback-runtime.js",
         "exists": true,
         "sizeBytes": 53789,
@@ -278,12 +289,12 @@
       {
         "path": "engineering-pipe-canvas-hydraulic-label-runtime.js",
         "exists": true,
-        "sizeBytes": 24020,
-        "sha256": "b362a2edfd0de6aa39f3f71693a49d255699b921f16c25ce38925f15e5d3c317",
-        "canonicalSizeBytes": 23385,
-        "canonicalSha256": "6b3ee4b6468400fa5ef56b571c966d23fd1c27d5c1aa49e0d7440339fcce8d43",
+        "sizeBytes": 36820,
+        "sha256": "5a0aceb965c202dbd8b27bc0d30dc437910836647eaee66af51af5e780a63a6a",
+        "canonicalSizeBytes": 36341,
+        "canonicalSha256": "5fd5145bd51791363576aebe5f74c9c418cfa13320635ddb4b81f880fe29d280",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-pipe-canvas-hydraulic-label-runtime.js?v=20260621-pipe-label-pump-font1"
+        "cacheKey": "engineering-pipe-canvas-hydraulic-label-runtime.js?v=20260628-pfv-canvas-anchor1"
       },
       {
         "path": "engineering-pipe-moody-chart-audit.js",
@@ -318,8 +329,8 @@
       {
         "path": "engineering-pump-edit-fast-lane.js",
         "exists": true,
-        "sizeBytes": 30741,
-        "sha256": "b27ffac24b2ebafca232be438b34fbbeca38eb88370e3c4c488b35c2c3e84cbf",
+        "sizeBytes": 30709,
+        "sha256": "b43c19bf2d5443ebad73835bab3e1b6df0cb02eb058837c0ca5d3639ca8a9fbe",
         "canonicalSizeBytes": 30166,
         "canonicalSha256": "ed17caf9867770e9ed19d3e5d1649a296894062ff38072c4394e1073a458e974",
         "canonicalizedLineEndings": true,
@@ -398,12 +409,12 @@
       {
         "path": "engineering-route-trace-audit.js",
         "exists": true,
-        "sizeBytes": 110636,
-        "sha256": "bface2c1d5726d177d7691a96fd4d457c983483348e610142b8e20b747121efd",
-        "canonicalSizeBytes": 108346,
-        "canonicalSha256": "144f59c8b3c6e8f1c9af3f58195f95822ce5784ddc3b02e114de7385c6b14269",
+        "sizeBytes": 134832,
+        "sha256": "3c852001c60c64d9ea5b1459a70e1ccc88896335d62263ae2d89185c99d3e547",
+        "canonicalSizeBytes": 132715,
+        "canonicalSha256": "8ce1c75561b1d7e6c44414881561eeadd8a399b897d844b237dc26dc412662cf",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-route-trace-audit.js?v=20260625-pump-required-head-label1"
+        "cacheKey": "engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4"
       },
       {
         "path": "engineering-simulation-case-integrity-guard.js",
@@ -438,30 +449,30 @@
       {
         "path": "engineering-src-canvas-parameter-runtime.js",
         "exists": true,
-        "sizeBytes": 37650,
-        "sha256": "bf88f19070ecb23d6c269bef13711a239d9b8aa56d01fe22ffc37161c85f56dd",
-        "canonicalSizeBytes": 36883,
-        "canonicalSha256": "9a02fac9a3923df9b650478263eba3c8a180194f873434a6dfe77cdc2142c2c5",
+        "sizeBytes": 37772,
+        "sha256": "0a6e666f44d63d9fb5a0f24b631122049e6a92c13d12835655fdd62e1265ea91",
+        "canonicalSizeBytes": 37013,
+        "canonicalSha256": "1c04edd0092df2e1906ac8a76e7d6e0e02ea74952234decf5d813e035aa62c6b",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-src-canvas-parameter-runtime.js?v=20260615-src-flow-basis3"
+        "cacheKey": "engineering-src-canvas-parameter-runtime.js?v=20260628-src-stable-values1"
       },
       {
         "path": "FILE_MANIFEST.md",
         "exists": true,
-        "sizeBytes": 31040,
-        "sha256": "5067a6e5015299eed0c18baa80609a8443adf2f2fa6b5c091069bcc22b7a3069",
-        "canonicalSizeBytes": 30863,
-        "canonicalSha256": "cb9188c96a9cec8fb170c20b77d581d8b1c42997d114bcb89707ce3f8d205ee0",
+        "sizeBytes": 31922,
+        "sha256": "684ebb089516c5cac2b67fc71284db4e43d3e199284c8b7109a8d2c6e5f115e5",
+        "canonicalSizeBytes": 31756,
+        "canonicalSha256": "6f5767c3304226c2a46295e9baf8f35852c49e84682911d19add0f92c0f44668",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
       {
         "path": "index.html",
         "exists": true,
-        "sizeBytes": 68070,
-        "sha256": "461262cf84e790a7f19f6a376c85ea40903e32fe781a608c299cd525064fa3d7",
-        "canonicalSizeBytes": 67184,
-        "canonicalSha256": "401dca44009bd3cc69eea132131c2cb638f7d01bc3a8071652b914d2196cc1a7",
+        "sizeBytes": 69245,
+        "sha256": "97154b18afd11c624a75ea9be7d12b9aeb9feb85e962bc38a6fca70c27ac6fb4",
+        "canonicalSizeBytes": 68376,
+        "canonicalSha256": "83f20d4090ff0c347b6f4eaeeb2cf0a79f43ed0cfd0b3382182ca2be86f15051",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
@@ -532,7 +543,7 @@
     },
     "apiVersion": {
       "statusCode": 200,
-      "sha256": "e17b3218a8eb1fb75b3ba19a23d0093d66ab99bb24dc5f06920ddda8a4209fa1",
+      "sha256": "9ef4ad05722dca147f6ba88972dfedfe94601c88a62c89f6f9b868e6a461c217",
       "payload": {
         "ok": true,
         "appName": "GhaniSIM1 NPSH",
@@ -681,7 +692,7 @@
             "parity.fingerprint"
           ]
         },
-        "generatedAt": "2026-06-26T18:54:13.911Z"
+        "generatedAt": "2026-06-28T09:22:12.815Z"
       }
     },
     "verifiedAssets": []
@@ -689,26 +700,33 @@
   "differences": {
     "cacheKeysMissingOnLive": [
       "engineering-analysis-report-live-runtime.js?v=20260626-head-power-audit1",
+      "engineering-canvas-context-dock.js?v=20260628-canvas-dock-scroll-anchor1",
       "engineering-head-power-audit-guard.js?v=20260627-head-power-audit2",
+      "engineering-live-parameter-stable-runtime.js?v=20260628-global-stable-values3",
       "engineering-parameter-task-runtime.js?v=20260626-head-power-audit1",
       "engineering-performance-refresh-governor.js?v=20260626-head-power-audit1",
+      "engineering-pipe-canvas-hydraulic-label-runtime.js?v=20260628-pfv-canvas-anchor1",
       "engineering-pump-edit-fast-lane.js?v=20260626-head-power-audit1",
       "engineering-pump-formula-defense-live-audit.js?v=20260626-head-power-audit1",
       "engineering-pump-performance-canonical-chart.js?v=20260626-head-power-audit1",
       "engineering-pump-performance-chart-audit.js?v=20260626-head-power-audit1",
       "engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1",
-      "engineering-route-trace-audit.js?v=20260625-pump-required-head-label1"
+      "engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4",
+      "engineering-src-canvas-parameter-runtime.js?v=20260628-src-stable-values1"
     ],
     "cacheKeysMissingLocally": [
       "engineering-analysis-report-live-runtime.js?v=20260622-local-live-sync1",
+      "engineering-canvas-context-dock.js?v=20260621-pipe-left-click-menu1",
       "engineering-parameter-task-runtime.js?v=20260621-parameter-route-full-width3",
       "engineering-performance-refresh-governor.js?v=20260614-refresh-governor4",
+      "engineering-pipe-canvas-hydraulic-label-runtime.js?v=20260621-pipe-label-pump-font1",
       "engineering-pump-edit-fast-lane.js?v=20260621-pump-edit-fast-lane5",
       "engineering-pump-formula-defense-live-audit.js?v=20260621-pump-defense-route-design4",
       "engineering-pump-performance-canonical-chart.js?v=20260622-canonical-chart26",
       "engineering-pump-performance-chart-audit.js?v=20260622-local-live-sync1",
       "engineering-realtime-calculation-defense.js?v=20260623-global-dependency-logic1",
-      "engineering-route-trace-audit.js?v=20260621-snk-boundary-logic1"
+      "engineering-route-trace-audit.js?v=20260621-snk-boundary-logic1",
+      "engineering-src-canvas-parameter-runtime.js?v=20260615-src-flow-basis3"
     ],
     "assetVerificationFailures": []
   },

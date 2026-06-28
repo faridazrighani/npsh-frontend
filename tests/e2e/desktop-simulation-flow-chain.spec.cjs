@@ -57,7 +57,7 @@ async function waitForNpshApp(page) {
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.updateSimulation === 'function'
     && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v12'
-    && window.CanvasContextDock?.version === 'engineering-canvas-context-dock.v3'
+    && window.CanvasContextDock?.version === 'engineering-canvas-context-dock.v4'
     && window.EngineeringRouteTraceAudit?.version
     && window.EngineeringDefenseExportPackage?.schemaVersion === 'defense-export-package.v1'
     && window.__npshRouteTraceAuditInstalled?.fetchSimulation

@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const VERSION = "2026.06-pipe-canvas-hydraulic-label7";
+  const VERSION = "2026.06-pipe-canvas-hydraulic-label12";
   const STYLE_ID = "engineeringPipeCanvasHydraulicLabelStyle";
   const SVG_NS = "http://www.w3.org/2000/svg";
   const LABEL_SELECTOR = "#svg-lines .pipe-delta-label[data-pipe-id]";
@@ -13,6 +13,18 @@
   const ROW_GAP = 12.5;
   const KEY_X = -82;
   const VALUE_X = -34;
+  const SOLVER_REFRESH_HOOKS = [
+    "refreshBackendProtectedSimulationUi",
+    "refreshBackendProtectedRealtimeTaskWindows",
+    "refreshBackendProtectedSelectedObjectTaskWindow",
+    "refreshBackendProtectedPumpChart"
+  ];
+  const SOLVER_REFRESH_EVENTS = [
+    "npsh:calculation-applying-results",
+    "npsh:linked-views-refreshed",
+    "npsh:calculation-current",
+    "npsh:realtime-autosolve-complete"
+  ];
   const LABEL_OBSTACLE_SELECTOR = [
     ".pfd-object",
     ".canvas-status-legend",
@@ -27,7 +39,30 @@
 
   let observer = null;
   let refreshQueued = false;
+  let solverRefreshTimer = null;
+  let initialRefreshDone = false;
+  let canvasPointerActive = false;
+  let canvasInteractionUntil = 0;
+  let refreshDeferredByInteraction = false;
+  let interactionFlushTimer = null;
+  let pipeLabelBusyUntil = 0;
+  let pipeLabelBusyFlushTimer = null;
+  let solverRefreshEventsInstalled = false;
+  let canvasInteractionEventsInstalled = false;
   let installAttempts = 0;
+  const solverRefreshWrappedFunctions = new Set();
+  const CANVAS_INTERACTION_SETTLE_MS = 220;
+  const SOLVER_REFRESH_DEBOUNCE_MS = 220;
+  const PIPE_LABEL_BUSY_SETTLE_MS = 700;
+  const CANVAS_INTERACTION_SELECTOR = [
+    ".pfd-object",
+    ".pipe-delta-label",
+    ".pipe-hydraulic-label",
+    "#svg-lines",
+    "[data-node-id]",
+    "[data-object-id]",
+    "[data-pipe-id]"
+  ].join(",");
 
   function runtimeModel() {
     try {
@@ -256,6 +291,92 @@
     children.forEach((child) => node.appendChild(child));
   }
 
+  function nowMs() {
+    const value = root.performance?.now?.();
+    return Number.isFinite(value) ? value : Date.now();
+  }
+
+  function markPipeLabelBusy() {
+    freezePipeLabelGeometry();
+    pipeLabelBusyUntil = Math.max(pipeLabelBusyUntil, nowMs() + PIPE_LABEL_BUSY_SETTLE_MS);
+    schedulePipeLabelBusyFlush();
+  }
+
+  function isPipeLabelBusy() {
+    return nowMs() < pipeLabelBusyUntil;
+  }
+
+  function freezePipeLabelGeometry(scope = document) {
+    if (!scope?.querySelectorAll) return;
+    scope.querySelectorAll(LABEL_SELECTOR).forEach((label) => {
+      const transform = label.getAttribute("transform") || "";
+      if (transform) label.dataset.pipeHydraulicLabelFrozenTransform = transform;
+    });
+  }
+
+  function restorePipeLabelGeometry(group) {
+    const frozenTransform = group?.dataset?.pipeHydraulicLabelFrozenTransform || group?.dataset?.pipeHydraulicLabelRenderedTransform || "";
+    if (!isPipeLabelBusy() || !group || !frozenTransform) return false;
+    if (group.getAttribute("transform") === frozenTransform) return false;
+    group.setAttribute("transform", frozenTransform);
+    group.dataset.pipeHydraulicLabelRenderedTransform = frozenTransform;
+    group.dataset.pipeHydraulicLabelGeometryRestored = VERSION;
+    return true;
+  }
+
+  function flushPipeLabelBusyGeometry() {
+    pipeLabelBusyFlushTimer = null;
+    if (isPipeLabelBusy()) {
+      schedulePipeLabelBusyFlush();
+      return;
+    }
+    queueRefresh(0, { force: true });
+  }
+
+  function schedulePipeLabelBusyFlush() {
+    if (typeof root.setTimeout !== "function") return;
+    root.clearTimeout?.(pipeLabelBusyFlushTimer);
+    pipeLabelBusyFlushTimer = root.setTimeout(flushPipeLabelBusyGeometry, PIPE_LABEL_BUSY_SETTLE_MS + 80);
+  }
+
+  function expectedTextNodes(group, selector, rowCount) {
+    const nodes = Array.from(group.querySelectorAll(selector));
+    return nodes.length === rowCount ? nodes : [];
+  }
+
+  function hasStableLabelStructure(group, rowCount) {
+    return !!group.querySelector("title")
+      && !!group.querySelector(".pipe-hydraulic-label-bg")
+      && expectedTextNodes(group, ".pipe-hydraulic-label-key", rowCount).length === rowCount
+      && expectedTextNodes(group, ".pipe-hydraulic-label-value", rowCount).length === rowCount;
+  }
+
+  function updateExistingLabelText(group, data) {
+    const title = group.querySelector("title");
+    if (title && title.textContent !== data.title) title.textContent = data.title;
+    const keyNodes = expectedTextNodes(group, ".pipe-hydraulic-label-key", data.rows.length);
+    const valueNodes = expectedTextNodes(group, ".pipe-hydraulic-label-value", data.rows.length);
+    data.rows.forEach((row, index) => {
+      const keyNode = keyNodes[index];
+      const valueNode = valueNodes[index];
+      if (keyNode) {
+        if (keyNode.textContent !== row.key) keyNode.textContent = row.key;
+        if (keyNode.getAttribute("data-label") !== row.title) keyNode.setAttribute("data-label", row.title);
+      }
+      if (valueNode) {
+        if (valueNode.textContent !== row.value) valueNode.textContent = row.value;
+        if (valueNode.getAttribute("data-label") !== row.title) valueNode.setAttribute("data-label", row.title);
+      }
+    });
+  }
+
+  function currentLabelSourceTransform(group) {
+    const transform = group?.getAttribute?.("transform") || "";
+    const rendered = group?.dataset?.pipeHydraulicLabelRenderedTransform || "";
+    if (transform && transform !== rendered) return transform;
+    return group?.dataset?.pipeHydraulicLabelSourceTransform || transform || "";
+  }
+
   function uprightLabelTransform(transformText = "") {
     const transform = String(transformText || "");
     const translate = transform.match(/translate\(\s*([-+]?\d*\.?\d+(?:e[-+]?\d+)?)\s*[, ]\s*([-+]?\d*\.?\d+(?:e[-+]?\d+)?)\s*\)/i);
@@ -280,20 +401,34 @@
 
   function labelAnchor(group) {
     if (!group) return null;
-    const originalTransform = group.getAttribute("transform") || "";
+    const originalTransform = currentLabelSourceTransform(group);
     const parsed = parseLabelTransform(group.dataset.pipeHydraulicLabelSourceTransform || originalTransform);
     if (parsed.x === null || parsed.y === null) return null;
+    const previousSource = group.dataset.pipeHydraulicLabelSourceTransform || "";
+    if (originalTransform && originalTransform !== previousSource) {
+      group.dataset.pipeHydraulicLabelSourceTransform = originalTransform;
+      group.dataset.pipeHydraulicLabelAnchorX = String(parsed.x);
+      group.dataset.pipeHydraulicLabelAnchorY = String(parsed.y);
+      group.dataset.pipeHydraulicLabelAngle = String(parsed.angle || 0);
+    }
     if (!group.dataset.pipeHydraulicLabelAnchorX) group.dataset.pipeHydraulicLabelAnchorX = String(parsed.x);
     if (!group.dataset.pipeHydraulicLabelAnchorY) group.dataset.pipeHydraulicLabelAnchorY = String(parsed.y);
     if (!group.dataset.pipeHydraulicLabelAngle) group.dataset.pipeHydraulicLabelAngle = String(parsed.angle || 0);
-    if (/rotate\(/i.test(originalTransform) && !group.dataset.pipeHydraulicLabelSourceTransform) {
-      group.dataset.pipeHydraulicLabelSourceTransform = originalTransform;
-    }
     return {
       x: firstFiniteValue(group.dataset.pipeHydraulicLabelAnchorX, parsed.x),
       y: firstFiniteValue(group.dataset.pipeHydraulicLabelAnchorY, parsed.y),
       angle: firstFiniteValue(group.dataset.pipeHydraulicLabelAngle, parsed.angle, 0) || 0
     };
+  }
+
+  function labelGeometrySignature(group) {
+    const anchor = labelAnchor(group);
+    if (!anchor) return "";
+    return [
+      Number(anchor.x).toFixed(1),
+      Number(anchor.y).toFixed(1),
+      Number(anchor.angle || 0).toFixed(1)
+    ].join("|");
   }
 
   function keepLabelUpright(group) {
@@ -302,6 +437,7 @@
     const uprightTransform = formatTranslate(anchor.x, anchor.y);
     if (group.getAttribute("transform") === uprightTransform) return false;
     group.setAttribute("transform", uprightTransform);
+    group.dataset.pipeHydraulicLabelRenderedTransform = uprightTransform;
     return true;
   }
 
@@ -420,20 +556,27 @@
     return score;
   }
 
+  function canonicalLabelPlacement(anchor) {
+    const candidate = smartLabelCandidates(anchor?.angle || 0)[0];
+    if (!candidate) return null;
+    return {
+      ...candidate,
+      score: 0,
+      transform: formatTranslate(anchor.x + candidate.dx, anchor.y + candidate.dy)
+    };
+  }
+
   function placeLabelSmartly(group) {
+    if (restorePipeLabelGeometry(group)) return false;
+    if (isPipeLabelBusy() && group?.dataset?.pipeHydraulicLabelRenderedTransform) return false;
     const anchor = labelAnchor(group);
     if (!anchor || typeof document === "undefined") return keepLabelUpright(group);
-    const obstacles = collectLabelObstacleRects(group);
-    const bounds = placementBounds();
-    let best = null;
-    smartLabelCandidates(anchor.angle).forEach((candidate) => {
-      const score = scoreLabelPlacement(group, anchor, candidate, obstacles, bounds);
-      if (!best || score < best.score) best = { ...candidate, score };
-    });
+    const best = canonicalLabelPlacement(anchor);
     if (!best) return keepLabelUpright(group);
-    const transform = formatTranslate(anchor.x + best.dx, anchor.y + best.dy);
+    const transform = best.transform;
     const changed = group.getAttribute("transform") !== transform;
     group.setAttribute("transform", transform);
+    group.dataset.pipeHydraulicLabelRenderedTransform = transform;
     group.dataset.pipeHydraulicLabelPlacement = best.name;
     group.dataset.pipeHydraulicLabelPlacementScore = String(Math.round(best.score));
     return changed;
@@ -442,53 +585,66 @@
   function renderLabelGroup(group) {
     const pipeId = group?.dataset?.pipeId || "";
     const data = buildPipeHydraulicLabelData(pipeId);
-    if (!data) return false;
-    if (
-      group.dataset.pipeHydraulicLabelVersion === VERSION
-      && group.dataset.pipeHydraulicLabelSignature === data.signature
-    ) {
-      return placeLabelSmartly(group);
+    if (!data) {
+      if (group?.dataset?.pipeHydraulicLabelRestored === VERSION && group.parentNode) group.remove();
+      return false;
     }
+    const geometrySignature = labelGeometrySignature(group);
+    const hasCurrentData = group.dataset.pipeHydraulicLabelVersion === VERSION
+      && group.dataset.pipeHydraulicLabelSignature === data.signature;
+    const hasCurrentGeometry = group.dataset.pipeHydraulicLabelGeometrySignature === geometrySignature;
+    const hasStructure = hasStableLabelStructure(group, data.rows.length);
+    const holdGeometry = isPipeLabelBusy() && !!group.dataset.pipeHydraulicLabelRenderedTransform;
+    if (hasCurrentData && hasCurrentGeometry && hasStructure) return false;
 
     group.classList.add("pipe-hydraulic-label");
     group.dataset.pipeHydraulicLabel = "true";
     group.dataset.pipeHydraulicLabelVersion = VERSION;
     group.dataset.pipeHydraulicLabelSignature = data.signature;
+    if (!holdGeometry) group.dataset.pipeHydraulicLabelGeometrySignature = geometrySignature;
     group.setAttribute("role", "img");
     group.setAttribute("aria-label", data.title);
 
-    const children = [
-      createSvgNode("title", {}, data.title),
-      createSvgNode("rect", {
-        class: "pipe-hydraulic-label-bg",
-        x: (-BLOCK_WIDTH / 2).toFixed(1),
-        y: BLOCK_TOP,
-        width: BLOCK_WIDTH,
-        height: BLOCK_HEIGHT,
-        rx: 4,
-        ry: 4
-      })
-    ];
+    if (hasStructure) {
+      updateExistingLabelText(group, data);
+    } else {
+      const children = [
+        createSvgNode("title", {}, data.title),
+        createSvgNode("rect", {
+          class: "pipe-hydraulic-label-bg",
+          x: (-BLOCK_WIDTH / 2).toFixed(1),
+          y: BLOCK_TOP,
+          width: BLOCK_WIDTH,
+          height: BLOCK_HEIGHT,
+          rx: 4,
+          ry: 4
+        })
+      ];
 
-    data.rows.forEach((row, index) => {
-      const y = ROW_TOP + index * ROW_GAP;
-      children.push(createSvgNode("text", {
-        class: "pipe-hydraulic-label-key",
-        x: KEY_X,
-        y,
-        "data-label": row.title
-      }, row.key));
-      children.push(createSvgNode("text", {
-        class: "pipe-hydraulic-label-value",
-        x: VALUE_X,
-        y,
-        "data-label": row.title
-      }, row.value));
-    });
+      data.rows.forEach((row, index) => {
+        const y = ROW_TOP + index * ROW_GAP;
+        children.push(createSvgNode("text", {
+          class: "pipe-hydraulic-label-key",
+          x: KEY_X,
+          y,
+          "data-label": row.title
+        }, row.key));
+        children.push(createSvgNode("text", {
+          class: "pipe-hydraulic-label-value",
+          x: VALUE_X,
+          y,
+          "data-label": row.title
+        }, row.value));
+      });
 
-    replaceChildren(group, children);
-    placeLabelSmartly(group);
-    return true;
+      replaceChildren(group, children);
+    }
+    if (holdGeometry) {
+      restorePipeLabelGeometry(group);
+      group.dataset.pipeHydraulicLabelGeometryHeld = VERSION;
+    }
+    const placed = !holdGeometry && !hasCurrentGeometry ? placeLabelSmartly(group) : false;
+    return !hasCurrentData || !hasStructure || placed;
   }
 
   function refreshPipeCanvasHydraulicLabels(rootNode = document) {
@@ -500,13 +656,61 @@
     return changed;
   }
 
-  function queueRefresh() {
-    if (refreshQueued || typeof root.setTimeout !== "function") return;
+  function runQueuedRefresh() {
+    refreshPipeCanvasHydraulicLabels(document);
+  }
+
+  function isCanvasInteractionActive() {
+    return canvasPointerActive || Date.now() < canvasInteractionUntil;
+  }
+
+  function flushInteractionRefresh() {
+    interactionFlushTimer = null;
+    if (!refreshDeferredByInteraction || isCanvasInteractionActive()) {
+      if (refreshDeferredByInteraction && typeof root.setTimeout === "function") {
+        interactionFlushTimer = root.setTimeout(flushInteractionRefresh, CANVAS_INTERACTION_SETTLE_MS);
+      }
+      return;
+    }
+    refreshDeferredByInteraction = false;
+    queueRefresh(0, { force: true });
+  }
+
+  function deferRefreshUntilInteractionSettles() {
+    refreshDeferredByInteraction = true;
+    if (interactionFlushTimer || typeof root.setTimeout !== "function") return;
+    interactionFlushTimer = root.setTimeout(flushInteractionRefresh, CANVAS_INTERACTION_SETTLE_MS);
+  }
+
+  function queueRefresh(delayMs = 0) {
+    if (typeof root.setTimeout !== "function") return;
+    const delay = Math.max(0, Number.parseInt(delayMs, 10) || 0);
+    const options = arguments[1] || {};
+    if (delay > 0) {
+      root.setTimeout(() => queueRefresh(0, options), delay);
+      return;
+    }
+    if (!options.force && isCanvasInteractionActive()) {
+      deferRefreshUntilInteractionSettles();
+      return;
+    }
+    if (refreshQueued) return;
     refreshQueued = true;
     root.setTimeout(() => {
       refreshQueued = false;
-      refreshPipeCanvasHydraulicLabels(document);
+      runQueuedRefresh();
     }, 0);
+  }
+
+  function queueSolverRefreshSweep() {
+    if (solverRefreshTimer && typeof root.clearTimeout === "function") {
+      root.clearTimeout(solverRefreshTimer);
+    }
+    if (typeof root.setTimeout !== "function") return;
+    solverRefreshTimer = root.setTimeout(() => {
+      solverRefreshTimer = null;
+      queueRefresh(0, { force: true });
+    }, SOLVER_REFRESH_DEBOUNCE_MS);
   }
 
   function injectStyle() {
@@ -551,6 +755,7 @@
     const original = root.drawConnections;
     if (typeof original !== "function" || original.__pipeCanvasHydraulicLabelPatched) return false;
     function patchedDrawConnections(...args) {
+      markPipeLabelBusy();
       const result = original.apply(this, args);
       queueRefresh();
       return result;
@@ -564,8 +769,12 @@
     const original = root.updateSimulation;
     if (typeof original !== "function" || original.__pipeCanvasHydraulicLabelPatched) return false;
     function patchedUpdateSimulation(...args) {
+      markPipeLabelBusy();
       const result = original.apply(this, args);
-      const refresh = () => queueRefresh();
+      const refresh = () => {
+        markPipeLabelBusy();
+        queueSolverRefreshSweep();
+      };
       if (result && typeof result.then === "function") return result.finally(refresh);
       refresh();
       return result;
@@ -575,9 +784,111 @@
     return true;
   }
 
+  function patchSolverRefreshFunction(functionName) {
+    if (solverRefreshWrappedFunctions.has(functionName)) return false;
+    const original = root[functionName];
+    if (typeof original !== "function" || original.__pipeCanvasSolverRefreshPatched) return false;
+    function patchedSolverRefreshFunction(...args) {
+      markPipeLabelBusy();
+      const result = original.apply(this, args);
+      const refresh = () => {
+        markPipeLabelBusy();
+        queueSolverRefreshSweep();
+      };
+      if (result && typeof result.then === "function") return result.finally(refresh);
+      refresh();
+      return result;
+    }
+    patchedSolverRefreshFunction.__pipeCanvasSolverRefreshPatched = true;
+    patchedSolverRefreshFunction.__pipeCanvasSolverRefreshOriginal = original;
+    root[functionName] = patchedSolverRefreshFunction;
+    solverRefreshWrappedFunctions.add(functionName);
+    return true;
+  }
+
+  function patchSolverRefreshHooks() {
+    return SOLVER_REFRESH_HOOKS.map((functionName) => patchSolverRefreshFunction(functionName)).some(Boolean);
+  }
+
+  function installSolverRefreshEvents() {
+    if (solverRefreshEventsInstalled || typeof document === "undefined") return false;
+    solverRefreshEventsInstalled = true;
+    SOLVER_REFRESH_EVENTS.forEach((eventName) => {
+      document.addEventListener(eventName, () => {
+        markPipeLabelBusy();
+        queueSolverRefreshSweep();
+      });
+    });
+    return true;
+  }
+
+  function isCanvasInteractionTarget(target) {
+    return !!target?.closest?.(CANVAS_INTERACTION_SELECTOR);
+  }
+
+  function startCanvasInteraction(event) {
+    if (!isCanvasInteractionTarget(event.target)) return;
+    canvasPointerActive = true;
+    markPipeLabelBusy();
+    canvasInteractionUntil = Date.now() + CANVAS_INTERACTION_SETTLE_MS;
+  }
+
+  function continueCanvasInteraction() {
+    if (!canvasPointerActive) return;
+    markPipeLabelBusy();
+    canvasInteractionUntil = Date.now() + CANVAS_INTERACTION_SETTLE_MS;
+  }
+
+  function endCanvasInteraction() {
+    if (!canvasPointerActive) return;
+    markPipeLabelBusy();
+    canvasPointerActive = false;
+    canvasInteractionUntil = Date.now() + CANVAS_INTERACTION_SETTLE_MS;
+    deferRefreshUntilInteractionSettles();
+  }
+
+  function installCanvasInteractionEvents() {
+    if (canvasInteractionEventsInstalled || typeof document === "undefined") return false;
+    canvasInteractionEventsInstalled = true;
+    document.addEventListener("pointerdown", startCanvasInteraction, true);
+    document.addEventListener("pointermove", continueCanvasInteraction, true);
+    document.addEventListener("pointerup", endCanvasInteraction, true);
+    document.addEventListener("pointercancel", endCanvasInteraction, true);
+    document.addEventListener("mousedown", startCanvasInteraction, true);
+    document.addEventListener("mousemove", continueCanvasInteraction, true);
+    document.addEventListener("mouseup", endCanvasInteraction, true);
+    document.addEventListener("touchstart", startCanvasInteraction, true);
+    document.addEventListener("touchmove", continueCanvasInteraction, true);
+    document.addEventListener("touchend", endCanvasInteraction, true);
+    document.addEventListener("touchcancel", endCanvasInteraction, true);
+    ["input", "change"].forEach((eventName) => {
+      document.addEventListener(eventName, (event) => {
+        if (event.target?.matches?.("input, select, textarea, [contenteditable='true']")) markPipeLabelBusy();
+      }, true);
+    });
+    return true;
+  }
+
   function installObserver() {
     if (observer || typeof document === "undefined" || typeof MutationObserver === "undefined") return false;
     observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === "attributes" && mutation.target?.matches?.(LABEL_SELECTOR)) {
+          restorePipeLabelGeometry(mutation.target);
+        }
+        Array.from(mutation.removedNodes || []).forEach((node) => {
+          const labels = [];
+          if (node?.matches?.(LABEL_SELECTOR)) labels.push(node);
+          node?.querySelectorAll?.(LABEL_SELECTOR).forEach((label) => labels.push(label));
+          labels.forEach((label) => {
+            const parent = mutation.target;
+            if (!isPipeLabelBusy() || label.isConnected || !parent?.isConnected || typeof parent.insertBefore !== "function") return;
+            const nextSibling = mutation.nextSibling?.parentNode === parent ? mutation.nextSibling : null;
+            parent.insertBefore(label, nextSibling);
+            label.dataset.pipeHydraulicLabelRestored = VERSION;
+          });
+        });
+      });
       if (mutations.some((mutation) => {
         const target = mutation.target;
         return target?.id === "svg-lines"
@@ -587,18 +898,33 @@
             || node?.querySelector?.(".pipe-delta-label")
           ));
       })) {
-        queueRefresh();
+        queueRefresh(0);
       }
     });
-    observer.observe(document.documentElement, { childList: true, subtree: true });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["transform", "class"],
+      childList: true,
+      subtree: true
+    });
     return true;
   }
 
   function install() {
     if (typeof document === "undefined") return false;
     injectStyle();
-    const patched = [patchDrawConnections(), patchUpdateSimulation(), installObserver()].some(Boolean);
-    queueRefresh();
+    const patched = [
+      patchDrawConnections(),
+      patchUpdateSimulation(),
+      patchSolverRefreshHooks(),
+      installSolverRefreshEvents(),
+      installCanvasInteractionEvents(),
+      installObserver()
+    ].some(Boolean);
+    if (!initialRefreshDone || patched) {
+      initialRefreshDone = true;
+      queueRefresh(0, { force: true });
+    }
     return patched;
   }
 
@@ -615,6 +941,7 @@
     install,
     refresh: refreshPipeCanvasHydraulicLabels,
     buildPipeHydraulicLabelData,
+    canonicalLabelPlacement,
     uprightLabelTransform,
     parseLabelTransform,
     smartLabelCandidates,

@@ -10,6 +10,7 @@ const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 const SRC_RUNTIME = path.join(FRONTEND_ROOT, "engineering-src-canvas-parameter-runtime.js");
 const ROUTE_RUNTIME = path.join(FRONTEND_ROOT, "engineering-route-trace-audit.js");
 const DECIMAL_RUNTIME = path.join(FRONTEND_ROOT, "engineering-decimal-display-runtime.js");
+const STABLE_RUNTIME = path.join(FRONTEND_ROOT, "engineering-live-parameter-stable-runtime.js");
 const INDEX_FILE = path.join(FRONTEND_ROOT, "index.html");
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 
@@ -94,6 +95,7 @@ function sinkHead(node) {
 const srcRuntime = readText(SRC_RUNTIME);
 const routeRuntime = readText(ROUTE_RUNTIME);
 const decimalRuntime = readText(DECIMAL_RUNTIME);
+const stableRuntime = readText(STABLE_RUNTIME);
 const indexHtml = readText(INDEX_FILE);
 const manifest = readText(MANIFEST_FILE);
 
@@ -104,12 +106,15 @@ assert(srcRuntime.includes("patchSourceRenderFunction"), "SRC presentation must 
 assert(srcRuntime.includes('"updateSimulation"'), "SRC presentation must hook updateSimulation globally.");
 assert(srcRuntime.includes('"applyBackendSimulationPrimaryResults"'), "SRC presentation must hook backend result application globally.");
 assert(srcRuntime.includes("data-engineering-runtime-originaltitle"), "SRC hover backup title must be synchronized with current canvas values.");
+assert(srcRuntime.includes("sourcePresentationRefreshTimer"), "SRC presentation refresh must debounce value-only updates.");
+assert(!srcRuntime.includes("[0, 80, 240, 700, 1400]"), "SRC presentation must not use repeated value-refresh sweeps.");
 
 assert(routeRuntime.includes("syncRouteObjectTooltips"), "Route runtime must sync pump/SNK object hover titles globally.");
 assert(routeRuntime.includes("syncPumpObjectTooltip"), "Pump hover title must be rebuilt from current live-panel values.");
 assert(routeRuntime.includes("syncSinkObjectTooltip"), "SNK hover title must be rebuilt from current canonical/live-panel values.");
 assert(routeRuntime.includes("data-engineering-runtime-originaltitle"), "Pump/SNK hover backup title must be synchronized with current canvas values.");
-assert(routeRuntime.includes("scheduleRouteObjectTooltipSync(canvas, 320)"), "Route runtime must schedule post-render hover sync after canvas repaint.");
+assert(routeRuntime.includes("scheduleRouteObjectTooltipSync(canvas, 360)"), "Route runtime must schedule a bounded solver hover sync after backend repaint.");
+assert(routeRuntime.includes("scheduleRouteObjectTooltipSync(canvas, 420)"), "Route runtime must schedule lightweight post-render hover sync after ordinary canvas repaint.");
 assert(routeRuntime.includes("refreshVisibleAuditSurfaces, delayMs"), "Backend result application must schedule presentation refresh after engine results land.");
 assert(routeRuntime.includes("routeSurfaceRefreshPending"), "Route runtime must throttle global surface refreshes so canvas updates do not stack.");
 assert(routeRuntime.includes("observer.observe(document.getElementById('canvas') || document.body || document.documentElement, { childList: true, subtree: true })"), "Global route observer must stay scoped and childList-only for performance.");
@@ -125,8 +130,31 @@ assert(decimalRuntime.includes('"Evaluated Flow"'), "Decimal display lock must p
 assert(decimalRuntime.includes('"Sink Flow"'), "Decimal display lock must protect SNK flow formatting globally.");
 assert(decimalRuntime.includes("attempts >= 32"), "Decimal display lock retry loop must stay short for performance.");
 
-assert(indexHtml.includes("engineering-src-canvas-parameter-runtime.js?v=20260615-src-flow-basis3"), "Index must load the global SRC realtime indicator runtime.");
-assert(indexHtml.includes("engineering-route-trace-audit.js?v=20260621-snk-boundary-logic1"), "Index must load the global SNK/pump hover-sync runtime.");
+assert(stableRuntime.includes('const VERSION = "2026.06-live-parameter-stable3"'), "Stable live parameter runtime must expose the global stable-shell version.");
+assert(stableRuntime.includes('PANEL_SELECTOR = ".pump-live-params, .tank-live-params, .source-live-params, .sink-live-params"'), "Stable runtime must cover pump, tank, source, and sink canvas panels.");
+assert(stableRuntime.includes("syncMatchingRows"), "Stable runtime must update matching live rows in place.");
+assert(stableRuntime.includes("setTextIfChanged(valueElement(targetRow)"), "Stable runtime must patch numeric values through textContent.");
+assert(stableRuntime.includes("stabilizePanelFromReplacement"), "Stable runtime must absorb replacement panels into the existing canvas shell.");
+assert(stableRuntime.includes("shouldAllowStructureReplacement"), "Stable runtime must still allow intentional row-structure changes outside solve/drag lifecycle.");
+assert(stableRuntime.includes("detachedPanels"), "Stable runtime must restore a detached panel shell when the renderer replaces it.");
+assert(stableRuntime.includes("restoreRemovedPanel"), "Stable runtime must immediately reinsert removed panels during solve/input/drag busy windows.");
+assert(stableRuntime.includes("liveParameterStableRestored"), "Stable runtime must mark restored panels for QA.");
+assert(stableRuntime.includes("freezeAllPanelGeometry"), "Stable runtime must freeze live panel geometry during solver/input/drag updates.");
+assert(stableRuntime.includes("restorePanelGeometry"), "Stable runtime must restore panel geometry if the renderer rewrites style/class during a busy window.");
+assert(stableRuntime.includes("pendingPanelAttributes"), "Stable runtime must defer visual shell attribute changes so values can update without panel flicker.");
+assert(stableRuntime.includes("liveParameterStableAttributesFlushed"), "Stable runtime must flush deferred visual shell attributes once the busy window settles.");
+assert(stableRuntime.includes("skipTransientPlaceholder"), "Stable runtime must prevent transient solver placeholders from erasing visible values.");
+assert(stableRuntime.includes("PATCH_FUNCTIONS"), "Stable runtime must hook solver/render functions globally.");
+assert(stableRuntime.includes("npsh:calculation-applying-results"), "Stable runtime must listen to solver applying-results events.");
+assert(stableRuntime.includes("pointermove"), "Stable runtime must stay stable during canvas dragging.");
+assert(stableRuntime.includes('"input", "change"'), "Stable runtime must protect canvas panels while users edit numeric inputs.");
+assert(stableRuntime.includes("MutationObserver"), "Stable runtime must watch late live-parameter panel insertions.");
+assert(stableRuntime.includes("dataset.liveParameterStableShell"), "Stable runtime must mark stable shell panels for QA.");
+assert(!stableRuntime.includes("innerHTML"), "Stable runtime must not rebuild live parameter panels via innerHTML.");
+
+assert(indexHtml.includes("engineering-src-canvas-parameter-runtime.js?v=20260628-src-stable-values1"), "Index must load the global SRC realtime indicator runtime.");
+assert(indexHtml.includes("engineering-live-parameter-stable-runtime.js?v=20260628-global-stable-values3"), "Index must load the global stable live-parameter runtime.");
+assert(indexHtml.includes("engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4"), "Index must load the global SNK/pump hover-sync runtime.");
 assert(indexHtml.includes("engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2"), "Index must load the global decimal display lock.");
 
 assert(manifest.includes("Global live indicator engine-link validation"), "Manifest must document the global live indicator engine-link validation.");
