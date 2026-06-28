@@ -12,7 +12,7 @@ const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 
-assert.equal(runtime.version, '2026.06-route-trace-audit-v35', 'Route trace audit runtime should expose the locked route trace version.');
+assert.equal(runtime.version, '2026.06-route-trace-audit-v34', 'Route trace audit runtime should expose the locked v33 version.');
 assert.equal(typeof runtime.openRouteAuditPanel, 'function', 'Dedicated route audit panel should remain available.');
 assert.equal(typeof runtime.pruneDefaultCanvasRouteTraceOverlays, 'function', 'Canvas route trace overlay pruning should be exposed for audit tests.');
 assert.equal(typeof runtime.pruneDefaultPumpRouteTraceRows, 'function', 'Pump route trace row pruning should be exposed for audit tests.');
@@ -36,11 +36,8 @@ assert(runtimeSource.includes("'NPSH Vapor Press.'"), 'Pump live panel lock shou
 assert(runtimeSource.includes("'Vapor Press. Used'"), 'Pump live panel lock should hide Vapor Press. Used rows.');
 assert(runtimeSource.includes('function isHiddenPumpCanvasSectionText'), 'Pump live panel lock should remove ROUTE TRACE sections with info/help suffixes.');
 assert(runtimeSource.includes('function isHiddenPumpCanvasRowLabel'), 'Pump live panel lock should normalize route/vapor row labels before hiding them.');
-assert(runtimeSource.includes("'Hydraulic NPSH'"), 'Pump canvas panel lock should add a stable Hydraulic NPSH status row when available.');
-assert(runtimeSource.includes("'Discharge Duty'"), 'Pump canvas panel lock should add a stable Discharge Duty row when available.');
-assert(runtimeSource.includes("'Backend Valid.'"), 'Pump canvas panel lock should add a stable backend validation row when available.');
-assert(runtimeSource.includes('dischargeDutyStatusFromHeadResidual'), 'Pump canvas panel lock should derive Discharge Duty from head residual when backend fields are absent.');
-assert(runtimeSource.includes('route-trace-status-alarm'), 'Pump canvas panel lock should expose an alarm tone for not feasible discharge duty.');
+assert(runtimeSource.includes("upsertPumpCanvasRow(panel, 'Hydraulic NPSH'"), 'Pump canvas panel lock should add a stable Hydraulic NPSH status row when available.');
+assert(runtimeSource.includes("upsertPumpCanvasRow(panel, 'Backend Valid.'"), 'Pump canvas panel lock should add a stable backend validation row when available.');
 assert(runtimeSource.includes('const SINK_CANVAS_HIDDEN_ROW_LABELS = new Set(['), 'SNK canvas panel lock should use the locked hidden-row allowlist.');
 assert(runtimeSource.includes("'Flow Demand'"), 'SNK canvas panel lock should hide the old Flow Demand display row.');
 assert(runtimeSource.includes("'Outlet Flow'"), 'SNK canvas panel lock should hide the old Outlet Flow display row.');
@@ -316,13 +313,6 @@ function valuesByLabelIn(panel, rowSelector, labelSelector, valueSelector) {
   return values;
 }
 
-function valueElementByLabelIn(panel, label, rowSelector = '.pump-live-param-row', labelSelector = '.pump-live-param-label', valueSelector = '.pump-live-param-value') {
-  return panel
-    .querySelectorAll(rowSelector)
-    .find((element) => element.querySelector(labelSelector)?.textContent === label)
-    ?.querySelector(valueSelector) || null;
-}
-
 function sectionsIn(panel) {
   return panel
     .querySelectorAll('.pump-live-param-section')
@@ -504,8 +494,6 @@ try {
         requiredSystemHead: 37.664,
         requiredSystemHeadRaw: 37.664,
         hydraulicNpshStatus: 'Safe',
-        dischargeDutyStatus: 'Feasible',
-        dischargeDutySeverity: 'safe',
         backendValidationStatus: 'Connected',
         solveMode: 'Route-only NPSH design ceiling at fixed route flow'
       }
@@ -595,7 +583,7 @@ try {
   const canonicalBuilderRows = global.buildPumpLiveParameterRows(global.globalModel['P-CANON']);
   assert.deepEqual(
     canonicalBuilderRows.map((row) => row.label),
-    ['Status', 'Hydraulic NPSH', 'Discharge Duty', 'Suction', 'Flow', 'Discharge', 'Required Head'],
+    ['Status', 'Hydraulic NPSH', 'Suction', 'Flow', 'Discharge', 'Required Head'],
     'Pump row-builder wrapper should remove vapor-pressure and route-trace rows before canvas render.'
   );
   assert.deepEqual(
@@ -645,7 +633,6 @@ try {
     labelsIn(canonicalPumpPanel),
     [
       'Hydraulic NPSH',
-      'Discharge Duty',
       'Backend Valid.',
       'Flow',
       'Suction Press.',
@@ -662,7 +649,6 @@ try {
     valuesByLabelIn(canonicalPumpPanel, '.pump-live-param-row', '.pump-live-param-label', '.pump-live-param-value'),
     {
       'Hydraulic NPSH': 'Safe',
-      'Discharge Duty': 'Feasible',
       'Backend Valid.': 'Connected',
       Flow: '39.680 m3/h',
       'Suction Press.': '2.155',
@@ -675,9 +661,6 @@ try {
     },
     'Canonical pump canvas values should remain stable from file open through delayed route-trace cleanup.'
   );
-  const dischargeDutyValue = valueElementByLabelIn(canonicalPumpPanel, 'Discharge Duty');
-  assert.equal(dischargeDutyValue?.dataset.routeTraceStatusTone, 'safe', 'Discharge Duty should expose the backend severity as a stable canvas tone.');
-  assert(dischargeDutyValue?.classList.contains('route-trace-status-safe'), 'Discharge Duty should carry the safe tone class for CSS/runtime QA.');
   assert.deepEqual(
     sectionsIn(legacyPumpPanel),
     ['Suction', 'Discharge'],
@@ -729,11 +712,11 @@ try {
 }
 
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260628-discharge-duty-status1'),
+  index.includes('engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4'),
   'Index must load the route trace audit runtime with the default-lock cache key.'
 );
 assert(
-  manifest.includes('Route audit cache key: engineering-route-trace-audit.js?v=20260628-discharge-duty-status1'),
+  manifest.includes('Route audit cache key: engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4'),
   'Manifest must document the route trace default-lock cache key.'
 );
 

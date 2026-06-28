@@ -91,7 +91,7 @@ assert(
   'Index must load the simulation case integrity guard with cache busting.'
 );
 assert(
-  indexSource.indexOf('engineering-route-trace-audit.js?v=20260628-discharge-duty-status1')
+  indexSource.indexOf('engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4')
     < indexSource.indexOf('engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3')
     && indexSource.indexOf('engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3')
     > indexSource.indexOf('engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1')

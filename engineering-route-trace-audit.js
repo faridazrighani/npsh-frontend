@@ -1,5 +1,5 @@
 (function registerEngineeringRouteTraceAudit(root) {
-  const VERSION = '2026.06-route-trace-audit-v35';
+  const VERSION = '2026.06-route-trace-audit-v34';
   const PANEL_ID = 'engineeringRouteTraceAuditPanel';
   const PANEL_BODY_ID = 'engineeringRouteTraceAuditPanelBody';
   const MENU_BUTTON_ID = 'menu-tools-route-trace-audit';
@@ -62,20 +62,6 @@
   let canonicalLiveParameterRowBuilderTimer = null;
   let canonicalLiveParameterRowBuilderRetryCount = 0;
   const ATM_PRESSURE_BAR_A = 1.01325;
-  const PUMP_STATUS_TONE_CLASSES = [
-    'route-trace-status-safe',
-    'route-trace-status-advisory',
-    'route-trace-status-warning',
-    'route-trace-status-alarm',
-    'route-trace-status-unknown'
-  ];
-  const PUMP_STATUS_TONE_COLORS = {
-    safe: '#166534',
-    advisory: '#a16207',
-    warning: '#b45309',
-    alarm: '#b91c1c',
-    unknown: '#475569'
-  };
 
   function model() {
     return root.globalModel || root.__npshGlobalModel || {};
@@ -161,10 +147,7 @@
   function canonicalPumpLiveParameterRows(rows, args = []) {
     if (!Array.isArray(rows)) return rows;
     const canonicalFlow = pumpCanonicalFlowForLiveRows(args[0]);
-    const canonicalStatus = args[0]?.type === 'pump' || args[0]?.results
-      ? pumpCanonicalStatusValues(args[0])
-      : {};
-    const canonicalRows = rows.filter((row) => {
+    return rows.filter((row) => {
       const label = normalizedReadoutLabel(row?.label ?? row?.title ?? '');
       if (isLiveParameterSectionRow(row)) return !isHiddenPumpCanvasSectionText(label);
       return !isHiddenPumpCanvasRowLabel(label);
@@ -178,26 +161,6 @@
         title: row?.title || 'Route duty flow synchronized with the connected SRC/SNK boundary flow.'
       };
     });
-    if (canonicalStatus.dischargeDutyStatus) {
-      const existingIndex = canonicalRows.findIndex((row) => normalizedReadoutLabel(row?.label ?? row?.title ?? '') === 'Discharge Duty');
-      const dischargeDutyRow = {
-        label: 'Discharge Duty',
-        value: canonicalStatus.dischargeDutyStatus,
-        statusSeverity: canonicalStatus.dischargeDutySeverity || severityFromDischargeDutyStatus(canonicalStatus.dischargeDutyStatus),
-        title: 'Actual pump head compared with required system head at the evaluated duty.'
-      };
-      if (existingIndex >= 0) {
-        canonicalRows[existingIndex] = { ...canonicalRows[existingIndex], ...dischargeDutyRow };
-      } else {
-        const hydraulicIndex = canonicalRows.findIndex((row) => normalizedReadoutLabel(row?.label ?? row?.title ?? '') === 'Hydraulic NPSH');
-        const statusSectionIndex = canonicalRows.findIndex((row) => isLiveParameterSectionRow(row) && /^status$/i.test(normalizedReadoutLabel(row?.label ?? row?.title ?? '')));
-        const insertIndex = hydraulicIndex >= 0
-          ? hydraulicIndex + 1
-          : (statusSectionIndex >= 0 ? statusSectionIndex + 1 : 0);
-        canonicalRows.splice(insertIndex, 0, dischargeDutyRow);
-      }
-    }
-    return canonicalRows;
   }
 
   function canonicalSinkLiveParameterRows(rows) {
@@ -322,31 +285,6 @@
       return text;
     }
     return '';
-  }
-
-  function normalizeStatusKey(value) {
-    return normalizeText(value).toLowerCase();
-  }
-
-  function dischargeDutyStatusFromHeadResidual(headResidual, warningLimit, riskLimit) {
-    const residual = finiteNumber(headResidual);
-    if (residual === null) return '';
-    const warning = finiteNumber(warningLimit) ?? -0.2;
-    const risk = finiteNumber(riskLimit) ?? -2;
-    if (residual >= 0) return 'Feasible';
-    if (residual >= Math.min(warning, 0)) return 'Borderline';
-    if (residual >= Math.min(risk, warning)) return 'Warning';
-    return 'Not Feasible';
-  }
-
-  function severityFromDischargeDutyStatus(status) {
-    const key = normalizeStatusKey(status);
-    if (!key || key === 'not evaluated') return 'unknown';
-    if (key === 'feasible' || key === 'safe' || key === 'connected') return 'safe';
-    if (key === 'borderline' || key === 'review required') return 'advisory';
-    if (key === 'warning') return 'warning';
-    if (key === 'not feasible' || key.includes('infeasible') || key.includes('risk') || key.includes('invalid')) return 'alarm';
-    return 'unknown';
   }
 
   function firstBooleanValue(...values) {
@@ -1373,7 +1311,6 @@
   function createPumpCanvasSection(label) {
     const section = document.createElement('div');
     section.className = 'pump-live-param-section';
-    section.classList?.add?.('pump-live-param-section');
     section.dataset.routeTraceAuditPumpReadout = 'true';
     section.textContent = label;
     return section;
@@ -1382,51 +1319,16 @@
   function createPumpCanvasRow(label, value) {
     const row = document.createElement('div');
     row.className = 'pump-live-param-row';
-    row.classList?.add?.('pump-live-param-row');
     row.dataset.routeTraceAuditPumpReadout = 'true';
     const labelElement = document.createElement('span');
     labelElement.className = 'pump-live-param-label';
-    labelElement.classList?.add?.('pump-live-param-label');
     labelElement.textContent = label;
     const valueElement = document.createElement('strong');
     valueElement.className = 'pump-live-param-value';
-    valueElement.classList?.add?.('pump-live-param-value');
     valueElement.textContent = value;
     row.appendChild(labelElement);
     row.appendChild(valueElement);
     return row;
-  }
-
-  function applyPumpCanvasStatusTone(row, severity) {
-    const valueElement = row?.querySelector?.('.pump-live-param-value, strong');
-    if (!valueElement) return false;
-    if (!valueElement.classList.contains('pump-live-param-value')) {
-      valueElement.classList.add('pump-live-param-value');
-    }
-    const tone = PUMP_STATUS_TONE_COLORS[severity] ? severity : 'unknown';
-    let changed = false;
-    const toneClass = `route-trace-status-${tone}`;
-    PUMP_STATUS_TONE_CLASSES.forEach((className) => {
-      if (className !== toneClass && valueElement.classList.contains(className)) {
-        valueElement.classList.remove(className);
-        changed = true;
-      }
-    });
-    if (!valueElement.classList.contains(toneClass)) {
-      valueElement.classList.add(toneClass);
-      changed = true;
-    }
-    if (valueElement.dataset.routeTraceStatusTone !== tone) {
-      valueElement.dataset.routeTraceStatusTone = tone;
-      changed = true;
-    }
-    const color = PUMP_STATUS_TONE_COLORS[tone];
-    if (valueElement.dataset.routeTraceStatusColor !== color) {
-      valueElement.style.color = color;
-      valueElement.dataset.routeTraceStatusColor = color;
-      changed = true;
-    }
-    return changed;
   }
 
   function pumpPanelSectionByLabel(panel, label) {
@@ -1494,7 +1396,7 @@
     }) || null;
   }
 
-  function upsertPumpCanvasRow(panel, label, value, anchorLabels = [], options = {}) {
+  function upsertPumpCanvasRow(panel, label, value, anchorLabels = []) {
     const existing = pumpPanelRowByLabels(panel, [label]);
     if (existing) {
       const valueElement = existing.querySelector('.pump-live-param-value, strong');
@@ -1508,13 +1410,9 @@
         existing.dataset.routeTraceAuditPumpReadout = 'true';
         changed = true;
       }
-      if (options.statusSeverity) {
-        changed = applyPumpCanvasStatusTone(existing, options.statusSeverity) || changed;
-      }
       return changed;
     }
     const row = createPumpCanvasRow(label, value);
-    if (options.statusSeverity) applyPumpCanvasStatusTone(row, options.statusSeverity);
     insertPumpCanvasNode(panel, row, anchorLabels);
     return true;
   }
@@ -1530,9 +1428,6 @@
     const interpretation = results.calculationTrace?.interpretation
       || evaluation.calculationTrace?.interpretation
       || {};
-    const systemHead = results.calculationTrace?.systemHead
-      || evaluation.calculationTrace?.systemHead
-      || {};
     const hydraulicNpshStatus = firstMeaningfulStatusValue(
       results.hydraulicNpshStatus,
       results.cavitationStatus,
@@ -1547,59 +1442,21 @@
       results.backendParity?.status === 'matched' ? 'Connected' : '',
       results.backendCalculationSource && !/unavailable|timeout/i.test(results.backendCalculationSource) ? 'Connected' : ''
     );
-    const derivedDischargeDutyStatus = dischargeDutyStatusFromHeadResidual(
-      firstFiniteValue(results.headResidual, evaluation.headResidual, systemHead.headResidual),
-      firstFiniteValue(results.headResidualWarningLimit, evaluation.headResidualWarningLimit, systemHead.headResidualWarningLimit),
-      firstFiniteValue(results.headResidualRiskLimit, evaluation.headResidualRiskLimit, systemHead.headResidualRiskLimit)
-    );
-    const dischargeDutyStatus = firstMeaningfulStatusValue(
-      results.dischargeDutyStatus,
-      evaluation.dischargeDutyStatus,
-      systemHead.dischargeDutyStatus,
-      derivedDischargeDutyStatus
-    );
-    const dischargeDutySeverity = firstTextValue(
-      results.dischargeDutySeverity,
-      evaluation.dischargeDutySeverity,
-      systemHead.dischargeDutySeverity,
-      severityFromDischargeDutyStatus(dischargeDutyStatus)
-    ) || severityFromDischargeDutyStatus(dischargeDutyStatus);
-    return { hydraulicNpshStatus, dischargeDutyStatus, dischargeDutySeverity, backendValidationStatus };
+    return { hydraulicNpshStatus, backendValidationStatus };
   }
 
   function ensurePumpStatusCanvasRows(panel) {
     const pump = pumpNodeForCanvasPanel(panel)?.node;
     if (!pump) return 0;
     const canonical = pumpCanonicalStatusValues(pump);
-    if (!canonical.hydraulicNpshStatus && !canonical.dischargeDutyStatus && !canonical.backendValidationStatus) return 0;
+    if (!canonical.hydraulicNpshStatus && !canonical.backendValidationStatus) return 0;
     let changed = 0;
     upsertPumpCanvasSection(panel, 'STATUS', { beforeFirst: true });
     if (canonical.hydraulicNpshStatus) {
-      changed += upsertPumpCanvasRow(
-        panel,
-        'Hydraulic NPSH',
-        canonical.hydraulicNpshStatus,
-        ['STATUS'],
-        { statusSeverity: severityFromDischargeDutyStatus(canonical.hydraulicNpshStatus) }
-      ) ? 1 : 0;
-    }
-    if (canonical.dischargeDutyStatus) {
-      changed += upsertPumpCanvasRow(
-        panel,
-        'Discharge Duty',
-        canonical.dischargeDutyStatus,
-        ['Hydraulic NPSH', 'STATUS'],
-        { statusSeverity: canonical.dischargeDutySeverity || severityFromDischargeDutyStatus(canonical.dischargeDutyStatus) }
-      ) ? 1 : 0;
+      changed += upsertPumpCanvasRow(panel, 'Hydraulic NPSH', canonical.hydraulicNpshStatus, ['STATUS']) ? 1 : 0;
     }
     if (canonical.backendValidationStatus) {
-      changed += upsertPumpCanvasRow(
-        panel,
-        'Backend Valid.',
-        canonical.backendValidationStatus,
-        ['Discharge Duty', 'Hydraulic NPSH', 'STATUS'],
-        { statusSeverity: severityFromDischargeDutyStatus(canonical.backendValidationStatus) }
-      ) ? 1 : 0;
+      changed += upsertPumpCanvasRow(panel, 'Backend Valid.', canonical.backendValidationStatus, ['Hydraulic NPSH', 'STATUS']) ? 1 : 0;
     }
     return changed;
   }
