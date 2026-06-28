@@ -157,7 +157,7 @@ const cacheKey = 'engineering-head-power-audit-guard.js?v=20260627-head-power-au
 assert(index.includes(cacheKey), 'index.html must load the Head Power Audit Guard cache key.');
 assert(
   index.indexOf('engineering-caption-audit-overrides.js?v=20260606-route-schema1') < index.indexOf(cacheKey)
-    && index.indexOf(cacheKey) < index.indexOf('engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4'),
+    && index.indexOf(cacheKey) < index.indexOf('engineering-route-trace-audit.js?v=20260628-discharge-duty-status1'),
   'Head Power Audit Guard must load after caption overrides and before route trace audit diagnostics.'
 );
 assert.equal(

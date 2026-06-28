@@ -138,7 +138,7 @@ Pipe source confidence map runtime cache key: engineering-pipe-source-confidence
 Pump nozzle simplify runtime cache key: engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5
 Analysis Report live runtime cache key: engineering-analysis-report-live-runtime.js?v=20260626-head-power-audit1
 Head Power Audit Guard cache key: engineering-head-power-audit-guard.js?v=20260627-head-power-audit2
-Route audit cache key: engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4
+Route audit cache key: engineering-route-trace-audit.js?v=20260628-discharge-duty-status1
 Simulation case integrity guard cache key: engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3
 Performance refresh governor cache key: engineering-performance-refresh-governor.js?v=20260626-head-power-audit1
 Pump edit fast lane cache key: engineering-pump-edit-fast-lane.js?v=20260626-head-power-audit1

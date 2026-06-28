@@ -118,7 +118,7 @@ assert(source.includes('forceImmediate'), 'Governor must preserve an immediate r
 });
 
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4')
+  index.includes('engineering-route-trace-audit.js?v=20260628-discharge-duty-status1')
     && index.includes('engineering-performance-refresh-governor.js?v=20260626-head-power-audit1')
     && index.includes('engineering-pump-edit-fast-lane.js?v=20260626-head-power-audit1')
     && index.includes('engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1'),
@@ -137,9 +137,9 @@ assert(
   'Performance Refresh Governor and Pump edit fast lane must load before realtime defense starts scheduling linked view refreshes.'
 );
 assert(
-  index.indexOf('engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4')
+  index.indexOf('engineering-route-trace-audit.js?v=20260628-discharge-duty-status1')
     > index.indexOf('const diagnosticScripts = [')
-    && index.indexOf('engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4')
+    && index.indexOf('engineering-route-trace-audit.js?v=20260628-discharge-duty-status1')
       > index.indexOf('engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1'),
   'Route trace audit must remain deferred with diagnostic scripts so PageSpeed critical-path work stays calculation-only.'
 );
