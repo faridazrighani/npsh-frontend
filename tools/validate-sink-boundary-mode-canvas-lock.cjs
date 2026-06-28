@@ -124,9 +124,9 @@ globalThis.globalModel['SNK-400'] = {
   },
   results: {
     calculationTrace: {
-      status: 'NPSH Risk',
+      status: 'Discharge Boundary Infeasible',
       boundary: {
-        operatingFeasibilityStatus: 'NPSH Risk',
+        operatingFeasibilityStatus: 'Discharge Boundary Infeasible',
         boundaryFeasible: false,
         headResidual: -261.57,
         maxAllowableSnkElevation: -61.57,
@@ -135,14 +135,14 @@ globalThis.globalModel['SNK-400'] = {
         elevation: 200
       },
       pumpImpact: {
-        engineeringStatus: 'NPSH Risk'
+        engineeringStatus: 'Discharge Boundary Infeasible'
       }
     }
   }
 };
 const riskCanonical = runtime.sinkCanonicalValues(globalThis.globalModel['SNK-400']);
-assert.equal(riskCanonical.engineeringStatus, 'NPSH Risk', 'SNK canonical state should expose infeasible outlet pressure/elevation as NPSH Risk.');
-assert.equal(riskCanonical.operatingFeasibilityStatus, 'NPSH Risk', 'SNK canonical state should expose boundary feasibility status.');
+assert.equal(riskCanonical.engineeringStatus, 'Discharge Boundary Infeasible', 'SNK canonical state should expose infeasible outlet pressure/elevation as discharge boundary infeasible.');
+assert.equal(riskCanonical.operatingFeasibilityStatus, 'Discharge Boundary Infeasible', 'SNK canonical state should expose boundary feasibility status.');
 assert.equal(riskCanonical.boundaryFeasible, false, 'SNK canonical state should expose infeasible boundary boolean.');
 assert.equal(riskCanonical.headResidual, -261.57, 'SNK canonical state should expose pump head residual.');
 assert.equal(riskCanonical.maxAllowableSnkElevation, -61.57, 'SNK canonical state should expose maximum allowable SNK elevation.');
