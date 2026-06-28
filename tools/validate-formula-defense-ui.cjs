@@ -40,7 +40,7 @@ assert.strictEqual(packageJson.devDependencies?.katex, '^0.17.0', 'KaTeX must be
 
 assert(runtimeSource.includes("const KATEX_CSS = `vendor/katex/katex.min.css?v=${CACHE_KEY}`;"), 'Formula runtime must lazy-load cache-busted local KaTeX CSS.');
 assert(!indexHtml.includes('<link rel="stylesheet" href="vendor/katex/katex.min.css?v=20260613-formula-defense-ui15">'), 'KaTeX CSS must not be render-blocking on first load.');
-assert(indexHtml.includes('engineering-formula-defense-ui.js?v=20260613-formula-defense-ui15'), 'index.html must cache-bust Formula Defense UI runtime.');
+assert(indexHtml.includes('engineering-formula-defense-ui-20260628-physical-cache1.js?v=20260613-formula-defense-ui15'), 'index.html must cache-bust Formula Defense UI runtime with a physical filename.');
 assert(fs.existsSync(KATEX_JS_FILE), 'Local KaTeX JS asset must be vendored for static deployment.');
 assert(fs.existsSync(KATEX_CSS_FILE), 'Local KaTeX CSS asset must be vendored for static deployment.');
 
@@ -246,7 +246,7 @@ assert.strictEqual(academicTrace.fittingValveBreakdown.length, 2, 'Fitting/valve
 
 if (manifest) {
   assert(manifest.includes('engineering-formula-defense-ui.js'), 'FILE_MANIFEST must mention Formula Defense UI runtime.');
-  assert(manifest.includes('20260613-formula-defense-ui15'), 'FILE_MANIFEST must mention Formula Defense UI cache key.');
+  assert(manifest.includes('engineering-formula-defense-ui-20260628-physical-cache1.js?v=20260613-formula-defense-ui15'), 'FILE_MANIFEST must mention Formula Defense UI physical cache key.');
   assert(manifest.includes('validate:formula-defense-ui'), 'FILE_MANIFEST must mention Formula Defense UI validation.');
 }
 

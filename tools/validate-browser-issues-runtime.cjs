@@ -36,7 +36,7 @@ assert(indexHtml.includes('engineering-browser-issues-runtime.js?v=20260620-orph
 assert(indexHtml.includes('style.min.css?v=20260608-browser-issues1'), 'index.html must cache-bust browser-issues CSS cleanup.');
 assert.strictEqual(typeof runtime.repairFormFieldLabels, 'function', 'Browser issues runtime must expose orphan form-field label cleanup.');
 assert.strictEqual(typeof runtime.repairBrowserIssues, 'function', 'Browser issues runtime must expose a combined browser-issues repair pass.');
-assert(indexHtml.includes('engineering-canvas-context-dock.js?v=20260628-canvas-dock-scroll-anchor1'), 'index.html must cache-bust canvas context dock browser issues cleanup.');
+assert(indexHtml.includes('engineering-canvas-context-dock-20260628-canvas-dock-scroll-anchor1.js?v=20260628-canvas-dock-scroll-anchor1'), 'index.html must cache-bust canvas context dock browser issues cleanup with a physical filename.');
 assert(indexHtml.includes('engineering-literature-pdf-viewer.js?v=20260609-literature-access3'), 'index.html must cache-bust literature PDF access diagnostics cleanup.');
 assert(indexHtml.includes('__chromium_devtools_metrics_reporter'), 'index.html must install the Chromium DevTools metrics reporter guard early.');
 assert(indexHtml.includes("typeof window.__chromium_devtools_metrics_reporter === 'function'"), 'Chromium DevTools metrics reporter guard must preserve real reporter functions.');
@@ -62,7 +62,7 @@ assert(
 );
 assert(indexHtml.includes('const scheduleInitialCanvasHydration = () => {'), 'Index must schedule no-click canvas runtime hydration after the passive shell load.');
 assert(indexHtml.includes('const initialCanvasHydrationScripts = ['), 'Index must define a no-click initial canvas visual runtime pack.');
-assert(indexHtml.includes("'engineering-pipe-canvas-hydraulic-label-runtime.js?v=20260628-pfv-canvas-anchor1'"), 'Initial canvas visual runtime pack must include PFV hydraulic labels.');
+assert(indexHtml.includes("'engineering-pipe-canvas-hydraulic-label-runtime-20260628-pfv-canvas-anchor1.js?v=20260628-pfv-canvas-anchor1'"), 'Initial canvas visual runtime pack must include PFV hydraulic labels with a physical filename cache-bust.');
 assert(indexHtml.includes("'engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4'"), 'Initial canvas visual runtime pack must include route trace canvas layout cleanup.');
 assert(indexHtml.includes('window.__npshInitialCanvasHydrationScheduled'), 'Initial canvas hydration must be guarded so it starts only once.');
 assert(indexHtml.includes("ensureStyles().catch(error => console.warn('Initial canvas stylesheet hydration did not load.', error));"), 'Initial canvas hydration must load main CSS plus live repaint-lock CSS without requiring a canvas click.');

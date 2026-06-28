@@ -11,7 +11,7 @@ const RUNTIME_FILE = path.join(FRONTEND_ROOT, "engineering-pipe-canvas-hydraulic
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
-const CACHE_KEY = "engineering-pipe-canvas-hydraulic-label-runtime.js?v=20260628-pfv-canvas-anchor1";
+const CACHE_KEY = "engineering-pipe-canvas-hydraulic-label-runtime-20260628-pfv-canvas-anchor1.js?v=20260628-pfv-canvas-anchor1";
 const VERSION = "2026.06-pipe-canvas-hydraulic-label12";
 const P_PAIR_KEY = "P\u2081\u2192P\u2082";
 const SIGMA_K_KEY = "\u03a3K";

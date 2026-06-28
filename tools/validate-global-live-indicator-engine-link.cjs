@@ -153,7 +153,7 @@ assert(stableRuntime.includes("dataset.liveParameterStableShell"), "Stable runti
 assert(!stableRuntime.includes("innerHTML"), "Stable runtime must not rebuild live parameter panels via innerHTML.");
 
 assert(indexHtml.includes("engineering-src-canvas-parameter-runtime.js?v=20260628-src-stable-values1"), "Index must load the global SRC realtime indicator runtime.");
-assert(indexHtml.includes("engineering-live-parameter-stable-runtime.js?v=20260628-global-stable-values3"), "Index must load the global stable live-parameter runtime.");
+assert(indexHtml.includes("engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260628-global-stable-values3"), "Index must load the global stable live-parameter runtime with a physical filename cache-bust.");
 assert(indexHtml.includes("engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4"), "Index must load the global SNK/pump hover-sync runtime.");
 assert(indexHtml.includes("engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2"), "Index must load the global decimal display lock.");
 

@@ -14,7 +14,7 @@ const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
 
 const LOCK_CACHE_KEY = "engineering-live-parameter-repaint-lock.css?v=20260620-render-blocking-fix1";
-const STABLE_RUNTIME_CACHE_KEY = "engineering-live-parameter-stable-runtime.js?v=20260628-global-stable-values3";
+const STABLE_RUNTIME_CACHE_KEY = "engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260628-global-stable-values3";
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");

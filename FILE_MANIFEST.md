@@ -130,10 +130,10 @@ Main style cache key: style.min.css?v=20260608-browser-issues1
 Bilingual terminology runtime cache key: engineering-bilingual-improvements.js?v=20260622-local-live-sync1
 Source canvas parameter runtime cache key: engineering-src-canvas-parameter-runtime.js?v=20260628-src-stable-values1
 Decimal display runtime cache key: engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2
-Live parameter stable runtime cache key: engineering-live-parameter-stable-runtime.js?v=20260628-global-stable-values3
+Live parameter stable runtime cache key: engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260628-global-stable-values3
 Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=20260626-head-power-audit1
 Local trace fallback runtime cache key: engineering-local-trace-fallback-runtime.js?v=20260611-local-trace3
-Pipe canvas hydraulic label runtime cache key: engineering-pipe-canvas-hydraulic-label-runtime.js?v=20260628-pfv-canvas-anchor1
+Pipe canvas hydraulic label runtime cache key: engineering-pipe-canvas-hydraulic-label-runtime-20260628-pfv-canvas-anchor1.js?v=20260628-pfv-canvas-anchor1
 Pipe source confidence map runtime cache key: engineering-pipe-source-confidence-map-runtime.js?v=20260611-pipe-source-confidence-map1
 Pump nozzle simplify runtime cache key: engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5
 Analysis Report live runtime cache key: engineering-analysis-report-live-runtime.js?v=20260626-head-power-audit1
@@ -147,9 +147,9 @@ Calculation lifecycle runtime cache key: engineering-calculation-lifecycle-runti
 Calculation progress overlay cache key: engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1
 Browser issues runtime cache key: engineering-browser-issues-runtime.js?v=20260620-orphan-label-cleanup1
 Pipe Segments file runtime cache key: engineering-pipe-segments-file-runtime.js?v=20260608-pipe-segments-file1
-Formula Defense UI runtime cache key: engineering-formula-defense-ui.js?v=20260613-formula-defense-ui15
+Formula Defense UI runtime cache key: engineering-formula-defense-ui-20260628-physical-cache1.js?v=20260613-formula-defense-ui15
 Formula Defense UI KaTeX CSS cache key: vendor/katex/katex.min.css?v=20260613-formula-defense-ui15
-Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260628-canvas-dock-scroll-anchor1
+Canvas context dock cache key: engineering-canvas-context-dock-20260628-canvas-dock-scroll-anchor1.js?v=20260628-canvas-dock-scroll-anchor1
 Canvas context dock load placement: post-shell no-click canvas visual hydration pack plus status script fallback; not a synchronous first-paint script tag
 Initial app load placement: Fluid Basis setup prompt is first in body DOM order for LCP; critical CSS reserves the Fluid Basis LCP card and Validate/Solve ribbon label metrics to prevent first-load CLS; shell JS auto-loads on idle; full main CSS, live parameter repaint lock, realtime/status scripts, PFV hydraulic labels, browser cleanup, and route-trace canvas layout cleanup hydrate automatically after shell load so canvas panels normalize without pointer/key input; remaining support scripts stay support-lazy, with first pointer/key activation still acting as an accelerator; Google Auth/GSI is support-lazy and not part of the first render path
 Defense export cache key: engineering-defense-export-package.js?v=20260603-defensev3

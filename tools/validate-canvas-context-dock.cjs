@@ -368,8 +368,8 @@ assert(
   'Index must load the core app bundle with the canvas properties policy cache key.'
 );
 assert(
-  index.includes('engineering-canvas-context-dock.js?v=20260628-canvas-dock-scroll-anchor1'),
-  'Index must load the canvas context dock runtime with cache key.'
+  index.includes('engineering-canvas-context-dock-20260628-canvas-dock-scroll-anchor1.js?v=20260628-canvas-dock-scroll-anchor1'),
+  'Index must load the canvas context dock runtime with a physical filename cache key.'
 );
 assert(
   index.includes('style.min.css?v=20260608-browser-issues1'),
@@ -391,7 +391,7 @@ assert(
   'Thesis branding must not intercept pointer events from toolbar placement tools.'
 );
 assert(
-  manifest.includes('Canvas context dock cache key: engineering-canvas-context-dock.js?v=20260628-canvas-dock-scroll-anchor1'),
+  manifest.includes('Canvas context dock cache key: engineering-canvas-context-dock-20260628-canvas-dock-scroll-anchor1.js?v=20260628-canvas-dock-scroll-anchor1'),
   'Manifest must document the canvas context dock cache key.'
 );
 assert(
