@@ -287,7 +287,6 @@
     designEfficiency: { i18nKey: 'trace.pump.designEfficiency', en: 'Design Efficiency', id: 'Efisiensi Desain' },
     designFlow: { i18nKey: 'trace.pump.designFlow', en: 'Design Flow', id: 'Flow Desain' },
     designHead: { i18nKey: 'trace.pump.designHead', en: 'Design Head', id: 'Head Desain' },
-    designNpshr: { i18nKey: 'trace.pump.designNpshr', en: 'Design NPSHr', id: 'NPSHr Desain' },
     'sink-boundary-pressure': { i18nKey: 'trace.sink.boundaryPressure', en: 'Sink P abs', id: 'Tekanan Absolut Sink' },
     'sink-calculated-pressure': { i18nKey: 'trace.sink.calculatedPressure', en: 'Required Sink P abs', id: 'Tekanan Absolut Sink yang Dibutuhkan' },
     'sink-evaluated-flow': { i18nKey: 'trace.sink.evaluatedFlow', en: 'Evaluated Flow', id: 'Flow Terevaluasi' },

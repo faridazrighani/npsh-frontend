@@ -535,7 +535,7 @@
       : (routeOnlyPump ? null : firstNumber(npsh.actualPumpHead, pumpResults.actualPumpHead, npsh.pumpHead, pumpResults.pumpHeadAtFlow, pumpResults.head));
     const pumpRequiredSystemHead = firstNumber(npsh.requiredSystemHead, pumpResults.requiredSystemHead, routeOnlyPump ? null : pumpHead);
     const npsha = firstNumber(npsh.npsha, pumpResults.npsha);
-    const npshr = firstNumber(npsh.npshr, pumpResults.npshr, pumpProps.manualNpshr, pumpProps.designNpshr);
+    const npshr = firstNumber(npsh.npshr, pumpResults.npshr, pumpProps.manualNpshr);
     const marginRatioLimit = firstNumber(
       npsh.marginCriteria?.ratio,
       npsh.criteria?.ratio,
@@ -662,7 +662,7 @@
     const requiredHead = firstNumber(proposal.requiredSystemHead, pumpResults.requiredSystemHead, pumpRequiredSystemHead, pumpHead);
     const proposalNpsha = firstNumber(proposal.npshaAtDesign, npsha);
     const proposalMaxAllowableNpshr = firstNumber(proposal.maxAllowableNpshr, proposal.allowableNpshrAtDesign, maxAllowableNpshr);
-    const proposedNpshr = firstNumber(proposal.proposedNpshr, proposal.proposedProps?.manualNpshr, proposal.proposedProps?.designNpshr);
+    const proposedNpshr = firstNumber(proposal.proposedNpshr, proposal.proposedProps?.manualNpshr);
     const worst = proposal.worstCase || {};
 
     set('Optimize Pump From Network - Workflow Status', `${cleanText(proposal.status || 'Not ready')}; readiness ${cleanText(readiness.status || proposal.readinessStatus || '-')}`, null);

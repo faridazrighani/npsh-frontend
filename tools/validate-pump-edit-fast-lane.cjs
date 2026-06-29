@@ -194,9 +194,10 @@ runtime.handleRealtimeInput({ target: estimatedSourceInput, isTrusted: true, typ
   requestAutoSolve: () => { backendRequests += 1; }
 });
 assert.equal(globalThis.__npshGlobalModel['P-100'].props.npshrSourceMode, 'Estimated', 'NPSHr Source must update pump props immediately.');
-assert(
-  globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.npshr > 3,
-  'Estimated NPSHr source must reshape local NPSHr from flow/BEP instead of staying flat.'
+assert.equal(
+  globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.npshr,
+  3,
+  'Estimated NPSHr source must not calculate NPSHr; manualNpshr remains the only preview source.'
 );
 
 const manualSourceInput = new FakeInput({ key: 'npshrSourceMode', value: 'Manual', tagName: 'SELECT' });

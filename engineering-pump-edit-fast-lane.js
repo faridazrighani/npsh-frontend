@@ -309,26 +309,13 @@
     };
   }
 
-  function estimatedNpshrAtFlow(flow, bepFlow, designNpshr) {
-    const q = finiteNumber(flow);
-    const qbep = firstFinite(bepFlow, flow);
-    const npshr = finiteNumber(designNpshr);
-    if (q === null || qbep === null || npshr === null || qbep <= 0 || npshr <= 0) return npshr;
-    const ratio = Math.max(0, q / qbep);
-    return Math.max(0.01, npshr * (0.65 + 0.35 * Math.pow(ratio, 2.2)));
-  }
-
   function resolvePreviewFlow(pump, evaluation, field) {
     if (field === 'designFlow') return firstFinite(pump.props?.designFlow, evaluation.flow, pump.results?.flow);
     return firstFinite(evaluation.flow, pump.results?.fixedFlow, pump.results?.flow, pump.props?.designFlow);
   }
 
-  function resolvePreviewNpshr(pump, evaluation, flow, field) {
-    const manualBasis = firstFinite(pump.props?.manualNpshr, pump.props?.designNpshr, evaluation.npshr, pump.results?.npshr);
-    const designBasis = firstFinite(pump.props?.designNpshr, pump.props?.manualNpshr, evaluation.npshr, pump.results?.npshr);
-    const source = String(pump.props?.npshrSourceMode || '').toLowerCase();
-    if (field === 'manualNpshr' || field === 'npshr' || source.includes('manual')) return manualBasis;
-    return estimatedNpshrAtFlow(flow, pump.props?.bepFlow || pump.props?.designFlow, designBasis);
+  function resolvePreviewNpshr(pump) {
+    return firstFinite(pump.props?.manualNpshr);
   }
 
   function canPreviewActualHead(pump, evaluation, field) {
@@ -373,6 +360,21 @@
       evaluation.npshr = round(npshr, 6);
       pump.results.npshr = evaluation.npshr;
       pump.results.npshRequired = evaluation.npshr;
+    } else {
+      evaluation.npshr = null;
+      evaluation.npshRequired = null;
+      evaluation.npshMargin = null;
+      evaluation.npshRatio = null;
+      evaluation.npshExcess = null;
+      evaluation.requiredNpsha = null;
+      evaluation.manualNpshrComparisonStatus = 'Not Provided';
+      pump.results.npshr = null;
+      pump.results.npshRequired = null;
+      pump.results.npshMargin = null;
+      pump.results.npshRatio = null;
+      pump.results.npshExcess = null;
+      pump.results.requiredNpsha = null;
+      pump.results.manualNpshrComparisonStatus = 'Not Provided';
     }
     if (npsha !== null && npshr !== null && criteria.valid) {
       const requiredTerms = requiredNpshaByCriteria(npshr, criteria);

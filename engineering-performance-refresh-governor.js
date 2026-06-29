@@ -566,7 +566,7 @@
           'designFlow',
           'designHead',
           'designEfficiency',
-          'designNpshr',
+          'manualNpshr',
           'npshrSourceMode',
           'npshMarginBasis',
           'minNpshMarginRatio',
@@ -592,7 +592,7 @@
       pumpPerformance: {
         flow: firstFiniteValue(evaluation.flow, pumpResults.fixedFlow, pumpResults.flow),
         head: actualPumpHead,
-        npshr: firstFiniteValue(evaluation.npshr, pumpResults.npshr, pumpProps.designNpshr),
+        npshr: firstFiniteValue(evaluation.npshr, pumpResults.npshr, pumpProps.manualNpshr),
         chartDataHash: hashString(stableStringify(pickFields(pumpResults, [
           'performanceChartData',
           'pumpCurveData',

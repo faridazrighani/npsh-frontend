@@ -1,14 +1,14 @@
 {
   "schemaVersion": "local-live-sync-manifest.v1",
-  "generatedAt": "2026-06-28T10:53:01.667Z",
+  "generatedAt": "2026-06-29T00:13:51.653Z",
   "purpose": "Keeps the local preview server auditable against the deployed npsh.virsim.id package.",
-  "status": "synced",
+  "status": "review-required",
   "syncChecks": {
     "liveReachable": true,
-    "localIndexMatchesLive": true,
-    "cacheKeysMatch": true,
+    "localIndexMatchesLive": false,
+    "cacheKeysMatch": false,
     "verifiedLiveAssets": true,
-    "assetVerificationFailures": 0,
+    "assetVerificationFailures": 9,
     "apiCommitMatchesOriginMain": true,
     "frontendCommitMatchesOriginMain": true
   },
@@ -16,22 +16,22 @@
     "frontendRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-frontend",
     "apiRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-api",
     "serverUrl": "http://127.0.0.1:4174/",
-    "frontendCommit": "8ebb37e7852c5991c74558271ba7b5aa6479858f",
-    "frontendOriginMain": "8ebb37e7852c5991c74558271ba7b5aa6479858f",
-    "apiCommit": "062faa2627980b68ab0b52acdad45990a36aa2b7",
-    "apiOriginMain": "062faa2627980b68ab0b52acdad45990a36aa2b7",
+    "frontendCommit": "05963c6eea6f9dc7814156afb71152582828b246",
+    "frontendOriginMain": "05963c6eea6f9dc7814156afb71152582828b246",
+    "apiCommit": "519c12ced9b02857f0941a794d0878636fac06b1",
+    "apiOriginMain": "519c12ced9b02857f0941a794d0878636fac06b1",
     "releaseIntegrity": {
       "schemaVersion": "release-integrity.v1",
-      "rootFingerprint": "59cb4e85dd835c8ec65194e367c57ebfe8ee09233c3031e8b4b7bae17fac5a0d",
-      "fileCount": 402,
-      "generatedAt": "2026-06-28T09:27:31.439Z"
+      "rootFingerprint": "07f47184a49f376ed06532d37fba33e421a90eaa197bdfead11de309fd47cf5c",
+      "fileCount": 406,
+      "generatedAt": "2026-06-28T11:00:02.826Z"
     },
     "index": {
       "path": "index.html",
-      "sizeBytes": 69393,
-      "sha256": "3c70f00b26fe5c6a4a14dee8799ae8b3e72983bdf17a65dadd555a78a74f599d",
-      "canonicalSizeBytes": 68524,
-      "canonicalSha256": "5f5e53e82d8d16d6fa1453723c318d21d0852e46b77464273c669bbae495761c",
+      "sizeBytes": 69578,
+      "sha256": "e78c1d2982aa051cf6ae0d48c683a21e03c967b57ac6353022f9ca01a880c98b",
+      "canonicalSizeBytes": 68666,
+      "canonicalSha256": "ba25d702016d14e8f5adeebfd518d15cd0b956da5e270b7ddfb74af24fccf9e0",
       "canonicalizedLineEndings": true,
       "cacheKeys": [
         "app.bundle.min.js?v=20260621-npsh-margin-options1",
@@ -40,6 +40,7 @@
         "engineering-browser-issues-runtime.js?v=20260620-orphan-label-cleanup1",
         "engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1",
         "engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1",
+        "engineering-canvas-clear-reset-guard.js?v=20260629-canvas-clear-reset1",
         "engineering-canvas-context-dock-20260628-canvas-dock-scroll-anchor1.js?v=20260628-canvas-dock-scroll-anchor1",
         "engineering-caption-audit-overrides.js?v=20260606-route-schema1",
         "engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2",
@@ -50,8 +51,8 @@
         "engineering-library-governance.js?v=20260530-pagespeed3",
         "engineering-literature-pdf-viewer.js?v=20260609-literature-access3",
         "engineering-live-parameter-repaint-lock.css?v=20260620-render-blocking-fix1",
-        "engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260628-global-stable-values3",
-        "engineering-local-trace-fallback-runtime.js?v=20260611-local-trace3",
+        "engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260629-owner-cleanup1",
+        "engineering-local-trace-fallback-runtime.js?v=20260628-manual-npshr1",
         "engineering-npsh-margin-runtime.js?v=20260622-local-live-sync1",
         "engineering-parameter-task-runtime.js?v=20260626-head-power-audit1",
         "engineering-performance-refresh-governor.js?v=20260626-head-power-audit1",
@@ -63,15 +64,16 @@
         "engineering-pump-formula-defense-live-audit.js?v=20260626-head-power-audit1",
         "engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5",
         "engineering-pump-npsh-acceptance-runtime.js?v=20260621-pump-npsh-acceptance3",
-        "engineering-pump-performance-canonical-chart.js?v=20260626-head-power-audit1",
+        "engineering-pump-performance-canonical-chart.js?v=20260628-manual-npshr1",
         "engineering-pump-performance-chart-audit.js?v=20260626-head-power-audit1",
         "engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3",
         "engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1",
         "engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4",
         "engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3",
         "engineering-source-temperature-runtime.js?v=20260623-fluid-basis-dependency-autosolve1",
-        "engineering-src-algorithm-help-runtime.js?v=20260616-src-algorithm-help1",
+        "engineering-src-algorithm-help-runtime.js?v=20260628-manual-npshr1",
         "engineering-src-canvas-parameter-runtime.js?v=20260628-src-stable-values1",
+        "engineering-suction-only-npsha-runtime.js?v=20260628-suction-only-npsha4",
         "style.min.css?v=20260608-browser-issues1"
       ]
     },
@@ -89,10 +91,10 @@
       {
         "path": "engineering-analysis-report-live-runtime.js",
         "exists": true,
-        "sizeBytes": 92827,
-        "sha256": "b43685989471b743fa5a9c5f93237027fadbfb60cc642ab4f550ae85c6a5a33f",
-        "canonicalSizeBytes": 91164,
-        "canonicalSha256": "1d4131592ef3840d55bf809d202a143d378d145c9d08a076a2a7fc7cc9a4ed92",
+        "sizeBytes": 92765,
+        "sha256": "dc914b3640fdb0b1e8a78308f5b38cfc56a7cc9a24e3368c258203fdd5de732d",
+        "canonicalSizeBytes": 91104,
+        "canonicalSha256": "1359429c87ca99ba27a7cf5388f118b3e1732b90ff51686af92cd42d0260c486",
         "canonicalizedLineEndings": true,
         "cacheKey": "engineering-analysis-report-live-runtime.js?v=20260626-head-power-audit1"
       },
@@ -137,12 +139,22 @@
         "cacheKey": "engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1"
       },
       {
+        "path": "engineering-canvas-clear-reset-guard.js",
+        "exists": true,
+        "sizeBytes": 10385,
+        "sha256": "6098cb2c50b70cdfdb58fa1638a48c831d2f636b0336be4d2f212eca95eb8600",
+        "canonicalSizeBytes": 10385,
+        "canonicalSha256": "6098cb2c50b70cdfdb58fa1638a48c831d2f636b0336be4d2f212eca95eb8600",
+        "canonicalizedLineEndings": true,
+        "cacheKey": "engineering-canvas-clear-reset-guard.js?v=20260629-canvas-clear-reset1"
+      },
+      {
         "path": "engineering-canvas-context-dock-20260628-canvas-dock-scroll-anchor1.js",
         "exists": true,
-        "sizeBytes": 55931,
-        "sha256": "e8aa37ae047c6b1829fce6019dab605f6c4354f291d723b7957adda77c40174d",
-        "canonicalSizeBytes": 54476,
-        "canonicalSha256": "9be8abc02969d4b7f6b40eb6ea555060169c2e7e04d2fcdbd35d6fd287e721c1",
+        "sizeBytes": 57358,
+        "sha256": "42124803d1e3f08718e51db243e901bc12bd0a6eef5d222e4035c3de02133180",
+        "canonicalSizeBytes": 55913,
+        "canonicalSha256": "4d35b740cef3995c209b46f2e160354ea9612759c2a1180f2e875fb37b206895",
         "canonicalizedLineEndings": true,
         "cacheKey": "engineering-canvas-context-dock-20260628-canvas-dock-scroll-anchor1.js?v=20260628-canvas-dock-scroll-anchor1"
       },
@@ -239,22 +251,22 @@
       {
         "path": "engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js",
         "exists": true,
-        "sizeBytes": 19952,
-        "sha256": "9f34513d9657a8df839ccb21ea86dc828bdf51743ce479863575045432cb96f9",
-        "canonicalSizeBytes": 19952,
-        "canonicalSha256": "9f34513d9657a8df839ccb21ea86dc828bdf51743ce479863575045432cb96f9",
+        "sizeBytes": 25735,
+        "sha256": "65de4fa4b01d2e57c25c15f19441872a789218cec4dd6746c7a5e81186b7151b",
+        "canonicalSizeBytes": 25735,
+        "canonicalSha256": "65de4fa4b01d2e57c25c15f19441872a789218cec4dd6746c7a5e81186b7151b",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260628-global-stable-values3"
+        "cacheKey": "engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260629-owner-cleanup1"
       },
       {
         "path": "engineering-local-trace-fallback-runtime.js",
         "exists": true,
-        "sizeBytes": 53789,
-        "sha256": "41f545213463ff8b21312fcd9fb73359d701e11a16833ba9384fa3cf70078edf",
-        "canonicalSizeBytes": 52593,
-        "canonicalSha256": "a2473e25af465adf548473e9a5b4afab5ba42238c9ad85c7f35ae326ade2f3ad",
+        "sizeBytes": 53805,
+        "sha256": "936e13071f8cc42d8faa18d5c11a2923e3c44187685a9a605cad6d83be43a9c5",
+        "canonicalSizeBytes": 52611,
+        "canonicalSha256": "f2925f87c58d760eb551e073bcb5d1e9f9b010f013a94c8ae5e95ccbc7a15c0e",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-local-trace-fallback-runtime.js?v=20260611-local-trace3"
+        "cacheKey": "engineering-local-trace-fallback-runtime.js?v=20260628-manual-npshr1"
       },
       {
         "path": "engineering-npsh-margin-runtime.js",
@@ -280,9 +292,9 @@
         "path": "engineering-performance-refresh-governor.js",
         "exists": true,
         "sizeBytes": 35653,
-        "sha256": "77174b9e9bd6e3598bb4d8166e6705fd22d079e1549a74e0b3b32a2d3a8c9185",
+        "sha256": "3d31d38d1630165d65e7bf70465d79a37140399056782d797ee94e35663638e6",
         "canonicalSizeBytes": 35653,
-        "canonicalSha256": "77174b9e9bd6e3598bb4d8166e6705fd22d079e1549a74e0b3b32a2d3a8c9185",
+        "canonicalSha256": "3d31d38d1630165d65e7bf70465d79a37140399056782d797ee94e35663638e6",
         "canonicalizedLineEndings": true,
         "cacheKey": "engineering-performance-refresh-governor.js?v=20260626-head-power-audit1"
       },
@@ -329,10 +341,10 @@
       {
         "path": "engineering-pump-edit-fast-lane.js",
         "exists": true,
-        "sizeBytes": 30709,
-        "sha256": "b43c19bf2d5443ebad73835bab3e1b6df0cb02eb058837c0ca5d3639ca8a9fbe",
-        "canonicalSizeBytes": 30166,
-        "canonicalSha256": "ed17caf9867770e9ed19d3e5d1649a296894062ff38072c4394e1073a458e974",
+        "sizeBytes": 30385,
+        "sha256": "1eb49b4e2094d20ab6b1be3b2db9bd5edfaed1aa5bab37184cff7bd9033df579",
+        "canonicalSizeBytes": 29842,
+        "canonicalSha256": "750f266b31de954e49abad3c8d4560397b4525f02972c69961374621b34a2465",
         "canonicalizedLineEndings": true,
         "cacheKey": "engineering-pump-edit-fast-lane.js?v=20260626-head-power-audit1"
       },
@@ -369,20 +381,20 @@
       {
         "path": "engineering-pump-performance-canonical-chart.js",
         "exists": true,
-        "sizeBytes": 134223,
-        "sha256": "95233e593a44b95676c64d817f6bde901cd49ae83102d6868e6b12d99e42d2c3",
-        "canonicalSizeBytes": 131102,
-        "canonicalSha256": "d33e164c508a506f989742361b3d19239d9b95e9d2225b25efbbb880ebfa2b1d",
+        "sizeBytes": 131814,
+        "sha256": "5613170de203f1c9fb82dae61968b75dcfc5bb281ffb160d3df4614532ae3525",
+        "canonicalSizeBytes": 128746,
+        "canonicalSha256": "267741e1e71eee3289e6e9641fce8d20fb93a918f9cd9fe109d9cf9dcb5e0e5e",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-pump-performance-canonical-chart.js?v=20260626-head-power-audit1"
+        "cacheKey": "engineering-pump-performance-canonical-chart.js?v=20260628-manual-npshr1"
       },
       {
         "path": "engineering-pump-performance-chart-audit.js",
         "exists": true,
-        "sizeBytes": 33295,
-        "sha256": "672686f38afdba0f3af1e4d154fddf3a25654a0748f5ed8973b67b5f13aa11d9",
-        "canonicalSizeBytes": 32476,
-        "canonicalSha256": "4f6274b0759cc8b28ee1c4cdbb166feb5a937cbab6d89045fdf98e5d98b65424",
+        "sizeBytes": 33291,
+        "sha256": "b0ba104be2cd8c1a86e8a679297c8025edc08f352d94d2b0e0df4a06a4187d95",
+        "canonicalSizeBytes": 32472,
+        "canonicalSha256": "87927aa28a07e63f9cd7a6befb89c4cae663091761f778b9c77260d1d03616dc",
         "canonicalizedLineEndings": true,
         "cacheKey": "engineering-pump-performance-chart-audit.js?v=20260626-head-power-audit1"
       },
@@ -409,8 +421,8 @@
       {
         "path": "engineering-route-trace-audit.js",
         "exists": true,
-        "sizeBytes": 134832,
-        "sha256": "3c852001c60c64d9ea5b1459a70e1ccc88896335d62263ae2d89185c99d3e547",
+        "sizeBytes": 135712,
+        "sha256": "e2bb7eee9e55b81a937af540634973527f6603b09f4801bb84fc8bb3cb41c9ef",
         "canonicalSizeBytes": 132715,
         "canonicalSha256": "8ce1c75561b1d7e6c44414881561eeadd8a399b897d844b237dc26dc412662cf",
         "canonicalizedLineEndings": true,
@@ -439,12 +451,12 @@
       {
         "path": "engineering-src-algorithm-help-runtime.js",
         "exists": true,
-        "sizeBytes": 22766,
-        "sha256": "4c02e818516cc66c91e6ecdb8070427fe11ac3a70fdc6f96ed01a2a43eacfc14",
-        "canonicalSizeBytes": 22766,
-        "canonicalSha256": "4c02e818516cc66c91e6ecdb8070427fe11ac3a70fdc6f96ed01a2a43eacfc14",
+        "sizeBytes": 22852,
+        "sha256": "3c30c0dc57646ca3fdb9c1963eee9849d8cae88b9e52c9fc3f2c8afb6a83d1e3",
+        "canonicalSizeBytes": 22852,
+        "canonicalSha256": "3c30c0dc57646ca3fdb9c1963eee9849d8cae88b9e52c9fc3f2c8afb6a83d1e3",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-src-algorithm-help-runtime.js?v=20260616-src-algorithm-help1"
+        "cacheKey": "engineering-src-algorithm-help-runtime.js?v=20260628-manual-npshr1"
       },
       {
         "path": "engineering-src-canvas-parameter-runtime.js",
@@ -457,22 +469,32 @@
         "cacheKey": "engineering-src-canvas-parameter-runtime.js?v=20260628-src-stable-values1"
       },
       {
+        "path": "engineering-suction-only-npsha-runtime.js",
+        "exists": true,
+        "sizeBytes": 63052,
+        "sha256": "eeacd1bd709c94abd24cfa2ab67ccd5506086d8abdb18d85cb3efe6e5d725e0f",
+        "canonicalSizeBytes": 63052,
+        "canonicalSha256": "eeacd1bd709c94abd24cfa2ab67ccd5506086d8abdb18d85cb3efe6e5d725e0f",
+        "canonicalizedLineEndings": true,
+        "cacheKey": "engineering-suction-only-npsha-runtime.js?v=20260628-suction-only-npsha4"
+      },
+      {
         "path": "FILE_MANIFEST.md",
         "exists": true,
-        "sizeBytes": 32041,
-        "sha256": "99370ecbb7e71401fab6067494e0a05bd356ae2410a89e444bc707941ca8cc64",
-        "canonicalSizeBytes": 31876,
-        "canonicalSha256": "774467b0e8b40c4a2add91aa6f19f10c117c792f0af1bd71e1dfe0091701e8f6",
+        "sizeBytes": 33309,
+        "sha256": "8d9580c3b4ebd5a930b65302e586452fe42c191e5e45c3b2bb12d79b76449e13",
+        "canonicalSizeBytes": 33117,
+        "canonicalSha256": "5b6810054140319ba8a037deeb0cd986d1605c115066c9000518fcb55c807d01",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
       {
         "path": "index.html",
         "exists": true,
-        "sizeBytes": 69393,
-        "sha256": "3c70f00b26fe5c6a4a14dee8799ae8b3e72983bdf17a65dadd555a78a74f599d",
-        "canonicalSizeBytes": 68524,
-        "canonicalSha256": "5f5e53e82d8d16d6fa1453723c318d21d0852e46b77464273c669bbae495761c",
+        "sizeBytes": 69578,
+        "sha256": "e78c1d2982aa051cf6ae0d48c683a21e03c967b57ac6353022f9ca01a880c98b",
+        "canonicalSizeBytes": 68666,
+        "canonicalSha256": "ba25d702016d14e8f5adeebfd518d15cd0b956da5e270b7ddfb74af24fccf9e0",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
@@ -545,7 +567,7 @@
     },
     "apiVersion": {
       "statusCode": 200,
-      "sha256": "f1ff997b1ab68275d65a0eeea5f528ac14085356e44daf95122e36c603f1938a",
+      "sha256": "a1bbc3ac06666db71c54101ba5bd1cdc31dded4fd9dfec3aba4f32cedaf3280a",
       "payload": {
         "ok": true,
         "appName": "GhaniSIM1 NPSH",
@@ -694,7 +716,7 @@
             "parity.fingerprint"
           ]
         },
-        "generatedAt": "2026-06-28T10:52:58.726Z"
+        "generatedAt": "2026-06-29T00:13:24.681Z"
       }
     },
     "verifiedAssets": [
@@ -714,9 +736,9 @@
         "liveSizeBytes": 92827,
         "liveSha256": "b43685989471b743fa5a9c5f93237027fadbfb60cc642ab4f550ae85c6a5a33f",
         "liveCanonicalSha256": "1d4131592ef3840d55bf809d202a143d378d145c9d08a076a2a7fc7cc9a4ed92",
-        "localSha256": "b43685989471b743fa5a9c5f93237027fadbfb60cc642ab4f550ae85c6a5a33f",
-        "localCanonicalSha256": "1d4131592ef3840d55bf809d202a143d378d145c9d08a076a2a7fc7cc9a4ed92",
-        "matched": true
+        "localSha256": "dc914b3640fdb0b1e8a78308f5b38cfc56a7cc9a24e3368c258203fdd5de732d",
+        "localCanonicalSha256": "1359429c87ca99ba27a7cf5388f118b3e1732b90ff51686af92cd42d0260c486",
+        "matched": false
       },
       {
         "cacheKey": "engineering-bilingual-improvements.js?v=20260622-local-live-sync1",
@@ -764,9 +786,9 @@
         "liveSizeBytes": 55931,
         "liveSha256": "e8aa37ae047c6b1829fce6019dab605f6c4354f291d723b7957adda77c40174d",
         "liveCanonicalSha256": "9be8abc02969d4b7f6b40eb6ea555060169c2e7e04d2fcdbd35d6fd287e721c1",
-        "localSha256": "e8aa37ae047c6b1829fce6019dab605f6c4354f291d723b7957adda77c40174d",
-        "localCanonicalSha256": "9be8abc02969d4b7f6b40eb6ea555060169c2e7e04d2fcdbd35d6fd287e721c1",
-        "matched": true
+        "localSha256": "42124803d1e3f08718e51db243e901bc12bd0a6eef5d222e4035c3de02133180",
+        "localCanonicalSha256": "4d35b740cef3995c209b46f2e160354ea9612759c2a1180f2e875fb37b206895",
+        "matched": false
       },
       {
         "cacheKey": "engineering-caption-audit-overrides.js?v=20260606-route-schema1",
@@ -864,9 +886,9 @@
         "liveSizeBytes": 19952,
         "liveSha256": "9f34513d9657a8df839ccb21ea86dc828bdf51743ce479863575045432cb96f9",
         "liveCanonicalSha256": "9f34513d9657a8df839ccb21ea86dc828bdf51743ce479863575045432cb96f9",
-        "localSha256": "9f34513d9657a8df839ccb21ea86dc828bdf51743ce479863575045432cb96f9",
-        "localCanonicalSha256": "9f34513d9657a8df839ccb21ea86dc828bdf51743ce479863575045432cb96f9",
-        "matched": true
+        "localSha256": null,
+        "localCanonicalSha256": null,
+        "matched": false
       },
       {
         "cacheKey": "engineering-local-trace-fallback-runtime.js?v=20260611-local-trace3",
@@ -874,9 +896,9 @@
         "liveSizeBytes": 52593,
         "liveSha256": "a2473e25af465adf548473e9a5b4afab5ba42238c9ad85c7f35ae326ade2f3ad",
         "liveCanonicalSha256": "a2473e25af465adf548473e9a5b4afab5ba42238c9ad85c7f35ae326ade2f3ad",
-        "localSha256": "41f545213463ff8b21312fcd9fb73359d701e11a16833ba9384fa3cf70078edf",
-        "localCanonicalSha256": "a2473e25af465adf548473e9a5b4afab5ba42238c9ad85c7f35ae326ade2f3ad",
-        "matched": true
+        "localSha256": null,
+        "localCanonicalSha256": null,
+        "matched": false
       },
       {
         "cacheKey": "engineering-npsh-margin-runtime.js?v=20260622-local-live-sync1",
@@ -904,9 +926,9 @@
         "liveSizeBytes": 35653,
         "liveSha256": "77174b9e9bd6e3598bb4d8166e6705fd22d079e1549a74e0b3b32a2d3a8c9185",
         "liveCanonicalSha256": "77174b9e9bd6e3598bb4d8166e6705fd22d079e1549a74e0b3b32a2d3a8c9185",
-        "localSha256": "77174b9e9bd6e3598bb4d8166e6705fd22d079e1549a74e0b3b32a2d3a8c9185",
-        "localCanonicalSha256": "77174b9e9bd6e3598bb4d8166e6705fd22d079e1549a74e0b3b32a2d3a8c9185",
-        "matched": true
+        "localSha256": "3d31d38d1630165d65e7bf70465d79a37140399056782d797ee94e35663638e6",
+        "localCanonicalSha256": "3d31d38d1630165d65e7bf70465d79a37140399056782d797ee94e35663638e6",
+        "matched": false
       },
       {
         "cacheKey": "engineering-pipe-canvas-hydraulic-label-runtime-20260628-pfv-canvas-anchor1.js?v=20260628-pfv-canvas-anchor1",
@@ -954,9 +976,9 @@
         "liveSizeBytes": 30709,
         "liveSha256": "b43c19bf2d5443ebad73835bab3e1b6df0cb02eb058837c0ca5d3639ca8a9fbe",
         "liveCanonicalSha256": "ed17caf9867770e9ed19d3e5d1649a296894062ff38072c4394e1073a458e974",
-        "localSha256": "b43c19bf2d5443ebad73835bab3e1b6df0cb02eb058837c0ca5d3639ca8a9fbe",
-        "localCanonicalSha256": "ed17caf9867770e9ed19d3e5d1649a296894062ff38072c4394e1073a458e974",
-        "matched": true
+        "localSha256": "1eb49b4e2094d20ab6b1be3b2db9bd5edfaed1aa5bab37184cff7bd9033df579",
+        "localCanonicalSha256": "750f266b31de954e49abad3c8d4560397b4525f02972c69961374621b34a2465",
+        "matched": false
       },
       {
         "cacheKey": "engineering-pump-formula-defense-live-audit.js?v=20260626-head-power-audit1",
@@ -994,9 +1016,9 @@
         "liveSizeBytes": 134247,
         "liveSha256": "ca968734c4d82e186b6ce2315509d12411be1e2f16f211555b1d33addd9e497c",
         "liveCanonicalSha256": "d33e164c508a506f989742361b3d19239d9b95e9d2225b25efbbb880ebfa2b1d",
-        "localSha256": "95233e593a44b95676c64d817f6bde901cd49ae83102d6868e6b12d99e42d2c3",
-        "localCanonicalSha256": "d33e164c508a506f989742361b3d19239d9b95e9d2225b25efbbb880ebfa2b1d",
-        "matched": true
+        "localSha256": null,
+        "localCanonicalSha256": null,
+        "matched": false
       },
       {
         "cacheKey": "engineering-pump-performance-chart-audit.js?v=20260626-head-power-audit1",
@@ -1004,9 +1026,9 @@
         "liveSizeBytes": 33295,
         "liveSha256": "672686f38afdba0f3af1e4d154fddf3a25654a0748f5ed8973b67b5f13aa11d9",
         "liveCanonicalSha256": "4f6274b0759cc8b28ee1c4cdbb166feb5a937cbab6d89045fdf98e5d98b65424",
-        "localSha256": "672686f38afdba0f3af1e4d154fddf3a25654a0748f5ed8973b67b5f13aa11d9",
-        "localCanonicalSha256": "4f6274b0759cc8b28ee1c4cdbb166feb5a937cbab6d89045fdf98e5d98b65424",
-        "matched": true
+        "localSha256": "b0ba104be2cd8c1a86e8a679297c8025edc08f352d94d2b0e0df4a06a4187d95",
+        "localCanonicalSha256": "87927aa28a07e63f9cd7a6befb89c4cae663091761f778b9c77260d1d03616dc",
+        "matched": false
       },
       {
         "cacheKey": "engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3",
@@ -1034,7 +1056,7 @@
         "liveSizeBytes": 134832,
         "liveSha256": "3c852001c60c64d9ea5b1459a70e1ccc88896335d62263ae2d89185c99d3e547",
         "liveCanonicalSha256": "8ce1c75561b1d7e6c44414881561eeadd8a399b897d844b237dc26dc412662cf",
-        "localSha256": "3c852001c60c64d9ea5b1459a70e1ccc88896335d62263ae2d89185c99d3e547",
+        "localSha256": "e2bb7eee9e55b81a937af540634973527f6603b09f4801bb84fc8bb3cb41c9ef",
         "localCanonicalSha256": "8ce1c75561b1d7e6c44414881561eeadd8a399b897d844b237dc26dc412662cf",
         "matched": true
       },
@@ -1064,9 +1086,9 @@
         "liveSizeBytes": 22766,
         "liveSha256": "4c02e818516cc66c91e6ecdb8070427fe11ac3a70fdc6f96ed01a2a43eacfc14",
         "liveCanonicalSha256": "4c02e818516cc66c91e6ecdb8070427fe11ac3a70fdc6f96ed01a2a43eacfc14",
-        "localSha256": "4c02e818516cc66c91e6ecdb8070427fe11ac3a70fdc6f96ed01a2a43eacfc14",
-        "localCanonicalSha256": "4c02e818516cc66c91e6ecdb8070427fe11ac3a70fdc6f96ed01a2a43eacfc14",
-        "matched": true
+        "localSha256": null,
+        "localCanonicalSha256": null,
+        "matched": false
       },
       {
         "cacheKey": "engineering-src-canvas-parameter-runtime.js?v=20260628-src-stable-values1",
@@ -1091,9 +1113,112 @@
     ]
   },
   "differences": {
-    "cacheKeysMissingOnLive": [],
-    "cacheKeysMissingLocally": [],
-    "assetVerificationFailures": []
+    "cacheKeysMissingOnLive": [
+      "engineering-canvas-clear-reset-guard.js?v=20260629-canvas-clear-reset1",
+      "engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260629-owner-cleanup1",
+      "engineering-local-trace-fallback-runtime.js?v=20260628-manual-npshr1",
+      "engineering-pump-performance-canonical-chart.js?v=20260628-manual-npshr1",
+      "engineering-src-algorithm-help-runtime.js?v=20260628-manual-npshr1",
+      "engineering-suction-only-npsha-runtime.js?v=20260628-suction-only-npsha4"
+    ],
+    "cacheKeysMissingLocally": [
+      "engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260628-global-stable-values3",
+      "engineering-local-trace-fallback-runtime.js?v=20260611-local-trace3",
+      "engineering-pump-performance-canonical-chart.js?v=20260626-head-power-audit1",
+      "engineering-src-algorithm-help-runtime.js?v=20260616-src-algorithm-help1"
+    ],
+    "assetVerificationFailures": [
+      {
+        "cacheKey": "engineering-analysis-report-live-runtime.js?v=20260626-head-power-audit1",
+        "path": "engineering-analysis-report-live-runtime.js",
+        "liveSizeBytes": 92827,
+        "liveSha256": "b43685989471b743fa5a9c5f93237027fadbfb60cc642ab4f550ae85c6a5a33f",
+        "liveCanonicalSha256": "1d4131592ef3840d55bf809d202a143d378d145c9d08a076a2a7fc7cc9a4ed92",
+        "localSha256": "dc914b3640fdb0b1e8a78308f5b38cfc56a7cc9a24e3368c258203fdd5de732d",
+        "localCanonicalSha256": "1359429c87ca99ba27a7cf5388f118b3e1732b90ff51686af92cd42d0260c486",
+        "matched": false
+      },
+      {
+        "cacheKey": "engineering-canvas-context-dock-20260628-canvas-dock-scroll-anchor1.js?v=20260628-canvas-dock-scroll-anchor1",
+        "path": "engineering-canvas-context-dock-20260628-canvas-dock-scroll-anchor1.js",
+        "liveSizeBytes": 55931,
+        "liveSha256": "e8aa37ae047c6b1829fce6019dab605f6c4354f291d723b7957adda77c40174d",
+        "liveCanonicalSha256": "9be8abc02969d4b7f6b40eb6ea555060169c2e7e04d2fcdbd35d6fd287e721c1",
+        "localSha256": "42124803d1e3f08718e51db243e901bc12bd0a6eef5d222e4035c3de02133180",
+        "localCanonicalSha256": "4d35b740cef3995c209b46f2e160354ea9612759c2a1180f2e875fb37b206895",
+        "matched": false
+      },
+      {
+        "cacheKey": "engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260628-global-stable-values3",
+        "path": "engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js",
+        "liveSizeBytes": 19952,
+        "liveSha256": "9f34513d9657a8df839ccb21ea86dc828bdf51743ce479863575045432cb96f9",
+        "liveCanonicalSha256": "9f34513d9657a8df839ccb21ea86dc828bdf51743ce479863575045432cb96f9",
+        "localSha256": null,
+        "localCanonicalSha256": null,
+        "matched": false
+      },
+      {
+        "cacheKey": "engineering-local-trace-fallback-runtime.js?v=20260611-local-trace3",
+        "path": "engineering-local-trace-fallback-runtime.js",
+        "liveSizeBytes": 52593,
+        "liveSha256": "a2473e25af465adf548473e9a5b4afab5ba42238c9ad85c7f35ae326ade2f3ad",
+        "liveCanonicalSha256": "a2473e25af465adf548473e9a5b4afab5ba42238c9ad85c7f35ae326ade2f3ad",
+        "localSha256": null,
+        "localCanonicalSha256": null,
+        "matched": false
+      },
+      {
+        "cacheKey": "engineering-performance-refresh-governor.js?v=20260626-head-power-audit1",
+        "path": "engineering-performance-refresh-governor.js",
+        "liveSizeBytes": 35653,
+        "liveSha256": "77174b9e9bd6e3598bb4d8166e6705fd22d079e1549a74e0b3b32a2d3a8c9185",
+        "liveCanonicalSha256": "77174b9e9bd6e3598bb4d8166e6705fd22d079e1549a74e0b3b32a2d3a8c9185",
+        "localSha256": "3d31d38d1630165d65e7bf70465d79a37140399056782d797ee94e35663638e6",
+        "localCanonicalSha256": "3d31d38d1630165d65e7bf70465d79a37140399056782d797ee94e35663638e6",
+        "matched": false
+      },
+      {
+        "cacheKey": "engineering-pump-edit-fast-lane.js?v=20260626-head-power-audit1",
+        "path": "engineering-pump-edit-fast-lane.js",
+        "liveSizeBytes": 30709,
+        "liveSha256": "b43c19bf2d5443ebad73835bab3e1b6df0cb02eb058837c0ca5d3639ca8a9fbe",
+        "liveCanonicalSha256": "ed17caf9867770e9ed19d3e5d1649a296894062ff38072c4394e1073a458e974",
+        "localSha256": "1eb49b4e2094d20ab6b1be3b2db9bd5edfaed1aa5bab37184cff7bd9033df579",
+        "localCanonicalSha256": "750f266b31de954e49abad3c8d4560397b4525f02972c69961374621b34a2465",
+        "matched": false
+      },
+      {
+        "cacheKey": "engineering-pump-performance-canonical-chart.js?v=20260626-head-power-audit1",
+        "path": "engineering-pump-performance-canonical-chart.js",
+        "liveSizeBytes": 134247,
+        "liveSha256": "ca968734c4d82e186b6ce2315509d12411be1e2f16f211555b1d33addd9e497c",
+        "liveCanonicalSha256": "d33e164c508a506f989742361b3d19239d9b95e9d2225b25efbbb880ebfa2b1d",
+        "localSha256": null,
+        "localCanonicalSha256": null,
+        "matched": false
+      },
+      {
+        "cacheKey": "engineering-pump-performance-chart-audit.js?v=20260626-head-power-audit1",
+        "path": "engineering-pump-performance-chart-audit.js",
+        "liveSizeBytes": 33295,
+        "liveSha256": "672686f38afdba0f3af1e4d154fddf3a25654a0748f5ed8973b67b5f13aa11d9",
+        "liveCanonicalSha256": "4f6274b0759cc8b28ee1c4cdbb166feb5a937cbab6d89045fdf98e5d98b65424",
+        "localSha256": "b0ba104be2cd8c1a86e8a679297c8025edc08f352d94d2b0e0df4a06a4187d95",
+        "localCanonicalSha256": "87927aa28a07e63f9cd7a6befb89c4cae663091761f778b9c77260d1d03616dc",
+        "matched": false
+      },
+      {
+        "cacheKey": "engineering-src-algorithm-help-runtime.js?v=20260616-src-algorithm-help1",
+        "path": "engineering-src-algorithm-help-runtime.js",
+        "liveSizeBytes": 22766,
+        "liveSha256": "4c02e818516cc66c91e6ecdb8070427fe11ac3a70fdc6f96ed01a2a43eacfc14",
+        "liveCanonicalSha256": "4c02e818516cc66c91e6ecdb8070427fe11ac3a70fdc6f96ed01a2a43eacfc14",
+        "localSha256": null,
+        "localCanonicalSha256": null,
+        "matched": false
+      }
+    ]
   },
   "cachePolicy": {
     "htmlAndManifest": "no-cache/no-store validation path",

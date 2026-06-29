@@ -37,7 +37,7 @@ assert(
   "SRC Boundary Guidance must no longer be a root Help menu item before SNK Boundary Guidance."
 );
 assert(
-  index.includes("engineering-src-algorithm-help-runtime.js?v=20260616-src-algorithm-help1"),
+  index.includes("engineering-src-algorithm-help-runtime.js?v=20260628-manual-npshr1"),
   "Index must load the cache-busted SRC Algorithm help runtime."
 );
 
@@ -72,7 +72,7 @@ assert.strictEqual(
 );
 
 assert(
-  manifest.includes("SRC Algorithm help runtime cache key: engineering-src-algorithm-help-runtime.js?v=20260616-src-algorithm-help1"),
+  manifest.includes("SRC Algorithm help runtime cache key: engineering-src-algorithm-help-runtime.js?v=20260628-manual-npshr1"),
   "Manifest must document the SRC Algorithm help cache key."
 );
 assert(

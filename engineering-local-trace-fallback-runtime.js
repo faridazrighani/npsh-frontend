@@ -620,7 +620,7 @@
       edges: [
         ...routeEdges,
         { from: "Fluid/SRC/suction route", to: "NPSHA", relation: "direct suction-route impact" },
-        { from: "Pump curve/NPSHR", to: "NPSH margin", relation: "pump requirement impact" },
+        { from: "Manual NPSHr", to: "NPSH margin", relation: "manual pump requirement impact" },
         { from: "SNK/discharge route", to: "system head", relation: "discharge-system impact" }
       ],
       changedInputs: [],
@@ -628,7 +628,7 @@
         "pump operating point",
         "system head",
         "NPSHA",
-        "NPSHR(Q)",
+        "Manual NPSHr comparison",
         "NPSH margin",
         "NPSH margin ratio",
         "acceptance status",

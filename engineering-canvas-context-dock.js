@@ -193,6 +193,41 @@
     return model || {};
   }
 
+  function hasCanvasEquipment() {
+    const documentRef = root.document;
+    const canvas = documentRef?.getElementById?.('canvas');
+    if (canvas?.querySelector?.('.pfd-object')) return true;
+    const model = normalizeModel(root);
+    const ignoredKeys = new Set(['fluid', 'settings', 'connections', '__connections', 'metadata', 'audit', 'units']);
+    const equipmentTypes = new Set([
+      'source',
+      'sink',
+      'pump',
+      'pipe',
+      'tank',
+      'valve',
+      'pt',
+      'lic',
+      'instrument',
+      'vessel',
+      'horizontalvessel',
+      'verticalvessel',
+      'exchanger'
+    ]);
+    return Object.entries(model || {}).some(([key, node]) => {
+      if (!node || typeof node !== 'object' || Array.isArray(node)) return false;
+      const rawKey = String(key || '').toLowerCase();
+      const type = String(node.type || '').toLowerCase();
+      if (ignoredKeys.has(rawKey) || ignoredKeys.has(type)) return false;
+      if (equipmentTypes.has(type)) return true;
+      return /^(src|snk|pipe|p|tk|v|pt|lic)[-_]?\d*/i.test(String(key || ''));
+    });
+  }
+
+  function isSuppressedAfterClear() {
+    return root.__npshCanvasClearEmpty === true && !hasCanvasEquipment();
+  }
+
   function normalizeConnections(model, rootLike = root) {
     const candidates = [
       rootLike.__npshConnections,
@@ -1377,6 +1412,13 @@
     if (!documentRef) return null;
     const canvas = documentRef.getElementById('canvas');
     if (!canvas) return null;
+    if (isSuppressedAfterClear()) {
+      documentRef.getElementById(DOCK_ID)?.remove();
+      return null;
+    }
+    if (root.__npshCanvasClearEmpty === true && hasCanvasEquipment()) {
+      root.__npshCanvasClearEmpty = false;
+    }
     injectStyle();
 
     let dock = documentRef.getElementById(DOCK_ID);

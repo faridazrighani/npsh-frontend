@@ -186,8 +186,8 @@
                     <tr><th>No.</th><th>Mode</th><th>Definisi algoritma</th><th>Konsekuensi teknik</th></tr>
                   </thead>
                   <tbody>
-                    <tr><td>1</td><td>Solve from Network</td><td>Cari Q* sehingga H_pump(Q*) = H_system(Q*).</td><td>Pressure/elevation SRC dapat menggeser Q, loss, NPSHr(Q), NPSHa, dan margin.</td></tr>
-                    <tr><td>2</td><td>Mass Flow</td><td>Q = m_dot / rho. Laju massa menjadi input fixed.</td><td>Jika rho berubah, Q hasil konversi ikut berubah; loss dan NPSHr(Q) mengikuti Q baru.</td></tr>
+                    <tr><td>1</td><td>Solve from Network</td><td>Cari Q* sehingga H_pump(Q*) = H_system(Q*).</td><td>Pressure/elevation SRC dapat menggeser Q, loss, NPSHa, dan system head. NPSHr tetap manual input.</td></tr>
+                    <tr><td>2</td><td>Mass Flow</td><td>Q = m_dot / rho. Laju massa menjadi input fixed.</td><td>Jika rho berubah, Q hasil konversi ikut berubah; loss dan NPSHa ikut berubah. NPSHr tetap manual input.</td></tr>
                     <tr><td>3</td><td>Volumetric Flow</td><td>Q = Q_input. Debit volumetrik menjadi input fixed.</td><td>Q tetap; H_SRC dan NPSHa berubah ketika pressure/elevation berubah.</td></tr>
                   </tbody>
                 </table>
@@ -233,8 +233,8 @@
                   <tbody>
                     <tr><td>1</td><td>P_abs,SRC naik</td><td>Q tetap; H_SRC dan NPSHa naik.</td><td>Q dapat berubah karena kurva sistem bergeser.</td></tr>
                     <tr><td>2</td><td>z_SRC naik</td><td>Q tetap; NPSHa naik sebesar delta z jika loss dan vapor pressure tetap.</td><td>Q dapat berubah karena kurva sistem bergeser.</td></tr>
-                    <tr><td>3</td><td>flow naik pada Volumetric Flow</td><td>Q naik; velocity, Reynolds, loss, NPSHr(Q), dan system head berubah.</td><td>Tidak berlaku sebagai input fixed.</td></tr>
-                    <tr><td>4</td><td>massFlow naik pada Mass Flow</td><td>Q = m_dot/rho naik; loss dan NPSHr(Q) berubah.</td><td>Tidak berlaku sebagai input fixed.</td></tr>
+                    <tr><td>3</td><td>flow naik pada Volumetric Flow</td><td>Q naik; velocity, Reynolds, loss, NPSHa, dan system head berubah. NPSHr tetap manual input.</td><td>Tidak berlaku sebagai input fixed.</td></tr>
+                    <tr><td>4</td><td>massFlow naik pada Mass Flow</td><td>Q = m_dot/rho naik; loss dan NPSHa berubah. NPSHr tetap manual input.</td><td>Tidak berlaku sebagai input fixed.</td></tr>
                   </tbody>
                 </table>
               </div>

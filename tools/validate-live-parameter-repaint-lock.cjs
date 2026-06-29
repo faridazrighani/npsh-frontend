@@ -14,7 +14,7 @@ const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
 
 const LOCK_CACHE_KEY = "engineering-live-parameter-repaint-lock.css?v=20260620-render-blocking-fix1";
-const STABLE_RUNTIME_CACHE_KEY = "engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260628-global-stable-values3";
+const STABLE_RUNTIME_CACHE_KEY = "engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260629-owner-cleanup1";
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");
@@ -118,6 +118,11 @@ assert(stableRuntime.includes("npsh:calculation-applying-results"), "Stable runt
 assert(stableRuntime.includes("pointermove"), "Stable runtime must avoid repaint churn during canvas drag.");
 assert(stableRuntime.includes('"input", "change"'), "Stable runtime must protect canvas panels while users edit numeric inputs.");
 assert(stableRuntime.includes("MutationObserver"), "Stable runtime must observe late panel insertions.");
+assert(stableRuntime.includes("liveParameterStableOwnerId"), "Stable runtime must tag live panels with their owning canvas object id.");
+assert(stableRuntime.includes("pruneOrphanPanels"), "Stable runtime must prune live parameter panels whose owner object has been deleted.");
+assert(stableRuntime.includes("purgeOwnerPanels"), "Stable runtime must purge live parameter panels when a canvas object subtree is removed.");
+assert(stableRuntime.includes("shouldDiscardPanelForMissingOwner"), "Stable runtime must refuse to restore panels from deleted object subtrees.");
+assert(stableRuntime.includes("panelIsInsideRemovedObject"), "Stable runtime must detect panels removed together with their owner icon.");
 assert(!stableRuntime.includes("innerHTML"), "Stable runtime must not use innerHTML for live canvas parameter panels.");
 
 const livePanelBlock = cssBlockPattern(

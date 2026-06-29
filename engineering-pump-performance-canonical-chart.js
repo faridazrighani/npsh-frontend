@@ -258,8 +258,8 @@
     const designFlow = toNumber(props.designFlow);
     const designHead = toNumber(props.designHead);
     const bepFlow = firstNumber(props.bepFlow, props.designFlow);
-    const designNpshr = firstNumber(props.designNpshr, props.manualNpshr);
-    const manualNpshr = firstNumber(props.manualNpshr, props.designNpshr);
+    const designNpshr = firstNumber(props.designNpshr);
+    const manualNpshr = firstNumber(props.manualNpshr);
     const manualNpshrMode = /manual/i.test(sourceMode);
     return {
       designFlow,
@@ -269,7 +269,7 @@
       manualNpshr,
       npshrSourceMode: sourceMode,
       manualNpshrMode,
-      npshrBasis: manualNpshrMode ? manualNpshr : designNpshr
+      npshrBasis: manualNpshr
     };
   }
 
@@ -294,7 +294,7 @@
     return {
       flow: roundChartNumber(live.designFlow),
       head: roundChartNumber(live.designHead),
-      npshr: roundChartNumber(live.manualNpshrMode ? live.manualNpshr : live.designNpshr),
+      npshr: roundChartNumber(live.manualNpshr),
       bepFlow: roundChartNumber(live.bepFlow),
       npshrSourceMode: live.npshrSourceMode || ''
     };
@@ -713,15 +713,6 @@
     }).filter(Boolean);
   }
 
-  function engineeringFitNpshr(flow, bepFlow, designNpshr) {
-    const q = toNumber(flow);
-    const qd = toNumber(bepFlow);
-    const npshr = toNumber(designNpshr);
-    if (q === null || qd === null || npshr === null || qd <= 0 || npshr <= 0) return null;
-    const fraction = Math.max(0, q / qd);
-    return Math.max(0.01, npshr * (0.65 + 0.35 * Math.pow(fraction, 2.2)));
-  }
-
   function buildFlowGrid(pump, chartData = null) {
     const props = pump.props || {};
     const results = pump.results || {};
@@ -778,14 +769,9 @@
 
     const propsCurveIsDefault = isDefaultPumpCurve(props.curveData || []);
     const propsPumpHead = propsCurveIsDefault ? [] : normalizePoints(props.curveData, ['head', 'pumpHead', 'value']);
-    const propsNpshr = propsCurveIsDefault ? [] : normalizePoints(props.curveData, ['npshr', 'requiredNpsh', 'value']);
     const propsCurveIsVendor = isVendorSourceText(results.curveDataSource || props.curveDataSource || props.curveSourceNote);
     const curveFlowBasis = bepFlow || designFlow || flow;
-    const manualNpshrMode = live.manualNpshrMode;
-    const estimatedDutyNpshr = engineeringFitNpshr(flow, curveFlowBasis, designNpshr ?? live.manualNpshr);
-    const npshr = manualNpshrMode
-      ? firstNumber(live.manualNpshr, designNpshr, evaluation.npshr, results.npshr, duty.npshr)
-      : firstNumber(estimatedDutyNpshr, evaluation.npshr, results.npshr, duty.npshr, designNpshr);
+    const npshr = firstNumber(live.manualNpshr);
     const flows = buildFlowGrid(pump, chartData);
     const systemBasis = previewSystemBasis(pump, flow, head);
     const designTarget = designTargetFromPump(pump);
@@ -793,13 +779,9 @@
       const fromCurve = propsCurveIsVendor && propsPumpHead.length ? interpolateSeriesValue(propsPumpHead, q) : null;
       return canonicalPoint(q, fromCurve ?? engineeringFitHead(q, curveFlowBasis, head, flow));
     }).filter(Boolean);
-    const npshrSeries = flows.map((q) => {
-      const fromCurve = !manualNpshrMode && propsNpshr.length ? interpolateSeriesValue(propsNpshr, q) : null;
-      const fallback = manualNpshrMode
-        ? npshr
-        : engineeringFitNpshr(q, curveFlowBasis, designNpshr || npshr);
-      return canonicalPoint(q, fromCurve ?? fallback);
-    }).filter(Boolean);
+    const npshrSeries = npshr !== null
+      ? flows.map((q) => canonicalPoint(q, npshr)).filter(Boolean)
+      : [];
     const systemHeadSeries = previewSystemSeriesFromFlows(flows, flow, head, systemBasis);
     const npshaSeries = previewNpshaSeriesFromFlows(flows, flow, npsha, suctionLossAtDuty(pump));
 
@@ -980,7 +962,7 @@
         flow: toNumber(results.flow ?? props.designFlow),
         head: toNumber(results.head ?? props.designHead),
         npsha: toNumber(results.npsha),
-        npshr: toNumber(results.npshr ?? props.designNpshr),
+        npshr: toNumber(results.npshr ?? props.manualNpshr),
         margin: toNumber(results.npshMargin)
       },
       series: {
@@ -1118,13 +1100,8 @@
     const localNpsha = firstNumber(evaluation.npsha, results.npsha, results.npshAvailable, baseDuty.npsha);
     const propsCurveIsDefault = isDefaultPumpCurve(props.curveData || []);
     const propsPumpHead = propsCurveIsDefault ? [] : normalizePoints(props.curveData, ['head', 'pumpHead', 'value']);
-    const propsNpshr = propsCurveIsDefault ? [] : normalizePoints(props.curveData, ['npshr', 'requiredNpsh']);
-    const manualNpshrMode = live.manualNpshrMode;
     const curveFlowBasis = firstNumber(live.bepFlow, live.designFlow, localFlow);
-    const estimatedLocalNpshr = engineeringFitNpshr(localFlow, curveFlowBasis, live.designNpshr ?? live.manualNpshr);
-    const localNpshr = manualNpshrMode
-      ? firstNumber(live.manualNpshr, live.designNpshr, evaluation.npshr, results.npshr, results.npshRequired, baseDuty.npshr)
-      : firstNumber(estimatedLocalNpshr, evaluation.npshr, results.npshr, results.npshRequired, baseDuty.npshr, live.designNpshr);
+    const localNpshr = firstNumber(live.manualNpshr);
     const localMargin = localNpsha !== null && localNpshr !== null
       ? localNpsha - localNpshr
       : toNumber(evaluation.npshMargin ?? results.npshMargin ?? baseDuty.margin);
@@ -1133,13 +1110,9 @@
       const fromCurve = propsPumpHead.length ? interpolateSeriesValue(propsPumpHead, flow) : null;
       return canonicalPoint(flow, fromCurve ?? engineeringFitHead(flow, curveFlowBasis, localHead, localFlow));
     }).filter(Boolean);
-    const fallbackNpshr = fallbackFlows.map((flow) => {
-      const fromCurve = !manualNpshrMode && propsNpshr.length ? interpolateSeriesValue(propsNpshr, flow) : null;
-      const fallback = manualNpshrMode
-        ? localNpshr
-        : engineeringFitNpshr(flow, curveFlowBasis, firstNumber(live.designNpshr, live.manualNpshr, localNpshr));
-      return canonicalPoint(flow, fromCurve ?? fallback);
-    }).filter(Boolean);
+    const fallbackNpshr = localNpshr !== null
+      ? fallbackFlows.map((flow) => canonicalPoint(flow, localNpshr)).filter(Boolean)
+      : [];
     const basePumpHead = canonicalSeries(chartData, 'pumpHead');
     const baseNpshr = canonicalSeries(chartData, 'npshr');
     const baseNpsha = canonicalSeries(chartData, 'npsha');
@@ -1185,9 +1158,7 @@
           ? scaleSeriesToDuty(baseSystemHead, localHead, baseDuty.head, localFlow, baseDuty.flow)
           : (fallbackSystemHead.length ? fallbackSystemHead : previewSystemSeries(localFlow, localHead)),
         npsha: baseNpsha.length ? scaleSeriesToDuty(baseNpsha, localNpsha, baseDuty.npsha, localFlow, baseDuty.flow) : previewFlatSeries(localFlow, localNpsha),
-        npshr: !manualNpshrMode && propsNpshr.length
-          ? propsNpshr
-          : (fallbackNpshr.length ? fallbackNpshr : (baseNpshr.length ? scaleSeriesToDuty(baseNpshr, localNpshr, baseDuty.npshr, localFlow, baseDuty.flow) : previewFlatSeries(localFlow, localNpshr)))
+        npshr: fallbackNpshr
       },
       canonical: false,
       preview: true
@@ -2262,11 +2233,7 @@
     const pump = runtimeModel()?.[resolvePumpId(pumpId)] || {};
     const evaluation = pump.results?.npshEvaluation || {};
     const value = firstNumber(
-      pump.props?.manualNpshr,
-      pump.props?.designNpshr,
-      evaluation.npshr,
-      pump.results?.npshr,
-      pump.results?.npshRequired
+      pump.props?.manualNpshr
     );
     return formatNumericInputValue(value, 6);
   }

@@ -267,16 +267,16 @@ assert(
   'Index must cache-bust the pump performance chart audit runtime.'
 );
 assert(
-  index.includes('engineering-pump-performance-canonical-chart.js?v=20260626-head-power-audit1'),
+  index.includes('engineering-pump-performance-canonical-chart.js?v=20260628-manual-npshr1'),
   'Index must load the canonical pump runtime in the critical shell so Pump Datum - NPSHR uses current margin-basis defaults before the first pump click.'
 );
 assert(
   index.indexOf('app.bundle.min.js?v=20260621-npsh-margin-options1')
-    < index.indexOf('engineering-pump-performance-canonical-chart.js?v=20260626-head-power-audit1'),
+    < index.indexOf('engineering-pump-performance-canonical-chart.js?v=20260628-manual-npshr1'),
   'Canonical pump runtime must load after the app bundle so it can override stale app-bundle pump handlers.'
 );
 assert(
-  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260626-head-power-audit1'),
+  auditSource.includes('engineering-pump-performance-canonical-chart.js?v=20260628-manual-npshr1'),
   'Audit runtime must load the canonical operational chart renderer after audit guards.'
 );
 assert.strictEqual(typeof audit.loadCanonicalChartRenderer, 'function', 'Audit runtime must expose canonical renderer loader.');
@@ -660,9 +660,14 @@ assert(
 globalThis.__npshGlobalModel['P-100'].props.npshrSourceMode = 'Estimated';
 const estimatedNpshrPreview = canonical.buildChartModel('P-100');
 assert(
-  estimatedNpshrPreview.series.npshr.some((point) => point.value !== 3),
-  'Estimated NPSHr source must render a shaped local NPSHr curve.'
+  estimatedNpshrPreview.series.npshr.every((point) => point.value === 3),
+  'Estimated NPSHr source must not calculate a shaped curve; manualNpshr remains the only NPSHr source.'
 );
+delete globalThis.__npshGlobalModel['P-100'].props.manualNpshr;
+delete globalThis.__npshGlobalModel['P-100'].results.npshr;
+delete globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.npshr;
+const noManualNpshrPreview = canonical.buildChartModel('P-100');
+assert.strictEqual(noManualNpshrPreview.series.npshr.length, 0, 'NPSHr chart series must stay blank without manualNpshr.');
 delete globalThis.__engineeringPumpEditFastLane;
 
 setModel({

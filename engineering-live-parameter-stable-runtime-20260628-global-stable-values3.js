@@ -2,6 +2,7 @@
   "use strict";
 
   const VERSION = "2026.06-live-parameter-stable3";
+  const OBJECT_SELECTOR = ".pfd-object";
   const PANEL_SELECTOR = ".pump-live-params, .tank-live-params, .source-live-params, .sink-live-params";
   const ROW_SELECTOR = ".pump-live-param-row, .tank-live-param-row, .source-live-param-row, .sink-live-param-row";
   const SECTION_SELECTOR = ".pump-live-param-section, .tank-live-param-section, .source-live-param-section, .sink-live-param-section";
@@ -26,6 +27,7 @@
   const PLACEHOLDER_TEXT = new Set(["", "-", "–", "—"]);
   const BUSY_SETTLE_MS = 700;
   const RECONCILE_DELAY_MS = 90;
+  const CLEAR_IN_PROGRESS_FLAG = "__npshCanvasClearInProgress";
 
   const registry = new Map();
   const detachedPanels = new Map();
@@ -36,6 +38,7 @@
   let observer = null;
   let reconcileTimer = null;
   let busyFlushTimer = null;
+  let orphanCleanupTimer = null;
   let busyUntil = 0;
   let installAttempts = 0;
 
@@ -59,6 +62,7 @@
   function objectIdForPanel(panel) {
     const object = panel?.closest?.(".pfd-object, [data-node-id], [data-object-id]");
     const candidates = [
+      panel?.dataset?.liveParameterStableOwnerId,
       panel?.dataset?.nodeId,
       panel?.dataset?.objectId,
       panel?.dataset?.pumpId,
@@ -74,6 +78,106 @@
     if (candidates.length) return candidates[0];
     const label = normalizeText(object?.querySelector?.(".object-label, .node-label, .equipment-label")?.textContent);
     return label || normalizeText(object?.textContent).slice(0, 80);
+  }
+
+  function objectIdForObject(object) {
+    if (!object || object.nodeType !== 1) return "";
+    const candidates = [
+      object.dataset?.nodeId,
+      object.dataset?.objectId,
+      object.dataset?.pumpId,
+      object.dataset?.sourceId,
+      object.dataset?.sinkId,
+      object.id
+    ].map(normalizeText).filter(Boolean);
+    if (candidates.length) return candidates[0];
+    const label = normalizeText(object.querySelector?.(".object-label, .node-label, .equipment-label")?.textContent);
+    return label || normalizeText(object.textContent).slice(0, 80);
+  }
+
+  function getCanvas() {
+    return root.document?.getElementById?.("canvas") || null;
+  }
+
+  function modelHasOwner(ownerId) {
+    const normalizedOwnerId = normalizeText(ownerId);
+    if (!normalizedOwnerId) return false;
+    const model = root.globalModel || root.__npshGlobalModel || {};
+    if (model?.[normalizedOwnerId] && typeof model[normalizedOwnerId] === "object") return true;
+    return Object.entries(model || {}).some(([id, node]) => {
+      if (!node || typeof node !== "object") return false;
+      return [id, node.id, node.name, node.props?.id, node.props?.name]
+        .map(normalizeText)
+        .some((value) => value === normalizedOwnerId);
+    });
+  }
+
+  function canvasHasOwner(ownerId) {
+    const normalizedOwnerId = normalizeText(ownerId);
+    if (!normalizedOwnerId) return false;
+    const canvas = getCanvas();
+    if (!canvas?.querySelectorAll) return false;
+    return Array.from(canvas.querySelectorAll(OBJECT_SELECTOR)).some((object) => objectIdForObject(object) === normalizedOwnerId);
+  }
+
+  function panelIsInsideRemovedObject(panel) {
+    const object = panel?.closest?.(OBJECT_SELECTOR);
+    return !!object && !object.isConnected;
+  }
+
+  function shouldDiscardPanelForMissingOwner(panel) {
+    const ownerId = objectIdForPanel(panel);
+    if (!ownerId) return false;
+    if (panelIsInsideRemovedObject(panel)) return true;
+    return panel.isConnected && !canvasHasOwner(ownerId) && !modelHasOwner(ownerId);
+  }
+
+  function purgePanelRecord(panel) {
+    const key = panel?.dataset?.liveParameterStableKey || panelKey(panel);
+    if (key) {
+      registry.delete(key);
+      detachedPanels.delete(key);
+    }
+    if (panel?.isConnected) panel.remove();
+    return true;
+  }
+
+  function purgeOwnerPanels(ownerId, scope = document) {
+    const normalizedOwnerId = normalizeText(ownerId);
+    if (!normalizedOwnerId) return 0;
+    let removed = 0;
+    for (const [key, panel] of Array.from(registry.entries())) {
+      if (objectIdForPanel(panel) === normalizedOwnerId) {
+        registry.delete(key);
+        detachedPanels.delete(key);
+        if (panel?.isConnected) {
+          panel.remove();
+          removed += 1;
+        }
+      }
+    }
+    for (const [key, panel] of Array.from(detachedPanels.entries())) {
+      if (objectIdForPanel(panel) === normalizedOwnerId) detachedPanels.delete(key);
+    }
+    scope?.querySelectorAll?.(PANEL_SELECTOR).forEach((panel) => {
+      if (objectIdForPanel(panel) === normalizedOwnerId) {
+        purgePanelRecord(panel);
+        removed += 1;
+      }
+    });
+    return removed;
+  }
+
+  function pruneOrphanPanels(scope = document) {
+    if (!scope?.querySelectorAll) return 0;
+    let removed = 0;
+    scope.querySelectorAll(PANEL_SELECTOR).forEach((panel) => {
+      if (shouldDiscardPanelForMissingOwner(panel)) {
+        purgePanelRecord(panel);
+        removed += 1;
+      }
+    });
+    return removed;
   }
 
   function panelKey(panel) {
@@ -133,7 +237,12 @@
     return nowMs() < busyUntil;
   }
 
+  function isCanvasClearInProgress() {
+    return !!root[CLEAR_IN_PROGRESS_FLAG];
+  }
+
   function markBusy() {
+    if (isCanvasClearInProgress()) return;
     freezeAllPanelGeometry();
     busyUntil = Math.max(busyUntil, nowMs() + BUSY_SETTLE_MS);
     scheduleBusyFlush();
@@ -334,9 +443,11 @@
   function registerPanel(panel) {
     if (!panel?.matches?.(PANEL_SELECTOR)) return null;
     const key = panelKey(panel);
+    const ownerId = objectIdForPanel(panel);
     panel.dataset.liveParameterStableShell = VERSION;
     panel.dataset.liveParameterStableKey = key;
     panel.dataset.liveParameterStableSignature = structureSignature(panel);
+    if (ownerId) panel.dataset.liveParameterStableOwnerId = ownerId;
     registry.set(key, panel);
     if (!frozenGeometry.has(panel)) freezePanelGeometry(panel);
     return key;
@@ -344,6 +455,10 @@
 
   function stabilizeAddedPanel(panel) {
     if (!panel?.matches?.(PANEL_SELECTOR)) return 0;
+    if (shouldDiscardPanelForMissingOwner(panel)) {
+      purgePanelRecord(panel);
+      return 1;
+    }
     const key = panelKey(panel);
     const existing = registry.get(key);
     if (existing && existing !== panel && existing.isConnected) {
@@ -383,6 +498,11 @@
   }
 
   function restoreRemovedPanel(panel, mutation) {
+    if (isCanvasClearInProgress()) return false;
+    if (shouldDiscardPanelForMissingOwner(panel)) {
+      purgePanelRecord(panel);
+      return false;
+    }
     const parent = mutation?.target;
     if (!isBusy() || !panel || panel.isConnected || !parent?.isConnected || typeof parent.insertBefore !== "function") return false;
     const nextSibling = mutation.nextSibling?.parentNode === parent ? mutation.nextSibling : null;
@@ -397,6 +517,15 @@
   function captureRemovedPanel(panel, mutation) {
     const key = panel?.dataset?.liveParameterStableKey || panelKey(panel);
     if (!key) return;
+    if (isCanvasClearInProgress()) {
+      registry.delete(key);
+      detachedPanels.delete(key);
+      return;
+    }
+    if (shouldDiscardPanelForMissingOwner(panel)) {
+      purgePanelRecord(panel);
+      return;
+    }
     if (restoreRemovedPanel(panel, mutation)) return;
     detachedPanels.set(key, panel);
     root.setTimeout?.(() => {
@@ -405,8 +534,10 @@
   }
 
   function reconcilePanels(scope = document) {
+    if (isCanvasClearInProgress()) return 0;
     if (!scope?.querySelectorAll) return 0;
     let changed = 0;
+    changed += pruneOrphanPanels(scope);
     scope.querySelectorAll(PANEL_SELECTOR).forEach((panel) => {
       changed += stabilizeAddedPanel(panel);
     });
@@ -422,10 +553,26 @@
     }, Math.max(0, Number(delayMs) || 0));
   }
 
+  function scheduleOrphanCleanup(delayMs = 0) {
+    if (typeof root.setTimeout !== "function") return;
+    root.clearTimeout?.(orphanCleanupTimer);
+    orphanCleanupTimer = root.setTimeout(() => {
+      orphanCleanupTimer = null;
+      pruneOrphanPanels(document);
+    }, Math.max(0, Number(delayMs) || 0));
+  }
+
   function handleMutations(mutations) {
     let shouldReconcile = false;
     mutations.forEach((mutation) => {
       Array.from(mutation.removedNodes || []).forEach((node) => {
+        if (node?.nodeType === 1) {
+          const removedObjects = [];
+          if (node.matches?.(OBJECT_SELECTOR)) removedObjects.push(node);
+          node.querySelectorAll?.(OBJECT_SELECTOR).forEach((object) => removedObjects.push(object));
+          removedObjects.forEach((object) => purgeOwnerPanels(objectIdForObject(object), document));
+          if (removedObjects.length) scheduleOrphanCleanup(0);
+        }
         panelNodesFromMutationNode(node).forEach((panel) => captureRemovedPanel(panel, mutation));
       });
       Array.from(mutation.addedNodes || []).forEach((node) => {
@@ -456,6 +603,23 @@
       subtree: true,
       characterData: true
     });
+    return true;
+  }
+
+  function clearTrackedPanels(scope = document) {
+    registry.clear();
+    detachedPanels.clear();
+    pendingAttributePanels.clear();
+    if (scope?.querySelectorAll) {
+      scope.querySelectorAll(PANEL_SELECTOR).forEach((panel) => panel.remove());
+    }
+    root.clearTimeout?.(reconcileTimer);
+    root.clearTimeout?.(busyFlushTimer);
+    root.clearTimeout?.(orphanCleanupTimer);
+    reconcileTimer = null;
+    busyFlushTimer = null;
+    orphanCleanupTimer = null;
+    busyUntil = 0;
     return true;
   }
 
@@ -526,6 +690,9 @@
     version: VERSION,
     install,
     reconcile: reconcilePanels,
+    clearTrackedPanels,
+    pruneOrphanPanels,
+    purgeOwnerPanels,
     panelKey,
     structureSignature,
     stabilizePanelFromReplacement,

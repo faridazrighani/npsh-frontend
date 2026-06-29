@@ -802,7 +802,7 @@
     try {
       const script = document.createElement('script');
       script.id = 'pump-performance-canonical-chart-runtime';
-      script.src = 'engineering-pump-performance-canonical-chart.js?v=20260626-head-power-audit1';
+      script.src = 'engineering-pump-performance-canonical-chart.js?v=20260628-manual-npshr1';
       script.async = false;
       document.body.appendChild(script);
       return true;
