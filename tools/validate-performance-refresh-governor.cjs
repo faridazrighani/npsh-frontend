@@ -19,7 +19,7 @@ globalThis.document = undefined;
 const governor = require(runtimePath);
 
 assert.equal(governor.version, '2026.06-performance-refresh-governor5-head-power-audit', 'Governor must expose the locked runtime version.');
-assert.equal(governor.cacheKey, '20260626-head-power-audit1', 'Governor must expose the cache key used by index.html.');
+assert.equal(governor.cacheKey, '20260629-live-evidence1', 'Governor must expose the cache key used by index.html.');
 assert.equal(typeof governor.schedule, 'function', 'Governor must expose schedule().');
 assert.equal(typeof governor.flush, 'function', 'Governor must expose flush().');
 assert.equal(typeof governor.patch, 'function', 'Governor must expose patch().');
@@ -119,20 +119,20 @@ assert(source.includes('forceImmediate'), 'Governor must preserve an immediate r
 
 assert(
   index.includes('engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4')
-    && index.includes('engineering-performance-refresh-governor.js?v=20260626-head-power-audit1')
-    && index.includes('engineering-pump-edit-fast-lane.js?v=20260626-head-power-audit1')
+    && index.includes('engineering-performance-refresh-governor.js?v=20260629-live-evidence1')
+    && index.includes('engineering-pump-edit-fast-lane.js?v=20260629-live-evidence1')
     && index.includes('engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1'),
   'index.html must keep route audit, governor, pump edit fast lane, and realtime defense cache-busted.'
 );
-assert(index.includes('engineering-bilingual-improvements.js?v=20260622-local-live-sync1'), 'index.html must cache-bust the realtime-first bilingual runtime.');
+assert(index.includes('engineering-bilingual-improvements.js?v=20260629-live-evidence1'), 'index.html must cache-bust the realtime-first bilingual runtime.');
 assert(bilingualSource.includes('__NPSH_USE_LEGACY_BILINGUAL_AUTOSOLVE__ !== true'), 'Bilingual legacy autosolve bridge must be opt-in so realtime defense remains the only default autosolve owner.');
 assert(bilingualSource.includes('disabled-by-realtime-defense'), 'Bilingual runtime must mark the legacy autosolve bridge as disabled by realtime defense.');
 assert(bilingualSource.includes('REALTIME_FIRST_TEXT_KEYS'), 'Bilingual runtime must prune stale i18n entries for realtime-first labels.');
 assert(bilingualSource.includes('REALTIME_FIRST_LEGACY_TEXT_OVERRIDES'), 'Bilingual runtime must normalize old Solve labels to realtime-first Validate labels.');
 assert(
-  index.indexOf('engineering-performance-refresh-governor.js?v=20260626-head-power-audit1')
-      < index.indexOf('engineering-pump-edit-fast-lane.js?v=20260626-head-power-audit1')
-    && index.indexOf('engineering-pump-edit-fast-lane.js?v=20260626-head-power-audit1')
+  index.indexOf('engineering-performance-refresh-governor.js?v=20260629-live-evidence1')
+      < index.indexOf('engineering-pump-edit-fast-lane.js?v=20260629-live-evidence1')
+    && index.indexOf('engineering-pump-edit-fast-lane.js?v=20260629-live-evidence1')
       < index.indexOf('engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1'),
   'Performance Refresh Governor and Pump edit fast lane must load before realtime defense starts scheduling linked view refreshes.'
 );
@@ -149,7 +149,7 @@ assert.equal(
   'package.json must expose validate:performance-refresh-governor.'
 );
 assert(manifest.includes('engineering-performance-refresh-governor.js'), 'FILE_MANIFEST must mention the Performance Refresh Governor runtime.');
-assert(manifest.includes('Performance refresh governor cache key: engineering-performance-refresh-governor.js?v=20260626-head-power-audit1'), 'FILE_MANIFEST must document the governor cache key.');
+assert(manifest.includes('Performance refresh governor cache key: engineering-performance-refresh-governor.js?v=20260629-live-evidence1'), 'FILE_MANIFEST must document the governor cache key.');
 assert(manifest.includes('Performance refresh governor validation: npm run validate:performance-refresh-governor'), 'FILE_MANIFEST must document the governor validator.');
 
 console.log('Performance Refresh Governor validation passed.');

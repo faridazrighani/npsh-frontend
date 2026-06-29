@@ -1045,7 +1045,7 @@
 
   const api = {
     version: VERSION,
-    cacheKey: '20260626-head-power-audit1',
+    cacheKey: '20260629-live-evidence1',
     VERSION,
     schedule,
     flush,

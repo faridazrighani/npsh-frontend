@@ -1,7 +1,7 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
   const VERSION = 'engineering-pump-edit-fast-lane.v6';
-  const CACHE_KEY = '20260626-head-power-audit1';
+  const CACHE_KEY = '20260629-live-evidence1';
   const PUMP_WINDOW_SELECTOR = [
     '.persistent-object-properties-task-window',
     '#taskWindow',

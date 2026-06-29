@@ -10,7 +10,7 @@
   'use strict';
 
   const VERSION = 'engineering-canvas-context-dock.v4';
-  const CACHE_KEY = '20260628-canvas-dock-scroll-anchor1';
+  const CACHE_KEY = '20260629-live-evidence1';
   const DOCK_ID = 'canvasContextDock';
   const STYLE_ID = 'canvas-context-dock-style';
   const STORAGE_KEY = 'npsh.canvasContextDock.expanded';

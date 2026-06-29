@@ -129,7 +129,7 @@ node npsh-api/tools/release-integrity-audit.cjs
 app.bundle.min.js.map sourcesContent: absent
 App bundle cache key: app.bundle.min.js?v=20260621-npsh-margin-options1
 Main style cache key: style.min.css?v=20260608-browser-issues1
-Bilingual terminology runtime cache key: engineering-bilingual-improvements.js?v=20260622-local-live-sync1
+Bilingual terminology runtime cache key: engineering-bilingual-improvements.js?v=20260629-live-evidence1
 Source canvas parameter runtime cache key: engineering-src-canvas-parameter-runtime.js?v=20260628-src-stable-values1
 Decimal display runtime cache key: engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2
 Live parameter stable runtime cache key: engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260629-owner-cleanup1
@@ -138,12 +138,12 @@ Local trace fallback runtime cache key: engineering-local-trace-fallback-runtime
 Pipe canvas hydraulic label runtime cache key: engineering-pipe-canvas-hydraulic-label-runtime-20260628-pfv-canvas-anchor1.js?v=20260628-pfv-canvas-anchor1
 Pipe source confidence map runtime cache key: engineering-pipe-source-confidence-map-runtime.js?v=20260611-pipe-source-confidence-map1
 Pump nozzle simplify runtime cache key: engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5
-Analysis Report live runtime cache key: engineering-analysis-report-live-runtime.js?v=20260626-head-power-audit1
+Analysis Report live runtime cache key: engineering-analysis-report-live-runtime.js?v=20260629-live-evidence1
 Head Power Audit Guard cache key: engineering-head-power-audit-guard.js?v=20260627-head-power-audit2
 Route audit cache key: engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4
 Simulation case integrity guard cache key: engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3
-Performance refresh governor cache key: engineering-performance-refresh-governor.js?v=20260626-head-power-audit1
-Pump edit fast lane cache key: engineering-pump-edit-fast-lane.js?v=20260626-head-power-audit1
+Performance refresh governor cache key: engineering-performance-refresh-governor.js?v=20260629-live-evidence1
+Pump edit fast lane cache key: engineering-pump-edit-fast-lane.js?v=20260629-live-evidence1
 Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1
 Suction-only NPSHa runtime cache key: engineering-suction-only-npsha-runtime.js?v=20260628-suction-only-npsha4
 Calculation lifecycle runtime cache key: engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1
@@ -152,7 +152,7 @@ Browser issues runtime cache key: engineering-browser-issues-runtime.js?v=202606
 Pipe Segments file runtime cache key: engineering-pipe-segments-file-runtime.js?v=20260608-pipe-segments-file1
 Formula Defense UI runtime cache key: engineering-formula-defense-ui-20260628-physical-cache1.js?v=20260613-formula-defense-ui15
 Formula Defense UI KaTeX CSS cache key: vendor/katex/katex.min.css?v=20260613-formula-defense-ui15
-Canvas context dock cache key: engineering-canvas-context-dock-20260628-canvas-dock-scroll-anchor1.js?v=20260628-canvas-dock-scroll-anchor1
+Canvas context dock cache key: engineering-canvas-context-dock-20260628-canvas-dock-scroll-anchor1.js?v=20260629-live-evidence1
 Canvas clear/reset guard cache key: engineering-canvas-clear-reset-guard.js?v=20260629-canvas-clear-reset1
 Canvas context dock load placement: post-shell no-click canvas visual hydration pack plus status script fallback; not a synchronous first-paint script tag
 Initial app load placement: Fluid Basis setup prompt is first in body DOM order for LCP; critical CSS reserves the Fluid Basis LCP card and Validate/Solve ribbon label metrics to prevent first-load CLS; shell JS auto-loads on idle; full main CSS, live parameter repaint lock, realtime/status scripts, PFV hydraulic labels, browser cleanup, and route-trace canvas layout cleanup hydrate automatically after shell load so canvas panels normalize without pointer/key input; remaining support scripts stay support-lazy, with first pointer/key activation still acting as an accelerator; Google Auth/GSI is support-lazy and not part of the first render path
@@ -164,7 +164,7 @@ NPSH margin runtime load placement: deferred realtimeScripts path before Pump NP
 Pump readiness visibility cache key: engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3
 Pump readiness visibility load placement: support-lazy feature script for developer panel hiding, not critical first-paint script
 Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260626-head-power-audit1
-Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260626-head-power-audit1
+Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260629-live-evidence1
 Pump performance canonical chart cache key: engineering-pump-performance-canonical-chart.js?v=20260628-manual-npshr1
 Pump performance canonical chart load phase: critical shell, immediately after app.bundle.min.js, so Pump Datum - NPSHR margin-basis defaults and options are active before the first pump context-menu click
 Google auth runtime cache key: engineering-google-auth-runtime.js?v=20260620-google-auth-lazy1
