@@ -128,15 +128,18 @@ function removeStaging(stagingRoot) {
 
 function deployWithWrangler(commitSha, activeBranch) {
   if (skipDeploy) return false;
-  if (!process.env.CLOUDFLARE_API_TOKEN) {
-    console.log('CLOUDFLARE_API_TOKEN is not set; skipping direct Wrangler deploy and relying on any Git-connected Cloudflare Pages deployment.');
-    return false;
-  }
 
   const stagingRoot = path.join(frontendRoot, `.deploy-staging-${Date.now()}`);
-  const xdgConfigHome = path.join(frontendRoot, '.wrangler-config');
-  const wranglerLogPath = path.join(xdgConfigHome, 'logs');
-  fs.mkdirSync(wranglerLogPath, { recursive: true });
+  const deployEnv = { ...process.env };
+  if (process.env.CLOUDFLARE_API_TOKEN) {
+    const xdgConfigHome = path.join(frontendRoot, '.wrangler-config');
+    const wranglerLogPath = path.join(xdgConfigHome, 'logs');
+    fs.mkdirSync(wranglerLogPath, { recursive: true });
+    deployEnv.XDG_CONFIG_HOME = xdgConfigHome;
+    deployEnv.WRANGLER_LOG_PATH = wranglerLogPath;
+  } else {
+    console.log('CLOUDFLARE_API_TOKEN is not set; Wrangler will use the stored OAuth login if available.');
+  }
 
   try {
     const fileCount = copyTrackedFilesToStaging(stagingRoot);
@@ -151,13 +154,7 @@ function deployWithWrangler(commitSha, activeBranch) {
       '--commit-hash', commitSha,
       '--commit-message', commitMessage,
       '--commit-dirty=false'
-    ], {
-      env: {
-        ...process.env,
-        XDG_CONFIG_HOME: xdgConfigHome,
-        WRANGLER_LOG_PATH: wranglerLogPath
-      }
-    });
+    ], { env: deployEnv });
     return true;
   } finally {
     removeStaging(stagingRoot);
@@ -199,9 +196,7 @@ async function main() {
   git(['push', 'origin', activeBranch]);
 
   const directDeploy = deployWithWrangler(commitSha, activeBranch);
-  if (!directDeploy && !process.env.CLOUDFLARE_API_TOKEN) {
-    console.log('If Cloudflare Pages is not Git-connected, set CLOUDFLARE_API_TOKEN and rerun without --skip-deploy.');
-  }
+  if (!directDeploy) console.log('Direct Wrangler deploy was skipped.');
 
   console.log('Waiting for live/cache verification...');
   const latest = await waitForLiveSync();
