@@ -570,3 +570,71 @@ test('unused Pipe Properties block does not flash during protected solve refresh
     flashSamples
   }, null, 2));
 });
+
+test('Pipe canvas hydraulic label does not flash during protected solver redraw', async ({ page }) => {
+  await waitForNpshApp(page);
+  await loadProject(page, baseProject());
+
+  const firstSolve = await runProtectedSolve(page);
+  await copyPipeNodeResultsIntoBrowser(page, firstSolve, ['PIPE-S', 'PIPE-D']);
+  await page.evaluate(() => {
+    window.drawConnections?.();
+    window.EngineeringPipeCanvasHydraulicLabelRuntime?.refresh?.(document);
+  });
+
+  await page.waitForFunction(() => {
+    return document.querySelectorAll('#svg-lines .pipe-hydraulic-label[data-pipe-id]').length >= 1
+      && window.EngineeringPipeCanvasHydraulicLabelRuntime?.version === '2026.06-pipe-canvas-hydraulic-label13';
+  }, null, { timeout: 10000 });
+
+  await page.evaluate(() => {
+    const isVisible = (node) => {
+      if (!node || !node.isConnected) return false;
+      const style = window.getComputedStyle(node);
+      if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) <= 0.02) return false;
+      const rect = node.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    };
+    window.__pipeHydraulicLabelFlashSamples = [];
+    window.__pipeHydraulicLabelFlashSampler = window.setInterval(() => {
+      const hydraulicLabels = Array.from(document.querySelectorAll('#svg-lines .pipe-hydraulic-label[data-pipe-id]')).filter(isVisible);
+      const visibleLegacyLabels = Array.from(document.querySelectorAll('#svg-lines .pipe-delta-label[data-pipe-id]:not(.pipe-hydraulic-label)')).filter(isVisible);
+      const pipeIds = hydraulicLabels.map((label) => label.dataset.pipeId || '');
+      const duplicatePipeIds = pipeIds.filter((pipeId, index) => pipeId && pipeIds.indexOf(pipeId) !== index);
+      const blankLabels = hydraulicLabels.filter((label) => {
+        const text = label.textContent || '';
+        return !label.querySelector('.pipe-hydraulic-label-bg')
+          || !label.querySelector('.pipe-hydraulic-label-value')
+          || !/P\u2081\u2192P\u2082/.test(text)
+          || !/h_m/.test(text);
+      });
+      if (!hydraulicLabels.length || visibleLegacyLabels.length || blankLabels.length || duplicatePipeIds.length) {
+        window.__pipeHydraulicLabelFlashSamples.push({
+          at: performance.now(),
+          hydraulicCount: hydraulicLabels.length,
+          visibleLegacyCount: visibleLegacyLabels.length,
+          blankCount: blankLabels.length,
+          duplicatePipeIds,
+          text: hydraulicLabels.map((label) => label.textContent).join(' | ')
+        });
+      }
+    }, 16);
+  });
+
+  await changeSinkBoundaryInBrowser(page, { elevation: 1.4, pressure: 1.01325 });
+  await runProtectedSolve(page, { previousCalculationId: firstSolve.calculationId });
+  await page.waitForTimeout(500);
+
+  const flashSamples = await page.evaluate(() => {
+    window.clearInterval(window.__pipeHydraulicLabelFlashSampler);
+    window.EngineeringPipeCanvasHydraulicLabelRuntime?.refresh?.(document);
+    return window.__pipeHydraulicLabelFlashSamples || [];
+  });
+
+  expect(flashSamples).toEqual([]);
+
+  console.log(JSON.stringify({
+    pipeCanvasHydraulicLabelNoFlashDuringSolveE2E: 'pass',
+    flashSamples
+  }, null, 2));
+});

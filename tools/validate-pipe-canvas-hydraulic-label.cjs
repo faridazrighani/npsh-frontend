@@ -11,8 +11,8 @@ const RUNTIME_FILE = path.join(FRONTEND_ROOT, "engineering-pipe-canvas-hydraulic
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
-const CACHE_KEY = "engineering-pipe-canvas-hydraulic-label-runtime-20260628-pfv-canvas-anchor1.js?v=20260628-pfv-canvas-anchor1";
-const VERSION = "2026.06-pipe-canvas-hydraulic-label12";
+const CACHE_KEY = "engineering-pipe-canvas-hydraulic-label-runtime-20260628-pfv-canvas-anchor1.js?v=20260630-pfv-label-noflicker1";
+const VERSION = "2026.06-pipe-canvas-hydraulic-label13";
 const P_PAIR_KEY = "P\u2081\u2192P\u2082";
 const SIGMA_K_KEY = "\u03a3K";
 
@@ -74,6 +74,10 @@ assert(runtime.includes("SOLVER_REFRESH_HOOKS"), "Runtime must define solver ref
 assert(runtime.includes('"refreshBackendProtectedSimulationUi"'), "Runtime must refresh PFV labels after protected solver UI refresh.");
 assert(runtime.includes('"refreshBackendProtectedRealtimeTaskWindows"'), "Runtime must refresh PFV labels after protected realtime refresh.");
 assert(runtime.includes("queueSolverRefreshSweep"), "Runtime must sweep PFV labels after delayed solver repaints.");
+assert(runtime.includes("runImmediateRefresh"), "Runtime must refresh PFV labels synchronously after canvas redraws.");
+assert(runtime.includes("refreshAfterSolverMutation"), "Runtime must share the no-flicker solver refresh path.");
+assert(runtime.includes("runImmediateRefresh({ force: true });"), "Runtime must avoid a setTimeout-only PFV label repaint after solver/canvas redraws.");
+assert(runtime.includes("hasSiblingPipeLabel"), "Runtime must avoid restoring duplicate PFV labels after solver redraws.");
 assert(runtime.includes("SOLVER_REFRESH_DEBOUNCE_MS = 220"), "Runtime must debounce solver-triggered PFV label refreshes.");
 assert(!runtime.includes("[0, 80, 220, 650, 1200]"), "Runtime must not run the old multi-sweep PFV repaint schedule.");
 assert(runtime.includes("CANVAS_INTERACTION_SETTLE_MS = 220"), "Runtime must defer PFV label repaint during active canvas drag interactions.");
@@ -127,6 +131,7 @@ const model = {
 
 const api = loadRuntime(runtime, model);
 assert(api?.version === VERSION, "Runtime API version must be exposed.");
+assert(typeof api.runImmediateRefresh === "function", "Runtime API must expose the synchronous no-flicker refresh helper.");
 assert(
   api.uprightLabelTransform("translate(118.5 92.25) rotate(-90.0)") === "translate(118.5 92.25)",
   "Runtime must strip rotation while preserving label anchor position."

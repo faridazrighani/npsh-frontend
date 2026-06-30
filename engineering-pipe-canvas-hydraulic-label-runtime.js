@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const VERSION = "2026.06-pipe-canvas-hydraulic-label12";
+  const VERSION = "2026.06-pipe-canvas-hydraulic-label13";
   const STYLE_ID = "engineeringPipeCanvasHydraulicLabelStyle";
   const SVG_NS = "http://www.w3.org/2000/svg";
   const LABEL_SELECTOR = "#svg-lines .pipe-delta-label[data-pipe-id]";
@@ -660,8 +660,26 @@
     refreshPipeCanvasHydraulicLabels(document);
   }
 
+  function hasSiblingPipeLabel(parent, label) {
+    const pipeId = label?.dataset?.pipeId || "";
+    if (!pipeId || !parent?.querySelectorAll) return false;
+    return Array.from(parent.querySelectorAll(LABEL_SELECTOR)).some((existing) => (
+      existing !== label && existing.dataset?.pipeId === pipeId
+    ));
+  }
+
   function isCanvasInteractionActive() {
     return canvasPointerActive || Date.now() < canvasInteractionUntil;
+  }
+
+  function runImmediateRefresh(options = {}) {
+    if (typeof document === "undefined") return 0;
+    if (!options.force && isCanvasInteractionActive()) {
+      deferRefreshUntilInteractionSettles();
+      return 0;
+    }
+    refreshQueued = false;
+    return refreshPipeCanvasHydraulicLabels(document);
   }
 
   function flushInteractionRefresh() {
@@ -713,6 +731,12 @@
     }, SOLVER_REFRESH_DEBOUNCE_MS);
   }
 
+  function refreshAfterSolverMutation() {
+    markPipeLabelBusy();
+    runImmediateRefresh({ force: true });
+    queueSolverRefreshSweep();
+  }
+
   function injectStyle() {
     if (typeof document === "undefined" || document.getElementById(STYLE_ID)) return;
     const style = document.createElement("style");
@@ -757,7 +781,8 @@
     function patchedDrawConnections(...args) {
       markPipeLabelBusy();
       const result = original.apply(this, args);
-      queueRefresh();
+      runImmediateRefresh({ force: true });
+      queueRefresh(0, { force: true });
       return result;
     }
     patchedDrawConnections.__pipeCanvasHydraulicLabelPatched = true;
@@ -771,10 +796,7 @@
     function patchedUpdateSimulation(...args) {
       markPipeLabelBusy();
       const result = original.apply(this, args);
-      const refresh = () => {
-        markPipeLabelBusy();
-        queueSolverRefreshSweep();
-      };
+      const refresh = () => refreshAfterSolverMutation();
       if (result && typeof result.then === "function") return result.finally(refresh);
       refresh();
       return result;
@@ -791,10 +813,7 @@
     function patchedSolverRefreshFunction(...args) {
       markPipeLabelBusy();
       const result = original.apply(this, args);
-      const refresh = () => {
-        markPipeLabelBusy();
-        queueSolverRefreshSweep();
-      };
+      const refresh = () => refreshAfterSolverMutation();
       if (result && typeof result.then === "function") return result.finally(refresh);
       refresh();
       return result;
@@ -815,8 +834,7 @@
     solverRefreshEventsInstalled = true;
     SOLVER_REFRESH_EVENTS.forEach((eventName) => {
       document.addEventListener(eventName, () => {
-        markPipeLabelBusy();
-        queueSolverRefreshSweep();
+        refreshAfterSolverMutation();
       });
     });
     return true;
@@ -883,6 +901,7 @@
           labels.forEach((label) => {
             const parent = mutation.target;
             if (!isPipeLabelBusy() || label.isConnected || !parent?.isConnected || typeof parent.insertBefore !== "function") return;
+            if (hasSiblingPipeLabel(parent, label)) return;
             const nextSibling = mutation.nextSibling?.parentNode === parent ? mutation.nextSibling : null;
             parent.insertBefore(label, nextSibling);
             label.dataset.pipeHydraulicLabelRestored = VERSION;
@@ -898,7 +917,8 @@
             || node?.querySelector?.(".pipe-delta-label")
           ));
       })) {
-        queueRefresh(0);
+        if (isPipeLabelBusy()) runImmediateRefresh({ force: true });
+        else queueRefresh(0);
       }
     });
     observer.observe(document.documentElement, {
@@ -940,6 +960,7 @@
     version: VERSION,
     install,
     refresh: refreshPipeCanvasHydraulicLabels,
+    runImmediateRefresh,
     buildPipeHydraulicLabelData,
     canonicalLabelPlacement,
     uprightLabelTransform,
