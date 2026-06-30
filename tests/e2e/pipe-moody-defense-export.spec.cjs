@@ -138,13 +138,18 @@ function baseProject({ sinkElevation = 0, sinkPressure = 1.01325 } = {}) {
 async function waitForNpshApp(page) {
   await page.goto('/');
   await page.keyboard.press('Escape');
+  await page.evaluate(() => {
+    window.__npshLoadSupport?.();
+  });
   await page.waitForFunction(() => (
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.updateSimulation === 'function'
     && window.EngineeringDefenseExportPackage?.schemaVersion === 'defense-export-package.v1'
     && window.EngineeringPipePropertiesCleanupRuntime?.version === 'engineering-pipe-properties-cleanup-runtime.v1'
     && window.EngineeringPipeMoodyChartAudit?.version === 'engineering-pipe-moody-chart-audit.v7'
+    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v12'
     && window.__npshRouteTraceAuditInstalled?.fetchSimulation
+    && window.__npshRouteTraceAuditInstalled?.primaryResultApplier
   ), null, { timeout: 30000 });
 }
 
