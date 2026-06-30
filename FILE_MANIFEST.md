@@ -16,8 +16,8 @@ Purpose:
 Summary:
 
 ```text
-Total files: 237
-Total size: 67,208,485 bytes
+Total files: 262
+Total size: 68,167,807 bytes
 ```
 
 Inventory scope excludes `.git`, `node_modules`, `test-artifacts`, nested local workspace copies, and local preview log files.
@@ -112,6 +112,8 @@ tools/validate-calculation-progress-overlay.cjs Node validation for isolated cal
 tools/validate-performance-refresh-governor.cjs Node validation for Performance Refresh Governor loading, duplicate-job coalescing, scoped secondary-window/chart/formula-defense patch coverage, governor-before-realtime load order, deferred route-audit diagnostic placement, npm script, manifest lock, and audit-safe no-mutation guard
 tools/validate-head-power-audit-guard.cjs Node validation for Head Power Audit Guard loading, route-only Required/System Head cleanup, frontend local trace fallback cleanup without pump performance evidence, valid actual-pump-head preservation, cache key, npm script, and manifest lock
 tools/validate-simulation-case-integrity-guard.cjs Node validation for Simulation Case integrity guard runtime loading, deferred diagnostic placement, Simulasi 4 partial Methanol detection, sample-file restore wiring, rendered canvas object repair, cache key, npm script, and manifest lock
+tools/upgrade-simulation-untirta-current-layout.cjs Node migration for all six simulation `.untirta` sample files so deprecated Pipe Properties layout fields and segment z-column inputs are not persisted in the current app layout
+tools/validate-simulation-untirta-current-layout.cjs Node validation for all six simulation `.untirta` sample files, including current Pipe Properties layout metadata, removed top-level pipe fields, removed segment z-column inputs, and project-object integrity
 ```
 
 Protected-bundle guardrail:
@@ -197,6 +199,7 @@ Performance refresh governor validation: npm run validate:performance-refresh-go
 Head Power Audit Guard validation: npm run validate:head-power-audit-guard
 Pump edit fast lane validation: npm run validate:pump-edit-fast-lane
 Simulation case integrity validation: npm run validate:simulation-case-integrity
+Simulation UNTIRTA current-layout validation: npm run validate:simulation-untirta-current-layout
 Canvas clear/reset guard validation: npm run validate:canvas-clear-reset-guard
 Pages API proxy: _worker.js -> env.NPSH_API.fetch(request), optional X-NPSH-API-Proxy-Secret from env.NPSH_API_PROXY_SECRET, static fallback -> env.ASSETS.fetch(request)
 Local static preview literature fallback: tools/serve-local-preview.cjs serves /api/literature and /api/literature/:id/pdf from ../book_pdf with byte-range PDF support

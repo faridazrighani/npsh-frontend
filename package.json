@@ -43,6 +43,8 @@
     "validate:pump-edit-fast-lane": "node tools/validate-pump-edit-fast-lane.cjs",
     "validate:suction-only-npsha-runtime": "node tools/validate-suction-only-npsha-runtime.cjs",
     "validate:simulation-case-integrity": "node tools/validate-simulation-case-integrity-guard.cjs",
+    "upgrade:simulation-untirta-current-layout": "node tools/upgrade-simulation-untirta-current-layout.cjs",
+    "validate:simulation-untirta-current-layout": "node tools/validate-simulation-untirta-current-layout.cjs",
     "validate:canvas-clear-reset-guard": "node tools/validate-canvas-clear-reset-guard.cjs",
     "test:e2e": "playwright test",
     "test:e2e:desktop-flow-chain": "playwright test tests/e2e/desktop-simulation-flow-chain.spec.cjs",
