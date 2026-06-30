@@ -1,13 +1,14 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-pipe-segments-file-runtime.v3';
-  const CACHE_KEY = '20260630-pipe-segments-clean-legacy-fields1';
+  const VERSION = 'engineering-pipe-segments-file-runtime.v4';
+  const CACHE_KEY = '20260630-pipe-properties-cleanup1';
   const SCHEMA_TYPE = 'pipe-segments-export.v1';
   const STYLE_ID = 'engineering-pipe-segments-file-style';
   const ACTIONS_CLASS = 'pipe-segments-file-actions';
   const STATUS_CLASS = 'pipe-segments-file-status';
   const SCROLL_GUARD_ATTR = 'pipeSegmentsScrollGuard';
   const segmentScrollMemory = new Map();
+  let renderSidebarScrollRetentionWrapped = false;
   const REMOVED_SEGMENT_FIELDS = new Set([
     'startElevation',
     'endElevation'
@@ -304,12 +305,63 @@
   function scheduleSegmentScrollRestore(table) {
     rememberSegmentScroll(table);
     const key = segmentScrollKey(table);
-    [0, 32, 96, 180].forEach((delay) => {
+    scheduleSegmentScrollRestoreForKeys([key]);
+  }
+
+  function scheduleSegmentScrollRestoreForKeys(keys = []) {
+    const uniqueKeys = Array.from(new Set(keys.filter(Boolean)));
+    if (!uniqueKeys.length) return;
+    root.EngineeringPipePropertiesCleanupRuntime?.rememberStableState?.(document);
+    const restoreForKeys = () => {
+      uniqueKeys.forEach((key) => {
+        const currentTable = pipeSegmentTables(document).find((candidate) => segmentScrollKey(candidate) === key);
+        if (currentTable) restoreSegmentScroll(currentTable);
+      });
+      root.EngineeringPipePropertiesCleanupRuntime?.restoreStableState?.(document);
+    };
+    root.requestAnimationFrame?.(() => {
+      restoreForKeys();
+    });
+    [0, 16, 32, 64, 128, 240, 500].forEach((delay) => {
       window.setTimeout(() => {
-        const currentTable = pipeSegmentTables(document).find((candidate) => segmentScrollKey(candidate) === key) || table;
-        restoreSegmentScroll(currentTable);
+        restoreForKeys();
       }, delay);
     });
+  }
+
+  function wrapRenderSidebarScrollRetention() {
+    if (renderSidebarScrollRetentionWrapped || typeof root.renderSidebar !== 'function') return;
+    if (root.renderSidebar.__pipeSegmentsScrollRetentionWrapped) {
+      renderSidebarScrollRetentionWrapped = true;
+      return;
+    }
+    const originalRenderSidebar = root.renderSidebar;
+    const retainedRenderSidebar = function retainedPipeSegmentScrollRenderSidebar(nodeId, options = {}) {
+      const modelNode = runtimeModel()?.[nodeId];
+      const taskWindow = options?.taskWindow || null;
+      const isPipeRender = modelNode?.type === 'pipe'
+        || taskWindow?.matches?.('.persistent-object-properties-task-window[data-kind="pipe"], #taskWindow[data-kind="pipe"], .task-window-pipe-active')
+        || taskWindow?.querySelector?.('#pipeSegmentTable, table.segment-table');
+      const keys = [];
+      if (typeof document !== 'undefined' && isPipeRender) {
+        pipeSegmentTables(document).forEach((table) => {
+          const state = rememberSegmentScroll(table);
+          if (state) keys.push(segmentScrollKey(table));
+        });
+        if (nodeId) keys.push(String(nodeId));
+        root.EngineeringPipePropertiesCleanupRuntime?.rememberStableState?.(document);
+      }
+      const result = originalRenderSidebar.apply(this, arguments);
+      if (typeof document !== 'undefined' && isPipeRender) {
+        root.EngineeringPipePropertiesCleanupRuntime?.clean?.(document, { capture: false });
+        scheduleSegmentScrollRestoreForKeys(keys);
+      }
+      return result;
+    };
+    retainedRenderSidebar.__pipeSegmentsScrollRetentionWrapped = true;
+    retainedRenderSidebar.__pipeSegmentsOriginalRenderSidebar = originalRenderSidebar;
+    root.renderSidebar = retainedRenderSidebar;
+    renderSidebarScrollRetentionWrapped = true;
   }
 
   function attachSegmentScrollGuard(table) {
@@ -325,7 +377,11 @@
     if (table.dataset?.[SCROLL_GUARD_ATTR] !== 'true') {
       table.dataset[SCROLL_GUARD_ATTR] = 'true';
       ['focusin', 'input', 'change', 'pointerdown', 'keydown'].forEach((eventName) => {
-        table.addEventListener(eventName, () => scheduleSegmentScrollRestore(table), true);
+        table.addEventListener(eventName, () => {
+          rememberSegmentScrollPositions(document);
+          root.EngineeringPipePropertiesCleanupRuntime?.rememberStableState?.(document);
+          scheduleSegmentScrollRestore(table);
+        }, true);
       });
     }
     restoreSegmentScroll(table);
@@ -333,17 +389,26 @@
 
   function rerenderPipeProperties(pipeId) {
     if (typeof document !== 'undefined') rememberSegmentScrollPositions(document);
+    root.EngineeringPipePropertiesCleanupRuntime?.rememberStableState?.(document);
     if (typeof root.renderSidebar !== 'function') return;
     const taskWindows = findPipeTaskWindows(pipeId);
     if (!taskWindows.length) {
       root.renderSidebar(pipeId, { skipDismissedGuard: true });
-      if (typeof document !== 'undefined') window.setTimeout(() => restoreSegmentScrollPositions(document), 0);
+      if (typeof document !== 'undefined') window.setTimeout(() => {
+        restoreSegmentScrollPositions(document);
+        root.EngineeringPipePropertiesCleanupRuntime?.clean?.(document, { capture: false });
+        root.EngineeringPipePropertiesCleanupRuntime?.restoreStableState?.(document);
+      }, 0);
       return;
     }
     taskWindows.forEach((taskWindow) => {
       root.renderSidebar(pipeId, { taskWindow, skipDismissedGuard: true });
     });
-    if (typeof document !== 'undefined') window.setTimeout(() => restoreSegmentScrollPositions(document), 0);
+    if (typeof document !== 'undefined') window.setTimeout(() => {
+      restoreSegmentScrollPositions(document);
+      root.EngineeringPipePropertiesCleanupRuntime?.clean?.(document, { capture: false });
+      root.EngineeringPipePropertiesCleanupRuntime?.restoreStableState?.(document);
+    }, 0);
   }
 
   function applyImportedSegments(pipeId, payloadOrSegments) {
@@ -523,11 +588,14 @@
 
   function syncControls(scope = document) {
     if (typeof document === 'undefined') return 0;
+    wrapRenderSidebarScrollRetention();
     injectStyles();
     const pipeTables = pipeSegmentTables(scope);
     pipeTables.forEach(attachSegmentScrollGuard);
     pipeTables.forEach(createControls);
     restoreSegmentScrollPositions(scope);
+    root.EngineeringPipePropertiesCleanupRuntime?.clean?.(scope, { capture: false });
+    root.EngineeringPipePropertiesCleanupRuntime?.restoreStableState?.(document);
     return pipeTables.length;
   }
 
@@ -542,7 +610,8 @@
     let pending = 0;
     const observer = new MutationObserver(() => {
       window.clearTimeout(pending);
-      pending = window.setTimeout(() => syncControls(document), 80);
+      root.EngineeringPipePropertiesCleanupRuntime?.rememberStableState?.(document);
+      pending = window.setTimeout(() => syncControls(document), 24);
     });
     observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
     root.__engineeringPipeSegmentsFileRuntimeObserver = observer;

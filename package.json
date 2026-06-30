@@ -28,6 +28,7 @@
     "validate:local-api-preview": "node tools/validate-local-api-preview.cjs",
     "validate:local-api-preview-single-flight": "node tools/validate-local-api-preview-single-flight.cjs",
     "validate:browser-issues-runtime": "node tools/validate-browser-issues-runtime.cjs",
+    "validate:pipe-properties-cleanup-runtime": "node tools/validate-pipe-properties-cleanup-runtime.cjs",
     "validate:pipe-segments-file-runtime": "node tools/validate-pipe-segments-file-runtime.cjs",
     "validate:formula-defense-ui": "node tools/validate-formula-defense-ui.cjs",
     "validate:pipe-canvas-hydraulic-label": "node tools/validate-pipe-canvas-hydraulic-label.cjs",

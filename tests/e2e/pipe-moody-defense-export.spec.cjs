@@ -142,6 +142,7 @@ async function waitForNpshApp(page) {
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.updateSimulation === 'function'
     && window.EngineeringDefenseExportPackage?.schemaVersion === 'defense-export-package.v1'
+    && window.EngineeringPipePropertiesCleanupRuntime?.version === 'engineering-pipe-properties-cleanup-runtime.v1'
     && window.EngineeringPipeMoodyChartAudit?.version === 'engineering-pipe-moody-chart-audit.v7'
     && window.__npshRouteTraceAuditInstalled?.fetchSimulation
   ), null, { timeout: 30000 });
@@ -189,6 +190,23 @@ async function runProtectedSolve(page, { previousCalculationId = null } = {}) {
     activeCalculationId: activePayload.calculationId || null,
     activeDependencyFingerprint: activePayload.dependencyFingerprint || null
   };
+}
+
+async function runPipePropertiesSolveRefresh(page) {
+  const responsePromise = page.waitForResponse((response) => (
+    /\/api\/simulate(?:[?#]|$)/.test(response.url())
+    && response.request().method() === 'POST'
+    && response.status() === 200
+  ), { timeout: 30000 });
+  const solvePromise = page.evaluate(() => window.updateSimulation({
+    refreshReason: 'solve',
+    trigger: 'solve',
+    forceBackend: true,
+    renderSidebarAfter: true
+  }));
+  const response = await responsePromise;
+  await solvePromise;
+  await response.json();
 }
 
 async function copyPipeNodeResultsIntoBrowser(page, response, pipeIds = []) {
@@ -474,5 +492,81 @@ test('unused Pipe Properties fields and segment z columns are removed', async ({
     helpCount: await page.locator('.pipe-aging-roughness-help').count(),
     removedFieldSnapshot,
     removedSegmentSnapshot
+  }, null, 2));
+});
+
+test('unused Pipe Properties block does not flash during protected solve refresh', async ({ page }) => {
+  await waitForNpshApp(page);
+  await loadProject(page, baseProject());
+
+  await page.evaluate(() => {
+    window.currentSelectedNode = 'PIPE-D';
+    window.__npshExplicitObjectPropertiesOpenUntil = Date.now() + 8000;
+    window.openPipePropertiesTaskWindow?.('PIPE-D');
+    const taskWindow = document.querySelector('.persistent-object-properties-task-window[data-kind="pipe"][data-node-id="PIPE-D"]')
+      || document.querySelector('.persistent-object-properties-task-window[data-kind="pipe"]')
+      || document.querySelector('.task-window[data-task-node-id="PIPE-D"]');
+    if (taskWindow && typeof window.renderSidebar === 'function') {
+      window.renderSidebar('PIPE-D', { taskWindow, skipDismissedGuard: true });
+    }
+    window.EngineeringPipePropertiesCleanupRuntime?.clean?.(document);
+  });
+
+  const removedLabels = [
+    'Pipe Routing',
+    'Pipe Rating/Class',
+    'End Connection Basis',
+    'Elevation Profile',
+    'Start Elevation Override',
+    'End Elevation Override',
+    'Head Loss Allowance',
+    'Aging Roughness Factor',
+    'High Point P',
+    'High Point Margin',
+    'High Point Segment'
+  ];
+
+  await page.evaluate((labels) => {
+    const surfaceSelector = '.persistent-object-properties-task-window[data-kind="pipe"], .task-window-pipe-active, #taskWindow[data-kind="pipe"]';
+    const escaped = (label) => label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const isVisible = (node) => {
+      if (!node || !node.isConnected) return false;
+      const style = window.getComputedStyle(node);
+      if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return false;
+      const rect = node.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    };
+    const visibleRemovedLabels = () => {
+      const surfaces = Array.from(document.querySelectorAll(surfaceSelector)).filter(isVisible);
+      return labels.filter((label) => surfaces.some((surface) => {
+        const pattern = new RegExp(escaped(label), 'i');
+        if (!pattern.test(surface.textContent || '')) return false;
+        return Array.from(surface.querySelectorAll('*')).some((node) => isVisible(node) && pattern.test(node.textContent || ''));
+      }));
+    };
+    window.__pipePropertiesFlashSamples = [];
+    window.__pipePropertiesFlashSampler = window.setInterval(() => {
+      const visible = visibleRemovedLabels();
+      if (visible.length) {
+        window.__pipePropertiesFlashSamples.push({ visible, at: performance.now() });
+      }
+      window.EngineeringPipePropertiesCleanupRuntime?.clean?.(document, { capture: false });
+    }, 16);
+  }, removedLabels);
+
+  await runPipePropertiesSolveRefresh(page);
+  await page.waitForTimeout(500);
+
+  const flashSamples = await page.evaluate(() => {
+    window.clearInterval(window.__pipePropertiesFlashSampler);
+    window.EngineeringPipePropertiesCleanupRuntime?.clean?.(document, { capture: false });
+    return window.__pipePropertiesFlashSamples || [];
+  });
+
+  expect(flashSamples).toEqual([]);
+
+  console.log(JSON.stringify({
+    unusedPipeFieldsNoFlashDuringSolveE2E: 'pass',
+    flashSamples
   }, null, 2));
 });

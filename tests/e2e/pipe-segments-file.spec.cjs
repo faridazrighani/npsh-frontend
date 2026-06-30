@@ -130,7 +130,8 @@ async function waitForNpshApp(page) {
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.openPipePropertiesTaskWindow === 'function'
     && typeof window.renderSidebar === 'function'
-    && window.EngineeringPipeSegmentsFileRuntime?.version === 'engineering-pipe-segments-file-runtime.v3'
+    && window.EngineeringPipePropertiesCleanupRuntime?.version === 'engineering-pipe-properties-cleanup-runtime.v1'
+    && window.EngineeringPipeSegmentsFileRuntime?.version === 'engineering-pipe-segments-file-runtime.v4'
     && window.EngineeringPipeMoodyChartAudit?.version === 'engineering-pipe-moody-chart-audit.v7'
     && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v12'
   ), null, { timeout: 30000 });
@@ -139,8 +140,12 @@ async function waitForNpshApp(page) {
 async function openPipeSegments(page) {
   await page.evaluate((project) => {
     window.applySimulationStateAtomic(JSON.stringify(project));
+  }, baseProject());
+  await page.waitForFunction(() => !!window.__npshGlobalModel?.['PIPE-D'], null, { timeout: 10000 });
+  await page.evaluate(async () => {
+    await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
     window.currentSelectedNode = 'PIPE-D';
-    window.__npshExplicitObjectPropertiesOpenUntil = Date.now() + 2000;
+    window.__npshExplicitObjectPropertiesOpenUntil = Date.now() + 15000;
     if (typeof window.requestPipePropertiesTaskWindowOpen === 'function') {
       window.requestPipePropertiesTaskWindowOpen('PIPE-D');
     }
@@ -153,9 +158,11 @@ async function openPipeSegments(page) {
     }
     window.EngineeringPipeMoodyChartAudit?.refreshRemovedPipePropertyFields?.(document);
     window.EngineeringPipeMoodyChartAudit?.refreshRemovedPipeSegmentColumns?.(document);
+    window.EngineeringPipePropertiesCleanupRuntime?.clean?.(document);
     window.EngineeringPipeSegmentsFileRuntime?.syncControls?.(document);
-  }, baseProject());
-  await page.waitForSelector('#pipeSegmentTable', { timeout: 10000 });
+  });
+  await page.waitForSelector('.persistent-object-properties-task-window[data-kind="pipe"][data-node-id="PIPE-D"]', { state: 'visible', timeout: 10000 });
+  await page.waitForSelector('#pipeSegmentTable', { state: 'visible', timeout: 10000 });
   await page.waitForSelector('[data-pipe-segments-export]', { timeout: 10000 });
   await page.waitForSelector('[data-pipe-segments-import]', { timeout: 10000 });
 }

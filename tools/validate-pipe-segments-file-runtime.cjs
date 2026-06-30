@@ -19,8 +19,8 @@ const packageJson = JSON.parse(read(PACKAGE_FILE));
 const manifest = fs.existsSync(MANIFEST_FILE) ? read(MANIFEST_FILE) : '';
 const runtime = require(RUNTIME_FILE);
 
-assert.strictEqual(runtime.version, 'engineering-pipe-segments-file-runtime.v3');
-assert.strictEqual(runtime.cacheKey, '20260630-pipe-segments-clean-legacy-fields1');
+assert.strictEqual(runtime.version, 'engineering-pipe-segments-file-runtime.v4');
+assert.strictEqual(runtime.cacheKey, '20260630-pipe-properties-cleanup1');
 assert.strictEqual(runtime.schemaType, 'pipe-segments-export.v1');
 assert.strictEqual(
   packageJson.scripts?.['validate:pipe-segments-file-runtime'],
@@ -33,8 +33,13 @@ assert.strictEqual(
   'package.json must expose the Pipe Segments browser E2E.'
 );
 assert(
-  indexHtml.includes('engineering-pipe-segments-file-runtime.js?v=20260630-pipe-segments-clean-legacy-fields1'),
+  indexHtml.includes('engineering-pipe-segments-file-runtime.js?v=20260630-pipe-properties-cleanup1'),
   'index.html must cache-bust and load the Pipe Segments file runtime.'
+);
+assert(
+  indexHtml.indexOf('engineering-pipe-properties-cleanup-runtime.js?v=20260630-pipe-properties-cleanup1')
+    < indexHtml.indexOf('engineering-pipe-segments-file-runtime.js?v=20260630-pipe-properties-cleanup1'),
+  'Pipe Properties cleanup runtime must load before Pipe Segments runtime.'
 );
 assert(
   runtimeSource.includes('pipe-segments-export_${formatTimestamp(date)}.v1'),
@@ -46,6 +51,10 @@ assert(runtimeSource.includes('EngineeringRealtimeCalculationDefense.markStale')
 assert(runtimeSource.includes('engineering-pipe-segments-imported'), 'Import must dispatch a browser event for audit/E2E visibility.');
 assert(runtimeSource.includes('application/json'), 'Exported local file must be JSON content.');
 assert(runtimeSource.includes('REMOVED_SEGMENT_FIELDS'), 'Runtime must strip removed segment elevation fields from Pipe Segments files.');
+assert(runtimeSource.includes('EngineeringPipePropertiesCleanupRuntime'), 'Pipe Segments runtime must integrate with Pipe Properties cleanup/scroll stability runtime.');
+assert(runtimeSource.includes('[0, 16, 32, 64, 128, 240, 500]'), 'Pipe Segments runtime must restore horizontal scroll across render frames.');
+assert(runtimeSource.includes('wrapRenderSidebarScrollRetention'), 'Pipe Segments runtime must wrap direct renderSidebar refreshes for scroll retention.');
+assert(runtimeSource.includes('__pipeSegmentsScrollRetentionWrapped'), 'Pipe Segments renderSidebar wrapper must be idempotent.');
 assert.strictEqual(typeof runtime.rememberSegmentScrollPositions, 'function', 'Runtime must expose Pipe Segments scroll memory capture.');
 assert.strictEqual(typeof runtime.restoreSegmentScrollPositions, 'function', 'Runtime must expose Pipe Segments scroll restoration.');
 
@@ -151,7 +160,7 @@ assert.strictEqual(global.__engineeringCalculationDefenseRealtimeState.status, '
 
 if (manifest) {
   assert(manifest.includes('engineering-pipe-segments-file-runtime.js'), 'FILE_MANIFEST must mention the Pipe Segments file runtime.');
-  assert(manifest.includes('20260630-pipe-segments-clean-legacy-fields1'), 'FILE_MANIFEST must mention the Pipe Segments file cache key.');
+  assert(manifest.includes('20260630-pipe-properties-cleanup1'), 'FILE_MANIFEST must mention the Pipe Segments file cache key.');
 }
 
 console.log('Pipe Segments file runtime validation passed: schema, filename, cache key, import/export controls, and stale marking are locked.');
