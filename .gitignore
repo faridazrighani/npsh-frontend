@@ -9,6 +9,8 @@ book_pdf/
 npsh-frontend/
 outputs/
 test-artifacts/
+.deploy-staging-*/
+.wrangler-config/
 *.log
 npm-debug.log*
 desktop.ini

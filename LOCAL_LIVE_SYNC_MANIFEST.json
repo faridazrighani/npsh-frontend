@@ -1,6 +1,6 @@
 {
   "schemaVersion": "local-live-sync-manifest.v1",
-  "generatedAt": "2026-06-30T12:57:49.446Z",
+  "generatedAt": "2026-06-30T13:36:51.884Z",
   "purpose": "Keeps the local preview server auditable against the deployed npsh.virsim.id package.",
   "status": "review-required",
   "syncChecks": {
@@ -10,14 +10,14 @@
     "verifiedLiveAssets": false,
     "assetVerificationFailures": 0,
     "apiCommitMatchesOriginMain": true,
-    "frontendCommitMatchesOriginMain": false
+    "frontendCommitMatchesOriginMain": true
   },
   "local": {
     "frontendRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-frontend",
     "apiRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-api",
     "serverUrl": "http://127.0.0.1:4174/",
-    "frontendCommit": "d5e5a52be030cde899971c1c19766df2604fcd6f",
-    "frontendOriginMain": "ad4a00649f6e89ee2b8ee75d6055f30056066296",
+    "frontendCommit": "0f83e1ccb28a926b879ae986bcbb7a6c463ae26b",
+    "frontendOriginMain": "0f83e1ccb28a926b879ae986bcbb7a6c463ae26b",
     "apiCommit": "5e4f28a525b96986cb3bf444028226b714294ebf",
     "apiOriginMain": "5e4f28a525b96986cb3bf444028226b714294ebf",
     "releaseIntegrity": {
@@ -492,10 +492,10 @@
       {
         "path": "FILE_MANIFEST.md",
         "exists": true,
-        "sizeBytes": 34160,
-        "sha256": "d4edaf0acb87f787c254655cbd10733600d138d9ed429b5e3b8dbf0163045471",
-        "canonicalSizeBytes": 33987,
-        "canonicalSha256": "2b470a573fcdc26533c7cec9f2a42dcdef426a9f945eff856a7c3804a54505ab",
+        "sizeBytes": 34438,
+        "sha256": "502f31819c4fef8dc5bb7e58936c41aa7e6c3943df74f9be3a6f146db569cf63",
+        "canonicalSizeBytes": 34267,
+        "canonicalSha256": "dd8580e17c72e9e12eefc4e9473207a73f2fe9bdf4fc1d93121a0cf9cb4f9bfe",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
@@ -580,7 +580,7 @@
     },
     "apiVersion": {
       "statusCode": 200,
-      "sha256": "93a18bd6eeb48ae7a2327ad60fb23e1a1edf952dd70fc8d61bcd66c9d31b9288",
+      "sha256": "82be773d9ac8c33257570866f0ce2eb085480a0ce18720fa1e130850f694cf0a",
       "payload": {
         "ok": true,
         "appName": "GhaniSIM1 NPSH",
@@ -729,7 +729,7 @@
             "parity.fingerprint"
           ]
         },
-        "generatedAt": "2026-06-30T12:57:49.316Z"
+        "generatedAt": "2026-06-30T13:36:51.956Z"
       }
     },
     "verifiedAssets": []

@@ -86,6 +86,7 @@ png/                    public images and favicon
 toolbar/                public toolbar icons
 vendor/                 browser libraries for PDF/OCR/export and local KaTeX static equation assets
 journals/               public case data, analysis reports, audit summaries, and current-system case review evidence
+tools/publish-local-live.cjs Node publish helper for local-to-live release flow: runs focused validators, refreshes `LOCAL_LIVE_SYNC_MANIFEST.json`, commits/pushes local changes, deploys via Wrangler when `CLOUDFLARE_API_TOKEN` is available, and waits for live/cache verification
 tools/validate-pump-performance-chart-audit.cjs Node validation for chart data eligibility, log-log audit contract, cache-busted runtime load, and model-linked realtime chart refresh
 tools/validate-pump-formula-defense-live-audit.cjs Node validation for Pump Formula Defense live audit self-healing hooks, open-window content refresh, realtime event listeners, and model-linked formula row rebuilds
 tools/validate-route-trace-default-lock.cjs Node validation for default-hidden canvas route-trace overlays, pump-summary route-trace/vapor-pressure lock, SNK presentation-row lock, SNK Sink Flow/Sink Elev./Sink Head readouts, audit/debug unlock APIs, and cache-busted runtime load
