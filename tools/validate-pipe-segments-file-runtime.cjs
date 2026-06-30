@@ -19,8 +19,8 @@ const packageJson = JSON.parse(read(PACKAGE_FILE));
 const manifest = fs.existsSync(MANIFEST_FILE) ? read(MANIFEST_FILE) : '';
 const runtime = require(RUNTIME_FILE);
 
-assert.strictEqual(runtime.version, 'engineering-pipe-segments-file-runtime.v1');
-assert.strictEqual(runtime.cacheKey, '20260608-pipe-segments-file1');
+assert.strictEqual(runtime.version, 'engineering-pipe-segments-file-runtime.v3');
+assert.strictEqual(runtime.cacheKey, '20260630-pipe-segments-clean-legacy-fields1');
 assert.strictEqual(runtime.schemaType, 'pipe-segments-export.v1');
 assert.strictEqual(
   packageJson.scripts?.['validate:pipe-segments-file-runtime'],
@@ -33,7 +33,7 @@ assert.strictEqual(
   'package.json must expose the Pipe Segments browser E2E.'
 );
 assert(
-  indexHtml.includes('engineering-pipe-segments-file-runtime.js?v=20260608-pipe-segments-file1'),
+  indexHtml.includes('engineering-pipe-segments-file-runtime.js?v=20260630-pipe-segments-clean-legacy-fields1'),
   'index.html must cache-bust and load the Pipe Segments file runtime.'
 );
 assert(
@@ -45,6 +45,9 @@ assert(runtimeSource.includes('dataset.pipeSegmentsExport'), 'Runtime must creat
 assert(runtimeSource.includes('EngineeringRealtimeCalculationDefense.markStale'), 'Import must mark the calculation stale through the realtime defense bridge.');
 assert(runtimeSource.includes('engineering-pipe-segments-imported'), 'Import must dispatch a browser event for audit/E2E visibility.');
 assert(runtimeSource.includes('application/json'), 'Exported local file must be JSON content.');
+assert(runtimeSource.includes('REMOVED_SEGMENT_FIELDS'), 'Runtime must strip removed segment elevation fields from Pipe Segments files.');
+assert.strictEqual(typeof runtime.rememberSegmentScrollPositions, 'function', 'Runtime must expose Pipe Segments scroll memory capture.');
+assert.strictEqual(typeof runtime.restoreSegmentScrollPositions, 'function', 'Runtime must expose Pipe Segments scroll restoration.');
 
 const fixedDate = new Date(2026, 5, 8, 6, 49, 35);
 assert.strictEqual(runtime.formatTimestamp(fixedDate), '2026-06-08_06-49-35');
@@ -66,7 +69,9 @@ global.__npshGlobalModel = {
           fittingType: 'Custom K',
           fittingQuantity: 1,
           fittingK: 18.448,
-          minorLoss: 0
+          minorLoss: 0,
+          startElevation: 99,
+          endElevation: 101
         }
       ]
     },
@@ -85,6 +90,8 @@ assert.strictEqual(exportPayload.schemaVersion, 1);
 assert.strictEqual(exportPayload.pipeId, 'PIPE-100');
 assert.strictEqual(exportPayload.segmentCount, 1);
 assert.deepStrictEqual(exportPayload.segments[0].name, 'Journal pipe');
+assert.strictEqual(Object.prototype.hasOwnProperty.call(exportPayload.segments[0], 'startElevation'), false);
+assert.strictEqual(Object.prototype.hasOwnProperty.call(exportPayload.segments[0], 'endElevation'), false);
 assert.notStrictEqual(exportPayload.segments, global.__npshGlobalModel['PIPE-100'].props.segments, 'Export must clone segment data.');
 
 const validImport = runtime.validateImportPayload({
@@ -100,13 +107,17 @@ const validImport = runtime.validateImportPayload({
       roughness: '0.00010',
       fittingType: 'None',
       fittingQuantity: '0',
-      fittingK: '0'
+      fittingK: '0',
+      startElevation: '4',
+      endElevation: '5'
     }
   ]
 });
 assert.strictEqual(validImport.ok, true);
 assert.strictEqual(validImport.segments[0].diameter, 0.08);
 assert.strictEqual(validImport.segments[0].length, 12.5);
+assert.strictEqual(Object.prototype.hasOwnProperty.call(validImport.segments[0], 'startElevation'), false);
+assert.strictEqual(Object.prototype.hasOwnProperty.call(validImport.segments[0], 'endElevation'), false);
 
 const invalidImport = runtime.validateImportPayload({
   schemaType: 'pipe-segments-export.v1',
@@ -140,7 +151,7 @@ assert.strictEqual(global.__engineeringCalculationDefenseRealtimeState.status, '
 
 if (manifest) {
   assert(manifest.includes('engineering-pipe-segments-file-runtime.js'), 'FILE_MANIFEST must mention the Pipe Segments file runtime.');
-  assert(manifest.includes('20260608-pipe-segments-file1'), 'FILE_MANIFEST must mention the Pipe Segments file cache key.');
+  assert(manifest.includes('20260630-pipe-segments-clean-legacy-fields1'), 'FILE_MANIFEST must mention the Pipe Segments file cache key.');
 }
 
 console.log('Pipe Segments file runtime validation passed: schema, filename, cache key, import/export controls, and stale marking are locked.');

@@ -52,14 +52,23 @@ class FakeElement {
   }
 
   querySelector(selector) {
+    const findByAttribute = (attributeName) => {
+      const stack = [...this.children];
+      while (stack.length) {
+        const child = stack.shift();
+        if (child.attributes?.[attributeName] === 'true') return child;
+        stack.push(...(child.children || []));
+      }
+      return null;
+    };
     if (selector === '[data-pump-formula-defense-live-badges]') {
-      return this.children.find((child) => child.attributes?.['data-pump-formula-defense-live-badges'] === 'true') || null;
+      return findByAttribute('data-pump-formula-defense-live-badges');
     }
     if (selector === '[data-pump-formula-defense-vendor-summary]') {
-      return this.children.find((child) => child.attributes?.['data-pump-formula-defense-vendor-summary'] === 'true') || null;
+      return findByAttribute('data-pump-formula-defense-vendor-summary');
     }
     if (selector === '[data-pump-calculation-matrix]') {
-      return this.children.find((child) => child.attributes?.['data-pump-calculation-matrix'] === 'true') || null;
+      return findByAttribute('data-pump-calculation-matrix');
     }
     if (selector.includes('.task-window-body')) return this;
     return null;
@@ -209,7 +218,7 @@ globalThis.__npshGlobalModel = {
           steps: [
             { title: 'Pressure Head', formula: 'Hp = Pabs x 100000 / (rho x g)', substitution: '1.800 x 100000 / (1000 x 9.81) = 18.350 m', result: 18.35, unit: 'm' },
             { title: 'Source Velocity Head', formula: 'Hvel = 0', substitution: '0.000 m', result: 0, unit: 'm' },
-            { title: 'Suction Loss', formula: 'HL = pipe major + fitting/valve minor', substitution: '0.800 + 0.450 = 1.250 m', result: 1.25, unit: 'm' },
+            { title: 'Suction Loss', formula: 'HL = pipe major + fitting/valve/equipment minor + pipe allowance', substitution: '0.800 + 0.450 + 0.000 = 1.250 m', result: 1.25, unit: 'm' },
             { title: 'NPSHa', formula: 'NPSHa = Hs - Hv', substitution: '8.000 - 1.000', result: 7, unit: 'm' },
             { title: 'NPSHr', formula: 'NPSHr = manual input', substitution: 'Manual NPSHr = 4.000 m', result: 4, unit: 'm' },
             { title: 'Required NPSHa', formula: 'Required NPSHa = governing available ANSI/HI margin criterion', substitution: 'max(4.000 x 1.050, 4.000 + 0.600) = 4.600 m', result: 4.6, unit: 'm' },
@@ -250,6 +259,8 @@ assert.equal(contentRefreshCalls, contentRefreshCallsBeforeIdOnly, 'Pump-id-only
 
 const matrixPanel = windowNode.querySelector('[data-pump-calculation-matrix]');
 assert(matrixPanel, 'Pump Formula Defense window must include a live input-to-output calculation matrix.');
+const vendorSummaryPanel = windowNode.querySelector('[data-pump-formula-defense-vendor-summary]');
+assert(vendorSummaryPanel?.innerHTML.includes('Curve Basis'), 'Compact Pump Formula Defense summary must expose Curve Basis for audit traceability.');
 assert(matrixPanel.innerHTML.includes('Matriks Kalkulasi Pump NPSH'), 'Matrix must have the requested calculation-matrix title.');
 assert(matrixPanel.innerHTML.includes('Flow Evaluated'), 'Matrix must link input flow to the displayed flow output.');
 assert(matrixPanel.innerHTML.includes('Required Pump Head'), 'Matrix must show route-calculated required pump head.');

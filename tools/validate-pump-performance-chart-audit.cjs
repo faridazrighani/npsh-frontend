@@ -135,6 +135,28 @@ assert.strictEqual(result.series.system.allowed, true, 'Legacy [flow, head] syst
 assert.strictEqual(result.series.npsha.allowed, true, 'Legacy npshCurvePoints must provide NPSHa.');
 assert.strictEqual(result.series.npshr.allowed, true, 'Legacy npshCurvePoints must provide NPSHr.');
 assert.strictEqual(result.visibleSeries.length, 4, 'Legacy simulation chart should draw the four continuous datasets when evidence is valid.');
+assert.strictEqual(result.reportNumbersComplete, true, 'Complete duty/report numbers must be exposed for pump-object chart audit.');
+assert.strictEqual(result.zeroPlaceholderReport, false, 'Valid report numbers must not be treated as a zero placeholder.');
+
+setModel({
+  results: {
+    flow: 0,
+    head: 0,
+    npsha: 0,
+    npshr: 0,
+    npshMargin: 0,
+    pumpCurve: [{ flow: 0, head: 12 }, { flow: 35, head: 11 }, { flow: 65, head: 8 }],
+    sysCurve: [{ flow: 0, head: 6 }, { flow: 35, head: 8 }, { flow: 65, head: 13 }],
+    npshCurvePoints: [{ flow: 0, npshr: 0.6 }, { flow: 65, npshr: 1.2 }],
+    curveDataSource: 'Generated audit fit from duty point',
+    curveDataConfidence: '-'
+  }
+});
+result = audit.compute('P-100');
+assert.strictEqual(result.zeroPlaceholderReport, true, 'Nonzero curve data with zero report numbers must be flagged as a placeholder.');
+assert.strictEqual(result.chartReportMismatch, true, 'Placeholder chart data must be exposed as report mismatch.');
+assert.strictEqual(result.reportNumbersComplete, false, 'Zero placeholder report must not pass complete-number audit.');
+assert.match(result.status, /preview|incomplete/i, 'Placeholder chart status must be explicit for browser audit gating.');
 
 setModel({
   props: {

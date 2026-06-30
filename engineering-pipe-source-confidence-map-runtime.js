@@ -261,10 +261,8 @@
       results.pressure,
       results.inletPressure,
       results.outletPressure,
-      results.highPointPressure,
       tracePressure(trace, "startPressure", false),
-      tracePressure(trace, "endPressure", true),
-      trace?.totals?.highPointPressure
+      tracePressure(trace, "endPressure", true)
     ].some((value) => finiteNumber(value) !== null);
   }
 
@@ -316,25 +314,22 @@
     const outletPressure = firstFiniteValue(results.outletPressure, results.pout, results.pressureOut, profile.endPressure, tracePressure(trace, "endPressure", true));
     const hasPressureProfile = pressureProfileStatus(results, trace);
     const role = inferPumpPathRole(pipeId, trace, model, runtimeConnections(model), results);
-    const allowance = firstFiniteValue(props.headLossAllowancePercent, trace?.basis?.headLossAllowancePercent, 0);
-
     return [
       sourceMapItem("Flow", roundNumber(flow, 6), "m3/h", flow !== null && flow > 0 ? "Network-derived" : "Waiting for solved network", "Solved solid hydraulic pipe path", "Q_m3/s = Q_m3/h / 3600", "Hydraulic network flow balance"),
       sourceMapItem("Flow conversion", roundNumber(flowM3S, 8), "m3/s", flow !== null && flow > 0 ? "Formula verified" : "Waiting for solved network", "Unit conversion", "Q = flow / 3600", "SI unit conversion"),
       sourceMapItem("Density (rho)", roundNumber(basis.density, 4), "kg/m3", "Fluid Basis", "Active Fluid Basis property", "rho = Fluid Basis density", "Required for pressure/head conversion"),
       sourceMapItem("Kinematic viscosity (nu)", roundNumber(basis.viscosityCSt, 6), "cSt", "Fluid Basis", "Active Fluid Basis property", "nu = cSt x 1e-6 m2/s", "Required for Reynolds number"),
-      sourceMapItem("Vapor pressure (P_v)", roundNumber(basis.vaporPressureBarA, 6), "bar a", "Fluid Basis", "Active Fluid Basis absolute vapor pressure", "Margin = P_high_point - P_vapor", "Required for high point and NPSH screening"),
+      sourceMapItem("Vapor pressure (P_v)", roundNumber(basis.vaporPressureBarA, 6), "bar a", "Fluid Basis", "Active Fluid Basis absolute vapor pressure", "H_v = P_v / (rho x g)", "Required for pump NPSH screening"),
       sourceMapItem("Pipe Pressure", roundNumber(pipePressure, 6), "bar a", pipePressure !== null ? "Network-derived realtime" : "Waiting for solved network", "Live pipe mid-point static pressure readout", "P_pipe = pressureHeadToBar(H_mid - z_mid - V^2/2g, rho)", "Same value source as Pipe Object Properties > Pipe Pressure"),
       sourceMapItem("Inlet Pressure", roundNumber(inletPressure, 6), "bar a", inletPressure !== null ? "Network-derived realtime" : "Waiting for solved network", "Live pipe inlet static pressure readout", "P_in = pressureHeadToBar(H_in - z_in - V^2/2g, rho)", "Same value source as Pipe Object Properties > Inlet Pressure"),
       sourceMapItem("Outlet Pressure", roundNumber(outletPressure, 6), "bar a", outletPressure !== null ? "Network-derived realtime" : "Waiting for solved network", "Live pipe outlet static pressure readout", "P_out = pressureHeadToBar(H_out - z_out - V^2/2g, rho)", "Same value source as Pipe Object Properties > Outlet Pressure"),
       sourceMapItem("Pump Path Role", role.role || "Unknown", "", role.pumpId && role.pumpId !== "-" ? role.pumpId : role.basis || "Path not resolved", role.basis || "Solved hydraulic network state", "role = pipeId in suctionPath.steps or dischargePath.steps", "Suction path reduces NPSHa; discharge path adds required pump head"),
       sourceMapItem("Pump Calculation Impact", role.impact || "-", "", role.role || "Unknown", role.calculationUse || "No pump calculation impact resolved.", role.role === "Suction path" ? "NPSHa = H_suction_boundary - hL_suction - z_pump - H_vapor" : role.role === "Discharge path" ? "H_required = delta boundary head + hL_suction + hL_discharge" : "No active pump equation contribution", "Pipe role interpretation from solved pump hydraulic path"),
-      sourceMapItem("Endpoint elevation rule", "Start -> inlet/profile; End -> outlet", "", "Engineering interpretation", "Pipe endpoint elevations are pressure-profile terms, not independent boundary energy sources", "P_in uses z_start; P_out uses z_end; high point uses local z", "Bernoulli elevation head term; change SRC/tank/vessel elevation to change source head"),
+      sourceMapItem("Endpoint elevation rule", "Connected node/port elevations", "", "Engineering interpretation", "Pipe endpoint elevations follow the connected hydraulic objects", "P_in/P_out use connected node elevation and solved hydraulic head", "Bernoulli elevation head term; change SRC/tank/vessel/pump datum to change source head"),
       sourceMapItem("Pipe size / ID", roundNumber(diameter, 6), "m", sizeSource.status, sizeSource.source, "A = pi D^2 / 4", "ASME/custom diameter basis; verify project piping class"),
-      sourceMapItem("Roughness", roundNumber(roughness, 8), "m", materialSource.status, materialSource.source, "eps_eff = eps x F_aging", "Moody/Colebrook roughness input"),
+      sourceMapItem("Roughness", roundNumber(roughness, 8), "m", materialSource.status, materialSource.source, "eps_eff = eps", "Moody/Colebrook roughness input"),
       sourceMapItem("Fitting K", roundNumber(totalK, 6), "", Array.isArray(props.segments) && props.segments.length > 1 ? "All segments" : fittingSource.status, Array.isArray(props.segments) && props.segments.length > 1 ? "Sum of segment fitting/additional K values" : fittingSource.source, "h_minor,total = sum(K_total,i x V_i^2/(2g))", "All Segment Calculation Trace shows segment-by-segment K; avoid double counting with valve objects"),
-      sourceMapItem("Head loss allowance", roundNumber(allowance, 4), "%", allowance > 0 ? "User conservative factor" : "Not applied", "Optional design/fouling allowance", "h_allow = (h_major + h_minor) x F_allow", "Engineering screening factor"),
-      sourceMapItem("Pressure profile", hasPressureProfile ? "Available" : "Not solved", "", hasPressureProfile ? "Network-derived" : "Waiting for endpoint pressure solution", "Static pressure from hydraulic head balance", "P = rho g (H - z - V^2/2g) / 100000", "Used for inlet/outlet and high point vapor margin")
+      sourceMapItem("Pressure profile", hasPressureProfile ? "Available" : "Not solved", "", hasPressureProfile ? "Network-derived" : "Waiting for endpoint pressure solution", "Static pressure from hydraulic head balance", "P = rho g (H - z - V^2/2g) / 100000", "Used for inlet and outlet pressure trace")
     ];
   }
 

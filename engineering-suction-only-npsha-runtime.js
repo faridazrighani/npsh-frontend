@@ -568,8 +568,8 @@
     if (!(flow > 0) || !segments.length) return [];
     const qM3S = flow / 3600;
     const kinVisc = Math.max(fluid.viscosityCSt, 0.000001) * 1e-6;
-    const roughnessAgingFactor = Math.max(0, firstFiniteValue(pipe.props?.roughnessAgingFactor, 1) || 1);
-    const allowanceFraction = Math.max(0, firstFiniteValue(pipe.props?.headLossAllowancePercent, 0) || 0) / 100;
+    const roughnessAgingFactor = 1;
+    const allowanceFraction = 0;
     return segments.map((segment, index) => {
       if (!segmentEnabled(segment)) return null;
       const diameter = normaliseDiameter(segment.diameter);
@@ -713,7 +713,7 @@
           },
           {
             title: "Segment Total Loss",
-            formula: "h_total = h_f + h_m + h_allow",
+            formula: "h_total = h_f + h_m",
             substitution: `${roundValue(segment.majorLoss, 6)} + ${roundValue(segment.minorLoss, 6)} + ${roundValue(segment.allowanceLoss, 6)}`,
             result: roundValue(segment.totalLoss, 6),
             unit: "m"
@@ -733,18 +733,16 @@
         viscosityCSt: roundValue(fluid.viscosityCSt, 6),
         kinematicViscosityM2S: roundValue(fluid.viscosityCSt * 1e-6, 10),
         vaporPressureBarA: roundValue(fluid.vaporPressureBarA, 6),
-        roughnessAgingFactor: roundValue(firstFiniteValue(route.pipe?.props?.roughnessAgingFactor, 1), 4),
-        headLossAllowancePercent: roundValue(firstFiniteValue(route.pipe?.props?.headLossAllowancePercent, 0), 4),
-        elevationProfileMode: route.pipe?.props?.elevationProfileMode || "End Elevations"
+        roughnessAgingFactor: 1,
+        headLossAllowancePercent: 0,
+        elevationProfileMode: "Ignore"
       },
       totals: {
         majorLoss: roundValue(totals.majorLoss, 6),
         minorLoss: roundValue(totals.minorLoss, 6),
         allowanceLoss: roundValue(totals.allowanceLoss, 6),
         totalLoss: roundValue(totals.totalLoss, 6),
-        totalK: roundValue(totals.totalK, 6),
-        highPointPressure: null,
-        highPointVaporMargin: null
+        totalK: roundValue(totals.totalK, 6)
       },
       hydraulic: {
         headLoss: roundValue(totals.totalLoss, 6),
@@ -825,7 +823,7 @@
       },
       {
         title: "Suction Loss",
-        formula: "h_L,suction = sum(h_f + h_m + h_allow)",
+        formula: "h_L,suction = sum(h_f + h_m)",
         substitution: `${roundValue(result.suctionLoss, 6)} m from ${route.pipeId}`,
         result: roundValue(result.suctionLoss, 6),
         unit: "m"

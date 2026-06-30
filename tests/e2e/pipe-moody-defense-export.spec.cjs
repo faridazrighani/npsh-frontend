@@ -142,7 +142,7 @@ async function waitForNpshApp(page) {
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.updateSimulation === 'function'
     && window.EngineeringDefenseExportPackage?.schemaVersion === 'defense-export-package.v1'
-    && window.EngineeringPipeMoodyChartAudit?.version === 'engineering-pipe-moody-chart-audit.v1'
+    && window.EngineeringPipeMoodyChartAudit?.version === 'engineering-pipe-moody-chart-audit.v7'
     && window.__npshRouteTraceAuditInstalled?.fetchSimulation
   ), null, { timeout: 30000 });
 }
@@ -394,7 +394,7 @@ test('Defense export actions are blocked while calculation is stale and restored
   }, null, 2));
 });
 
-test('Aging Roughness Factor field explains dimensionless eps_eff meaning in the browser', async ({ page }) => {
+test('unused Pipe Properties fields and segment z columns are removed', async ({ page }) => {
   await waitForNpshApp(page);
   await loadProject(page, baseProject());
 
@@ -414,18 +414,65 @@ test('Aging Roughness Factor field explains dimensionless eps_eff meaning in the
       window.renderSidebar('PIPE-D', { taskWindow, skipDismissedGuard: true });
     }
   });
-  await page.waitForSelector('input[data-key="roughnessAgingFactor"]', { timeout: 10000 });
-  await page.evaluate(() => window.EngineeringPipeMoodyChartAudit.refreshAgingRoughnessHelp(document));
+  await page.waitForFunction(() => Boolean(
+    document.querySelector('.persistent-object-properties-task-window[data-kind="pipe"][data-node-id="PIPE-D"]')
+    || document.querySelector('.persistent-object-properties-task-window[data-kind="pipe"]')
+    || document.querySelector('.task-window-pipe-active')
+    || document.querySelector('#taskWindow[data-kind="pipe"]')
+  ), null, { timeout: 10000 });
+  await page.evaluate(() => window.EngineeringPipeMoodyChartAudit.refreshRemovedPipePropertyFields(document));
+  await page.evaluate(() => window.EngineeringPipeMoodyChartAudit.refreshRemovedPipeSegmentColumns(document));
 
-  const help = page.locator('.pipe-aging-roughness-help').first();
-  await expect(help).toContainText('eps_eff = eps x aging factor');
-  await expect(help).toContainText('Dimensionless multiplier');
-  const agingInput = page.locator('input[data-key="roughnessAgingFactor"]').first();
-  await expect(agingInput).toHaveAttribute('title', /Dimensionless multiplier.*Unit: x/);
+  const removedLabels = [
+    'Pipe Routing',
+    'Pipe Rating/Class',
+    'End Connection Basis',
+    'Elevation Profile',
+    'Start Elevation Override',
+    'End Elevation Override',
+    'Head Loss Allowance',
+    'Aging Roughness Factor'
+  ];
+  const removedKeys = [
+    'routeStyle',
+    'pressureClass',
+    'endConnection',
+    'elevationProfileMode',
+    'startElevation',
+    'endElevation',
+    'headLossAllowancePercent',
+    'roughnessAgingFactor'
+  ];
+  const removedFieldSnapshot = await page.evaluate(({ labels, keys }) => {
+    const surfaces = Array.from(document.querySelectorAll(
+      '.persistent-object-properties-task-window[data-kind="pipe"], .task-window-pipe-active, #taskWindow[data-kind="pipe"]'
+    ));
+    return {
+      visibleLabels: labels.filter((label) => surfaces.some((surface) => new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(surface.textContent || ''))),
+      visibleKeys: keys.filter((key) => surfaces.some((surface) => surface.querySelector(`[data-key="${key}"], [name="${key}"], [data-prop-key="${key}"]`)))
+    };
+  }, { labels: removedLabels, keys: removedKeys });
+  const removedSegmentSnapshot = await page.evaluate(({ labels, keys }) => {
+    const surfaces = Array.from(document.querySelectorAll(
+      '.persistent-object-properties-task-window[data-kind="pipe"], .task-window-pipe-active, #taskWindow[data-kind="pipe"]'
+    ));
+    const tables = surfaces.flatMap((surface) => Array.from(surface.querySelectorAll('#pipeSegmentTable, table.segment-table')));
+    const headers = tables.flatMap((table) => Array.from(table.querySelectorAll('th')).map((header) => String(header.textContent || '').trim()));
+    return {
+      visibleHeaders: labels.filter((label) => headers.some((header) => header.toLowerCase() === label.toLowerCase())),
+      visibleKeys: keys.filter((key) => tables.some((table) => table.querySelector(`[data-field="${key}"], [data-key="${key}"], [name="${key}"]`)))
+    };
+  }, { labels: ['z in (m)', 'z out (m)'], keys: ['startElevation', 'endElevation'] });
+  await expect(page.locator('.pipe-aging-roughness-help')).toHaveCount(0);
+  expect(removedFieldSnapshot.visibleLabels).toEqual([]);
+  expect(removedFieldSnapshot.visibleKeys).toEqual([]);
+  expect(removedSegmentSnapshot.visibleHeaders).toEqual([]);
+  expect(removedSegmentSnapshot.visibleKeys).toEqual([]);
 
   console.log(JSON.stringify({
-    agingRoughnessHelpE2E: 'pass',
-    helpText: await help.textContent(),
-    title: await agingInput.getAttribute('title')
+    unusedPipeFieldsRemovedE2E: 'pass',
+    helpCount: await page.locator('.pipe-aging-roughness-help').count(),
+    removedFieldSnapshot,
+    removedSegmentSnapshot
   }, null, 2));
 });

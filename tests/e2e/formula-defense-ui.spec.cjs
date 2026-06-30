@@ -486,9 +486,7 @@ test('Pipe Formula Defense values refresh from live pipe model data', async ({ p
         startElevation: 0,
         endElevation: 0,
         startPressure: 3.781,
-        endPressure: 2.676,
-        highPointPressure: 2.676,
-        highPointVaporMargin: 1.662
+        endPressure: 2.676
       }));
       return {
         type: 'pipe',
@@ -501,8 +499,6 @@ test('Pipe Formula Defense values refresh from live pipe model data', async ({ p
           pressure: 3.2,
           inletPressure: 3.781,
           outletPressure: 2.676,
-          highPointPressure: 2.676,
-          highPointVaporMargin: 1.662,
           warnings: []
         }
       };
@@ -573,15 +569,11 @@ test('Pipe Formula Defense values refresh from live pipe model data', async ({ p
       startElevation: 0,
       endElevation: 0,
       startPressure: 3.9,
-      endPressure: 2.9,
-      highPointPressure: 2.9,
-      highPointVaporMargin: 1.886
+      endPressure: 2.9
     }));
     pipe.results.pressure = 3.4;
     pipe.results.inletPressure = 3.9;
     pipe.results.outletPressure = 2.9;
-    pipe.results.highPointPressure = 2.9;
-    pipe.results.highPointVaporMargin = 1.886;
     pipe.results.calculationTrace = window.buildPipeCalculationTrace(60, pipe.props, pipe.results, null, 'PIPE-RT');
     window.EngineeringFormulaDefenseUI.refreshOpenPipeFormulaDefenseWindows();
   });
@@ -621,5 +613,5 @@ test('Pipe Formula Defense values refresh from live pipe model data', async ({ p
   expect(after.firstMaterialBasis).toBe(before.firstMaterialBasis);
   expect(after.secondFittingBasis).toBe(before.secondFittingBasis);
   expect(after.segmentCards).toBe(2);
-  expect(after.sourceRows).toBe(16);
+  expect(after.sourceRows).toBe(15);
 });

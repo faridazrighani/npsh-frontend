@@ -30,7 +30,9 @@ function segment(name, { length = 10, diameter = 0.0738, roughness = 0.00015, fi
     fittingType: fittingK > 0 ? 'Custom K' : 'None',
     fittingQuantity: fittingK > 0 ? 1 : 0,
     fittingK,
-    minorLoss: 0
+    minorLoss: 0,
+    startElevation: 11,
+    endElevation: 12
   };
 }
 
@@ -128,7 +130,8 @@ async function waitForNpshApp(page) {
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.openPipePropertiesTaskWindow === 'function'
     && typeof window.renderSidebar === 'function'
-    && window.EngineeringPipeSegmentsFileRuntime?.version === 'engineering-pipe-segments-file-runtime.v1'
+    && window.EngineeringPipeSegmentsFileRuntime?.version === 'engineering-pipe-segments-file-runtime.v3'
+    && window.EngineeringPipeMoodyChartAudit?.version === 'engineering-pipe-moody-chart-audit.v7'
     && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v12'
   ), null, { timeout: 30000 });
 }
@@ -148,6 +151,9 @@ async function openPipeSegments(page) {
     if (taskWindow) {
       window.renderSidebar('PIPE-D', { taskWindow, skipDismissedGuard: true });
     }
+    window.EngineeringPipeMoodyChartAudit?.refreshRemovedPipePropertyFields?.(document);
+    window.EngineeringPipeMoodyChartAudit?.refreshRemovedPipeSegmentColumns?.(document);
+    window.EngineeringPipeSegmentsFileRuntime?.syncControls?.(document);
   }, baseProject());
   await page.waitForSelector('#pipeSegmentTable', { timeout: 10000 });
   await page.waitForSelector('[data-pipe-segments-export]', { timeout: 10000 });
@@ -179,6 +185,8 @@ test('Pipe Segments can be exported and imported as local .v1 files without losi
   expect(exportedPayload.segments[0].name).toBe('PIPE-D-Seg-1 Journal');
   expect(exportedPayload.segments[0].diameter).toBeCloseTo(0.0738, 6);
   expect(exportedPayload.segments[0].fittingK).toBeCloseTo(18.448, 6);
+  expect(exportedPayload.segments[0].startElevation).toBeUndefined();
+  expect(exportedPayload.segments[0].endElevation).toBeUndefined();
 
   const importPayload = {
     schemaType: 'pipe-segments-export.v1',
@@ -246,5 +254,113 @@ test('Pipe Segments can be exported and imported as local .v1 files without losi
     importedSegmentCount: importedState.segmentCount,
     staleStatus: importedState.realtime.status,
     screenshotPath
+  }, null, 2));
+});
+
+test('Pipe Segments keeps horizontal scroll position while editing cells', async ({ page }) => {
+  await waitForNpshApp(page);
+  await openPipeSegments(page);
+
+  const before = await page.evaluate(async () => {
+    const scrollContainerFor = (table) => {
+      const explicit = table?.closest?.('.segment-table-scroll');
+      if (explicit && (explicit.scrollWidth || 0) > (explicit.clientWidth || 0) + 1) return explicit;
+      let current = table?.parentElement || null;
+      while (current) {
+        if ((current.scrollWidth || 0) > (current.clientWidth || 0) + 1) return current;
+        current = current.parentElement;
+      }
+      return table || null;
+    };
+    const taskWindow = document.querySelector('.persistent-object-properties-task-window[data-kind="pipe"][data-node-id="PIPE-D"]')
+      || document.querySelector('.task-window[data-task-node-id="PIPE-D"]')
+      || document.querySelector('.persistent-object-properties-task-window[data-kind="pipe"]');
+    if (taskWindow) taskWindow.style.width = '620px';
+    const table = document.querySelector('#pipeSegmentTable');
+    const scroll = scrollContainerFor(table);
+    const maxLeft = Math.max(0, (scroll?.scrollWidth || 0) - (scroll?.clientWidth || 0));
+    if (!table || !scroll || maxLeft <= 0) return { maxLeft, left: 0, rendered: false };
+
+    scroll.scrollLeft = Math.min(maxLeft, Math.max(160, Math.round(maxLeft * 0.7)));
+    await new Promise((resolve) => window.setTimeout(resolve, 30));
+    const leftBeforeRender = scroll.scrollLeft;
+    const scrollNode = {
+      tag: scroll.tagName,
+      id: scroll.id || '',
+      className: String(scroll.className || ''),
+      scrollWidth: scroll.scrollWidth || 0,
+      clientWidth: scroll.clientWidth || 0,
+      overflowX: window.getComputedStyle(scroll).overflowX
+    };
+    window.EngineeringPipeSegmentsFileRuntime.rememberSegmentScrollPositions(document);
+
+    const editable = Array.from(table.querySelectorAll('input.segment-input, select.segment-input'))
+      .find((element) => !element.disabled && /add k/i.test(element.closest('td')?.textContent || ''))
+      || Array.from(table.querySelectorAll('input.segment-input, select.segment-input')).reverse().find((element) => !element.disabled);
+    if (editable) {
+      editable.focus({ preventScroll: true });
+      if (editable.tagName === 'INPUT') {
+        editable.value = editable.value || '0';
+        editable.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      editable.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    if (typeof window.renderSidebar === 'function' && taskWindow) {
+      window.renderSidebar('PIPE-D', { taskWindow, skipDismissedGuard: true });
+    }
+    return {
+      maxLeft,
+      left: leftBeforeRender,
+      rendered: true,
+      field: editable?.dataset?.field || editable?.name || '',
+      scrollNode
+    };
+  });
+
+  expect(before.maxLeft).toBeGreaterThan(0);
+  expect(before.left).toBeGreaterThan(0);
+
+  await page.waitForFunction((expectedLeft) => {
+    const scrollContainerFor = (table) => {
+      const explicit = table?.closest?.('.segment-table-scroll');
+      if (explicit && (explicit.scrollWidth || 0) > (explicit.clientWidth || 0) + 1) return explicit;
+      let current = table?.parentElement || null;
+      while (current) {
+        if ((current.scrollWidth || 0) > (current.clientWidth || 0) + 1) return current;
+        current = current.parentElement;
+      }
+      return table || null;
+    };
+    const table = document.querySelector('#pipeSegmentTable');
+    const scroll = scrollContainerFor(table);
+    return !!scroll && scroll.scrollLeft >= Math.max(0, expectedLeft - 2);
+  }, before.left, { timeout: 2000 });
+
+  const after = await page.evaluate(() => {
+    const scrollContainerFor = (table) => {
+      const explicit = table?.closest?.('.segment-table-scroll');
+      if (explicit && (explicit.scrollWidth || 0) > (explicit.clientWidth || 0) + 1) return explicit;
+      let current = table?.parentElement || null;
+      while (current) {
+        if ((current.scrollWidth || 0) > (current.clientWidth || 0) + 1) return current;
+        current = current.parentElement;
+      }
+      return table || null;
+    };
+    const table = document.querySelector('#pipeSegmentTable');
+    const scroll = scrollContainerFor(table);
+    return {
+      left: scroll?.scrollLeft || 0,
+      state: window.__pipeSegmentsScrollRetentionState || null
+    };
+  });
+  expect(after.left).toBeGreaterThanOrEqual(before.left - 2);
+  expect(after.state?.left).toBeGreaterThanOrEqual(before.left - 2);
+
+  console.log(JSON.stringify({
+    pipeSegmentsHorizontalScrollRetentionE2E: 'pass',
+    before,
+    after
   }, null, 2));
 });

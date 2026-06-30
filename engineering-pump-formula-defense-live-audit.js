@@ -356,7 +356,7 @@
     const trace = evaluation.calculationTrace || results.calculationTrace || {};
     const route = results.routeTrace || evaluation.routeTrace || {};
     const npsha = firstNumber(evaluation.npsha, results.npsha);
-    const npshr = firstNumber(evaluation.npshr, results.npshr, pump.props?.designNpshr, pump.props?.manualNpshr);
+    const npshr = firstNumber(evaluation.npshr, results.npshr, pump.props?.manualNpshr, pump.props?.designNpshr);
     const requiredNpsha = firstNumber(evaluation.requiredNpsha, results.requiredNpsha);
     const actualPumpHeadAvailabilityStatus = actualPumpHeadAvailability(results, evaluation);
     const actualPumpHead = actualPumpHeadFromEvaluation(results, evaluation);
@@ -650,7 +650,7 @@
     const actualPumpHead = actualPumpHeadFromEvaluation(results, evaluation);
     const requiredPumpHead = firstNumber(evaluation.requiredSystemHead, results.requiredSystemHead, trace.systemHead?.requiredHead);
     const npsha = firstNumber(evaluation.npsha, results.npsha);
-    const npshr = firstNumber(evaluation.npshr, results.npshr, props.designNpshr);
+    const npshr = firstNumber(evaluation.npshr, results.npshr, props.manualNpshr, props.designNpshr);
     const npshMargin = firstNumber(evaluation.npshMargin, results.npshMargin, interpretation.margin, npsha !== null && npshr !== null ? npsha - npshr : null);
     const npshRatio = firstNumber(evaluation.npshRatio, results.npshRatio, interpretation.ratio, npsha !== null && npshr ? npsha / npshr : null);
     let requiredNpsha = firstNumber(evaluation.requiredNpsha, results.requiredNpsha, interpretation.requiredNpsha);
@@ -1047,6 +1047,14 @@
       : (results.calculationFreshness || action.freshness || 'Fresh');
     const calculationBasis = firstText(results.solveMode, evaluation.solveMode, results.flowBasis, evaluation.flowBasis, 'Route/design calculation');
     const npshrSource = firstText(evaluation.npshrSource, results.npshrSource, props.npshrSourceMode, 'Manual NPSHr');
+    const curveBasis = firstText(
+      evaluation.curveBasis,
+      results.curveBasis,
+      results.curveDataSource,
+      props.curveDataSource,
+      props.npshrSourceMode,
+      npshrSource
+    );
     const maxAllowableNpshr = firstNumber(evaluation.maxAllowableNpshr, results.maxAllowableNpshr, trace.interpretation?.maxAllowableNpshr);
     const npshr = firstNumber(evaluation.npshr, results.npshr, props.manualNpshr, props.designNpshr);
     const routeStatus = firstCompleteStatus(evaluation.routeCalculationStatus, results.routeCalculationStatus, trace.interpretation?.routeCalculationStatus) || '-';
@@ -1070,6 +1078,7 @@
       freshness,
       calculationBasis,
       npshrSource,
+      curveBasis,
       routeStatus,
       maxNpshrStatus,
       manualNpshrCheck,
@@ -1194,6 +1203,7 @@
         <div><span style="color:#64748b;">NPSHr Source</span><strong style="display:block;">${escapeHtml(summary.npshrSource)}</strong></div>
         <div><span style="color:#64748b;">Trace Rows</span><strong style="display:block;">${escapeHtml(summary.rowCount)} / ${escapeHtml(summary.stepCount)}</strong></div>
         <div><span style="color:#64748b;">Route Status</span><strong style="display:block;">${escapeHtml(summary.routeStatus)}</strong></div>
+        <div><span style="color:#64748b;">Curve Basis</span><strong style="display:block;">${escapeHtml(summary.curveBasis)}</strong></div>
         <div><span style="color:#64748b;">NPSH Margin Basis</span><strong style="display:block;">${escapeHtml(summary.marginBasis)}</strong></div>
         <div><span style="color:#64748b;">Max Allowable NPSHr</span><strong style="display:block;">${escapeHtml(summary.maxAllowableNpshrDisplay)}</strong></div>
         <div><span style="color:#64748b;">Manual NPSHr Check</span><strong style="display:block;">${escapeHtml(summary.manualNpshrCheck)}</strong></div>

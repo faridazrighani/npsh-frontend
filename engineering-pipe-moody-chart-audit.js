@@ -1,10 +1,42 @@
 (function registerEngineeringPipeMoodyChartAudit(root) {
-  const VERSION = 'engineering-pipe-moody-chart-audit.v1';
-  const CACHE_KEY = '20260607-pipe-moody-audit2';
+  const VERSION = 'engineering-pipe-moody-chart-audit.v7';
+  const CACHE_KEY = '20260630-pipe-moody-audit-clean-unused-pipe-fields1';
   const PANEL_ID = 'engineeringPipeMoodyChartPanel';
   const BODY_ID = 'engineeringPipeMoodyChartPanelBody';
-  const AGING_HELP_ID_PREFIX = 'pipe-aging-roughness-help';
-  const AGING_HELP_TEXT = 'Dimensionless multiplier for effective roughness: eps_eff = eps x aging factor. Use 1.0 for clean/as-entered roughness; values above 1 model fouling, corrosion, or aging. Unit: x.';
+  const REMOVED_PIPE_PROPERTY_KEYS = [
+    'routeStyle',
+    'pressureClass',
+    'endConnection',
+    'elevationProfileMode',
+    'startElevation',
+    'endElevation',
+    'headLossAllowancePercent',
+    'roughnessAgingFactor'
+  ];
+  const REMOVED_PIPE_PROPERTY_KEY_PATTERNS = [
+    new RegExp('^(?:controlling)?' + 'high.*' + 'point', 'i')
+  ];
+  const REMOVED_PIPE_PROPERTY_LABELS = [
+    'Pipe Routing',
+    'Pipe Rating/Class',
+    'End Connection Basis',
+    'Elevation Profile',
+    'Start Elevation Override',
+    'End Elevation Override',
+    'Head Loss Allowance',
+    'Aging Roughness Factor'
+  ];
+  const REMOVED_PIPE_PROPERTY_LABEL_PATTERNS = [
+    new RegExp('^(?:Controlling\\s+)?' + 'High\\s+' + 'Point', 'i')
+  ];
+  const REMOVED_PIPE_SEGMENT_COLUMN_LABELS = [
+    'z in (m)',
+    'z out (m)'
+  ];
+  const REMOVED_PIPE_SEGMENT_COLUMN_KEYS = [
+    'startElevation',
+    'endElevation'
+  ];
 
   function escapeText(value) {
     return String(value ?? '')
@@ -267,48 +299,171 @@
       '.pipe-moody-overlap-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;}',
       '.pipe-moody-overlap-card{min-width:0;padding:8px;border:1px solid #d8e6f2;border-radius:6px;background:#fff;}',
       '.pipe-moody-overlap-card strong{display:block;color:#123b5a;font-size:12px;line-height:1.25;}',
-      '.pipe-moody-overlap-card span{display:block;margin-top:3px;color:#334155;font-size:11px;line-height:1.35;}',
-      '.pipe-aging-roughness-help{margin-top:4px;color:#475569;font-size:10.5px;line-height:1.35;}',
-      '.pipe-aging-roughness-help strong{color:#123b5a;}'
+      '.pipe-moody-overlap-card span{display:block;margin-top:3px;color:#334155;font-size:11px;line-height:1.35;}'
     ].join('');
     document.head.appendChild(style);
   }
 
-  function refreshAgingRoughnessHelp(scope = document) {
+  function isPipePropertySurface(element) {
+    if (!element || typeof element.matches !== 'function') return false;
+    return element.matches('.persistent-object-properties-task-window[data-kind="pipe"], #taskWindow[data-kind="pipe"], .task-window-pipe-active')
+      || element.dataset?.kind === 'pipe';
+  }
+
+  function pipePropertySurfaces(scope = document) {
+    if (typeof document === 'undefined') return [];
+    if (isPipePropertySurface(scope)) return [scope];
+    if (!scope?.querySelectorAll) return [];
+    return Array.from(scope.querySelectorAll('.persistent-object-properties-task-window[data-kind="pipe"], #taskWindow[data-kind="pipe"], .task-window-pipe-active'));
+  }
+
+  function fieldRow(element) {
+    return element?.closest?.(
+      '[data-prop-key], tr, .object-property-row, .pipe-task-field-row, .object-task-field-row, .field-card, .object-field, .task-field, .prop-row'
+    ) || element?.parentElement || null;
+  }
+
+  function isInsidePipeSegmentTable(element) {
+    return !!element?.closest?.('#pipeSegmentTable, table.segment-table');
+  }
+
+  function removeFieldElement(element) {
+    const row = fieldRow(element);
+    if (row && typeof row.remove === 'function') {
+      row.remove();
+      return true;
+    }
+    if (element && typeof element.remove === 'function') {
+      element.remove();
+      return true;
+    }
+    return false;
+  }
+
+  function normalizeUiText(value) {
+    return String(value ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  function matchesRemovedPipePropertyKey(value) {
+    const key = String(value || '');
+    return REMOVED_PIPE_PROPERTY_KEYS.includes(key)
+      || REMOVED_PIPE_PROPERTY_KEY_PATTERNS.some((pattern) => pattern.test(key));
+  }
+
+  function matchesRemovedPipePropertyLabel(value) {
+    const label = String(value || '').trim();
+    return REMOVED_PIPE_PROPERTY_LABELS.includes(label)
+      || REMOVED_PIPE_PROPERTY_LABEL_PATTERNS.some((pattern) => pattern.test(label));
+  }
+
+  function isTableCell(element) {
+    return element?.tagName === 'TH' || element?.tagName === 'TD';
+  }
+
+  function pipeSegmentTables(surface) {
+    return Array.from(surface.querySelectorAll('#pipeSegmentTable, table.segment-table, table'))
+      .filter((table) => {
+        if (table.id === 'pipeSegmentTable' || table.classList?.contains('segment-table')) return true;
+        return !!table.querySelector?.('.segment-input, [data-field="name"], [data-field="diameter"], [data-field="length"]');
+      });
+  }
+
+  function tableHeaderCells(table) {
+    const headerRow = table.tHead?.rows?.[0]
+      || Array.from(table.querySelectorAll('tr')).find((row) => Array.from(row.children).some((cell) => cell.tagName === 'TH'))
+      || table.querySelector('tr');
+    return headerRow ? Array.from(headerRow.children).filter(isTableCell) : [];
+  }
+
+  function removeTableColumn(table, columnIndex) {
+    let removed = false;
+    Array.from(table.querySelectorAll('tr')).forEach((row) => {
+      const cells = Array.from(row.children).filter(isTableCell);
+      const cell = cells[columnIndex];
+      if (cell && typeof cell.remove === 'function') {
+        cell.remove();
+        removed = true;
+      }
+    });
+    return removed;
+  }
+
+  function removeColumnForElement(table, element) {
+    const cell = element?.closest?.('td, th');
+    if (!cell) return false;
+    const row = cell.parentElement;
+    const cells = row ? Array.from(row.children).filter(isTableCell) : [];
+    const index = cells.indexOf(cell);
+    return index >= 0 ? removeTableColumn(table, index) : false;
+  }
+
+  function refreshRemovedPipeSegmentColumns(scope = document) {
     if (typeof document === 'undefined' || !scope?.querySelectorAll) return 0;
     let count = 0;
-    scope.querySelectorAll('input[data-key="roughnessAgingFactor"]').forEach((input, index) => {
-      const row = input.closest('tr') || input.parentElement;
-      const valueCell = input.closest('td') || input.parentElement;
-      if (!row || !valueCell) return;
-      const helpId = `${AGING_HELP_ID_PREFIX}-${index}`;
-      const labelCell = row.querySelector('.prop-label');
-      if (labelCell) labelCell.setAttribute('title', AGING_HELP_TEXT);
-      input.setAttribute('title', AGING_HELP_TEXT);
-      input.setAttribute('aria-describedby', helpId);
-      let help = valueCell.querySelector('.pipe-aging-roughness-help');
-      if (!help) {
-        help = document.createElement('div');
-        help.className = 'pipe-aging-roughness-help';
-        help.id = helpId;
-        valueCell.appendChild(help);
-      }
-      const helpHtml = `<strong>eps_eff = eps x aging factor.</strong> ${escapeText(AGING_HELP_TEXT)}`;
-      if (help.innerHTML !== helpHtml) help.innerHTML = helpHtml;
-      count += 1;
+    const removedLabels = new Set(REMOVED_PIPE_SEGMENT_COLUMN_LABELS.map(normalizeUiText));
+    pipePropertySurfaces(scope).forEach((surface) => {
+      pipeSegmentTables(surface).forEach((table) => {
+        const indexes = tableHeaderCells(table)
+          .map((cell, index) => (removedLabels.has(normalizeUiText(cell.textContent)) ? index : -1))
+          .filter((index) => index >= 0)
+          .sort((left, right) => right - left);
+        indexes.forEach((index) => {
+          if (removeTableColumn(table, index)) count += 1;
+        });
+        REMOVED_PIPE_SEGMENT_COLUMN_KEYS.forEach((key) => {
+          table.querySelectorAll(`[data-field="${key}"], [data-key="${key}"], [data-prop-key="${key}"], [name="${key}"]`)
+            .forEach((element) => {
+              if (removeColumnForElement(table, element)) count += 1;
+            });
+        });
+      });
+    });
+    root.__pipeRemovedSegmentColumnCount = count;
+    return count;
+  }
+
+  function refreshRemovedPipePropertyFields(scope = document) {
+    if (typeof document === 'undefined' || !scope?.querySelectorAll) return 0;
+    let count = 0;
+    scope.querySelectorAll('.pipe-aging-roughness-help').forEach((help) => help.remove());
+    pipePropertySurfaces(scope).forEach((surface) => {
+      REMOVED_PIPE_PROPERTY_KEYS.forEach((key) => {
+        surface.querySelectorAll(`[data-prop-key="${key}"], [data-key="${key}"], [name="${key}"]`).forEach((element) => {
+          if (isInsidePipeSegmentTable(element)) return;
+          if (removeFieldElement(element)) count += 1;
+        });
+      });
+      Array.from(surface.querySelectorAll('[data-prop-key], [data-key], [name]'))
+        .filter((element) => matchesRemovedPipePropertyKey(element.dataset?.propKey || element.dataset?.key || element.getAttribute('name')))
+        .forEach((element) => {
+          if (isInsidePipeSegmentTable(element)) return;
+          if (removeFieldElement(element)) count += 1;
+        });
+      Array.from(surface.querySelectorAll('.prop-label, label, th, td, span, div'))
+        .filter((element) => matchesRemovedPipePropertyLabel(element.textContent || ''))
+        .forEach((element) => {
+          if (removeFieldElement(element)) count += 1;
+        });
     });
     root.__pipeAgingRoughnessHelpCount = count;
-    return count;
+    root.__pipeAgingRoughnessFieldRemovedCount = count;
+    root.__pipeRemovedPropertyFieldCount = count;
+    return count + refreshRemovedPipeSegmentColumns(scope);
+  }
+
+  function refreshAgingRoughnessHelp(scope = document) {
+    return refreshRemovedPipePropertyFields(scope);
   }
 
   function install() {
     installStyles();
     ensurePanel();
-    refreshAgingRoughnessHelp();
+    refreshRemovedPipePropertyFields();
     root.__npshPipeMoodyChartAuditInstalled = {
       version: VERSION,
       panel: typeof document !== 'undefined' && !!document.getElementById(PANEL_ID),
-      agingHelpCount: root.__pipeAgingRoughnessHelpCount || 0
+      removedFieldCount: root.__pipeRemovedPropertyFieldCount || 0,
+      removedSegmentColumnCount: root.__pipeRemovedSegmentColumnCount || 0
     };
     return root.__npshPipeMoodyChartAuditInstalled;
   }
@@ -316,7 +471,7 @@
   function startObserver() {
     if (typeof document === 'undefined' || root.__npshPipeMoodyChartAuditObserver) return;
     const observer = new MutationObserver(() => {
-      root.setTimeout?.(() => refreshAgingRoughnessHelp(document), 40);
+      root.setTimeout?.(() => refreshRemovedPipePropertyFields(document), 40);
     });
     observer.observe(document.documentElement, { childList: true, subtree: true });
     root.__npshPipeMoodyChartAuditObserver = true;
@@ -327,6 +482,8 @@
     cacheKey: CACHE_KEY,
     renderMoodyChart,
     openMoodyChartPanel,
+    refreshRemovedPipePropertyFields,
+    refreshRemovedPipeSegmentColumns,
     refreshAgingRoughnessHelp,
     pipeIdsWithMoody,
     install

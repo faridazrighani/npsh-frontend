@@ -14,7 +14,7 @@
   ].join(',');
   const SAMPLE_CASE_OPEN_SELECTOR = '[data-simulation-case-action="open"][data-simulation-case-id]';
   const USER_CALCULATION_INTENT_SELECTOR = `${RUN_COMMAND_SELECTOR}, ${SAMPLE_CASE_OPEN_SELECTOR}`;
-  const CALCULATION_FIELD_PATTERN = /\b(inputMode|optimizationMode|npshrSourceMode|npshAssessmentMode|npshMarginBasis|screeningDefaultsApplied|elevation|suctionElevation|dischargeElevation|designFlow|designHead|designEfficiency|designNpshr|manualNpshr|bepFlow|porMinPercent|porMaxPercent|aorMinPercent|aorMaxPercent|minNpshMarginRatio|minNpshMargin|speed|curveDataSource|curveSourceNote|curveData|flow|demandFlow|massFlow|flowInputMode|boundaryMode|boundaryDataSource|pressure|pressureInputBasis|pressureBasis|pressureEnergyBasis|sourceType|temperatureMode|temp|temperature|fluidName|density|viscosity|kinematicViscosity|dynViscosity|dynamicViscosity|vaporPressure|specificWeight|vaporPressureHead|routeStyle|elevationProfileMode|startElevation|endElevation|highPointElevation|highPointLocationPercent|roughnessAgingFactor|headLossAllowancePercent|segments|length|diameter|roughness|fittingType|fittingQuantity|fittingK|minorLoss|additionalK|active|liquidLevel|level)\b/i;
+  const CALCULATION_FIELD_PATTERN = /\b(inputMode|optimizationMode|npshrSourceMode|npshAssessmentMode|npshMarginBasis|screeningDefaultsApplied|elevation|suctionElevation|dischargeElevation|designFlow|designHead|designEfficiency|designNpshr|manualNpshr|bepFlow|porMinPercent|porMaxPercent|aorMinPercent|aorMaxPercent|minNpshMarginRatio|minNpshMargin|speed|curveDataSource|curveSourceNote|curveData|flow|demandFlow|massFlow|flowInputMode|boundaryMode|boundaryDataSource|pressure|pressureInputBasis|pressureBasis|pressureEnergyBasis|sourceType|temperatureMode|temp|temperature|fluidName|density|viscosity|kinematicViscosity|dynViscosity|dynamicViscosity|vaporPressure|specificWeight|vaporPressureHead|segments|length|diameter|roughness|fittingType|fittingQuantity|fittingK|minorLoss|additionalK|active|liquidLevel|level)\b/i;
   const ROUTE_ONLY_PUMP_CALCULATION_FIELDS = Object.freeze([
     'suctionelevation',
     'pumpdatumelev',
@@ -515,8 +515,8 @@
     const flowM3S = flowM3H / 3600;
     const fluid = fluidProps(model);
     const kinematicViscosityM2S = Math.max((firstFinite(trace.basis?.viscosityCSt, fluid.viscosityCSt, 1) || 1) * 1e-6, 1e-12);
-    const roughnessAgingFactor = Math.max(0, firstFinite(props.roughnessAgingFactor, trace.basis?.roughnessAgingFactor, 1) || 1);
-    const allowanceFraction = Math.max(0, firstFinite(props.headLossAllowancePercent, trace.basis?.headLossAllowancePercent, 0) || 0) / 100;
+    const roughnessAgingFactor = 1;
+    const allowanceFraction = 0;
 
     return configuredSegments.map((segment, index) => {
       const existing = existingSegments[index] || {};

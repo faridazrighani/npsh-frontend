@@ -1,11 +1,17 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-pipe-segments-file-runtime.v1';
-  const CACHE_KEY = '20260608-pipe-segments-file1';
+  const VERSION = 'engineering-pipe-segments-file-runtime.v3';
+  const CACHE_KEY = '20260630-pipe-segments-clean-legacy-fields1';
   const SCHEMA_TYPE = 'pipe-segments-export.v1';
   const STYLE_ID = 'engineering-pipe-segments-file-style';
   const ACTIONS_CLASS = 'pipe-segments-file-actions';
   const STATUS_CLASS = 'pipe-segments-file-status';
+  const SCROLL_GUARD_ATTR = 'pipeSegmentsScrollGuard';
+  const segmentScrollMemory = new Map();
+  const REMOVED_SEGMENT_FIELDS = new Set([
+    'startElevation',
+    'endElevation'
+  ]);
 
   const NUMERIC_FIELDS = new Set([
     'diameter',
@@ -14,11 +20,7 @@
     'fittingQuantity',
     'fittingK',
     'minorLoss',
-    'equivalentLength',
-    'startElevation',
-    'endElevation',
-    'highPointElevation',
-    'highPointLocationPercent'
+    'equivalentLength'
   ]);
   const STRING_FIELDS = new Set([
     'name',
@@ -33,12 +35,23 @@
     'fittingQuantity',
     'fittingK',
     'minorLoss',
-    'equivalentLength',
-    'highPointLocationPercent'
+    'equivalentLength'
   ]);
 
   function clone(value) {
     return JSON.parse(JSON.stringify(value ?? null));
+  }
+
+  function stripRemovedSegmentFields(segment) {
+    const normalized = clone(segment);
+    if (!normalized || typeof normalized !== 'object' || Array.isArray(normalized)) return normalized;
+    Object.keys(normalized).forEach((field) => {
+      const compact = field.replace(/[^a-z]/gi, '').toLowerCase();
+      if (REMOVED_SEGMENT_FIELDS.has(field) || (compact.startsWith('high') && compact.includes('point'))) {
+        delete normalized[field];
+      }
+    });
+    return normalized;
   }
 
   function runtimeModel() {
@@ -96,7 +109,9 @@
     if (!pipeNode) {
       throw new Error('Pipe Segments export requires an active Pipe object.');
     }
-    const segments = Array.isArray(pipeNode.props?.segments) ? clone(pipeNode.props.segments) : [];
+    const segments = Array.isArray(pipeNode.props?.segments)
+      ? pipeNode.props.segments.map(stripRemovedSegmentFields)
+      : [];
     return {
       schemaType: SCHEMA_TYPE,
       schemaVersion: 1,
@@ -122,9 +137,6 @@
     if (NON_NEGATIVE_FIELDS.has(name) && numeric < 0) {
       errors.push(`Segment ${index + 1}: ${name} cannot be negative.`);
     }
-    if (name === 'highPointLocationPercent' && (numeric < 0 || numeric > 100)) {
-      errors.push(`Segment ${index + 1}: highPointLocationPercent must be between 0 and 100.`);
-    }
     return numeric;
   }
 
@@ -133,7 +145,7 @@
       errors.push(`Segment ${index + 1}: segment must be an object.`);
       return null;
     }
-    const normalized = clone(segment);
+    const normalized = stripRemovedSegmentFields(segment);
     Object.keys(normalized).forEach((field) => {
       if (NUMERIC_FIELDS.has(field)) {
         normalized[field] = validateNumberField(field, normalized[field], errors, index);
@@ -225,16 +237,113 @@
       });
   }
 
+  function pipeSegmentTables(scope = document) {
+    if (typeof document === 'undefined') return [];
+    return Array.from((scope || document).querySelectorAll?.('#pipeSegmentTable, table.segment-table') || [])
+      .filter((table) => table.id === 'pipeSegmentTable' || table.querySelector?.('.segment-input'));
+  }
+
+  function segmentScrollContainer(table) {
+    const explicit = table?.closest?.('.segment-table-scroll');
+    if (explicit && (Number(explicit.scrollWidth) || 0) > (Number(explicit.clientWidth) || 0) + 1) return explicit;
+    let current = table?.parentElement || null;
+    while (current) {
+      if ((Number(current.scrollWidth) || 0) > (Number(current.clientWidth) || 0) + 1) return current;
+      current = current.parentElement;
+    }
+    return table || null;
+  }
+
+  function segmentScrollKey(table) {
+    const context = table?.closest?.('.task-window, .persistent-object-properties-task-window') || table?.parentElement || null;
+    return resolvePipeId('', context) || context?.dataset?.nodeId || context?.dataset?.taskNodeId || table?.id || 'pipe-segments';
+  }
+
+  function rememberSegmentScroll(table) {
+    const scroll = segmentScrollContainer(table);
+    if (!scroll) return null;
+    const key = segmentScrollKey(table);
+    const state = {
+      left: Number(scroll.scrollLeft) || 0,
+      top: Number(scroll.scrollTop) || 0,
+      capturedAt: Date.now()
+    };
+    segmentScrollMemory.set(key, state);
+    root.__pipeSegmentsScrollRetentionState = { key, ...state };
+    return state;
+  }
+
+  function rememberSegmentScrollPositions(scope = document) {
+    let count = 0;
+    pipeSegmentTables(scope).forEach((table) => {
+      if (rememberSegmentScroll(table)) count += 1;
+    });
+    return count;
+  }
+
+  function restoreSegmentScroll(table) {
+    const scroll = segmentScrollContainer(table);
+    if (!scroll) return false;
+    const state = segmentScrollMemory.get(segmentScrollKey(table));
+    if (!state) return false;
+    const maxLeft = Math.max(0, (Number(scroll.scrollWidth) || 0) - (Number(scroll.clientWidth) || 0));
+    const nextLeft = Math.min(Math.max(0, state.left), maxLeft);
+    scroll.scrollLeft = nextLeft;
+    scroll.scrollTop = state.top;
+    return Math.abs((Number(scroll.scrollLeft) || 0) - nextLeft) <= 2;
+  }
+
+  function restoreSegmentScrollPositions(scope = document) {
+    let count = 0;
+    pipeSegmentTables(scope).forEach((table) => {
+      if (restoreSegmentScroll(table)) count += 1;
+    });
+    return count;
+  }
+
+  function scheduleSegmentScrollRestore(table) {
+    rememberSegmentScroll(table);
+    const key = segmentScrollKey(table);
+    [0, 32, 96, 180].forEach((delay) => {
+      window.setTimeout(() => {
+        const currentTable = pipeSegmentTables(document).find((candidate) => segmentScrollKey(candidate) === key) || table;
+        restoreSegmentScroll(currentTable);
+      }, delay);
+    });
+  }
+
+  function attachSegmentScrollGuard(table) {
+    const scroll = segmentScrollContainer(table);
+    if (!scroll) {
+      restoreSegmentScroll(table);
+      return;
+    }
+    if (scroll.dataset?.[SCROLL_GUARD_ATTR] !== 'true') {
+      scroll.dataset[SCROLL_GUARD_ATTR] = 'true';
+      scroll.addEventListener('scroll', () => rememberSegmentScroll(table), { passive: true });
+    }
+    if (table.dataset?.[SCROLL_GUARD_ATTR] !== 'true') {
+      table.dataset[SCROLL_GUARD_ATTR] = 'true';
+      ['focusin', 'input', 'change', 'pointerdown', 'keydown'].forEach((eventName) => {
+        table.addEventListener(eventName, () => scheduleSegmentScrollRestore(table), true);
+      });
+    }
+    restoreSegmentScroll(table);
+  }
+
   function rerenderPipeProperties(pipeId) {
+    if (typeof document !== 'undefined') rememberSegmentScrollPositions(document);
     if (typeof root.renderSidebar !== 'function') return;
     const taskWindows = findPipeTaskWindows(pipeId);
     if (!taskWindows.length) {
       root.renderSidebar(pipeId, { skipDismissedGuard: true });
+      if (typeof document !== 'undefined') window.setTimeout(() => restoreSegmentScrollPositions(document), 0);
       return;
     }
     taskWindows.forEach((taskWindow) => {
       root.renderSidebar(pipeId, { taskWindow, skipDismissedGuard: true });
     });
+    if (typeof document !== 'undefined') window.setTimeout(() => restoreSegmentScrollPositions(document), 0);
   }
 
   function applyImportedSegments(pipeId, payloadOrSegments) {
@@ -415,9 +524,10 @@
   function syncControls(scope = document) {
     if (typeof document === 'undefined') return 0;
     injectStyles();
-    const tables = Array.from((scope || document).querySelectorAll?.('#pipeSegmentTable, table.segment-table') || []);
-    const pipeTables = tables.filter((table) => table.id === 'pipeSegmentTable' || table.querySelector?.('.segment-input'));
+    const pipeTables = pipeSegmentTables(scope);
+    pipeTables.forEach(attachSegmentScrollGuard);
     pipeTables.forEach(createControls);
+    restoreSegmentScrollPositions(scope);
     return pipeTables.length;
   }
 
@@ -452,6 +562,8 @@
     exportPipeSegments,
     importSegmentsFromFile,
     syncControls,
+    rememberSegmentScrollPositions,
+    restoreSegmentScrollPositions,
     install
   };
 

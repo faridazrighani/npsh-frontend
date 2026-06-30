@@ -1511,8 +1511,8 @@
     };
   }
 
-  function getPipeRoughnessAgingFactor(props = {}) {
-    return Math.max(0, finiteNumber(props.roughnessAgingFactor, 1));
+  function getPipeRoughnessAgingFactor(_props = {}) {
+    return 1;
   }
 
   function createPipeTraceStep(title, formula, substitution, result, unit = '', reference = '') {
@@ -1560,8 +1560,6 @@
         ? `${values.map((value) => formatPipeTraceNumber(value)).join(' + ')} = ${formatPipeTraceNumber(total)} m`
         : 'Segment trace is not available until this pipe has solved flow.';
     };
-    const hasHighPoint = Number.isFinite(totals.highPointPressure)
-      && Number.isFinite(totals.highPointVaporMargin);
     const segmentName = firstSegment.name || 'active pipe segment';
     return [
       {
@@ -1637,23 +1635,14 @@
         advisorDefenseNote: 'This total matches Pipe Object Properties > Minor Loss; K values are typical/user/vendor data depending on source, and separate Valve Object losses must not be counted again here.'
       },
       {
-        step: 'Allowance and Total Loss',
-        inputSource: 'Major loss, minor loss, and optional head-loss allowance.',
-        formula: 'h_total = h_major + h_minor + h_allow',
-        substitution: `${formatPipeTraceNumber(totals.majorLoss)} + ${formatPipeTraceNumber(totals.minorLoss)} + ${formatPipeTraceNumber(totals.allowanceLoss)} = ${formatPipeTraceNumber(totals.totalLoss)} m`,
+        step: 'Total Loss',
+        inputSource: 'Major loss and minor loss.',
+        formula: 'h_total = h_major + h_minor',
+        substitution: `${formatPipeTraceNumber(totals.majorLoss)} + ${formatPipeTraceNumber(totals.minorLoss)} = ${formatPipeTraceNumber(totals.totalLoss)} m`,
         result: `${formatPipeTraceNumber(totals.totalLoss)} m`,
         literatureBasis: 'Total line loss used by hydraulic energy balance.',
         advisorDefenseNote: 'Suction-side total loss subtracts from NPSHa; discharge-side total loss increases required pump head/system curve.'
       },
-      ...(hasHighPoint ? [{
-        step: 'Pressure and High Point Check',
-        inputSource: 'Solved pressure profile, elevation profile, and Fluid Basis vapor pressure.',
-        formula: 'P_static = rho g (H - z - V^2/2g) / 100000; margin = P_high - P_vapor',
-        substitution: `${formatPipeTraceNumber(totals.highPointPressure)} - ${formatPipeTraceNumber(basis.vaporPressureBarA)} = ${formatPipeTraceNumber(totals.highPointVaporMargin)} bar`,
-        result: `${formatPipeTraceNumber(totals.highPointVaporMargin)} bar`,
-        literatureBasis: 'Energy/head balance and vapor-pressure screening.',
-        advisorDefenseNote: 'This is a steady-state vapor-margin screen, not water hammer, flashing, or two-phase transient analysis.'
-      }] : []),
       {
         step: 'Endpoint Pressure Elevation Rule',
         inputSource: 'Pipe endpoint elevations, solved hydraulic heads, and velocity heads.',
@@ -1663,7 +1652,7 @@
           : 'Endpoint pressure profile is available after the pipe has solved inlet and outlet head.',
         result: Number.isFinite(profile.endPressure) ? `Outlet pressure follows z_end and solved H_out: ${formatPipeTraceNumber(profile.endPressure)} bar a` : '-',
         literatureBasis: 'Bernoulli equation: static pressure is hydraulic head minus elevation head and velocity head.',
-        advisorDefenseNote: 'Changing Start Elevation Override affects inlet/profile pressure. Outlet Pressure changes when End Elevation Override, outlet hydraulic head, flow/velocity, or boundary conditions change.'
+        advisorDefenseNote: 'Endpoint pressure follows connected node/port elevation, outlet hydraulic head, flow/velocity, and boundary conditions.'
       }
     ];
   }
@@ -1922,8 +1911,7 @@
     const fluidProps = getPipeTraceFluidProps(fluid);
     const nuM2S = 1e-6 * Math.max(fluidProps.viscosityCSt, 0.000001);
     const agingFactor = getPipeRoughnessAgingFactor(props);
-    const allowancePercent = Math.max(0, finiteNumber(props.headLossAllowancePercent, baseTrace?.basis?.headLossAllowancePercent ?? 0) || 0);
-    const allowanceFraction = allowancePercent / 100;
+    const allowancePercent = 0;
     const rawSegments = typeof root.calculatePipeHydraulicSegments === 'function'
       ? root.calculatePipeHydraulicSegments(flowM3H, props, fluid, pipeId)
       : [];
@@ -1951,14 +1939,13 @@
         createPipeTraceStep('Area', 'A = pi x D^2 / 4', `pi x ${formatPipeTraceNumber(segment.diameter)}^2 / 4 = ${formatPipeTraceNumber(area)} m2`, area, 'm2', 'Circular pipe cross-sectional area'),
         createPipeTraceStep('Velocity', 'V = Q / A', `${formatPipeTraceNumber(flowM3S, 6)} / ${formatPipeTraceNumber(area, 6)} = ${formatPipeTraceNumber(segment.velocity)} m/s`, segment.velocity, 'm/s', 'Average pipe velocity'),
         createPipeTraceStep('Reynolds Number', 'Re = V x D / nu', `${formatPipeTraceNumber(segment.velocity)} x ${formatPipeTraceNumber(segment.diameter)} / ${formatPipeTraceNumber(nuM2S, 8)} = ${formatPipeTraceNumber(segment.reynolds, 0)}`, segment.reynolds, '', 'Pipe flow regime basis'),
-        createPipeTraceStep('Effective Roughness', 'eps_eff = eps x aging factor', `${formatPipeTraceNumber(segment.roughness, 8)} x ${formatPipeTraceNumber(agingFactor)} = ${formatPipeTraceNumber(segment.effectiveRoughness, 8)} m`, segment.effectiveRoughness, 'm', 'Aging/degradation screening'),
+        createPipeTraceStep('Effective Roughness', 'eps_eff = eps', `${formatPipeTraceNumber(segment.roughness, 8)} = ${formatPipeTraceNumber(segment.effectiveRoughness, 8)} m`, segment.effectiveRoughness, 'm', 'Pipe material roughness input'),
         createPipeTraceStep('Relative Roughness', 'eps_eff / D', `${formatPipeTraceNumber(segment.effectiveRoughness, 8)} / ${formatPipeTraceNumber(segment.diameter)} = ${formatPipeTraceNumber(relativeRoughness, 6)}`, relativeRoughness, '', 'Moody/Colebrook roughness input'),
         createPipeTraceStep('Darcy Friction Factor', getPipeFrictionFactorFormula(segment), `Re = ${formatPipeTraceNumber(segment.reynolds, 0)}; eps/D = ${formatPipeTraceNumber(relativeRoughness, 6)}; regime = ${segment.flowRegime || '-'}; f = ${formatPipeTraceNumber(segment.frictionFactor, 6)}`, segment.frictionFactor, '', 'Darcy f from laminar equation, Colebrook/Moody turbulent basis, or transitional blend warning'),
         createPipeTraceStep('Velocity Head', 'hv = V^2 / (2g)', `${formatPipeTraceNumber(segment.velocity)}^2 / (2 x ${formatPipeTraceNumber(9.81)}) = ${formatPipeTraceNumber(velocityHead)} m`, velocityHead, 'm', 'Dynamic head term'),
         createPipeTraceStep('Major Loss', 'h_major = f x (L / D) x hv', `${formatPipeTraceNumber(segment.frictionFactor, 6)} x (${formatPipeTraceNumber(segment.length)} / ${formatPipeTraceNumber(segment.diameter)}) x ${formatPipeTraceNumber(velocityHead)} = ${formatPipeTraceNumber(segment.majorLoss)} m`, segment.majorLoss, 'm', 'Darcy-Weisbach pipe friction'),
         createPipeTraceStep('Minor Loss', 'h_minor = K_total x hv', `${formatPipeTraceNumber(segment.minorLossK)} x ${formatPipeTraceNumber(velocityHead)} = ${formatPipeTraceNumber(segment.minorLoss)} m`, segment.minorLoss, 'm', 'Fitting and additional K loss'),
-        createPipeTraceStep('Allowance Loss', 'h_allow = (h_major + h_minor) x allowance', `(${formatPipeTraceNumber(segment.majorLoss)} + ${formatPipeTraceNumber(segment.minorLoss)}) x ${formatPipeTraceNumber(allowanceFraction, 4)} = ${formatPipeTraceNumber(segment.allowanceLoss)} m`, segment.allowanceLoss, 'm', 'Fouling/design allowance'),
-        createPipeTraceStep('Segment Total Loss', 'h_total = h_major + h_minor + h_allow', `${formatPipeTraceNumber(segment.majorLoss)} + ${formatPipeTraceNumber(segment.minorLoss)} + ${formatPipeTraceNumber(segment.allowanceLoss)} = ${formatPipeTraceNumber(segment.totalLoss)} m`, segment.totalLoss, 'm', 'Segment loss contribution')
+        createPipeTraceStep('Segment Total Loss', 'h_total = h_major + h_minor', `${formatPipeTraceNumber(segment.majorLoss)} + ${formatPipeTraceNumber(segment.minorLoss)} = ${formatPipeTraceNumber(segment.totalLoss)} m`, segment.totalLoss, 'm', 'Segment loss contribution')
       ];
       const pressureSteps = [];
       if (Number.isFinite(profile.startPressure)) {
@@ -1966,9 +1953,6 @@
       }
       if (Number.isFinite(profile.endPressure)) {
         pressureSteps.push(createPipeTraceStep('Segment Outlet Pressure', 'P_out = rho x g x (H_out - z_out - hv) / 100000', `${formatPipeTraceNumber(profile.endPressure)} bar a`, profile.endPressure, 'bar a', 'Static pressure after segment loss'));
-      }
-      if (Number.isFinite(profile.highPointPressure)) {
-        pressureSteps.push(createPipeTraceStep('High Point Vapor Margin', 'Margin = P_high_point - P_vapor', `${formatPipeTraceNumber(profile.highPointPressure)} - ${formatPipeTraceNumber(fluidProps.vaporPressureBarA)} = ${formatPipeTraceNumber(profile.highPointVaporMargin)} bar`, profile.highPointVaporMargin, 'bar', 'High point cavitation screening'));
       }
       return {
         index: segment.index,
@@ -2010,18 +1994,14 @@
         vaporPressureBarA: roundPipeTraceNumber(fluidProps.vaporPressureBarA, 6),
         roughnessAgingFactor: roundPipeTraceNumber(agingFactor, 4),
         headLossAllowancePercent: roundPipeTraceNumber(allowancePercent, 4),
-        elevationProfileMode: props.elevationProfileMode || 'End Elevations'
+        elevationProfileMode: 'Ignore'
       },
       totals: {
-        ...(baseTrace?.totals || {}),
         majorLoss: roundPipeTraceNumber(totals.majorLoss, 6),
         minorLoss: roundPipeTraceNumber(totals.minorLoss, 6),
         allowanceLoss: roundPipeTraceNumber(totals.allowanceLoss, 6),
         totalLoss: roundPipeTraceNumber(totals.totalLoss, 6),
-        totalK: roundPipeTraceNumber(totals.totalK, 6),
-        controllingHighPointSegment: results?.highPointSegment || baseTrace?.totals?.controllingHighPointSegment || '',
-        highPointPressure: results?.highPointPressure ?? baseTrace?.totals?.highPointPressure ?? null,
-        highPointVaporMargin: results?.highPointVaporMargin ?? baseTrace?.totals?.highPointVaporMargin ?? null
+        totalK: roundPipeTraceNumber(totals.totalK, 6)
       },
       moody: baseTrace?.moody || buildPipeMoodyTrace(segments),
       segments: traceSegments,
@@ -2050,14 +2030,13 @@
         'Fluid viscosity basis is kinematic viscosity in cSt.',
         'Pipe size, roughness, and fitting K defaults are reference/typical engineering values unless marked User or Estimate.'
       ],
-      engineeringLimitations: baseTrace?.engineeringLimitations || [
+      engineeringLimitations: [
         'Pressure used for NPSH and vapor-pressure checks must be absolute pressure (bar a). Gauge inputs must be converted at the boundary.',
-        'Elevation datum must be consistent between source/sink boundaries, pipe endpoints, high points, and pump nozzles.',
-        'Roughness, aging factor, and head-loss allowance are engineering inputs that can materially change the system curve and NPSHa.',
+        'Elevation datum must be consistent between source/sink boundaries, pipe endpoints, and pump nozzles.',
+        'Pipe roughness is an engineering input that can materially change the system curve and NPSHa.',
         'Fitting K values can vary by geometry and vendor; typical values are screening inputs until replaced by project/vendor data.',
         'Valve Object losses and valve-like pipe fitting K values should not be counted twice.',
-        'Transitional Reynolds-number results are approximate and should be treated as review/warning conditions.',
-        'High point vapor margin is a steady-state single-phase screen; it does not model transient, water hammer, flashing, two-phase flow, or gas entrainment.'
+        'Transitional Reynolds-number results are approximate and should be treated as review/warning conditions.'
       ]
     };
     trace.sourceMap = buildPipeSourceMap(trace, {

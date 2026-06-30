@@ -337,7 +337,7 @@
       ? toNumber(evaluation.actualPumpHead ?? results.actualPumpHead)
       : toNumber(results.actualPumpHead ?? evaluation.actualPumpHead ?? results.head ?? evaluation.pumpHead ?? props.designHead);
     const npsha = toNumber(results.npsha ?? evaluation.npsha);
-    const npshr = toNumber(results.npshr ?? evaluation.npshr ?? props.designNpshr);
+    const npshr = toNumber(results.npshr ?? evaluation.npshr ?? props.manualNpshr ?? props.designNpshr);
     const margin = toNumber(results.npshMargin ?? evaluation.npshMargin);
     const dutyPoints = [
       flow > 0 && head > 0 ? { label: 'Duty Head', flow, value: head, color: '#12a56b' } : null,
@@ -345,22 +345,42 @@
       flow > 0 && npshr > 0 ? { label: 'Duty NPSHr', flow, value: npshr, color: '#b45309' } : null
     ].filter(Boolean);
     const hasDrawableCurve = visibleSeries.length > 0;
+    const hasPositiveRawCurveData = Object.values(series).some((item) => item.positivePointCount > 0);
     const everyDisplayedDefenseReady = visibleSeries.length > 0 && visibleSeries.every((item) => item.defenseReady);
     const reviewRequired = !hasDrawableCurve || !everyDisplayedDefenseReady || stale || !route.complete;
     const filteredNonPositiveCount = Object.values(series)
       .reduce((total, item) => total + item.filteredNonPositiveCount, 0);
-    const status = hasDrawableCurve
-      ? (reviewRequired ? 'Curves Shown / Review Required' : 'Curves Shown / Defense Ready')
-      : 'Curve Data Unavailable';
+    const reportNumbers = [flow, head, npsha, npshr, margin].filter((value) => value !== null);
+    const rawReportNumbersComplete = [flow, npsha, npshr, margin].every((value) => value !== null)
+      && (routeOnlyPump || head !== null);
+    const zeroPlaceholderReport = hasPositiveRawCurveData
+      && reportNumbers.length >= 3
+      && reportNumbers.every((value) => Math.abs(value) <= 1e-9);
+    const reportNumbersComplete = rawReportNumbersComplete && !zeroPlaceholderReport;
+    const chartReportMismatch = zeroPlaceholderReport || (hasPositiveRawCurveData && !reportNumbersComplete);
+    const fallbackTraceBoundary = !route.complete;
+    const status = zeroPlaceholderReport
+      ? 'Chart Preview / Report Incomplete'
+      : chartReportMismatch
+        ? (hasDrawableCurve ? 'Curves Shown / Report Incomplete' : 'Curve Data Preview / Report Incomplete')
+        : (hasDrawableCurve
+          ? (reviewRequired ? 'Curves Shown / Review Required' : 'Curves Shown / Defense Ready')
+          : 'Curve Data Unavailable');
     const source = hasDrawableCurve
       ? (everyDisplayedDefenseReady ? 'Sourced Curve Data' : 'Sourced Data / Review')
       : 'Duty Point Only';
-    const freshness = stale ? 'Stale' : firstText(results.calculationFreshness, route.lossFreshness, 'Current');
-    const review = hasDrawableCurve
-      ? (reviewRequired
-        ? 'Continuous curves are shown only for available positive data with accepted source/confidence; route evidence still needs review.'
-        : 'Displayed curves have documented source/confidence and complete route evidence.')
-      : 'Continuous curves are hidden because accepted manufacturer/vendor/journal/digitized curve evidence is unavailable.';
+    const freshness = zeroPlaceholderReport
+      ? 'Preview / Incomplete'
+      : (stale ? 'Stale' : firstText(results.calculationFreshness, route.lossFreshness, 'Current'));
+    const review = zeroPlaceholderReport
+      ? 'Report numbers are zero/incomplete while nonzero curve data exists; treat the chart as preview until report values are recalculated.'
+      : chartReportMismatch
+        ? 'Curve data exists but the report duty/NPSH numbers are incomplete; refresh backend/report linkage before final use.'
+        : (hasDrawableCurve
+          ? (reviewRequired
+            ? 'Continuous curves are shown only for available positive data with accepted source/confidence; route evidence still needs review.'
+            : 'Displayed curves have documented source/confidence and complete route evidence.')
+          : 'Continuous curves are hidden because accepted manufacturer/vendor/journal/digitized curve evidence is unavailable.');
 
     return {
       version: VERSION,
@@ -378,6 +398,7 @@
       axisMode: 'log-log',
       routeTrace: route.text,
       routeComplete: route.complete,
+      fallbackTraceBoundary,
       curveSource,
       curveConfidence,
       source,
@@ -387,6 +408,9 @@
       reviewRequired,
       backendLinked,
       stale,
+      reportNumbersComplete,
+      zeroPlaceholderReport,
+      chartReportMismatch,
       series,
       visibleSeries,
       dutyPoints,

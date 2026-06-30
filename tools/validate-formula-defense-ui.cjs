@@ -213,18 +213,15 @@ const academicTrace = runtime.buildAcademicPipeCalculationTrace(
   { headLossAllowancePercent: 0, roughnessAgingFactor: 1, elevationProfileMode: 'End Elevations' },
   {
     segmentProfiles: [
-      { index: 0, startElevation: 0, endElevation: 10, startPressure: 3.781, endPressure: 2.676, highPointPressure: 2.676, highPointVaporMargin: 1.662 }
-    ],
-    highPointPressure: 2.676,
-    highPointVaporMargin: 1.662
+      { index: 0, startElevation: 0, endElevation: 10, startPressure: 3.781, endPressure: 2.676 }
+    ]
   },
   { density: 958.348, viscosity: 0.803, vaporPressure: 1.014 },
   'PIPE-2'
 );
 if (originalCalculatePipeHydraulicSegments) global.calculatePipeHydraulicSegments = originalCalculatePipeHydraulicSegments;
 else delete global.calculatePipeHydraulicSegments;
-assert.strictEqual(academicTrace.formulaDefenseRows.length, 11, 'Formula Sequence must include the 11-row set when high-point pressure data is available.');
-assert(academicTrace.formulaDefenseRows.some((row) => row.step === 'Pressure and High Point Check'), 'Formula Sequence must include high-point check when high-point pressure data is available.');
+assert.strictEqual(academicTrace.formulaDefenseRows.length, 10, 'Formula Sequence must include the cleaned 10-row pipe calculation set.');
 assert(academicTrace.formulaDefenseRows.some((row) => row.step === 'Flow Conversion' && /50/.test(row.substitution)), 'Formula Sequence must include live flow conversion substitution.');
 assert(academicTrace.formulaDefenseRows.some((row) => row.step === 'Major Loss' && row.substitution.includes('1.7562')), 'Formula Sequence must aggregate segment major loss substitutions.');
 assert.strictEqual(academicTrace.segments.length, 2, 'All Segment Calculation Trace must expose every segment from live hydraulics.');
@@ -241,7 +238,6 @@ assert(academicTrace.segments[1].dataSources.fitting.tooltip.includes('Selected 
 assert(academicTrace.segments[0].steps.some((step) => step.title === 'Area'), 'Segment trace must include Area step.');
 assert(academicTrace.segments[0].steps.some((step) => step.title === 'Darcy Friction Factor'), 'Segment trace must include Darcy friction factor step.');
 assert(academicTrace.segments[0].pressureSteps.some((step) => step.title === 'Segment Inlet Pressure'), 'Segment trace must include pressure profile steps when available.');
-assert(academicTrace.segments[0].pressureSteps.some((step) => step.title === 'High Point Vapor Margin'), 'Segment trace must include High Point Vapor Margin when high-point pressure data is available.');
 assert.strictEqual(academicTrace.fittingValveBreakdown.length, 2, 'Fitting/valve breakdown must be preserved from live segment data.');
 
 if (manifest) {
