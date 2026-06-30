@@ -10,7 +10,7 @@ const indexPath = path.join(root, 'index.html');
 const runtime = fs.readFileSync(runtimePath, 'utf8');
 const indexHtml = fs.readFileSync(indexPath, 'utf8');
 
-assert.match(indexHtml, /engineering-suction-only-npsha-runtime\.js\?v=20260628-suction-only-npsha4/, 'index.html must load the suction-only NPSHa runtime with a fresh cache key.');
+assert.match(indexHtml, /engineering-suction-only-npsha-runtime\.js\?v=20260630-pipe-properties-live1/, 'index.html must load the suction-only NPSHa runtime with a fresh cache key.');
 assert.match(runtime, /const VERSION = "2026\.06-suction-only-npsha4"/, 'runtime version should match the cache key.');
 assert.match(runtime, /runBackendProtectedPumpSimulation/, 'runtime must call the protected backend pump simulation.');
 assert.match(runtime, /Suction Only/, 'runtime must recognize the suction-only route status.');
@@ -318,7 +318,7 @@ runRuntimeSmoke().then(() => {
   console.log(JSON.stringify({
     passed: true,
     runtime: path.basename(runtimePath),
-    cacheKey: '20260628-suction-only-npsha4',
+    cacheKey: '20260630-pipe-properties-live1',
     smoke: 'SRC -> PFV -> Pump calculated'
   }, null, 2));
 }).catch((error) => {

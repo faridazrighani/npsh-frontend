@@ -363,16 +363,16 @@ const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 const parameterRuntime = fs.readFileSync(parameterRuntimePath, 'utf8');
 assert(
-  index.includes('engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1'),
+  index.includes('engineering-realtime-calculation-defense.js?v=20260630-pipe-properties-live1'),
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
   index.indexOf('engineering-pump-edit-fast-lane.js?v=20260629-live-evidence1')
-    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1'),
+    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260630-pipe-properties-live1'),
   'Pump edit fast lane must load before realtime calculation defense.'
 );
 assert(
-  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260626-head-power-audit1'),
+  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260630-pipe-properties-live1'),
   'Manifest must document the realtime calculation defense cache key.'
 );
 assert(

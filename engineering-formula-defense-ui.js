@@ -7,7 +7,7 @@
   'use strict';
 
   const VERSION = 'engineering-formula-defense-ui.v1';
-  const CACHE_KEY = '20260613-formula-defense-ui15';
+  const CACHE_KEY = '20260630-pipe-properties-live1';
   const DEBOUNCE_MS = 120;
   const KATEX_SCRIPT = `vendor/katex/katex.min.js?v=${CACHE_KEY}`;
   const KATEX_CSS = `vendor/katex/katex.min.css?v=${CACHE_KEY}`;

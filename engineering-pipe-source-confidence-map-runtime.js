@@ -2,7 +2,7 @@
   "use strict";
 
   const VERSION = "2026.06-pipe-source-confidence-map1";
-  const CACHE_KEY = "20260611-pipe-source-confidence-map1";
+  const CACHE_KEY = "20260630-pipe-properties-live1";
   const EMPTY_SOURCE_MAP_TEXT = "No pipe source map available.";
   const TABLE_SELECTOR = ".pipe-formula-defense-source-table, .pipe-formula-defense-task-window .pipe-source-map-table, .pipe-source-map-table";
 

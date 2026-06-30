@@ -339,11 +339,11 @@ assert(runtimeSource.includes('Maximum Allowable NPSHr'), 'Runtime must expose m
 assert(runtimeSource.includes('EngineeringPerformanceRefreshGovernor'), 'Runtime must delegate scheduled open-window refreshes to the performance governor when available.');
 assert(!runtimeSource.includes("scheduleOpenFormulaDefenseWindowRefresh('', { reason: 'guard-loop'"), 'Runtime guard loop must not trigger repeated visual refreshes.');
 assert(
-  index.includes('engineering-pump-formula-defense-live-audit.js?v=20260626-head-power-audit1'),
+  index.includes('engineering-pump-formula-defense-live-audit.js?v=20260630-pipe-properties-live1'),
   'Index must cache-bust Pump Formula Defense live audit runtime.'
 );
 assert(
-  manifest.includes('Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260626-head-power-audit1'),
+  manifest.includes('Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260630-pipe-properties-live1'),
   'Manifest must document Pump Formula Defense live audit cache key.'
 );
 

@@ -12,7 +12,7 @@ const INDEX_FILE = path.join(FRONTEND_ROOT, "index.html");
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
-const CACHE_KEY = "engineering-pipe-source-confidence-map-runtime.js?v=20260611-pipe-source-confidence-map1";
+const CACHE_KEY = "engineering-pipe-source-confidence-map-runtime.js?v=20260630-pipe-properties-live1";
 const VERSION = "2026.06-pipe-source-confidence-map1";
 
 function read(filePath) {
@@ -147,7 +147,7 @@ vm.runInNewContext(runtime, sandbox, { filename: RUNTIME_FILE });
 const api = sandbox.EngineeringPipeSourceConfidenceMapRuntime;
 assert(api, "Runtime API must be exposed.");
 assert.strictEqual(api.version, VERSION, "Runtime API version must match.");
-assert.strictEqual(api.cacheKey, "20260611-pipe-source-confidence-map1", "Runtime cache key must match.");
+assert.strictEqual(api.cacheKey, "20260630-pipe-properties-live1", "Runtime cache key must match.");
 
 const trace = sandbox.buildPipeCalculationTrace(50, model["PIPE-1"].props, model["PIPE-1"].results, null, "PIPE-1");
 assert(Array.isArray(trace.sourceMap), "Patched pipe trace must expose sourceMap.");

@@ -156,7 +156,7 @@ assert.equal(globalThis.__npshGlobalModel['P-CURVE'].results.head, '27.500', 'Mo
 const cacheKey = 'engineering-head-power-audit-guard.js?v=20260627-head-power-audit2';
 assert(index.includes(cacheKey), 'index.html must load the Head Power Audit Guard cache key.');
 assert(
-  index.indexOf('engineering-caption-audit-overrides.js?v=20260606-route-schema1') < index.indexOf(cacheKey)
+  index.indexOf('engineering-caption-audit-overrides.js?v=20260630-pipe-properties-live1') < index.indexOf(cacheKey)
     && index.indexOf(cacheKey) < index.indexOf('engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4'),
   'Head Power Audit Guard must load after caption overrides and before route trace audit diagnostics.'
 );
