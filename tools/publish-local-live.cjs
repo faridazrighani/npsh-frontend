@@ -60,7 +60,11 @@ function npmCommand() {
 }
 
 function npxCommand() {
-  return process.platform === 'win32' ? 'npx.cmd' : 'npx';
+  return process.platform === 'win32' ? 'cmd.exe' : 'npx';
+}
+
+function npxArgs(commandArgs) {
+  return process.platform === 'win32' ? ['/c', 'npx', ...commandArgs] : commandArgs;
 }
 
 function nodeCommand() {
@@ -144,7 +148,7 @@ function deployWithWrangler(commitSha, activeBranch) {
   try {
     const fileCount = copyTrackedFilesToStaging(stagingRoot);
     console.log(`Deploy staging: ${stagingRoot} (${fileCount} tracked files)`);
-    run(npxCommand(), [
+    const wranglerArgs = [
       'wrangler',
       'pages',
       'deploy',
@@ -154,7 +158,8 @@ function deployWithWrangler(commitSha, activeBranch) {
       '--commit-hash', commitSha,
       '--commit-message', commitMessage,
       '--commit-dirty=false'
-    ], { env: deployEnv });
+    ];
+    run(npxCommand(), npxArgs(wranglerArgs), { env: deployEnv });
     return true;
   } finally {
     removeStaging(stagingRoot);
