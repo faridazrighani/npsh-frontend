@@ -134,7 +134,7 @@ async function waitForNpshApp(page) {
   await page.waitForFunction(() => (
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.updateSimulation === 'function'
-    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v12'
+    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v13'
     && window.__npshRouteTraceAuditInstalled?.payloadBuilder
     && window.__npshRouteTraceAuditInstalled?.fetchSimulation
     && window.__npshRouteTraceAuditInstalled?.primaryResultApplier

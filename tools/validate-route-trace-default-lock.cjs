@@ -12,7 +12,7 @@ const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 
-assert.equal(runtime.version, '2026.06-route-trace-audit-v34', 'Route trace audit runtime should expose the locked v33 version.');
+assert.equal(runtime.version, '2026.07-route-trace-audit-v35', 'Route trace audit runtime should expose the locked canvas object-card stability version.');
 assert.equal(typeof runtime.openRouteAuditPanel, 'function', 'Dedicated route audit panel should remain available.');
 assert.equal(typeof runtime.pruneDefaultCanvasRouteTraceOverlays, 'function', 'Canvas route trace overlay pruning should be exposed for audit tests.');
 assert.equal(typeof runtime.pruneDefaultPumpRouteTraceRows, 'function', 'Pump route trace row pruning should be exposed for audit tests.');
@@ -75,6 +75,8 @@ assert(runtimeSource.includes('const SOLVER_CANVAS_LAYOUT_REFRESH_HOOKS = ['), '
 assert(runtimeSource.includes("'refreshBackendProtectedSimulationUi'"), 'Canvas layout lock should run after protected solver UI refresh.');
 assert(runtimeSource.includes("'refreshBackendProtectedRealtimeTaskWindows'"), 'Canvas layout lock should run after protected realtime task-window refresh.');
 assert(runtimeSource.includes('function canonicalPumpLiveParameterRows'), 'Pump live row builder should filter hidden rows before the canvas panel is rendered.');
+assert(runtimeSource.includes('function canonicalPumpCanvasSectionLabel'), 'Pump canvas section lookup should normalize info-icon text before inserting status sections.');
+assert(runtimeSource.includes("text.startsWith('STATUS')"), 'Pump canvas section lookup should treat STATUS and STATUS info-icon variants as the same section.');
 assert(runtimeSource.includes('function canonicalSinkLiveParameterRows'), 'SNK live row builder should filter hidden rows before the canvas panel is rendered.');
 assert(runtimeSource.includes('function syncPumpCanvasFlowRow'), 'Pump canvas Flow row should be synchronized to the route duty flow after solver repaints.');
 assert(runtimeSource.includes('function pumpRouteDutyFlow'), 'Pump route duty flow should prefer matching connected SRC/SNK boundary flow before rounded pump result flow.');
@@ -583,8 +585,17 @@ try {
   const canonicalBuilderRows = global.buildPumpLiveParameterRows(global.globalModel['P-CANON']);
   assert.deepEqual(
     canonicalBuilderRows.map((row) => row.label),
-    ['Status', 'Hydraulic NPSH', 'Suction', 'Flow', 'Discharge', 'Required Head'],
-    'Pump row-builder wrapper should remove vapor-pressure and route-trace rows before canvas render.'
+    ['STATUS', 'Hydraulic NPSH', 'Backend Valid.', 'SUCTION', 'Flow', 'DISCHARGE', 'Required Head'],
+    'Pump row-builder wrapper should remove vapor-pressure/route-trace rows and render stable status rows before canvas paint.'
+  );
+  assert.deepEqual(
+    canonicalBuilderRows.slice(0, 3),
+    [
+      { type: 'section', label: 'STATUS' },
+      { label: 'Hydraulic NPSH', value: 'Safe' },
+      { label: 'Backend Valid.', value: 'Connected' }
+    ],
+    'Pump row-builder wrapper should render Hydraulic NPSH and Backend Valid. before route-trace cleanup sweeps.'
   );
   assert.deepEqual(
     canonicalBuilderRows.find((row) => row.label === 'Flow'),
@@ -595,6 +606,11 @@ try {
     global.buildSinkLiveParameterRows().map((row) => row.label),
     ['Mode', 'Sink Flow', 'Sink P abs'],
     'SNK row-builder wrapper should remove transient outlet/loss/vapor rows before canvas render.'
+  );
+  assert.deepEqual(
+    global.buildSinkLiveParameterRows(global.globalModel['SNK-CANON']).map((row) => row.label),
+    ['Mode', 'Sink Flow', 'Sink P abs', 'Sink Elev.', 'Sink Head'],
+    'SNK row-builder wrapper should render the stable canonical Sink rows before canvas paint when a Sink node is available.'
   );
 
   assert(routeOverlay.classList.contains('route-trace-canvas-overlay-hidden'), 'Canvas ROUTE TRACE overlay should be hidden by default.');
@@ -712,11 +728,11 @@ try {
 }
 
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4'),
+  index.includes('engineering-route-trace-audit.js?v=20260701-object-card-stability1'),
   'Index must load the route trace audit runtime with the default-lock cache key.'
 );
 assert(
-  manifest.includes('Route audit cache key: engineering-route-trace-audit.js?v=20260628-solver-canvas-layout4'),
+  manifest.includes('Route audit cache key: engineering-route-trace-audit.js?v=20260701-object-card-stability1'),
   'Manifest must document the route trace default-lock cache key.'
 );
 

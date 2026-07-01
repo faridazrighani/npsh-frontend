@@ -69,7 +69,7 @@ async function waitForProductionApp(page, diagnostics) {
     await page.waitForFunction(() => (
       typeof window.applySimulationStateAtomic === 'function'
       && typeof window.updateSimulation === 'function'
-      && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v12'
+      && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v13'
       && window.CanvasContextDock?.version
       && window.EngineeringRouteTraceAudit?.version
       && window.EngineeringDefenseExportPackage?.schemaVersion === 'defense-export-package.v1'
@@ -77,7 +77,7 @@ async function waitForProductionApp(page, diagnostics) {
       && window.__npshRouteTraceAuditInstalled?.primaryResultApplier
     ), null, { timeout: 60000 });
   } catch (error) {
-    const readiness = await page.evaluate(() => ({
+    const readiness = await page.evaluate((diagnosticsArg) => ({
       url: window.location.href,
       aboutHidden: document.getElementById('aboutModal')?.hasAttribute('hidden') || false,
       setupButton: !!document.querySelector('[data-fluid-action="open-full-basis"]'),
@@ -91,8 +91,8 @@ async function waitForProductionApp(page, diagnostics) {
       scriptCount: document.scripts.length,
       lastScripts: Array.from(document.scripts).map((script) => script.src).filter(Boolean).slice(-20),
       bodyHead: document.body.innerText.slice(0, 700),
-      diagnostics
-    }));
+      diagnostics: diagnosticsArg
+    }), diagnostics);
     throw new Error(`Production app runtime did not become ready: ${JSON.stringify(readiness, null, 2)}`, { cause: error });
   }
 }

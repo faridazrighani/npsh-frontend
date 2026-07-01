@@ -432,15 +432,10 @@
         setReadout(scope, 'source-fluid-vapor-pressure', fluid.vaporPressure, 'bar a', 6);
         setReadout(scope, 'source-fluid-vapor-pressure-head', fluid.vaporPressureHead, 'm', 3);
         const flowInput = scope.querySelector('input[data-key="flow"]');
-        const massInput = scope.querySelector('input[data-key="massFlow"]');
         const flowReadout = scope.querySelector('[data-key="source-flow"]');
-        const massReadout = scope.querySelector('[data-key="source-mass-flow"]');
-        if (flowInput && massReadout) {
+        if (flowInput && flowReadout) {
             const flow = toFiniteNumber(flowInput.value, NaN);
-            if (Number.isFinite(flow)) setReadout(scope, 'source-mass-flow', flow * fluid.density, 'kg/h', 3);
-        } else if (massInput && flowReadout) {
-            const mass = toFiniteNumber(massInput.value, NaN);
-            if (Number.isFinite(mass) && fluid.density > 0) setReadout(scope, 'source-flow', mass / fluid.density, 'm3/h', 3);
+            if (Number.isFinite(flow)) setReadout(scope, 'source-flow', flow, 'm3/h', 3);
         }
     }
 
@@ -470,14 +465,8 @@
 
     function syncSourceFlowFromRuntime(node) {
         if (!node?.props) return;
-        const mode = String(node.props.flowInputMode || 'Mass Flow');
-        if (/solve from network/i.test(mode)) return;
+        node.props.flowInputMode = 'Volumetric Flow';
         const density = getEffectiveDensityForSource(node);
-        if (/mass flow/i.test(mode)) {
-            const massFlow = toFiniteNumber(node.props.massFlow, NaN);
-            if (Number.isFinite(massFlow) && density > 0) node.props.flow = massFlow / density;
-            return;
-        }
         const flow = toFiniteNumber(node.props.flow, NaN);
         if (Number.isFinite(flow) && density > 0) node.props.massFlow = flow * density;
     }

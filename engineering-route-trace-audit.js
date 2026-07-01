@@ -1,5 +1,5 @@
 (function registerEngineeringRouteTraceAudit(root) {
-  const VERSION = '2026.06-route-trace-audit-v34';
+  const VERSION = '2026.07-route-trace-audit-v35';
   const PANEL_ID = 'engineeringRouteTraceAuditPanel';
   const PANEL_BODY_ID = 'engineeringRouteTraceAuditPanelBody';
   const MENU_BUTTON_ID = 'menu-tools-route-trace-audit';
@@ -144,14 +144,90 @@
     return row?.type === 'section' || row?.isSection === true || row?.kind === 'section';
   }
 
+  function normalizePumpLiveSectionRow(row) {
+    if (!isLiveParameterSectionRow(row)) return row;
+    const label = normalizedReadoutLabel(row?.label ?? row?.title ?? '');
+    const sectionLabel = /^status$/i.test(label)
+      ? 'STATUS'
+      : /^suction$/i.test(label)
+      ? 'SUCTION'
+      : /^discharge$/i.test(label)
+      ? 'DISCHARGE'
+      : label;
+    if (!sectionLabel || sectionLabel === row.label) return row;
+    return { ...row, label: sectionLabel };
+  }
+
+  function liveRowValue(value, unit = '') {
+    const displayUnit = normalizeText(unit || '');
+    const formatted = formatCanvasValue(value, displayUnit);
+    return displayUnit && formatted.endsWith(` ${displayUnit}`)
+      ? formatted.slice(0, -displayUnit.length - 1)
+      : formatted;
+  }
+
+  function pumpStatusRowsForLiveBuilder(pumpNode = {}) {
+    if (!pumpNode || pumpNode.type !== 'pump') return [];
+    const canonical = pumpCanonicalStatusValues(pumpNode);
+    if (!canonical.hydraulicNpshStatus && !canonical.backendValidationStatus) return [];
+    const rows = [{ type: 'section', label: 'STATUS' }];
+    if (canonical.hydraulicNpshStatus) rows.push({ label: 'Hydraulic NPSH', value: canonical.hydraulicNpshStatus });
+    if (canonical.backendValidationStatus) rows.push({ label: 'Backend Valid.', value: canonical.backendValidationStatus });
+    return rows;
+  }
+
+  function mergePumpStatusRowsForLiveBuilder(rows, args = []) {
+    const statusRows = pumpStatusRowsForLiveBuilder(args[0]);
+    if (!statusRows.length) return rows;
+    const withoutTransientStatus = rows.filter((row) => {
+      const label = normalizedReadoutLabel(row?.label ?? row?.title ?? '');
+      if (isLiveParameterSectionRow(row)) return !/^status$/i.test(label);
+      return label !== 'Hydraulic NPSH' && label !== 'Backend Valid.';
+    });
+    return [...statusRows, ...withoutTransientStatus];
+  }
+
+  function sinkNodeForLiveRows(args = []) {
+    const direct = args.find((candidate) => candidate?.type === 'sink');
+    if (direct) return direct;
+    const allSinks = Object.values(model() || {}).filter((candidate) => candidate?.type === 'sink');
+    return allSinks.length === 1 ? allSinks[0] : null;
+  }
+
+  function canonicalSinkRowsForLiveBuilder(node = null) {
+    if (!node || node.type !== 'sink') return [];
+    const canonical = sinkCanonicalValues(node);
+    const rows = [
+      { label: 'Mode', value: sinkBoundaryModeDisplay(canonical.mode) },
+      { label: 'Sink Flow', value: liveRowValue(canonical.sinkFlow, 'm3/h'), unit: 'm3/h' },
+      { label: 'Sink P abs', value: liveRowValue(canonical.pressureAbsBar, 'bar a'), unit: 'bar a' },
+      { label: 'Sink Elev.', value: liveRowValue(canonical.elevation, 'm'), unit: 'm' },
+      { label: 'Sink Head', value: liveRowValue(canonical.sinkHead, 'm'), unit: 'm' }
+    ];
+    if (canonical.operatingFeasibilityStatus) rows.push({ label: 'Boundary', value: canonical.operatingFeasibilityStatus });
+    if (canonical.headResidual !== null) rows.push({ label: 'Head Res.', value: liveRowValue(canonical.headResidual, 'm'), unit: 'm' });
+    if (canonical.maxAllowableSnkElevation !== null) rows.push({ label: 'Max Elev.', value: liveRowValue(canonical.maxAllowableSnkElevation, 'm'), unit: 'm' });
+    return rows;
+  }
+
+  function mergeSinkRowsForLiveBuilder(rows, args = []) {
+    const canonicalRows = canonicalSinkRowsForLiveBuilder(sinkNodeForLiveRows(args));
+    if (!canonicalRows.length) return rows;
+    const canonicalLabels = new Set(canonicalRows.map((row) => row.label));
+    const withoutTransientRows = rows.filter((row) => !canonicalLabels.has(normalizedReadoutLabel(row?.label ?? row?.title ?? '')));
+    return [...canonicalRows, ...withoutTransientRows];
+  }
+
   function canonicalPumpLiveParameterRows(rows, args = []) {
     if (!Array.isArray(rows)) return rows;
     const canonicalFlow = pumpCanonicalFlowForLiveRows(args[0]);
-    return rows.filter((row) => {
+    const filteredRows = rows.filter((row) => {
       const label = normalizedReadoutLabel(row?.label ?? row?.title ?? '');
       if (isLiveParameterSectionRow(row)) return !isHiddenPumpCanvasSectionText(label);
       return !isHiddenPumpCanvasRowLabel(label);
     }).map((row) => {
+      const normalizedSection = normalizePumpLiveSectionRow(row);
+      if (normalizedSection !== row) return normalizedSection;
       const label = normalizedReadoutLabel(row?.label ?? row?.title ?? '');
       if (label !== 'Flow' || canonicalFlow === null) return row;
       return {
@@ -161,14 +237,16 @@
         title: row?.title || 'Route duty flow synchronized with the connected SRC/SNK boundary flow.'
       };
     });
+    return mergePumpStatusRowsForLiveBuilder(filteredRows, args);
   }
 
-  function canonicalSinkLiveParameterRows(rows) {
+  function canonicalSinkLiveParameterRows(rows, args = []) {
     if (!Array.isArray(rows)) return rows;
-    return rows.filter((row) => {
+    const filteredRows = rows.filter((row) => {
       const label = normalizedReadoutLabel(row?.label ?? row?.title ?? '');
       return !SINK_CANVAS_HIDDEN_ROW_LABELS.has(label);
     });
+    return mergeSinkRowsForLiveBuilder(filteredRows, args);
   }
 
   function patchCanonicalLiveParameterRowBuilder(functionName, canonicalizeRows, wrappedRefName) {
@@ -1331,17 +1409,25 @@
     return row;
   }
 
+  function canonicalPumpCanvasSectionLabel(value) {
+    const text = normalizeText(value).toUpperCase();
+    if (text.startsWith('STATUS')) return 'STATUS';
+    if (text.startsWith('SUCTION')) return 'SUCTION';
+    if (text.startsWith('DISCHARGE')) return 'DISCHARGE';
+    return text;
+  }
+
   function pumpPanelSectionByLabel(panel, label) {
     if (!panel?.querySelectorAll) return null;
-    const target = normalizeText(label).toUpperCase();
+    const target = canonicalPumpCanvasSectionLabel(label);
     return Array.from(panel.querySelectorAll('.pump-live-param-section')).find((section) => (
-      normalizeText(section.textContent).toUpperCase() === target
+      canonicalPumpCanvasSectionLabel(section.textContent) === target
     )) || null;
   }
 
   function pumpCanvasNodeLabel(node) {
     const className = String(node?.className || '');
-    if (node?.classList?.contains?.('pump-live-param-section') || /\bpump-live-param-section\b/.test(className)) return normalizeText(node.textContent);
+    if (node?.classList?.contains?.('pump-live-param-section') || /\bpump-live-param-section\b/.test(className)) return canonicalPumpCanvasSectionLabel(node.textContent);
     return normalizeText(node?.querySelector?.('.pump-live-param-label')?.textContent);
   }
 

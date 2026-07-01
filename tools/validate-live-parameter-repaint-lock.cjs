@@ -13,8 +13,8 @@ const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
 
-const LOCK_CACHE_KEY = "engineering-live-parameter-repaint-lock.css?v=20260620-render-blocking-fix1";
-const STABLE_RUNTIME_CACHE_KEY = "engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260629-owner-cleanup1";
+const LOCK_CACHE_KEY = "engineering-live-parameter-repaint-lock.css?v=20260701-object-card-stability1";
+const STABLE_RUNTIME_CACHE_KEY = "engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260701-object-card-stability1";
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");
@@ -31,6 +31,11 @@ function cssBlock(css, selector) {
   const match = css.match(new RegExp(`${escapedSelector}\\s*\\{([^}]*)\\}`, "m"));
   assert(match, `Missing CSS block for ${selector}.`);
   return match[1];
+}
+
+function cssBlocks(css, selector) {
+  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return Array.from(css.matchAll(new RegExp(`${escapedSelector}\\s*\\{([^}]*)\\}`, "gm"))).map((match) => match[1]);
 }
 
 function cssBlockPattern(css, pattern, label) {
@@ -99,7 +104,7 @@ assert(
 );
 
 assert(!/rgba\(/i.test(lockCss), "Repaint-lock CSS must use opaque backgrounds; rgba backgrounds can reveal grid repaint.");
-assert(stableRuntime.includes('const VERSION = "2026.06-live-parameter-stable3"'), "Stable runtime must keep the global live parameter value-update version.");
+assert(stableRuntime.includes('const VERSION = "2026.07-live-parameter-stable5"'), "Stable runtime must keep the global live parameter value-update version.");
 assert(stableRuntime.includes("syncMatchingRows"), "Stable runtime must update matching row values in place.");
 assert(stableRuntime.includes("stabilizePanelFromReplacement"), "Stable runtime must preserve panel shells when the app renderer supplies replacements.");
 assert(stableRuntime.includes("shouldAllowStructureReplacement"), "Stable runtime must still allow intentional row-structure changes outside solve/drag lifecycle.");
@@ -109,13 +114,31 @@ assert(stableRuntime.includes("liveParameterStableRestored"), "Stable runtime mu
 assert(stableRuntime.includes("freezeAllPanelGeometry"), "Stable runtime must freeze live panel geometry during input, drag, and solver busy windows.");
 assert(stableRuntime.includes("restorePanelGeometry"), "Stable runtime must restore live panel geometry when renderers rewrite style/class attributes.");
 assert(stableRuntime.includes("liveParameterStableGeometryRestored"), "Stable runtime must mark geometry restoration for QA.");
+assert(stableRuntime.includes("frozenPanelNodes"), "Stable runtime must snapshot pump/SNK row structure during solve and drag busy windows.");
+assert(stableRuntime.includes("restoreMissingPanelNodes"), "Stable runtime must restore status and canonical rows removed by transient renderer passes.");
+assert(stableRuntime.includes("liveParameterStableNodesRestored"), "Stable runtime must mark restored row nodes for QA.");
+assert(stableRuntime.includes("PUMP_PROTECTED_SECTIONS"), "Stable runtime must restore only protected pump sections, not hidden route/audit rows.");
+assert(stableRuntime.includes("PUMP_PROTECTED_ROWS"), "Stable runtime must restore only protected pump canvas rows.");
+assert(stableRuntime.includes("SINK_PROTECTED_ROWS"), "Stable runtime must restore only protected sink canvas rows.");
+assert(stableRuntime.includes("shouldSnapshotPanelNode"), "Stable runtime must filter row snapshots before restoring missing panel nodes.");
+assert(stableRuntime.includes("stableSectionLabel"), "Stable runtime must normalize section labels with info-icon text before comparing snapshots.");
+assert(stableRuntime.includes('text.startsWith("STATUS")'), "Stable runtime must treat STATUS and STATUS info-icon variants as the same section.");
+assert(stableRuntime.includes("captureCanvasViewport"), "Stable runtime must capture canvas scroll position during solver/input busy windows.");
+assert(stableRuntime.includes("restoreCanvasViewport"), "Stable runtime must restore canvas scroll position after solver/input busy windows.");
+assert(stableRuntime.includes("liveParameterStableViewport"), "Stable runtime must tag viewport capture for QA.");
+assert(stableRuntime.includes("liveParameterStableViewportRestored"), "Stable runtime must tag viewport restoration for QA.");
 assert(stableRuntime.includes("pendingPanelAttributes"), "Stable runtime must defer visual shell attributes while busy so only values change live.");
 assert(stableRuntime.includes("liveParameterStableAttributesFlushed"), "Stable runtime must apply pending shell attributes once after the busy window settles.");
 assert(stableRuntime.includes('attributeFilter: ["style", "class"]'), "Stable runtime must watch style/class mutations without observing noisy global attributes.");
 assert(stableRuntime.includes("skipTransientPlaceholder"), "Stable runtime must not overwrite visible values with transient solver placeholders.");
 assert(stableRuntime.includes("setTextIfChanged(valueElement(targetRow)"), "Stable runtime must patch numeric value text without rebuilding panel rows.");
 assert(stableRuntime.includes("npsh:calculation-applying-results"), "Stable runtime must understand solver lifecycle events.");
+assert(stableRuntime.includes("npsh:realtime-autosolve-start"), "Stable runtime must treat realtime autosolve start as a busy window.");
+assert(stableRuntime.includes("npsh:realtime-autosolve-scheduled"), "Stable runtime must protect live panels while autosolve is queued.");
+assert(stableRuntime.includes("npsh:calculation-dependency-changed"), "Stable runtime must protect live panels during dependency-triggered recalculation.");
 assert(stableRuntime.includes("pointermove"), "Stable runtime must avoid repaint churn during canvas drag.");
+assert(stableRuntime.includes("dragstart"), "Stable runtime must protect object cards during drag lifecycle events.");
+assert(stableRuntime.includes("touchmove"), "Stable runtime must protect object cards during touch dragging.");
 assert(stableRuntime.includes('"input", "change"'), "Stable runtime must protect canvas panels while users edit numeric inputs.");
 assert(stableRuntime.includes("MutationObserver"), "Stable runtime must observe late panel insertions.");
 assert(stableRuntime.includes("liveParameterStableOwnerId"), "Stable runtime must tag live panels with their owning canvas object id.");
@@ -142,6 +165,23 @@ const pumpPanelBlock = cssBlock(lockCss, ".pump-live-params");
 assertDeclaration(pumpPanelBlock, "min-height: 173px !important;", "pump live parameter card");
 assertDeclaration(pumpPanelBlock, "transition: none !important;", "pump live parameter card");
 assertDeclaration(pumpPanelBlock, "transform: translate3d(-50%, 0, 0) !important;", "pump live parameter card");
+
+const sinkPanelBlock = cssBlocks(lockCss, ".sink-live-params").join("\n");
+assert(sinkPanelBlock, "Missing CSS block for .sink-live-params.");
+assertDeclaration(sinkPanelBlock, "min-width: 190px !important;", "sink live parameter card");
+assertDeclaration(sinkPanelBlock, "max-width: 232px !important;", "sink live parameter card");
+assertDeclaration(sinkPanelBlock, "min-height: 82px !important;", "sink live parameter card");
+assertDeclaration(sinkPanelBlock, "transition: none !important;", "sink live parameter card");
+assertDeclaration(sinkPanelBlock, "transform: translate3d(-50%, 0, 0) !important;", "sink live parameter card");
+
+const pumpRowBlock = cssBlockPattern(
+  lockCss,
+  /\.pump-live-param-section,\s*\.pump-live-param-row,\s*\.sink-live-param-row\s*\{([^}]*)\}/m,
+  "pump and sink canvas rows"
+);
+assertDeclaration(pumpRowBlock, "min-height: 13px !important;", "pump and sink canvas rows");
+assertDeclaration(pumpRowBlock, "transition: none !important;", "pump and sink canvas rows");
+assertDeclaration(pumpRowBlock, "contain: layout paint !important;", "pump and sink canvas rows");
 
 const badgeBlock = cssBlock(lockCss, ".pump-status-badge");
 assertDeclaration(badgeBlock, "box-shadow: none !important;", "pump status badge");

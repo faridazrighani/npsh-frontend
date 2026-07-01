@@ -173,13 +173,7 @@
 
   function sourceInputFlowForNode(node, modelRef) {
     const props = node?.props || {};
-    const flowMode = normalizeRowLabel(props.flowInputMode || "Mass Flow");
-    if (/solve\s+from\s+network/i.test(flowMode)) return null;
-    if (/mass\s+flow/i.test(flowMode)) {
-      const massFlow = finiteNumber(props.massFlow);
-      const density = activeDensity(modelRef);
-      return massFlow !== null && density > 0 ? massFlow / density : null;
-    }
+    props.flowInputMode = "Volumetric Flow";
     return firstFiniteValue(props.flow, props.flowM3h, props.volumetricFlow);
   }
 

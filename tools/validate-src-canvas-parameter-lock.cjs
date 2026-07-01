@@ -8,7 +8,7 @@ const INDEX_FILE = path.join(FRONTEND_ROOT, "index.html");
 const JOURNALS_DIR = path.join(FRONTEND_ROOT, "journals");
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
-const RUNTIME_CACHE_KEY = "engineering-src-canvas-parameter-runtime.js?v=20260628-src-stable-values1";
+const RUNTIME_CACHE_KEY = "engineering-src-canvas-parameter-runtime.js?v=20260701-source-volumetric-only1";
 const DEFAULT_ROW_LABELS = ["Mode", "SRC Input Flow", "Source P abs", "Source Elev.", "Source Head"];
 const ALWAYS_HIDDEN_ROWS = new Set(["Contribution", "Suction Loss", "NPSH at Pump", "Pump NPSHa"]);
 const DYNAMIC_ROWS = new Set(["Dyn Mode", "Target", "Dyn Feed", "Target Net", "Dyn Net", "Target Trend", "Dyn Trend"]);
@@ -105,6 +105,8 @@ assert(runtime.includes("canonicalSourceValueForLabel"), "Runtime must recover e
 assert(runtime.includes("sourceHeadFromLiveInputs"), "Runtime must derive Source Head from live pressure/elevation when backend trace is still stale.");
 assert(runtime.includes("pressureAbsBarFromSourceProps"), "Runtime must derive absolute source pressure from live SRC props before fallback display.");
 assert(runtime.includes("sourceInputFlowForNode"), "Runtime must preserve fixed SRC input flow separately from evaluated route flow.");
+assert(runtime.includes('props.flowInputMode = "Volumetric Flow"'), "Runtime must lock SRC Flow Input Mode to Volumetric Flow.");
+assert(!runtime.includes("/mass\\s+flow/i.test(flowMode)"), "Runtime must not recover SRC input flow from Mass Flow mode.");
 assert(runtime.includes("shouldShowEvaluatedFlow"), "Runtime must show evaluated route flow only when it differs from SRC input flow.");
 assert(runtime.includes("solvedOperatingFlowForSource"), "Runtime must still recover solved operating route flow for the Evaluated Flow row.");
 assert(runtime.includes("connectedRouteFlowForSource"), "Runtime must read connected pipe/pump flow for SRC canvas realtime flow parity.");

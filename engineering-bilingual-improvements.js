@@ -3,30 +3,23 @@
   const SOURCE_ADVISOR_AUDIT_LOCK = 'source-advisor-hidden-v1';
   const SOURCE_ADVISOR_AUDIT_LOCK_REASON = 'src-window-simplified-for-academic-audit';
   const SOURCE_FORMULA_DEFENSE_PLACEMENT_LOCK = 'source-formula-defense-src-header-right-v1';
-  const SOURCE_ADVISOR_HIDDEN_SECTIONS = 'pump-readiness,semantic-attachment,hydraulic-connection,defense-ready-note,boundary-role,generic-meaning';
+  const SOURCE_ADVISOR_HIDDEN_SECTIONS = 'pump-readiness,semantic-attachment,hydraulic-connection,defense-ready-note,source-definition,source-type,source-type-meaning,boundary-role,generic-meaning';
   const SOURCE_TYPE_MEANING_VISIBLE_LOCK = 'source-type-meaning-visible-v1';
   const SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK = 'source-fluid-basis-link-after-flow-v1';
   const SOURCE_STANDARD_FORM_SCHEMA_VERSION = 'src-standard-form.v1';
   const SOURCE_STANDARD_FORM_LOCK = 'source-standard-form-all-surfaces-v1';
   const SOURCE_STANDARD_FORM_VALUE_POLICY = 'live-user-import-or-calculated-values-only';
   const SOURCE_STANDARD_FORM_SECTIONS = Object.freeze([
-    'Source Definition',
     'Boundary Data',
-    'Flow Specification',
     'Fluid Basis Link'
   ]);
   const SOURCE_STANDARD_FORM_FIELD_KEYS = Object.freeze([
-    'sourceType',
-    'source-type-meaning',
     'boundaryDataSource',
     'pressureInputBasis',
     'pressure',
     'source-absolute-pressure',
     'elevation',
-    'flowInputMode',
-    'massFlow',
     'flow',
-    'source-flow',
     'source-fluid-basis',
     'source-temperature',
     'source-fluid-density',
@@ -38,9 +31,7 @@
   ]);
   const SOURCE_STANDARD_REPORT_FIELDS = Object.freeze([
     'Object ID',
-    'Source Definition',
     'Boundary Data',
-    'Flow Specification',
     'Fluid Basis Link',
     'Source Formula Defense',
     'Route Trace',
@@ -1510,8 +1501,12 @@
   function getSourceAdvisorHiddenSection(text = '', node = null) {
     const value = String(text || '').replace(/\s+/g, ' ').trim();
     const propKey = String(node?.dataset?.propKey || node?.dataset?.fieldKey || node?.getAttribute?.('data-prop-key') || node?.getAttribute?.('data-field-key') || '').trim();
+    if (propKey === 'sourceType') return 'source-type';
+    if (propKey === 'source-type-meaning') return 'source-type-meaning';
+    if (/^Source Definition$/i.test(value) || /^Definisi Source$/i.test(value)) return 'source-definition';
+    if (/^Source Type\b/i.test(value) || /^Tipe Source\b/i.test(value)) return 'source-type';
+    if (isSourceTypeMeaningText(value)) return 'source-type-meaning';
     if (propKey === 'source-boundary-role') return 'source-boundary-role';
-    if (isSourceTypeMeaningText(value)) return '';
     if (isSourceGenericMeaningText(value, node)) return 'source-generic-meaning';
     if (/^Boundary Role\b/i.test(value)
       || /^Peran Boundary\b/i.test(value)
@@ -1678,48 +1673,15 @@
 
   function keepSourceTypeMeaningRowsVisible(windowNode) {
     if (!isSourceObjectPropertiesWindow(windowNode)) return 0;
-    const sourceType = getSourceTypeValueFromWindow(windowNode);
-    const sourceTypeSelect = windowNode.querySelector?.('select[data-key="sourceType"], select.prop-input-field[data-key="sourceType"]');
-    const sourceTypeRow = windowNode.querySelector?.('[data-prop-key="sourceType"]') || sourceTypeSelect?.closest?.('tr, .source-field-row, .object-property-row, .object-task-field-row, .field-card, .object-field, .task-field');
-    if (sourceTypeRow) sourceTypeRow.dataset.sourceTypeMeaningAnchor = SOURCE_TYPE_MEANING_VISIBLE_LOCK;
-    let restored = 0;
-    let rows = Array.from(windowNode.querySelectorAll?.('[data-prop-key="source-type-meaning"], [data-source-type-meaning-visible-lock], tr, .source-field-row, .object-property-row, .object-task-field-row, .source-field-card, .object-field, .field-card, .task-field, [data-field-key]') || [])
+    let removed = 0;
+    const rows = Array.from(windowNode.querySelectorAll?.('[data-prop-key="source-type-meaning"], [data-source-type-meaning-visible-lock], tr, .source-field-row, .object-property-row, .object-task-field-row, .source-field-card, .object-field, .field-card, .task-field, [data-field-key]') || [])
       .filter((row) => row?.isConnected && (row.dataset?.propKey === 'source-type-meaning' || row.dataset?.sourceTypeMeaningVisibleLock || isSourceTypeMeaningText(row.textContent)));
-    if (!rows.length && sourceTypeRow) {
-      const created = createSourceTypeMeaningRow(windowNode, sourceTypeRow, sourceType);
-      if (created) {
-        rows = [created];
-        restored += 1;
-      }
-    }
-    rows.forEach((row, index) => {
+    rows.forEach((row) => {
       if (!row?.isConnected) return;
-      if (index > 0 && row.dataset?.sourceTypeMeaningVisibleLock === SOURCE_TYPE_MEANING_VISIBLE_LOCK) {
-        row.remove();
-        return;
-      }
-      if (row.dataset?.sourceTypeMeaningVisibleLock !== SOURCE_TYPE_MEANING_VISIBLE_LOCK) {
-        row.dataset.sourceTypeMeaningVisibleLock = SOURCE_TYPE_MEANING_VISIBLE_LOCK;
-      }
-      updateSourceTypeMeaningRow(row, sourceType);
-      if (row.hidden) {
-        row.hidden = false;
-        restored += 1;
-      }
-      if (row.getAttribute('aria-hidden') === 'true') row.removeAttribute('aria-hidden');
-      if (row.hasAttribute('data-advisor-audit-lock')) {
-        row.removeAttribute('data-advisor-audit-lock');
-        row.removeAttribute('data-advisor-audit-lock-section');
-        row.removeAttribute('data-advisor-audit-lock-reason');
-        row.removeAttribute('data-advisor-hidden-section');
-        restored += 1;
-      }
-      if (row.style?.getPropertyValue?.('display') === 'none') {
-        row.style.removeProperty('display');
-        restored += 1;
-      }
+      row.remove();
+      removed += 1;
     });
-    return restored;
+    return removed;
   }
 
   const SOURCE_FLUID_BASIS_EXTRA_READOUTS = Object.freeze([
@@ -2248,11 +2210,6 @@
           getSourceDefenseText('SRC Object Properties uses the same section contract in every simulation, journal import, and defense report.', 'SRC Object Properties memakai kontrak section yang sama di setiap simulasi, import jurnal, dan report defense.')
         ],
         [
-          getSourceDefenseText('Source Definition', 'Definisi Source'),
-          displaySourceType,
-          getSourceDefenseText('Defines whether the source behaves as a fixed-flow, pressure, tank, vessel, or external boundary.', 'Mendefinisikan apakah source berperan sebagai fixed-flow, pressure, tank, vessel, atau boundary eksternal.')
-        ],
-        [
           getSourceDefenseText('Source Data Origin', 'Asal Data Source'),
           props.boundaryDataSource || props.dataSource || getSourceDefenseText('Manual / User Input', 'Manual / Input User'),
           getSourceDefenseText('Documents whether the SRC number comes from user input, journal data, vendor data, or an engineering boundary note.', 'Mendokumentasikan apakah angka SRC berasal dari input user, data jurnal, data vendor, atau catatan boundary engineering.')
@@ -2355,18 +2312,6 @@
         getSourceDefenseText('Used In', 'Dipakai Pada')
       ],
       [
-        [
-          getSourceDefenseText('Source Type', 'Tipe Source'),
-          getSourceDefenseText('Why was this source type selected?', 'Mengapa tipe source ini dipilih?'),
-          getSourceDefenseText('It defines how SRC behaves as the upstream boundary before the suction route reaches the pump.', 'Tipe ini mendefinisikan perilaku SRC sebagai boundary hulu sebelum route suction menuju pompa.'),
-          getSourceDefenseText('Boundary model, source head', 'Model boundary, head source')
-        ],
-        [
-          getSourceDefenseText('Type Meaning', 'Makna Tipe'),
-          getSourceDefenseText('Why is this explanation shown?', 'Mengapa penjelasan ini ditampilkan?'),
-          getSourceDefenseText('It documents the engineering meaning of the selected Source Type so the boundary assumption is auditable before calculation.', 'Ini mendokumentasikan makna engineering dari Tipe Source yang dipilih agar asumsi boundary dapat diaudit sebelum perhitungan.'),
-          getSourceDefenseText('Boundary assumption defense', 'Defense asumsi boundary')
-        ],
         [
           getSourceDefenseText('Pressure Basis', 'Basis Tekanan'),
           getSourceDefenseText('Why does gauge pressure need conversion?', 'Mengapa tekanan gauge harus dikonversi?'),
@@ -2473,7 +2418,7 @@
     ));
 
     appendSourceDefenseCard(layout, getSourceDefenseText('Validation Gate / Why Trace Was Partial', 'Gate Validasi / Mengapa Trace Parsial'), () => createSourceDefenseList([
-      getSourceDefenseText('SRC Standard Form is locked to Source Definition, Boundary Data, Flow Specification, and Fluid Basis Link across all simulations and journal-import SRC inputs.', 'SRC Standard Form dikunci pada Source Definition, Boundary Data, Flow Specification, dan Fluid Basis Link untuk semua simulasi dan input SRC dari import jurnal.'),
+      getSourceDefenseText('SRC Standard Form is locked to Boundary Data and Fluid Basis Link; Volumetric Flow is part of Boundary Data across all simulations and journal-import SRC inputs.', 'Form standard SRC dikunci pada Boundary Data dan Fluid Basis Link; Volumetric Flow menjadi bagian dari Boundary Data untuk semua simulasi dan input SRC dari import jurnal.'),
       getSourceDefenseText('Numbers shown in captions are examples only; runtime values must come from user input, journal import review, or engine calculation.', 'Angka pada caption hanya contoh; nilai runtime wajib berasal dari input user, review import jurnal, atau kalkulasi engine.'),
       getSourceDefenseText('Complete the solid hydraulic route SRC -> suction pipe/fitting/valve -> pump before expecting suction-loss substitution.', 'Lengkapi route hidrolik solid SRC -> suction pipe/fitting/valve -> pump sebelum mengharapkan substitusi suction loss.'),
       getSourceDefenseText('Run Solve after changing SRC, Fluid Basis, suction PFV, or pump elevation so the route-dependent trace becomes current.', 'Jalankan Hitung setelah mengubah SRC, Basis Fluida, PFV suction, atau elevasi pompa agar trace yang bergantung route menjadi current.'),

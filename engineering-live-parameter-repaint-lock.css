@@ -11,12 +11,29 @@
   backface-visibility: hidden;
   clip-path: inset(0 round 6px);
   background: #ffffff !important;
+  transition: none !important;
 }
 
 .pump-live-params {
   min-height: 173px !important;
   transition: none !important;
   transform: translate3d(-50%, 0, 0) !important;
+}
+
+.sink-live-params {
+  min-width: 190px !important;
+  max-width: 232px !important;
+  min-height: 82px !important;
+  transition: none !important;
+  transform: translate3d(-50%, 0, 0) !important;
+}
+
+.pump-live-param-section,
+.pump-live-param-row,
+.sink-live-param-row {
+  min-height: 13px !important;
+  transition: none !important;
+  contain: layout paint !important;
 }
 
 .pump-live-params-safe,

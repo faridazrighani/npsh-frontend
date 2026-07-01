@@ -56,7 +56,11 @@ function gitCapture(commandArgs) {
 }
 
 function npmCommand() {
-  return process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  return process.platform === 'win32' ? 'cmd.exe' : 'npm';
+}
+
+function npmArgs(commandArgs) {
+  return process.platform === 'win32' ? ['/d', '/s', '/c', 'npm.cmd', ...commandArgs] : commandArgs;
 }
 
 function npxCommand() {
@@ -96,7 +100,7 @@ function runChecks() {
     ['run', 'validate:pipe-segments-file-runtime'],
     ['run', 'validate:pipe-source-confidence-map'],
     ['run', 'validate:realtime-defense']
-  ].forEach((commandArgs) => run(npmCommand(), commandArgs));
+  ].forEach((commandArgs) => run(npmCommand(), npmArgs(commandArgs)));
 }
 
 function commitIfDirty(message) {

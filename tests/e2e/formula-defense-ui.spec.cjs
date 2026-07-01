@@ -12,7 +12,7 @@ async function gotoWithoutFormulaAutoEnhance(page) {
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => (
     window.EngineeringFormulaDefenseUI?.version === 'engineering-formula-defense-ui.v1'
-    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v12'
+    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v13'
     && window.katex?.renderToString
   ), null, { timeout: 30000 });
 }

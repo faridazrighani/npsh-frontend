@@ -99,8 +99,8 @@ globalThis.__npshGlobalModel = {
 
 const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const runtime = require(runtimePath);
-assert.equal(runtime.version, 'engineering-pump-edit-fast-lane.v6', 'Pump edit fast lane runtime must expose v6.');
-assert.equal(runtime.cacheKey, '20260629-live-evidence1', 'Pump edit fast lane cache key must match index.');
+assert.equal(runtime.version, 'engineering-pump-edit-fast-lane.v7', 'Pump edit fast lane runtime must expose v7.');
+assert.equal(runtime.cacheKey, '20260701-user-flow-npshr1', 'Pump edit fast lane cache key must match index.');
 assert(runtimeSource.includes('pump-manual-npshr-task-window'), 'Fast lane must accept the compact Manual NPSHr task window as a pump edit surface.');
 assert(runtimeSource.includes('\\bPUMP[-_]\\d+\\b'), 'Fast lane must recognize canonical PUMP-100 style pump ids in task titles.');
 assert.equal(typeof runtime.classifyInput, 'function', 'Pump edit fast lane must expose classifyInput().');
@@ -133,6 +133,25 @@ assert.equal(globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.npshr,
 assert.equal(globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.npshMargin, 3.4656, 'Manual NPSHr must update local NPSH margin.');
 assert(Math.abs(globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.npshRatio - 2.1552) < 0.00001, 'Manual NPSHr must update local NPSH ratio.');
 assert(chartSchedules >= 1, 'Manual NPSHr must schedule chart preview refresh.');
+
+const invalidManualInput = new FakeInput({ key: 'manualNpshr', value: 'not-a-number' });
+runtime.applyInputToPump(invalidManualInput, manualClass);
+assert.equal(globalThis.__npshGlobalModel['P-100'].props.manualNpshr, 0, 'Non-numeric Manual NPSHr must normalize to zero.');
+assert.equal(globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.npshr, 0, 'Non-numeric Manual NPSHr must preview as zero NPSHr.');
+assert.equal(globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.npshMargin, 6.4656, 'Zero Manual NPSHr must still calculate margin.');
+assert.equal(globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.npshRatio, null, 'Zero Manual NPSHr must not create a finite NPSH ratio.');
+
+const negativeManualInput = new FakeInput({ key: 'manualNpshr', value: '-2' });
+runtime.applyInputToPump(negativeManualInput, manualClass);
+assert.equal(globalThis.__npshGlobalModel['P-100'].props.manualNpshr, 0, 'Negative Manual NPSHr must clamp to zero.');
+
+const blankManualInput = new FakeInput({ key: 'manualNpshr', value: '' });
+runtime.applyInputToPump(blankManualInput, manualClass);
+assert.equal(globalThis.__npshGlobalModel['P-100'].props.manualNpshr, '', 'Blank Manual NPSHr must remain blank rather than becoming zero.');
+assert.equal(globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.npshr, null, 'Blank Manual NPSHr must return to NPSHr Not Provided.');
+assert.equal(globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.npshMargin, null, 'Blank Manual NPSHr must clear NPSH margin.');
+assert.equal(globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.status, 'NPSHr Not Provided', 'Blank Manual NPSHr must restore the initial NPSHr warning state.');
+runtime.applyInputToPump(manualNpshrInput, manualClass);
 
 const designHeadInput = new FakeInput({ key: 'designHead', value: '26' });
 const designHeadClass = runtime.classifyInput(designHeadInput);
@@ -230,10 +249,10 @@ const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 assert(realtimeSource.includes('EngineeringPumpEditFastLane'), 'Realtime defense must delegate pump edits to the fast lane.');
 assert(
-  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260629-live-evidence1')
-    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260630-pipe-properties-live1'),
+  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260701-user-flow-npshr1')
+    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260701-user-flow-autosolve1'),
   'Fast lane runtime must load before realtime defense.'
 );
-assert(manifest.includes('Pump edit fast lane cache key: engineering-pump-edit-fast-lane.js?v=20260629-live-evidence1'), 'Manifest must document Pump edit fast lane cache key.');
+assert(manifest.includes('Pump edit fast lane cache key: engineering-pump-edit-fast-lane.js?v=20260701-user-flow-npshr1'), 'Manifest must document Pump edit fast lane cache key.');
 
 console.log('Pump edit fast lane validation passed.');

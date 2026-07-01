@@ -133,7 +133,7 @@ async function waitForNpshApp(page) {
     && window.EngineeringPipePropertiesCleanupRuntime?.version === 'engineering-pipe-properties-cleanup-runtime.v1'
     && window.EngineeringPipeSegmentsFileRuntime?.version === 'engineering-pipe-segments-file-runtime.v4'
     && window.EngineeringPipeMoodyChartAudit?.version === 'engineering-pipe-moody-chart-audit.v7'
-    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v12'
+    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v13'
   ), null, { timeout: 30000 });
 }
 

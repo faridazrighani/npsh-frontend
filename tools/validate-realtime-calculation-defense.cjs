@@ -124,7 +124,7 @@ globalThis.EngineeringParameterTaskRuntime = {
 };
 
 const runtime = require(runtimePath);
-assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v12', 'Realtime defense runtime should expose v12.');
+assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v13', 'Realtime defense runtime should expose v13.');
 assert.equal(runtime.autosolvePolicy?.mode, 'realtime-autosolve-first', 'Realtime defense must declare realtime autosolve as the primary calculation policy.');
 assert.equal(runtime.autosolvePolicy?.manualCommandRole, 'validate-refresh-evidence', 'Manual command must be treated as evidence validation/refresh.');
 assert.equal(runtime.debounceForSourceEvent('input'), 240, 'Input debounce must keep numeric edits responsive.');
@@ -138,6 +138,7 @@ assert.equal(typeof runtime.currentCalculationTransaction, 'function', 'Realtime
 assert.equal(typeof runtime.markFailed, 'function', 'Realtime defense runtime should expose backend failure state marker.');
 assert.equal(typeof runtime.isCalculationField, 'function', 'Realtime defense runtime should expose calculation field classification for regression validation.');
 assert.equal(typeof runtime.notifyDependencyChanged, 'function', 'Realtime defense runtime should expose the global dependency-change bridge.');
+assert.equal(typeof runtime.normalizeSourceFlowInputDefaults, 'function', 'Realtime defense runtime should expose SRC flow-input default normalization.');
 
 function fakeInput({ nodeId = 'P-100', field = '', key = '', id = '', name = '', inPumpCurveTable = false } = {}) {
   return {
@@ -171,6 +172,11 @@ assert.equal(runtime.isCalculationField(fakeInput({ field: 'curveData', inPumpCu
 assert.equal(runtime.isCalculationField(fakeInput({ nodeId: 'SNK-100', field: 'pressure' })), false, 'SNK pressure must be ignored while Flow Demand Boundary is active.');
 assert.equal(runtime.isCalculationField(fakeInput({ nodeId: 'SNK-100', field: 'demandFlow' })), true, 'SNK demandFlow must trigger autosolve while Flow Demand Boundary is active.');
 
+globalThis.__npshGlobalModel['SRC-NEW'] = { type: 'source', props: {} };
+assert.equal(runtime.normalizeSourceFlowInputDefaults(), 1, 'A new SRC without flow-input mode must be normalized once.');
+assert.equal(globalThis.__npshGlobalModel['SRC-NEW'].props.flowInputMode, 'Volumetric Flow', 'New SRC objects must default to Volumetric Flow.');
+assert.equal(runtime.normalizeSourceFlowInputDefaults(), 0, 'SRC flow-input default normalization must be idempotent.');
+
 const realtimeSource = fs.readFileSync(runtimePath, 'utf8');
 assert(
   realtimeSource.includes('requestAnimationFrame(() =>') && realtimeSource.includes('const delayMs = 360'),
@@ -197,6 +203,8 @@ assert(realtimeSource.includes('hasRecentUserCalculationIntent'), 'Realtime defe
 assert(realtimeSource.includes('scheduleUiRefresh'), 'Realtime defense must route UI repaint work through a scheduler.');
 assert(realtimeSource.includes('EngineeringPerformanceRefreshGovernor'), 'Realtime defense must use the performance refresh governor when available.');
 assert(realtimeSource.includes('EngineeringPumpEditFastLane'), 'Realtime defense must delegate Pump Object Properties edits to the fast lane before scheduling backend autosolve.');
+assert(realtimeSource.includes("DEFAULT_SOURCE_FLOW_INPUT_MODE = 'Volumetric Flow'"), 'Realtime defense must default newly-created SRC objects to Volumetric Flow.');
+assert(realtimeSource.includes('normalizeSourceFlowInputDefaults'), 'Realtime defense must normalize legacy/new source objects before simulation refresh.');
 assert(realtimeSource.includes('CALCULATION_INPUT_SURFACE_SELECTOR'), 'Realtime defense must centralize calculation input surface coverage.');
 assert(realtimeSource.includes('.persistent-object-properties-task-window'), 'Realtime defense must autosolve persistent Object Properties input edits.');
 assert(realtimeSource.includes('manualNpshr'), 'Realtime defense must treat compact Manual NPSHr as a calculation input.');
@@ -363,16 +371,16 @@ const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 const parameterRuntime = fs.readFileSync(parameterRuntimePath, 'utf8');
 assert(
-  index.includes('engineering-realtime-calculation-defense.js?v=20260630-pipe-properties-live1'),
+  index.includes('engineering-realtime-calculation-defense.js?v=20260701-user-flow-autosolve1'),
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
-  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260629-live-evidence1')
-    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260630-pipe-properties-live1'),
+  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260701-user-flow-npshr1')
+    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260701-user-flow-autosolve1'),
   'Pump edit fast lane must load before realtime calculation defense.'
 );
 assert(
-  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260630-pipe-properties-live1'),
+  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260701-user-flow-autosolve1'),
   'Manifest must document the realtime calculation defense cache key.'
 );
 assert(

@@ -1,6 +1,7 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-realtime-calculation-defense.v12';
+  const VERSION = 'engineering-realtime-calculation-defense.v13';
+  const DEFAULT_SOURCE_FLOW_INPUT_MODE = 'Volumetric Flow';
   const AUTO_SOLVE_DEBOUNCE_MS = 240;
   const AUTO_SOLVE_CHANGE_DEBOUNCE_MS = 90;
   const INPUT_LATENCY_SHIELD_MS = 1250;
@@ -82,6 +83,28 @@
       // Protected runtime can hide direct globals.
     }
     return root.__npshGlobalModel || root.globalModel || {};
+  }
+
+  function normalizeSourceFlowInputDefaults(model = runtimeModel()) {
+    let changed = 0;
+    Object.values(model || {}).forEach((node) => {
+      if (!node || node.type !== 'source') return;
+      if (!node.props || typeof node.props !== 'object') node.props = {};
+      const current = String(node.props.flowInputMode || '').trim();
+      if (!current) {
+        node.props.flowInputMode = DEFAULT_SOURCE_FLOW_INPUT_MODE;
+        changed += 1;
+      }
+    });
+    if (changed) {
+      root.__engineeringSourceFlowInputDefaults = {
+        version: VERSION,
+        defaultMode: DEFAULT_SOURCE_FLOW_INPUT_MODE,
+        changed,
+        updatedAt: new Date().toISOString()
+      };
+    }
+    return changed;
   }
 
   function resolveNodeId(target) {
@@ -1189,6 +1212,7 @@
     const current = root.updateSimulation;
     if (typeof current !== 'function' || current.__engineeringRealtimeCalculationDefenseUpdatePatched) return false;
     const wrapped = function realtimeDefenseUpdateSimulationWrapper(...args) {
+      normalizeSourceFlowInputDefaults();
       const options = args[0] && typeof args[0] === 'object' ? args[0] : {};
       const nodeId = options.selectedNodeId || options.nodeId || resolveNodeId(null);
       const reason = options.refreshReason || options.trigger || 'updateSimulation';
@@ -1418,6 +1442,7 @@
     if (root.__engineeringRealtimeCalculationDefenseInstalled) return false;
     root.__engineeringRealtimeCalculationDefenseInstalled = true;
     root.__engineeringRealtimeAutosolvePolicy = AUTOSOLVE_POLICY;
+    normalizeSourceFlowInputDefaults();
 
     if (typeof document !== 'undefined') {
       const onInput = (event) => {
@@ -1437,8 +1462,13 @@
           });
           if (handled?.handled) return;
         }
-        if (!isCalculationInput(target)) return;
         const nodeId = resolveNodeId(target);
+        const normalizedText = normalizedFieldText(fieldTokens(target));
+        if (nodeTypeForTarget(target, nodeId) === 'source' && sourceFieldKey(normalizedText) === 'flowInputMode') {
+          const source = runtimeModel()?.[nodeId];
+          if (source?.props) source.props.__flowInputModeUserSelected = true;
+        }
+        if (!isCalculationInput(target)) return;
         const reason = 'Input changed; waiting for protected backend recalculation.';
         if (isTrustedUserEdit(event)) {
           markUserCalculationIntent('trusted-input', target);
@@ -1512,6 +1542,7 @@
     markInputLatencyShield,
     getInputLatencyShield,
     isInputLatencyShieldActive,
+    normalizeSourceFlowInputDefaults,
     buildPipeSegmentRows,
     enrichPipeCalculationTrace,
     buildCanonicalCalculationState,

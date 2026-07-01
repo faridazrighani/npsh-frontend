@@ -56,7 +56,7 @@ async function waitForNpshApp(page) {
   await page.waitForFunction(() => (
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.updateSimulation === 'function'
-    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v12'
+    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v13'
     && window.CanvasContextDock?.version === 'engineering-canvas-context-dock.v4'
     && window.EngineeringRouteTraceAudit?.version
     && window.EngineeringDefenseExportPackage?.schemaVersion === 'defense-export-package.v1'
@@ -147,6 +147,33 @@ async function collectUiProjectState(page) {
       instrumentLinks: copyArray(state?.instrumentLinks || window.instrumentLinks)
     };
   });
+}
+
+async function readPumpCanvasRow(page, pumpId, label) {
+  return page.evaluate(({ pumpId, label }) => {
+    const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+    const panels = Array.from(document.querySelectorAll('.pump-live-params'));
+    const panel = panels.find((candidate) => {
+      const object = candidate.closest('.pfd-object, [data-node-id], [data-object-id]');
+      return object?.dataset?.nodeId === pumpId
+        || object?.dataset?.objectId === pumpId
+        || normalize(object?.textContent).includes(pumpId)
+        || normalize(candidate.textContent).includes(pumpId);
+    }) || panels[0] || null;
+    if (!panel) return null;
+    const row = Array.from(panel.querySelectorAll('.pump-live-param-row')).find((candidate) => (
+      normalize(candidate.querySelector('.pump-live-param-label')?.textContent) === label
+    ));
+    if (!row) return null;
+    const value = normalize(row.querySelector('.pump-live-param-value, strong')?.textContent);
+    const unit = normalize(row.querySelector('.pump-live-param-unit')?.textContent);
+    return {
+      value: unit && value && !value.endsWith(unit) ? `${value} ${unit}` : value,
+      text: normalize(row.textContent),
+      previewVersion: panel.dataset.canvasFastPreview || '',
+      runtimeVersion: window.EngineeringCanvasFastPreviewRuntime?.version || ''
+    };
+  }, { pumpId, label });
 }
 
 function runDirectBackendSimulation(projectState, pumpId) {
@@ -774,6 +801,213 @@ test('Fluid Basis temperature lock warning appears when journal properties stay 
   expect(warningState.text).toMatch(/locked\/manual\/journal/i);
 });
 
+test('Source Properties shows Volumetric Flow in Boundary Data and removes Source Definition plus Flow Specification', async ({ page }) => {
+  const caseData = loadJournalCase('simulation-case-1');
+  await waitForNpshApp(page);
+  await loadProject(page, caseData);
+
+  await page.evaluate((sourceId) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const source = model[sourceId];
+    if (!source) throw new Error(`Missing source ${sourceId}`);
+    source.props.flowInputMode = 'Mass Flow';
+    source.props.massFlow = 9500;
+    delete source.props.flow;
+    window.currentSelectedNode = sourceId;
+    const taskRoot = window.createObjectPropertiesTaskRoot?.(sourceId);
+    const taskWindow = taskRoot && typeof window.openPersistentObjectPropertiesTaskWindow === 'function'
+      ? window.openPersistentObjectPropertiesTaskWindow('object', sourceId, `${sourceId} Properties`, taskRoot, { skipDismissedGuard: true })
+      : null;
+    window.renderSidebar?.(sourceId, { taskWindow, skipDismissedGuard: true, preserveScroll: true });
+    window.EngineeringSourceVolumetricOnlyRuntime?.install?.();
+    window.EngineeringSourceVolumetricOnlyRuntime?.cleanup?.(document);
+  }, caseData.sourceId);
+
+  await page.waitForFunction(() => (
+    window.EngineeringSourceVolumetricOnlyRuntime?.version === '2026.07-source-boundary-clean1'
+    && document.documentElement.dataset.sourceVolumetricOnlyRuntime === '2026.07-source-boundary-clean1'
+  ), null, { timeout: 10000 });
+
+  const state = await page.evaluate((sourceId) => {
+    const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+    const isVisible = (element) => {
+      if (!element) return false;
+      const style = getComputedStyle(element);
+      return style.display !== 'none' && style.visibility !== 'hidden' && element.getClientRects().length > 0;
+    };
+    const rowOf = (element) => element?.closest?.('.object-task-field-row, .pipe-task-field-row, tr, .prop-row') || element;
+    const scopes = Array.from(document.querySelectorAll('#taskWindow, .task-window, .object-properties-task-body, .task-window-body, [role="dialog"]'));
+    const scope = scopes.find((candidate) => (
+      candidate.querySelector?.(`[data-node="${sourceId}"]`)
+      || normalize(candidate.textContent).includes(sourceId)
+    )) || document;
+    const visibleRows = Array.from(scope.querySelectorAll('.object-task-field-row, .pipe-task-field-row, tr, .prop-row, h2, h3, h4, .task-section-title, .object-task-section-title'))
+      .filter(isVisible)
+      .map((row) => ({
+        text: normalize(row.textContent),
+        key: row.dataset?.propKey || row.querySelector?.('[data-key]')?.dataset?.key || ''
+      }));
+    const flowInput = scope.querySelector(`input[data-node="${sourceId}"][data-key="flow"]`);
+    const flowRow = rowOf(flowInput);
+    const flowRowIndex = visibleRows.findIndex((row) => row.text === normalize(flowRow?.textContent));
+    const boundaryIndex = visibleRows.findIndex((row) => /^Boundary Data$/i.test(row.text));
+    const nextSectionIndex = visibleRows.findIndex((row, index) => (
+      index > boundaryIndex
+      && !row.key
+      && row.text
+      && row.text.length < 80
+      && /definition|fluid basis|npsh|calculation/i.test(row.text)
+    ));
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const source = model[sourceId] || {};
+    return {
+      text: normalize(scope.textContent),
+      runtime: window.EngineeringSourceVolumetricOnlyRuntime?.version || '',
+      flowMode: source.props?.flowInputMode || '',
+      flow: source.props?.flow ?? null,
+      massFlow: source.props?.massFlow ?? null,
+      density: model.FLUID?.props?.density ?? null,
+      hasFlowInput: !!flowInput && isVisible(flowInput),
+      flowRowText: normalize(flowRow?.textContent),
+      boundaryIndex,
+      flowRowIndex,
+      nextSectionIndex,
+      visibleFlowSpec: visibleRows.some((row) => /Flow Specification/i.test(row.text)),
+      visibleSourceDefinition: visibleRows.some((row) => /Source Definition/i.test(row.text)),
+      visibleSourceType: visibleRows.some((row) => /^Source Type\b/i.test(row.text)),
+      visibleTypeMeaning: visibleRows.some((row) => /^Type Meaning\b/i.test(row.text)),
+      visibleFlowInputMode: visibleRows.some((row) => /Flow Input Mode/i.test(row.text)),
+      visibleMassFlow: visibleRows.some((row) => /^Mass Flow\b/i.test(row.text)) || !!Array.from(scope.querySelectorAll('input[data-key="massFlow"], input[name="massFlow"]')).find(isVisible),
+      visibleRows
+    };
+  }, caseData.sourceId);
+
+  expect(state.runtime).toBe('2026.07-source-boundary-clean1');
+  expect(state.flowMode).toBe('Volumetric Flow');
+  expect(Number(state.flow)).toBeCloseTo(9500 / Number(state.density), 4);
+  expect(Number(state.massFlow)).toBeCloseTo(9500, 2);
+  expect(state.hasFlowInput).toBe(true);
+  expect(state.flowRowText).toMatch(/Volumetric Flow/i);
+  expect(state.visibleFlowSpec).toBe(false);
+  expect(state.visibleSourceDefinition).toBe(false);
+  expect(state.visibleSourceType).toBe(false);
+  expect(state.visibleTypeMeaning).toBe(false);
+  expect(state.visibleFlowInputMode).toBe(false);
+  expect(state.visibleMassFlow).toBe(false);
+  expect(state.boundaryIndex).toBeGreaterThanOrEqual(0);
+  expect(state.flowRowIndex).toBeGreaterThan(state.boundaryIndex);
+  if (state.nextSectionIndex >= 0) expect(state.flowRowIndex).toBeLessThan(state.nextSectionIndex);
+});
+
+test('Source Properties input edits stay clean, stable, and responsive', async ({ page }) => {
+  const caseData = loadJournalCase('simulation-case-1');
+  await waitForNpshApp(page);
+  await loadProject(page, caseData);
+
+  await page.evaluate((sourceId) => {
+    const taskRoot = window.createObjectPropertiesTaskRoot?.(sourceId);
+    const taskWindow = taskRoot && typeof window.openPersistentObjectPropertiesTaskWindow === 'function'
+      ? window.openPersistentObjectPropertiesTaskWindow('object', sourceId, `${sourceId} Properties`, taskRoot, { skipDismissedGuard: true })
+      : null;
+    window.currentSelectedNode = sourceId;
+    window.renderSidebar?.(sourceId, { taskWindow, skipDismissedGuard: true, preserveScroll: true });
+    window.EngineeringSourceVolumetricOnlyRuntime?.install?.();
+    window.EngineeringSourceVolumetricOnlyRuntime?.cleanup?.(document);
+  }, caseData.sourceId);
+
+  await page.waitForFunction((sourceId) => {
+    const win = document.querySelector(`.persistent-object-properties-task-window[data-node-id="${sourceId}"]`);
+    return !!win
+      && !win.hidden
+      && !!win.querySelector('input[data-key="pressure"]')
+      && !!win.querySelector('input[data-key="flow"]')
+      && !!win.querySelector('input[data-key="elevation"]');
+  }, caseData.sourceId, { timeout: 15000 });
+
+  const sourceWindow = page.locator(`.persistent-object-properties-task-window[data-node-id="${caseData.sourceId}"]`).first();
+  const beforeRect = await sourceWindow.boundingBox();
+  expect(beforeRect).toBeTruthy();
+
+  await page.evaluate((sourceId) => {
+    const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+    const isVisible = (element) => {
+      if (!element) return false;
+      const style = getComputedStyle(element);
+      return style.display !== 'none' && style.visibility !== 'hidden' && element.getClientRects().length > 0;
+    };
+    window.__sourceInputCleanSamples = [];
+    window.__sourceInputCleanStop = false;
+    const sample = () => {
+      const win = document.querySelector(`.persistent-object-properties-task-window[data-node-id="${sourceId}"]`);
+      if (win && isVisible(win)) {
+        const visibleText = Array.from(win.querySelectorAll('.object-task-field-row, .pipe-task-field-row, tr, h2, h3, h4, .task-section-title, .object-task-section-title'))
+          .filter(isVisible)
+          .map((row) => normalize(row.textContent))
+          .join(' | ');
+        if (/\b(Source Definition|Source Type|Type Meaning|Flow Specification|Flow Input Mode|Mass Flow)\b/i.test(visibleText)) {
+          window.__sourceInputCleanSamples.push({ time: performance.now(), visibleText });
+        }
+      }
+      if (!window.__sourceInputCleanStop) requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  }, caseData.sourceId);
+
+  await sourceWindow.locator('input[data-key="pressure"]').first().fill('2.250');
+  await sourceWindow.locator('input[data-key="flow"]').first().fill('11.500');
+  await sourceWindow.locator('input[data-key="elevation"]').first().fill('1.250');
+
+  await page.waitForFunction((sourceId) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const state = window.__engineeringCalculationDefenseRealtimeState || {};
+    const source = model[sourceId];
+    return source?.props
+      && Number(source.props.pressure) === 2.25
+      && Number(source.props.flow) === 11.5
+      && Number(source.props.elevation) === 1.25
+      && state.status !== 'Calculating';
+  }, caseData.sourceId, { timeout: 20000 });
+
+  await page.waitForTimeout(600);
+  const editState = await page.evaluate((sourceId) => {
+    window.__sourceInputCleanStop = true;
+    const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+    const isVisible = (element) => {
+      if (!element) return false;
+      const style = getComputedStyle(element);
+      return style.display !== 'none' && style.visibility !== 'hidden' && element.getClientRects().length > 0;
+    };
+    const win = document.querySelector(`.persistent-object-properties-task-window[data-node-id="${sourceId}"]`);
+    const rows = Array.from(win?.querySelectorAll?.('.object-task-field-row, .pipe-task-field-row, tr, h2, h3, h4, .task-section-title, .object-task-section-title') || [])
+      .filter(isVisible)
+      .map((row) => normalize(row.textContent));
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const source = model[sourceId] || {};
+    return {
+      samples: window.__sourceInputCleanSamples || [],
+      text: rows.join(' | '),
+      pressure: source.props?.pressure,
+      flow: source.props?.flow,
+      elevation: source.props?.elevation,
+      runtime: window.EngineeringSourceVolumetricOnlyRuntime?.version || '',
+      realtimeStatus: window.__engineeringCalculationDefenseRealtimeState?.status || ''
+    };
+  }, caseData.sourceId);
+  const afterRect = await sourceWindow.boundingBox();
+
+  expect(editState.runtime).toBe('2026.07-source-boundary-clean1');
+  expect(editState.samples).toEqual([]);
+  expect(editState.text).not.toMatch(/\b(Source Definition|Source Type|Type Meaning|Flow Specification|Flow Input Mode|Mass Flow)\b/i);
+  expect(Number(editState.pressure)).toBeCloseTo(2.25, 3);
+  expect(Number(editState.flow)).toBeCloseTo(11.5, 3);
+  expect(Number(editState.elevation)).toBeCloseTo(1.25, 3);
+  expect(afterRect).toBeTruthy();
+  expect(Math.abs(afterRect.x - beforeRect.x)).toBeLessThanOrEqual(4);
+  expect(Math.abs(afterRect.y - beforeRect.y)).toBeLessThanOrEqual(4);
+  expect(Math.abs(afterRect.width - beforeRect.width)).toBeLessThanOrEqual(8);
+  expect(Math.abs(afterRect.height - beforeRect.height)).toBeLessThanOrEqual(12);
+});
+
 test('Fluid Basis temperature edit autosolves pump route without solver click', async ({ page }, testInfo) => {
   const caseData = loadJournalCase('simulation-case-1');
   await waitForNpshApp(page);
@@ -844,6 +1078,152 @@ test('Fluid Basis temperature edit autosolves pump route without solver click', 
       autosolve: autoSummary,
       backend: backendSummary,
       calculationId: autoBody.calculationId
+    }, null, 2),
+    contentType: 'application/json'
+  });
+});
+
+test('Canvas Pump/Pipe/SNK readouts fast-preview before backend final after Fluid Basis temperature input', async ({ page }, testInfo) => {
+  const caseData = loadJournalCase('simulation-case-1');
+  let delayNextSimulation = false;
+
+  await page.route('**/api/simulate', async (route) => {
+    if (delayNextSimulation) {
+      delayNextSimulation = false;
+      await new Promise((resolve) => setTimeout(resolve, 650));
+    }
+    await route.continue();
+  });
+
+  await waitForNpshApp(page);
+  await page.waitForFunction(() => window.EngineeringCanvasFastPreviewRuntime?.version === '2026.07-canvas-fast-preview2', null, { timeout: 15000 });
+  await loadProject(page, caseData);
+
+  const baseline = await runProtectedSolve(page, caseData);
+  const baselineSummary = temperatureSummaryFromSimulation(baseline);
+  expectFiniteTemperatureSummary(baselineSummary, 'baseline fast preview');
+
+  await page.waitForFunction((pumpId) => {
+    const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+    return Array.from(document.querySelectorAll('.pump-live-params')).some((panel) => (
+      normalize(panel.textContent).includes('NPSH Available')
+      && (normalize(panel.textContent).includes(pumpId) || document.querySelectorAll('.pump-live-params').length === 1)
+    ));
+  }, caseData.pumpId, { timeout: 15000 });
+
+  const baselineReadout = await readPumpCanvasRow(page, caseData.pumpId, 'NPSH Available');
+  expect(baselineReadout?.value).toBeTruthy();
+
+  await page.locator('#btn-fluid-basis').click();
+  const temperatureInput = page.locator('#fluid-task-temp').first();
+  await expect(temperatureInput).toBeVisible({ timeout: 10000 });
+
+  delayNextSimulation = true;
+  const autoResponsePromise = page.waitForResponse((response) => (
+    /\/api\/simulate(?:[?#]|$)/.test(response.url())
+    && response.request().method() === 'POST'
+    && response.status() === 200
+  ), { timeout: 30000 });
+
+  await temperatureInput.click();
+  await temperatureInput.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
+  await page.evaluate(({ pumpId, previousValue }) => {
+    const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+    window.__canvasFastPreviewE2EStart = performance.now();
+    window.__canvasFastPreviewObservedElapsedMs = null;
+    const sample = () => {
+      const panels = Array.from(document.querySelectorAll('.pump-live-params'));
+      const panel = panels.find((candidate) => {
+        const object = candidate.closest('.pfd-object, [data-node-id], [data-object-id]');
+        return object?.dataset?.nodeId === pumpId
+          || object?.dataset?.objectId === pumpId
+          || normalize(object?.textContent).includes(pumpId)
+          || panels.length === 1;
+      }) || null;
+      const row = Array.from(panel?.querySelectorAll?.('.pump-live-param-row') || []).find((candidate) => (
+        normalize(candidate.querySelector('.pump-live-param-label')?.textContent) === 'NPSH Available'
+      ));
+      const value = normalize(row?.querySelector('.pump-live-param-value, strong')?.textContent);
+      if (value && value !== previousValue && panel?.dataset?.canvasFastPreview === '2026.07-canvas-fast-preview2') {
+        window.__canvasFastPreviewObservedElapsedMs = performance.now() - window.__canvasFastPreviewE2EStart;
+        return;
+      }
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  }, {
+    pumpId: caseData.pumpId,
+    previousValue: baselineReadout.value.replace(/\s+m$/i, '')
+  });
+  await temperatureInput.type('80');
+
+  const previewHandle = await page.waitForFunction(({ pumpId, previousValue }) => {
+    const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+    const panels = Array.from(document.querySelectorAll('.pump-live-params'));
+    const panel = panels.find((candidate) => {
+      const object = candidate.closest('.pfd-object, [data-node-id], [data-object-id]');
+      return object?.dataset?.nodeId === pumpId
+        || object?.dataset?.objectId === pumpId
+        || normalize(object?.textContent).includes(pumpId)
+        || panels.length === 1;
+    }) || null;
+    if (!panel) return false;
+    const row = Array.from(panel.querySelectorAll('.pump-live-param-row')).find((candidate) => (
+      normalize(candidate.querySelector('.pump-live-param-label')?.textContent) === 'NPSH Available'
+    ));
+    const value = normalize(row?.querySelector('.pump-live-param-value, strong')?.textContent);
+    if (!value || value === previousValue) return false;
+    if (window.EngineeringCanvasFastPreviewRuntime?.version !== '2026.07-canvas-fast-preview2') return false;
+    if (document.documentElement.dataset.canvasFastPreviewRuntime !== '2026.07-canvas-fast-preview2') return false;
+    return {
+      elapsedMs: performance.now() - (window.__canvasFastPreviewE2EStart || performance.now()),
+      observedElapsedMs: window.__canvasFastPreviewObservedElapsedMs,
+      value,
+      previousValue,
+      panelPreviewVersion: panel.dataset.canvasFastPreview || '',
+      reason: document.documentElement.dataset.canvasFastPreviewReason || '',
+      pipePreviewCount: document.querySelectorAll('#svg-lines .pipe-hydraulic-label[data-canvas-fast-preview="2026.07-canvas-fast-preview2"]').length,
+      sinkPreviewCount: document.querySelectorAll('.sink-live-params[data-canvas-fast-preview="2026.07-canvas-fast-preview2"]').length
+    };
+  }, {
+    pumpId: caseData.pumpId,
+    previousValue: baselineReadout.value.replace(/\s+m$/i, '')
+  }, { timeout: 900 });
+  const preview = await previewHandle.jsonValue();
+
+  expect(preview.observedElapsedMs ?? preview.elapsedMs).toBeLessThan(900);
+  expect(preview.panelPreviewVersion).toBe('2026.07-canvas-fast-preview2');
+  expect(preview.pipePreviewCount).toBeGreaterThan(0);
+  expect(preview.sinkPreviewCount).toBeGreaterThan(0);
+
+  const autoResponse = await autoResponsePromise;
+  const autoBody = await autoResponse.json();
+  await page.waitForFunction(({ pumpId, calculationId }) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const results = model[pumpId]?.results || {};
+    const state = window.__engineeringCalculationDefenseRealtimeState || {};
+    const activeId = results.calculationAudit?.calculationId || state.calculationId || null;
+    return activeId === calculationId
+      && state.status === 'Current'
+      && results.backendValidationStatus === 'Connected';
+  }, {
+    pumpId: caseData.pumpId,
+    calculationId: autoBody.calculationId
+  }, { timeout: 15000 });
+
+  const finalSummary = temperatureSummaryFromSimulation(autoBody);
+  expectFiniteTemperatureSummary(finalSummary, 'fast preview backend final');
+  expect(finalSummary.temperature).toBe(80);
+  expect(finalSummary.npsha).not.toBeCloseTo(baselineSummary.npsha, 4);
+
+  await testInfo.attach('canvas-fast-preview-temperature-input.json', {
+    body: JSON.stringify({
+      caseId: 'simulation-case-1',
+      action: 'Typed Fluid Basis Temperature=80 while delaying the backend response.',
+      baselineReadout,
+      preview,
+      baseline: baselineSummary,
+      backendFinal: finalSummary
     }, null, 2),
     contentType: 'application/json'
   });

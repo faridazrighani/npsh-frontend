@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const VERSION = "2026.06-live-parameter-stable3";
+  const VERSION = "2026.07-live-parameter-stable5";
   const OBJECT_SELECTOR = ".pfd-object";
   const PANEL_SELECTOR = ".pump-live-params, .tank-live-params, .source-live-params, .sink-live-params";
   const ROW_SELECTOR = ".pump-live-param-row, .tank-live-param-row, .source-live-param-row, .sink-live-param-row";
@@ -12,6 +12,9 @@
   const SOLVER_EVENTS = [
     "npsh:calculation-start",
     "npsh:calculation-applying-results",
+    "npsh:calculation-dependency-changed",
+    "npsh:realtime-autosolve-scheduled",
+    "npsh:realtime-autosolve-start",
     "npsh:linked-views-refreshed",
     "npsh:calculation-current",
     "npsh:realtime-autosolve-complete"
@@ -28,10 +31,35 @@
   const BUSY_SETTLE_MS = 700;
   const RECONCILE_DELAY_MS = 90;
   const CLEAR_IN_PROGRESS_FLAG = "__npshCanvasClearInProgress";
+  const PUMP_PROTECTED_SECTIONS = new Set(["STATUS", "SUCTION", "DISCHARGE"]);
+  const PUMP_PROTECTED_ROWS = new Set([
+    "Hydraulic NPSH",
+    "Backend Valid.",
+    "Flow",
+    "Suction Press.",
+    "NPSH Available",
+    "NPSH Required",
+    "NPSH Margin",
+    "NPSH Ratio",
+    "Pump Head",
+    "Required Head",
+    "Discharge Press."
+  ]);
+  const SINK_PROTECTED_ROWS = new Set([
+    "Mode",
+    "Sink Flow",
+    "Sink P abs",
+    "Sink Elev.",
+    "Sink Head",
+    "Boundary",
+    "Head Res.",
+    "Max Elev."
+  ]);
 
   const registry = new Map();
   const detachedPanels = new Map();
   const frozenGeometry = new WeakMap();
+  const frozenPanelNodes = new WeakMap();
   const pendingPanelAttributes = new WeakMap();
   const pendingAttributePanels = new Set();
   const patchedFunctions = new Set();
@@ -41,6 +69,7 @@
   let orphanCleanupTimer = null;
   let busyUntil = 0;
   let installAttempts = 0;
+  let canvasViewportSnapshot = null;
 
   function nowMs() {
     const value = root.performance?.now?.();
@@ -196,16 +225,90 @@
     return Array.from(panel?.querySelectorAll?.(ROW_SELECTOR) || []).map(rowLabel).filter(Boolean);
   }
 
+  function stableSectionLabel(node) {
+    const text = normalizeText(node?.textContent || "").toUpperCase();
+    if (text.startsWith("STATUS")) return "STATUS";
+    if (text.startsWith("SUCTION")) return "SUCTION";
+    if (text.startsWith("DISCHARGE")) return "DISCHARGE";
+    return text;
+  }
+
+  function stableNodeLabel(node) {
+    if (node?.matches?.(SECTION_SELECTOR)) return stableSectionLabel(node);
+    if (node?.matches?.(ROW_SELECTOR)) return rowLabel(node);
+    return "";
+  }
+
+  function stableNodeKey(node) {
+    if (node?.matches?.(SECTION_SELECTOR)) return `section:${stableNodeLabel(node)}`;
+    if (node?.matches?.(ROW_SELECTOR)) return `row:${stableNodeLabel(node)}`;
+    return "";
+  }
+
+  function shouldSnapshotPanelNode(panel, node) {
+    const label = stableNodeLabel(node);
+    if (!label) return false;
+    if (panel?.classList?.contains("pump-live-params")) {
+      if (node?.matches?.(SECTION_SELECTOR)) return PUMP_PROTECTED_SECTIONS.has(label.toUpperCase());
+      return PUMP_PROTECTED_ROWS.has(label);
+    }
+    if (panel?.classList?.contains("sink-live-params")) {
+      return node?.matches?.(ROW_SELECTOR) && SINK_PROTECTED_ROWS.has(label);
+    }
+    return true;
+  }
+
   function structureSignature(panel) {
     const parts = [];
     Array.from(panel?.children || []).forEach((child) => {
       if (child?.matches?.(SECTION_SELECTOR)) {
-        parts.push(`section:${normalizeText(child.textContent).toUpperCase()}`);
+        parts.push(`section:${stableSectionLabel(child)}`);
       } else if (child?.matches?.(ROW_SELECTOR)) {
         parts.push(`row:${rowLabel(child)}`);
       }
     });
     return parts.join("||");
+  }
+
+  function capturePanelNodeSnapshots(panel) {
+    if (!panel?.matches?.(PANEL_SELECTOR)) return;
+    const snapshots = Array.from(panel.querySelectorAll?.(`${SECTION_SELECTOR}, ${ROW_SELECTOR}`) || [])
+      .filter((node) => shouldSnapshotPanelNode(panel, node))
+      .map((node) => ({ key: stableNodeKey(node), node: node.cloneNode(true) }))
+      .filter((item) => item.key);
+    frozenPanelNodes.set(panel, snapshots);
+    if (snapshots.length) panel.dataset.liveParameterStableNodeSnapshot = VERSION;
+  }
+
+  function currentPanelNodeKeys(panel) {
+    return new Set(
+      Array.from(panel?.querySelectorAll?.(`${SECTION_SELECTOR}, ${ROW_SELECTOR}`) || [])
+        .map(stableNodeKey)
+        .filter(Boolean)
+    );
+  }
+
+  function insertRestoredPanelNode(panel, restoredNode, snapshotIndex, snapshots) {
+    const followingKeys = new Set(snapshots.slice(snapshotIndex + 1).map((item) => item.key));
+    const followingNode = Array.from(panel.children || []).find((child) => followingKeys.has(stableNodeKey(child))) || null;
+    panel.insertBefore(restoredNode, followingNode);
+  }
+
+  function restoreMissingPanelNodes(panel) {
+    if (!isBusy() || !panel?.matches?.(PANEL_SELECTOR)) return 0;
+    const snapshots = frozenPanelNodes.get(panel);
+    if (!snapshots?.length) return 0;
+    let changed = 0;
+    const existingKeys = currentPanelNodeKeys(panel);
+    snapshots.forEach((snapshot, index) => {
+      if (existingKeys.has(snapshot.key)) return;
+      const restoredNode = snapshot.node.cloneNode(true);
+      insertRestoredPanelNode(panel, restoredNode, index, snapshots);
+      existingKeys.add(snapshot.key);
+      changed += 1;
+    });
+    if (changed) panel.dataset.liveParameterStableNodesRestored = VERSION;
+    return changed;
   }
 
   function panelRowsByLabel(panel) {
@@ -241,8 +344,30 @@
     return !!root[CLEAR_IN_PROGRESS_FLAG];
   }
 
+  function captureCanvasViewport() {
+    const canvas = getCanvas();
+    if (!canvas) return null;
+    canvasViewportSnapshot = {
+      canvas,
+      scrollLeft: canvas.scrollLeft || 0,
+      scrollTop: canvas.scrollTop || 0
+    };
+    canvas.dataset.liveParameterStableViewport = VERSION;
+    return canvasViewportSnapshot;
+  }
+
+  function restoreCanvasViewport() {
+    const snapshot = canvasViewportSnapshot;
+    if (!snapshot?.canvas?.isConnected) return false;
+    snapshot.canvas.scrollLeft = snapshot.scrollLeft;
+    snapshot.canvas.scrollTop = snapshot.scrollTop;
+    snapshot.canvas.dataset.liveParameterStableViewportRestored = VERSION;
+    return true;
+  }
+
   function markBusy() {
     if (isCanvasClearInProgress()) return;
+    captureCanvasViewport();
     freezeAllPanelGeometry();
     busyUntil = Math.max(busyUntil, nowMs() + BUSY_SETTLE_MS);
     scheduleBusyFlush();
@@ -250,6 +375,11 @@
 
   function freezePanelGeometry(panel) {
     if (!panel?.matches?.(PANEL_SELECTOR)) return;
+    const rect = typeof panel.getBoundingClientRect === "function" ? panel.getBoundingClientRect() : null;
+    const rectWidth = Math.ceil(rect?.width || 0);
+    const rectHeight = Math.ceil(rect?.height || 0);
+    if (rectWidth > 0 && !panel.style?.minWidth) panel.style.minWidth = `${rectWidth}px`;
+    if (rectHeight > 0 && !panel.style?.minHeight) panel.style.minHeight = `${rectHeight}px`;
     frozenGeometry.set(panel, {
       style: panel.getAttribute("style") || "",
       transform: panel.style?.transform || "",
@@ -258,8 +388,11 @@
       right: panel.style?.right || "",
       bottom: panel.style?.bottom || "",
       width: panel.style?.width || "",
-      height: panel.style?.height || ""
+      height: panel.style?.height || "",
+      minWidth: panel.style?.minWidth || "",
+      minHeight: panel.style?.minHeight || ""
     });
+    capturePanelNodeSnapshots(panel);
     panel.dataset.liveParameterStableGeometry = VERSION;
   }
 
@@ -278,12 +411,13 @@
       else panel.removeAttribute("style");
       changed += 1;
     }
-    ["transform", "left", "top", "right", "bottom", "width", "height"].forEach((property) => {
+    ["transform", "left", "top", "right", "bottom", "width", "height", "minWidth", "minHeight"].forEach((property) => {
       if (panel.style?.[property] !== frozen[property]) {
         panel.style[property] = frozen[property];
         changed += 1;
       }
     });
+    changed += restoreMissingPanelNodes(panel);
     if (changed) panel.dataset.liveParameterStableGeometryRestored = VERSION;
     return changed;
   }
@@ -343,6 +477,7 @@
       scheduleBusyFlush();
       return;
     }
+    restoreCanvasViewport();
     pendingAttributePanels.forEach((panel) => {
       const attributes = pendingPanelAttributes.get(panel);
       pendingPanelAttributes.delete(panel);
@@ -588,6 +723,15 @@
           ? mutation.target
           : mutation.target?.closest?.(PANEL_SELECTOR);
         if (panel) restorePanelGeometry(panel);
+        if (mutation.target === getCanvas()) restoreCanvasViewport();
+      } else if (mutation.type === "childList") {
+        const panel = mutation.target?.matches?.(PANEL_SELECTOR)
+          ? mutation.target
+          : mutation.target?.closest?.(PANEL_SELECTOR);
+        if (panel) {
+          restoreMissingPanelNodes(panel);
+          registerPanel(panel);
+        }
       }
     });
     if (shouldReconcile) scheduleReconcile();
@@ -656,9 +800,9 @@
         scheduleReconcile(eventName === "npsh:calculation-current" ? 0 : RECONCILE_DELAY_MS);
       }, true);
     });
-    ["pointerdown", "pointermove", "pointerup", "pointercancel"].forEach((eventName) => {
+    ["pointerdown", "pointermove", "pointerup", "pointercancel", "mousedown", "mousemove", "mouseup", "dragstart", "drag", "dragend", "touchstart", "touchmove", "touchend", "touchcancel"].forEach((eventName) => {
       document.addEventListener(eventName, (event) => {
-        if (event.target?.closest?.(".pfd-object, #svg-lines, .pfd-canvas")) {
+        if (event.target?.closest?.(`.pfd-object, #svg-lines, .pfd-canvas, ${PANEL_SELECTOR}`)) {
           markBusy();
           scheduleReconcile(eventName === "pointerup" ? RECONCILE_DELAY_MS : 160);
         }
@@ -696,7 +840,9 @@
     panelKey,
     structureSignature,
     stabilizePanelFromReplacement,
-    syncMatchingRows
+    syncMatchingRows,
+    captureCanvasViewport,
+    restoreCanvasViewport
   };
 
   root.EngineeringLiveParameterStableRuntime = api;

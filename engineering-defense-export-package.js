@@ -9,7 +9,7 @@
     schemaVersion: 'src-standard-form.v1',
     lockVersion: 'source-standard-form-all-surfaces-v1',
     valuePolicy: 'live-user-import-or-calculated-values-only',
-    requiredSections: Object.freeze(['Source Definition', 'Boundary Data', 'Flow Specification', 'Fluid Basis Link'])
+    requiredSections: Object.freeze(['Boundary Data', 'Fluid Basis Link'])
   });
 
   function escapeText(value) {

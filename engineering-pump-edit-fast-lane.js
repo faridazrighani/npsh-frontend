@@ -1,7 +1,7 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-pump-edit-fast-lane.v6';
-  const CACHE_KEY = '20260629-live-evidence1';
+  const VERSION = 'engineering-pump-edit-fast-lane.v7';
+  const CACHE_KEY = '20260701-user-flow-npshr1';
   const PUMP_WINDOW_SELECTOR = [
     '.persistent-object-properties-task-window',
     '#taskWindow',
@@ -204,9 +204,19 @@
   function inputValue(target, field) {
     if (target?.type === 'checkbox') return !!target.checked;
     if (target?.tagName === 'SELECT') return target.value;
+    if (field === 'manualNpshr' || field === 'npshr') return normalizeManualNpshrInput(target?.value);
     const numeric = finiteNumber(target?.value);
     if (numeric !== null && !/source|mode|basis|note|data/i.test(field)) return numeric;
     return target?.value;
+  }
+
+  function normalizeManualNpshrInput(value) {
+    if (value === null || value === undefined) return '';
+    const raw = String(value).trim();
+    if (raw === '') return '';
+    const numeric = finiteNumber(raw);
+    if (numeric === null || numeric < 0) return 0;
+    return numeric;
   }
 
   function ensurePumpResults(pump) {
@@ -315,7 +325,8 @@
   }
 
   function resolvePreviewNpshr(pump) {
-    return firstFinite(pump.props?.manualNpshr);
+    const value = normalizeManualNpshrInput(pump.props?.manualNpshr);
+    return value === '' ? null : value;
   }
 
   function canPreviewActualHead(pump, evaluation, field) {
@@ -375,6 +386,14 @@
       pump.results.npshExcess = null;
       pump.results.requiredNpsha = null;
       pump.results.manualNpshrComparisonStatus = 'Not Provided';
+      evaluation.status = 'NPSHr Not Provided';
+      evaluation.hydraulicStatus = 'NPSHr Not Provided';
+      evaluation.engineeringStatus = 'NPSHr Not Provided';
+      evaluation.message = 'Manual NPSHr is not provided.';
+      pump.results.status = 'NPSHr Not Provided';
+      pump.results.hydraulicNpshStatus = 'NPSHr Not Provided';
+      pump.results.engineeringStatus = 'NPSHr Not Provided';
+      pump.results.engineeringMessage = 'Manual NPSHr is not provided.';
     }
     if (npsha !== null && npshr !== null && criteria.valid) {
       const requiredTerms = requiredNpshaByCriteria(npshr, criteria);

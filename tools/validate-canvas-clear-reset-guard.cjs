@@ -28,7 +28,7 @@ const packageJson = JSON.parse(read(packagePath));
 
 assert.ok(indexHtml.includes(cacheKey), "index.html must load the canvas clear/reset guard with the locked cache key.");
 assert.ok(
-  indexHtml.indexOf("engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260629-owner-cleanup1") <
+  indexHtml.indexOf("engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260701-object-card-stability1") <
     indexHtml.indexOf(cacheKey),
   "Canvas clear/reset guard must load after the live parameter stable runtime."
 );
