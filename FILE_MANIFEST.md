@@ -168,7 +168,7 @@ Canvas context dock cache key: engineering-canvas-context-dock-20260628-canvas-d
 Canvas clear/reset guard cache key: engineering-canvas-clear-reset-guard.js?v=20260629-canvas-clear-reset1
 Canvas context dock load placement: post-shell no-click canvas visual hydration pack plus status script fallback; not a synchronous first-paint script tag
 Initial app load placement: Fluid Basis setup prompt is first in body DOM order for LCP; critical CSS reserves the Fluid Basis LCP card and Validate/Solve ribbon label metrics to prevent first-load CLS; shell JS auto-loads on idle; full main CSS, live parameter repaint lock, realtime/status scripts, PFV hydraulic labels, browser cleanup, and route-trace canvas layout cleanup hydrate automatically after shell load so canvas panels normalize without pointer/key input; remaining support scripts stay support-lazy, with first pointer/key activation still acting as an accelerator; Google Auth/GSI is support-lazy and not part of the first render path
-Defense export cache key: engineering-defense-export-package.js?v=20260603-defensev3
+Defense export cache key: engineering-defense-export-package.js?v=20260702-source-boundary-clean1
 Pipe Moody chart audit cache key: engineering-pipe-moody-chart-audit.js?v=20260630-pipe-moody-audit-clean-unused-pipe-fields1
 Runtime API config: same-origin /api/simulate
 NPSH margin runtime cache key: engineering-npsh-margin-runtime.js?v=20260622-local-live-sync1
