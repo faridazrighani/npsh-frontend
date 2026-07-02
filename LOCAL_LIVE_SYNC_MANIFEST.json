@@ -1,12 +1,12 @@
 {
   "schemaVersion": "local-live-sync-manifest.v1",
-  "generatedAt": "2026-07-02T17:40:21.888Z",
+  "generatedAt": "2026-07-02T17:45:31.141Z",
   "purpose": "Keeps the local preview server auditable against the deployed npsh.virsim.id package.",
-  "status": "review-required",
+  "status": "synced",
   "syncChecks": {
     "liveReachable": true,
-    "localIndexMatchesLive": false,
-    "cacheKeysMatch": false,
+    "localIndexMatchesLive": true,
+    "cacheKeysMatch": true,
     "verifiedLiveAssets": false,
     "assetVerificationFailures": 0,
     "apiCommitMatchesOriginMain": true,
@@ -16,8 +16,8 @@
     "frontendRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-frontend",
     "apiRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-api",
     "serverUrl": "http://127.0.0.1:4174/",
-    "frontendCommit": "79f467218828948602bc326efbf1f4eac459df75",
-    "frontendOriginMain": "79f467218828948602bc326efbf1f4eac459df75",
+    "frontendCommit": "4f69f6a21fc4c435759faebae3302ada1811bb13",
+    "frontendOriginMain": "4f69f6a21fc4c435759faebae3302ada1811bb13",
     "apiCommit": "d8b4421ce78964f6bf56613f02907cb1327f0fc2",
     "apiOriginMain": "d8b4421ce78964f6bf56613f02907cb1327f0fc2",
     "releaseIntegrity": {
@@ -551,10 +551,10 @@
     "error": null,
     "index": {
       "statusCode": 200,
-      "sizeBytes": 70574,
-      "sha256": "4df23b94e37eabc5a5a9167f2683f2b7a61b8c981ef3770c5e79844ba4c49aa7",
-      "canonicalSizeBytes": 69136,
-      "canonicalSha256": "8184c5b77408685cd8511fba37093dda2a065e5a2de690d6da84b167d8ccce65",
+      "sizeBytes": 70576,
+      "sha256": "a7625f952e9e5e003ffb1ddf183d92238fee70195e14ccacbc0acdaf4bf6d053",
+      "canonicalSizeBytes": 69138,
+      "canonicalSha256": "e8feda4b6bab159100cd0583c66ee79f23af2437da5b34298c8ecb46aa658f49",
       "canonicalizedLineEndings": true,
       "cacheKeys": [
         "app.bundle.min.js?v=20260621-npsh-margin-options1",
@@ -593,7 +593,7 @@
         "engineering-pump-performance-chart-audit.js?v=20260630-pipe-properties-live1",
         "engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3",
         "engineering-realtime-calculation-defense.js?v=20260701-user-flow-autosolve1",
-        "engineering-route-trace-audit.js?v=20260702-object-status-clean1",
+        "engineering-route-trace-audit.js?v=20260703-sink-boundary-layout1",
         "engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3",
         "engineering-source-temperature-runtime.js?v=20260701-source-volumetric-only1",
         "engineering-source-volumetric-only-runtime.js?v=20260702-source-boundary-clean2",
@@ -605,7 +605,7 @@
     },
     "apiVersion": {
       "statusCode": 200,
-      "sha256": "8885a6b32fc0eef84ee7c49e2f62576ba31bc3f37f9c66e18e6087d1020052b7",
+      "sha256": "184794f8919230d7834142d8bda92096bf3b6fb65ffc428e0491329272413e7d",
       "payload": {
         "ok": true,
         "appName": "GhaniSIM1 NPSH",
@@ -754,18 +754,14 @@
             "parity.fingerprint"
           ]
         },
-        "generatedAt": "2026-07-02T17:40:21.706Z"
+        "generatedAt": "2026-07-02T17:45:30.655Z"
       }
     },
     "verifiedAssets": []
   },
   "differences": {
-    "cacheKeysMissingOnLive": [
-      "engineering-route-trace-audit.js?v=20260703-sink-boundary-layout1"
-    ],
-    "cacheKeysMissingLocally": [
-      "engineering-route-trace-audit.js?v=20260702-object-status-clean1"
-    ],
+    "cacheKeysMissingOnLive": [],
+    "cacheKeysMissingLocally": [],
     "assetVerificationFailures": []
   },
   "cachePolicy": {
