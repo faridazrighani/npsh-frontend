@@ -1,5 +1,5 @@
 (function registerEngineeringRouteTraceAudit(root) {
-  const VERSION = '2026.07-route-trace-audit-v36';
+  const VERSION = '2026.07-route-trace-audit-v37';
   const PANEL_ID = 'engineeringRouteTraceAuditPanel';
   const PANEL_BODY_ID = 'engineeringRouteTraceAuditPanelBody';
   const MENU_BUTTON_ID = 'menu-tools-route-trace-audit';
@@ -1257,11 +1257,102 @@
     return 1;
   }
 
+  function isSinkBoundaryConditionsSectionLabel(value = '') {
+    const label = normalizeText(value);
+    return /^Fluid Out Boundary Conditions$/i.test(label) || /^Boundary Data$/i.test(label);
+  }
+
+  function markSinkBoundaryConditionsHeader(windowNode) {
+    if (!windowNode?.querySelectorAll) return 0;
+    let changed = 0;
+    Array.from(windowNode.querySelectorAll('tr, .object-task-section-title, .prop-section-header, .field-section-title, h2, h3, h4')).forEach((element) => {
+      const headerCell = element.classList?.contains('prop-section-header')
+        ? element
+        : element.querySelector?.('.prop-section-header, .object-task-section-title, .field-section-title') || element;
+      if (!isSinkBoundaryConditionsSectionLabel(headerCell?.textContent || '')) return;
+      const target = element.tagName === 'TR' ? element : (element.closest?.('tr') || element);
+      if (target.dataset?.routeTraceSinkBoundaryHeader !== VERSION) {
+        if (target.dataset) target.dataset.routeTraceSinkBoundaryHeader = VERSION;
+        changed += 1;
+      }
+      if (headerCell?.dataset?.routeTraceSinkBoundaryHeaderCell !== VERSION) {
+        if (headerCell.dataset) headerCell.dataset.routeTraceSinkBoundaryHeaderCell = VERSION;
+        changed += 1;
+      }
+    });
+    return changed;
+  }
+
+  function markSinkBoundaryDataCardRow(row, label) {
+    if (!row?.dataset) return 0;
+    let changed = 0;
+    const addClass = (element, className) => {
+      if (!element?.classList || element.classList.contains(className)) return;
+      element.classList.add(className);
+      changed += 1;
+    };
+    if (row.dataset.routeTraceSinkBoundaryCard !== VERSION) {
+      row.dataset.routeTraceSinkBoundaryCard = VERSION;
+      changed += 1;
+    }
+    if (label && row.dataset.routeTraceSinkBoundaryLabel !== label) {
+      row.dataset.routeTraceSinkBoundaryLabel = label;
+      changed += 1;
+    }
+    addClass(row, 'route-trace-sink-boundary-card');
+    const labelCell = sinkPropertyRowLabelCell(row);
+    const valueCell = sinkPropertyRowValueCell(row);
+    addClass(labelCell, 'route-trace-sink-boundary-label');
+    addClass(valueCell, 'route-trace-sink-boundary-value');
+    Array.from(row.children || []).forEach((child, index) => {
+      if (index >= 2) addClass(child, 'route-trace-sink-boundary-unit');
+    });
+    return changed;
+  }
+
+  function hideLegacySinkCalculatedReadoutBlocks(windowNode, allowed) {
+    if (!windowNode?.querySelectorAll) return 0;
+    let changed = 0;
+    const readoutTextPattern = /^(Calculated Outlet Readout|Attached Pipe|Boundary Pressure Abs\.?|Calc\. Boundary P|Pressure Residual|Static Pipe P|Stagnation P|Flow Rate|Mass Flow|Temperature|Hydraulic Head|Status|Warnings|\+\s*Calculation Trace|Calculation Trace)\b/i;
+    const readoutBodyPattern = /\b(Boundary Mode\s+(?:Free Outlet|Outlet Pressure|Flow Demand)|Evaluated Flow|Flow Demand Achieved|Flow Demand Gap|Required Boundary P|Required Boundary Head|Pipe Endpoint Static P|Pipe Endpoint Stagnation P|Pump NPSHA|Pump NPSHR|NPSH Margin|NPSH Ratio|Boundary Feasibility|Actual Pump Head|Required System Head|Head Residual|Max SNK Elevation|Density Used|Equation Steps|Pump \/ NPSH Relevance|Dependency Chain|References \/ Method)\b/i;
+    const hideFollowingSiblings = (element) => {
+      const start = element.tagName === 'TR' ? element : (element.closest?.('tr') || element);
+      let next = start?.nextElementSibling || null;
+      while (next) {
+        const label = sinkPropertyRowLabel(next);
+        const text = normalizeText(next.textContent || '');
+        if (allowed?.has?.(label) || isSinkBoundaryConditionsSectionLabel(text)) break;
+        changed += setRowHiddenForSinkMode(next, true, 'sink-compact-readout-hidden');
+        next = next.nextElementSibling;
+      }
+    };
+    Array.from(windowNode.querySelectorAll('tr, div, section, article, details, h2, h3, h4, .object-task-section-title, .prop-section-header, .object-summary-card, .summary-card, .fluid-help-metric, .prop-card, .property-card, .sink-readout-card, .boundary-readout-card, .object-task-card')).forEach((element) => {
+      if (element === windowNode || element.classList?.contains('task-window') || element.classList?.contains('task-window-body')) return;
+      if (element.closest?.('[data-route-trace-sink-compact-visible]')) return;
+      const label = sinkPropertyRowLabel(element);
+      if (allowed?.has?.(label)) return;
+      const text = normalizeText(element.textContent || '');
+      if (!text) return;
+      const containsAllowedField = Array.from(element.querySelectorAll?.('tr, .object-task-field-row, .prop-row, .field-row, .property-row') || [])
+        .some((row) => allowed?.has?.(sinkPropertyRowLabel(row)));
+      if (containsAllowedField) return;
+      const firstLine = text.split(/\s{2,}|\n/)[0] || text;
+      if (readoutTextPattern.test(firstLine) || readoutTextPattern.test(text) || readoutBodyPattern.test(text)) {
+        changed += setRowHiddenForSinkMode(element, true, 'sink-compact-readout-hidden');
+        if (/^(Calculated Outlet Readout|\+\s*Calculation Trace|Calculation Trace)\b/i.test(firstLine) || /^(Calculated Outlet Readout|\+\s*Calculation Trace|Calculation Trace)\b/i.test(text)) {
+          hideFollowingSiblings(element);
+        }
+      }
+    });
+    return changed;
+  }
+
   function compactSinkPropertyWindowRows(windowNode, canonical = {}) {
     if (!windowNode?.querySelectorAll) return 0;
     let changed = 0;
     changed += normalizeSinkPropertyLabel(windowNode, 'Demand Flow', 'Flow Demand');
     changed += normalizeSinkPropertyLabel(windowNode, 'Sink Flow Demand', 'Flow Demand');
+    changed += markSinkBoundaryConditionsHeader(windowNode);
 
     const flowText = formatCanvasValue(canonical.sinkFlow, 'm3/h');
     const pressureText = formatCanvasValue(canonical.pressureAbsBar, 'bar a');
@@ -1284,21 +1375,12 @@
         || row.dataset?.routeTraceSinkCompactGenerated === 'true'
       );
       changed += setRowHiddenForSinkMode(row, shouldHide, shouldHide ? 'sink-compact-hidden' : 'sink-compact-visible');
-      if (row.dataset && allowed.has(label)) row.dataset.routeTraceSinkCompactVisible = VERSION;
-    });
-    const readoutTextPattern = /^(Calculated Outlet Readout|Attached Pipe|Boundary Pressure Abs\.?|Calc\. Boundary P|Pressure Residual|Static Pipe P|Stagnation P|Flow Rate|Mass Flow|Temperature|Hydraulic Head|Status|Warnings|\+\s*Calculation Trace|Calculation Trace)\b/i;
-    Array.from(windowNode.querySelectorAll('div, section, article, details, h2, h3, h4, .object-task-section-title, .prop-section-header, .object-summary-card, .summary-card, .fluid-help-metric, .prop-card, .property-card, .sink-readout-card, .boundary-readout-card, .object-task-card')).forEach((element) => {
-      if (element === windowNode || element.classList?.contains('task-window') || element.classList?.contains('task-window-body')) return;
-      const text = normalizeText(element.textContent || '');
-      if (!text) return;
-      const containsAllowedField = Array.from(element.querySelectorAll?.('tr, .object-task-field-row, .prop-row, .field-row, .property-row') || [])
-        .some((row) => allowed.has(sinkPropertyRowLabel(row)));
-      if (containsAllowedField) return;
-      const firstLine = text.split(/\s{2,}|\n/)[0] || text;
-      if (readoutTextPattern.test(firstLine) || readoutTextPattern.test(text)) {
-        changed += setRowHiddenForSinkMode(element, true, 'sink-compact-readout-hidden');
+      if (row.dataset && allowed.has(label)) {
+        row.dataset.routeTraceSinkCompactVisible = VERSION;
+        changed += markSinkBoundaryDataCardRow(row, label);
       }
     });
+    changed += hideLegacySinkCalculatedReadoutBlocks(windowNode, allowed);
     if (windowNode.dataset?.routeTraceSinkCompactProperties !== VERSION) {
       if (windowNode.dataset) windowNode.dataset.routeTraceSinkCompactProperties = VERSION;
       changed += 1;
@@ -1457,6 +1539,7 @@
       if (windowNode.dataset) windowNode.dataset.routeTraceSinkLayoutLock = VERSION;
       changed += 1;
     }
+    changed += markSinkBoundaryConditionsHeader(windowNode);
     changed += collapseSinkTraceSections(windowNode);
     return changed;
   }
@@ -2970,10 +3053,14 @@
       '.route-trace-canvas-overlay-hidden{display:none!important;}',
       '.route-trace-sink-mode-hidden{display:none!important;}',
       '.route-trace-sink-trace-collapsed{display:none!important;}',
-      '.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .object-task-field-row[data-route-trace-sink-compact-visible],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .pipe-task-field-row[data-route-trace-sink-compact-visible],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .prop-row[data-route-trace-sink-compact-visible],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .field-row[data-route-trace-sink-compact-visible]{display:grid!important;grid-template-columns:minmax(132px,.85fr) minmax(190px,1.15fr);align-items:center;gap:8px;min-height:42px;padding:8px 10px!important;border:1px solid #d8e6f2!important;border-radius:5px!important;background:#f8fbff!important;box-sizing:border-box;}',
-      '.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] .prop-label,.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] .field-label,.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] label{min-width:0;color:#17395a;font-size:11px;font-weight:500;line-height:1.25;}',
+      '.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-prop-key="active"],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-prop-key="boundaryMode"],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-prop-key="pipePressureType"],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-prop-key="pressureBasis"],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-prop-key="pressure"],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .object-task-field-row:has([data-key="active"],[name="active"],[data-key="boundaryMode"],[name="boundaryMode"],[data-key="pipePressureType"],[name="pipePressureType"],[data-key="pressureBasis"],[name="pressureBasis"],[data-key="pressure"],[name="pressure"]),.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .pipe-task-field-row:has([data-key="active"],[name="active"],[data-key="boundaryMode"],[name="boundaryMode"],[data-key="pipePressureType"],[name="pipePressureType"],[data-key="pressureBasis"],[name="pressureBasis"],[data-key="pressure"],[name="pressure"]){display:none!important;}',
+      '.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-boundary-header]{display:block!important;width:100%!important;grid-column:1/-1!important;padding:4px 0 8px!important;border:0!important;background:transparent!important;text-align:center!important;box-sizing:border-box;}',
+      '.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-boundary-header] .prop-section-header,.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-boundary-header-cell]{display:block!important;width:100%!important;padding:0!important;border:0!important;background:transparent!important;color:#0b3558!important;text-align:center!important;font-size:12px!important;font-weight:800!important;line-height:1.25!important;}',
+      '.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .object-task-field-row[data-route-trace-sink-compact-visible],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .pipe-task-field-row[data-route-trace-sink-compact-visible],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .prop-row[data-route-trace-sink-compact-visible],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .field-row[data-route-trace-sink-compact-visible],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-boundary-card][data-route-trace-sink-compact-visible]{display:grid!important;grid-template-columns:minmax(132px,.9fr) minmax(180px,1.1fr) auto;align-items:center;column-gap:8px;row-gap:4px;min-height:42px;height:auto!important;padding:7px 9px!important;border:1px solid #cfe0ee!important;border-radius:5px!important;background:#f8fbff!important;box-sizing:border-box;}',
+      '.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] .prop-label,.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] .field-label,.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] label,.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] .route-trace-sink-boundary-label{min-width:0;color:#17395a!important;font-size:11px!important;font-weight:500!important;line-height:1.25!important;}',
       '.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] input,.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] select{width:100%!important;min-width:0!important;max-width:100%!important;height:28px!important;box-sizing:border-box;}',
-      '.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] .prop-value,.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] .field-value,.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] strong{min-width:0;color:#0f365d;font-size:12px;font-weight:800;line-height:1.25;overflow-wrap:anywhere;}',
+      '.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] .prop-value,.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] .field-value,.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] strong,.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] .route-trace-sink-boundary-value{min-width:0;color:#0f365d!important;font-size:12px!important;font-weight:800!important;line-height:1.25!important;overflow-wrap:anywhere;}',
+      '.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] .route-trace-sink-boundary-unit,.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] td:nth-child(n+3),.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] div:nth-child(n+3){justify-self:end;white-space:nowrap;color:#17395a!important;font-size:11px!important;font-weight:600!important;line-height:1.25!important;}',
       '.route-trace-sink-layout-locked .route-trace-sink-trace-toggle .prop-section-header{cursor:pointer;-webkit-user-select:none;user-select:none;}',
       '.route-trace-sink-layout-locked .route-trace-sink-trace-toggle .prop-section-header::before{content:"- ";font-weight:900;}',
       '.route-trace-sink-layout-locked .route-trace-sink-trace-toggle[data-route-trace-sink-trace-collapse="collapsed"] .prop-section-header::before{content:"+ ";}',
@@ -3067,16 +3154,23 @@
   function installSinkPropertyChangeRefresh() {
     if (typeof document === 'undefined' || sinkPropertyChangeRefreshInstalled) return false;
     sinkPropertyChangeRefreshInstalled = true;
-    const schedule = () => [140, 620].forEach((delayMs) => root.setTimeout?.(refreshVisibleAuditSurfaces, delayMs));
+    const schedule = (scope) => {
+      syncSinkPropertyWindowCanonicalReadouts(scope || document);
+      root.requestAnimationFrame?.(() => refreshVisibleAuditSurfaces());
+      [0, 80, 220, 620].forEach((delayMs) => root.setTimeout?.(refreshVisibleAuditSurfaces, delayMs));
+    };
     const onChange = (event) => {
       const target = event.target;
       const key = normalizeText(target?.dataset?.key || target?.name || target?.id || '');
       if (!/boundary|pressure|elevation|flow|demand/i.test(key)) return;
-      if (!target?.closest?.('.persistent-object-properties-task-window, #taskWindow, [data-task-prop-body="true"]')) return;
-      schedule();
+      const scope = target?.closest?.('.persistent-object-properties-task-window, #taskWindow, [data-task-prop-body="true"]');
+      if (!scope) return;
+      schedule(scope);
     };
     document.addEventListener('input', onChange, true);
     document.addEventListener('change', onChange, true);
+    document.addEventListener('input', onChange, false);
+    document.addEventListener('change', onChange, false);
     return true;
   }
 
@@ -3262,7 +3356,16 @@
       if (event.target?.closest?.(`#${MENU_BUTTON_ID}`)) openRouteAuditPanel();
     });
     if (typeof root.MutationObserver === 'function') {
-      const observer = new root.MutationObserver(() => {
+      const observer = new root.MutationObserver((mutations) => {
+        const taskMutation = mutations.some((mutation) => (
+          mutation.target?.closest?.('.persistent-object-properties-task-window, #taskWindow, [data-task-prop-body="true"]')
+          || Array.from(mutation.addedNodes || []).some((node) => node?.nodeType === 1 && (
+            node.matches?.('.persistent-object-properties-task-window, #taskWindow, [data-task-prop-body="true"]')
+            || node.querySelector?.('.persistent-object-properties-task-window, #taskWindow, [data-task-prop-body="true"]')
+            || node.closest?.('.persistent-object-properties-task-window, #taskWindow, [data-task-prop-body="true"]')
+          ))
+        ));
+        if (taskMutation) syncSinkPropertyWindowCanonicalReadouts(document);
         if (routeSurfaceRefreshPending) return;
         routeSurfaceRefreshPending = true;
         root.setTimeout(() => {
@@ -3272,7 +3375,10 @@
       });
       const startRouteSurfaceObserver = () => {
         try {
-          observer.observe(document.getElementById('canvas') || document.body || document.documentElement, { childList: true, subtree: true });
+          const canvas = document.getElementById('canvas');
+          const body = document.body || document.documentElement;
+          if (canvas) observer.observe(canvas, { childList: true, subtree: true });
+          if (body && body !== canvas) observer.observe(body, { childList: true, subtree: true });
           refreshVisibleAuditSurfaces();
         } catch (error) {
           root.__npshRouteTraceAuditObserverError = error;

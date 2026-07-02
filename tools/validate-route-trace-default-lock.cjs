@@ -12,7 +12,7 @@ const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 
-assert.equal(runtime.version, '2026.07-route-trace-audit-v36', 'Route trace audit runtime should expose the locked canvas object-card stability version.');
+assert.equal(runtime.version, '2026.07-route-trace-audit-v37', 'Route trace audit runtime should expose the locked canvas object-card stability version.');
 assert.equal(typeof runtime.openRouteAuditPanel, 'function', 'Dedicated route audit panel should remain available.');
 assert.equal(typeof runtime.pruneDefaultCanvasRouteTraceOverlays, 'function', 'Canvas route trace overlay pruning should be exposed for audit tests.');
 assert.equal(typeof runtime.pruneDefaultPumpRouteTraceRows, 'function', 'Pump route trace row pruning should be exposed for audit tests.');
@@ -95,7 +95,8 @@ assert(runtimeSource.includes('root.refreshPipeCanvasHydraulicLabels'), 'Canvas 
 assert(runtimeSource.includes('characterData: true'), 'Canvas overlay lock should observe text updates in existing panels.');
 assert(runtimeSource.includes('attributes: true'), 'Canvas overlay lock should observe attribute-driven redraws.');
 assert(runtimeSource.includes('routeSurfaceRefreshPending'), 'Route surface refreshes should be throttled for performance.');
-assert(runtimeSource.includes("observer.observe(document.getElementById('canvas') || document.body || document.documentElement, { childList: true, subtree: true })"), 'Global route observer should be scoped and childList-only.');
+assert(runtimeSource.includes("if (canvas) observer.observe(canvas, { childList: true, subtree: true });"), 'Global route observer should watch canvas mutations with childList-only scope.');
+assert(runtimeSource.includes("if (body && body !== canvas) observer.observe(body, { childList: true, subtree: true });"), 'Global route observer should also watch task-window body mutations with childList-only scope.');
 assert(!runtimeSource.includes("observer.observe(document.documentElement, { attributes: true, characterData: true, childList: true, subtree: true })"), 'Global route observer must not watch every document attribute/text mutation.');
 assert(runtimeSource.includes('function patchCanvasOverlayRenderHooks'), 'Canvas overlay lock should run after canvas render/update functions.');
 assert(runtimeSource.includes("'drawConnections'"), 'Canvas overlay lock should hook drawConnections redraws.');
@@ -730,11 +731,11 @@ try {
 }
 
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260702-object-status-clean1'),
+  index.includes('engineering-route-trace-audit.js?v=20260703-sink-boundary-layout1'),
   'Index must load the route trace audit runtime with the default-lock cache key.'
 );
 assert(
-  manifest.includes('Route audit cache key: engineering-route-trace-audit.js?v=20260702-object-status-clean1'),
+  manifest.includes('Route audit cache key: engineering-route-trace-audit.js?v=20260703-sink-boundary-layout1'),
   'Manifest must document the route trace default-lock cache key.'
 );
 

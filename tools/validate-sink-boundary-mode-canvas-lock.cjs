@@ -54,7 +54,7 @@ const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 
-assert.equal(runtime.version, '2026.07-route-trace-audit-v36', 'Route trace runtime should expose the SNK boundary mode canvas lock version.');
+assert.equal(runtime.version, '2026.07-route-trace-audit-v37', 'Route trace runtime should expose the SNK boundary mode canvas lock version.');
 assert.equal(typeof runtime.sinkCanonicalValues, 'function', 'SNK canonical value helper should be exported for audit completeness checks.');
 assert.equal(typeof runtime.sinkModeDisplayValue, 'function', 'SNK mode display helper should be exported for audit completeness checks.');
 assert.equal(typeof runtime.syncSinkPropertyWindowCanonicalReadouts, 'function', 'SNK properties readout sync should be exported for audit completeness checks.');
@@ -183,6 +183,16 @@ assert(runtimeSource.includes('function compactSinkPropertyWindowRows'), 'SNK pr
 assert(runtimeSource.includes("const allowed = new Set(['Flow Demand', 'Volumetric Flow', 'Calculated Abs. Pressure', 'Elevation']);"), 'SNK compact properties should keep only the requested visible rows.');
 assert(runtimeSource.includes("'sink-compact-hidden'"), 'SNK compact properties should hide removed mode/pressure rows without flashing.');
 assert(runtimeSource.includes("'sink-compact-readout-hidden'"), 'SNK compact properties should hide the lower calculated readout block.');
+assert(runtimeSource.includes('function markSinkBoundaryConditionsHeader'), 'SNK Fluid Out Boundary Conditions header should be explicitly marked for the Source Boundary Data layout.');
+assert(runtimeSource.includes('function markSinkBoundaryDataCardRow'), 'SNK compact rows should be marked as Boundary Data cards.');
+assert(runtimeSource.includes('function hideLegacySinkCalculatedReadoutBlocks'), 'SNK compact cleanup should have a dedicated legacy calculated readout sweep.');
+assert(runtimeSource.includes('data-route-trace-sink-boundary-card'), 'SNK compact row markup should expose a Boundary Data card marker for layout and tests.');
+assert(runtimeSource.includes('grid-template-columns:minmax(132px,.9fr) minmax(180px,1.1fr) auto'), 'SNK compact rows should use the Source-like label/value/unit grid.');
+assert(runtimeSource.includes('Calculated Outlet Readout|Attached Pipe'), 'SNK compact cleanup should target the old calculated outlet readout block.');
+assert(runtimeSource.includes('readoutBodyPattern'), 'SNK compact cleanup should hide calculated outlet readout body rows, not only the section title.');
+assert(runtimeSource.includes("document.addEventListener('input', onChange, false)"), 'SNK property changes should run cleanup after application input handlers to prevent flash.');
+assert(runtimeSource.includes('observer.observe(body, { childList: true, subtree: true })'), 'SNK task-window mutations should be observed outside the canvas.');
+assert(runtimeSource.includes('.object-task-field-row:has([data-key="active"]'), 'SNK layout CSS should hide old dropdown rows before JS cleanup runs.');
 assert(!runtimeSource.includes("'flow-demand-elevation-inherited'"), 'SNK Elevation row must not be hidden as inherited/internal in Flow Demand mode.');
 assert(runtimeSource.includes("ensureSinkPropertyReadoutRow(windowNode, 'Volumetric Flow'"), 'SNK compact properties should add/keep Volumetric Flow.');
 assert(runtimeSource.includes("ensureSinkPropertyReadoutRow(windowNode, 'Elevation'"), 'SNK compact properties should keep Elevation visible.');
@@ -206,7 +216,7 @@ assert(runtimeSource.includes('function syncSinkBoundaryModeOptions'), 'SNK Boun
 assert(!runtimeSource.includes('cloneNode'), 'SNK task window layout lock should not clone property rows.');
 assert(!runtimeSource.includes('sinkPropertyReadoutContainer'), 'SNK task window layout lock should not search for insertion containers.');
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260702-object-status-clean1'),
+  index.includes('engineering-route-trace-audit.js?v=20260703-sink-boundary-layout1'),
   'Index must load the route trace audit runtime with the SNK boundary mode lock cache key.'
 );
 assert(

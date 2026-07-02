@@ -1008,6 +1008,115 @@ test('Source Properties input edits stay clean, stable, and responsive', async (
   expect(Math.abs(afterRect.height - beforeRect.height)).toBeLessThanOrEqual(12);
 });
 
+test('Sink Properties input edits stay clean, stable, and Source-style', async ({ page }) => {
+  const caseData = loadJournalCase('simulation-case-1');
+  await waitForNpshApp(page);
+  await loadProject(page, caseData);
+
+  await page.evaluate((sinkId) => {
+    const taskRoot = window.createObjectPropertiesTaskRoot?.(sinkId);
+    const taskWindow = taskRoot && typeof window.openPersistentObjectPropertiesTaskWindow === 'function'
+      ? window.openPersistentObjectPropertiesTaskWindow('object', sinkId, `${sinkId} Properties`, taskRoot, { skipDismissedGuard: true })
+      : null;
+    window.currentSelectedNode = sinkId;
+    window.renderSidebar?.(sinkId, { taskWindow, skipDismissedGuard: true, preserveScroll: true });
+    window.EngineeringRouteTraceAudit?.syncSinkPropertyWindowCanonicalReadouts?.(document);
+  }, caseData.sinkId);
+
+  await page.waitForFunction((sinkId) => {
+    const win = document.querySelector(`.persistent-object-properties-task-window[data-node-id="${sinkId}"]`);
+    return !!win
+      && !win.hidden
+      && !!win.querySelector('[data-route-trace-sink-boundary-card]')
+      && !!win.querySelector('input[data-key="demandFlow"], input[name="demandFlow"]')
+      && !!win.querySelector('input[data-key="elevation"], input[name="elevation"]');
+  }, caseData.sinkId, { timeout: 15000 });
+
+  const sinkWindow = page.locator(`.persistent-object-properties-task-window[data-node-id="${caseData.sinkId}"]`).first();
+  const beforeRect = await sinkWindow.boundingBox();
+  expect(beforeRect).toBeTruthy();
+
+  await page.evaluate((sinkId) => {
+    const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+    const isVisible = (element) => {
+      if (!element) return false;
+      const style = getComputedStyle(element);
+      return style.display !== 'none' && style.visibility !== 'hidden' && element.getClientRects().length > 0;
+    };
+    window.__sinkInputCleanSamples = [];
+    window.__sinkInputCleanStop = false;
+    const sample = () => {
+      const win = document.querySelector(`.persistent-object-properties-task-window[data-node-id="${sinkId}"]`);
+      if (win && isVisible(win)) {
+        const visibleText = Array.from(win.querySelectorAll('.object-task-field-row, .pipe-task-field-row, tr, h2, h3, h4, .task-section-title, .object-task-section-title'))
+          .filter(isVisible)
+          .map((row) => normalize(row.textContent))
+          .join(' | ');
+        if (/\b(Active|Boundary Mode|Pipe Pressure Type|Calculated Outlet Readout|Attached Pipe|Mass Flow|Hydraulic Head|Warnings)\b/i.test(visibleText)) {
+          window.__sinkInputCleanSamples.push({ time: performance.now(), visibleText });
+        }
+      }
+      if (!window.__sinkInputCleanStop) requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  }, caseData.sinkId);
+
+  await sinkWindow.locator('input[data-key="demandFlow"], input[name="demandFlow"]').first().fill('42.250');
+  await sinkWindow.locator('input[data-key="elevation"], input[name="elevation"]').first().fill('4.500');
+
+  await page.waitForFunction((sinkId) => {
+    window.EngineeringRouteTraceAudit?.syncSinkPropertyWindowCanonicalReadouts?.(document);
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const sink = model[sinkId];
+    return sink?.props
+      && Number(sink.props.demandFlow) === 42.25
+      && Number(sink.props.elevation) === 4.5;
+  }, caseData.sinkId, { timeout: 20000 });
+
+  await page.waitForTimeout(600);
+  const editState = await page.evaluate((sinkId) => {
+    window.__sinkInputCleanStop = true;
+    window.EngineeringRouteTraceAudit?.syncSinkPropertyWindowCanonicalReadouts?.(document);
+    const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+    const isVisible = (element) => {
+      if (!element) return false;
+      const style = getComputedStyle(element);
+      return style.display !== 'none' && style.visibility !== 'hidden' && element.getClientRects().length > 0;
+    };
+    const win = document.querySelector(`.persistent-object-properties-task-window[data-node-id="${sinkId}"]`);
+    const cards = Array.from(win?.querySelectorAll?.('[data-route-trace-sink-boundary-card]') || [])
+      .filter(isVisible)
+      .map((row) => ({
+        label: normalize(row.querySelector('.prop-label, label, th, td:first-child, div:first-child, span:first-child')?.textContent || row.textContent),
+        columns: getComputedStyle(row).gridTemplateColumns
+      }));
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const sink = model[sinkId] || {};
+    return {
+      samples: window.__sinkInputCleanSamples || [],
+      text: normalize(win?.innerText || ''),
+      cards,
+      demandFlow: sink.props?.demandFlow,
+      elevation: sink.props?.elevation,
+      runtime: window.EngineeringRouteTraceAudit?.version || ''
+    };
+  }, caseData.sinkId);
+  const afterRect = await sinkWindow.boundingBox();
+
+  expect(editState.runtime).toBe('2026.07-route-trace-audit-v37');
+  expect(editState.samples).toEqual([]);
+  expect(editState.text).not.toMatch(/\b(Active|Boundary Mode|Pipe Pressure Type|Calculated Outlet Readout|Attached Pipe|Mass Flow|Hydraulic Head|Warnings)\b/i);
+  expect(editState.cards.map((row) => row.label)).toEqual(['Flow Demand', 'Volumetric Flow', 'Calculated Abs. Pressure', 'Elevation']);
+  expect(editState.cards.every((row) => row.columns.split(' ').length >= 3)).toBe(true);
+  expect(Number(editState.demandFlow)).toBeCloseTo(42.25, 3);
+  expect(Number(editState.elevation)).toBeCloseTo(4.5, 3);
+  expect(afterRect).toBeTruthy();
+  expect(Math.abs(afterRect.x - beforeRect.x)).toBeLessThanOrEqual(4);
+  expect(Math.abs(afterRect.y - beforeRect.y)).toBeLessThanOrEqual(4);
+  expect(Math.abs(afterRect.width - beforeRect.width)).toBeLessThanOrEqual(8);
+  expect(Math.abs(afterRect.height - beforeRect.height)).toBeLessThanOrEqual(12);
+});
+
 test('Disconnected Source/Pump/Sink presentation stays incomplete and compact', async ({ page }) => {
   const caseData = loadJournalCase('simulation-case-1');
   const disconnectedProject = clone(caseData.project);
@@ -1075,6 +1184,30 @@ test('Disconnected Source/Pump/Sink presentation stays incomplete and compact', 
       .filter(isVisible)
       .map((row) => normalize(row.querySelector('.prop-label, label, th, td:first-child, div:first-child, span:first-child')?.textContent || row.textContent))
       .filter(Boolean);
+    const sinkBoundaryCards = Array.from(sinkTaskWindow?.querySelectorAll?.('[data-route-trace-sink-boundary-card]') || [])
+      .filter(isVisible)
+      .map((row) => {
+        const rect = row.getBoundingClientRect();
+        return {
+          label: normalize(row.querySelector('.prop-label, label, th, td:first-child, div:first-child, span:first-child')?.textContent || row.textContent),
+          x: Math.round(rect.x),
+          y: Math.round(rect.y),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+          columns: getComputedStyle(row).gridTemplateColumns
+        };
+      });
+    const sinkBoundaryHeader = Array.from(sinkTaskWindow?.querySelectorAll?.('[data-route-trace-sink-boundary-header]') || [])
+      .filter(isVisible)
+      .map((row) => {
+        const rect = row.getBoundingClientRect();
+        return {
+          text: normalize(row.textContent),
+          x: Math.round(rect.x),
+          y: Math.round(rect.y),
+          width: Math.round(rect.width)
+        };
+      })[0] || null;
     const sinkVisibleText = normalize(sinkTaskWindow?.innerText || '');
 
     sourceObject?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2, clientX: 120, clientY: 120 }));
@@ -1095,6 +1228,8 @@ test('Disconnected Source/Pump/Sink presentation stays incomplete and compact', 
       },
       sink: {
         rows: sinkRows,
+        boundaryCards: sinkBoundaryCards,
+        boundaryHeader: sinkBoundaryHeader,
         visibleText: sinkVisibleText
       },
       menuText
@@ -1117,6 +1252,14 @@ test('Disconnected Source/Pump/Sink presentation stays incomplete and compact', 
   expect(state.sink.visibleText).toMatch(/Elevation/i);
   expect(state.sink.visibleText).not.toMatch(/\bActive\b|Boundary Mode|Pipe Pressure Type/i);
   expect(state.sink.visibleText).not.toMatch(/Calculated Outlet Readout|Attached Pipe|Boundary Pressure Abs\.|Calc\. Boundary P|Pressure Residual|Static Pipe P|Stagnation P|Mass Flow|Hydraulic Head|Warnings/i);
+  expect(state.sink.boundaryHeader?.text).toMatch(/Fluid Out Boundary Conditions/i);
+  expect(state.sink.boundaryHeader?.width).toBeGreaterThan(600);
+  expect(state.sink.boundaryCards.map((row) => row.label)).toEqual(['Flow Demand', 'Volumetric Flow', 'Calculated Abs. Pressure', 'Elevation']);
+  expect(state.sink.boundaryCards[0].y).toBe(state.sink.boundaryCards[1].y);
+  expect(state.sink.boundaryCards[2].y).toBe(state.sink.boundaryCards[3].y);
+  expect(state.sink.boundaryCards[1].x).toBeGreaterThan(state.sink.boundaryCards[0].x);
+  expect(state.sink.boundaryCards[3].x).toBeGreaterThan(state.sink.boundaryCards[2].x);
+  expect(state.sink.boundaryCards.every((row) => row.columns.split(' ').length >= 3)).toBe(true);
   expect(state.menuText).toMatch(/User Task Object Properties|Object Properties/i);
   expect(state.menuText).toMatch(/Connect/i);
   expect(state.menuText).toMatch(/Delete Source/i);

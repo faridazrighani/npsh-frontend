@@ -1,12 +1,12 @@
 {
   "schemaVersion": "local-live-sync-manifest.v1",
-  "generatedAt": "2026-07-02T17:03:00.946Z",
+  "generatedAt": "2026-07-02T17:40:21.888Z",
   "purpose": "Keeps the local preview server auditable against the deployed npsh.virsim.id package.",
-  "status": "synced",
+  "status": "review-required",
   "syncChecks": {
     "liveReachable": true,
-    "localIndexMatchesLive": true,
-    "cacheKeysMatch": true,
+    "localIndexMatchesLive": false,
+    "cacheKeysMatch": false,
     "verifiedLiveAssets": false,
     "assetVerificationFailures": 0,
     "apiCommitMatchesOriginMain": true,
@@ -16,22 +16,22 @@
     "frontendRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-frontend",
     "apiRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-api",
     "serverUrl": "http://127.0.0.1:4174/",
-    "frontendCommit": "1210bdb780173be3ca96526cedc60fedcfcc8cd1",
-    "frontendOriginMain": "1210bdb780173be3ca96526cedc60fedcfcc8cd1",
+    "frontendCommit": "79f467218828948602bc326efbf1f4eac459df75",
+    "frontendOriginMain": "79f467218828948602bc326efbf1f4eac459df75",
     "apiCommit": "d8b4421ce78964f6bf56613f02907cb1327f0fc2",
     "apiOriginMain": "d8b4421ce78964f6bf56613f02907cb1327f0fc2",
     "releaseIntegrity": {
       "schemaVersion": "release-integrity.v1",
-      "rootFingerprint": "272f64b3a39c16d9640c86c4a215a0ab215c7214d32b0b8709d3ccf2f87e5e9d",
+      "rootFingerprint": "09c8b0858ed5469b2588b51384279a163b51459fc3526febbe460f03dad34837",
       "fileCount": 421,
-      "generatedAt": "2026-07-02T16:41:36.829Z"
+      "generatedAt": "2026-07-02T17:38:55.225Z"
     },
     "index": {
       "path": "index.html",
-      "sizeBytes": 70026,
-      "sha256": "13f1f03f31c700d7c5dcbae184dd532df762bf439502b688040a846f9d677e10",
-      "canonicalSizeBytes": 69136,
-      "canonicalSha256": "8184c5b77408685cd8511fba37093dda2a065e5a2de690d6da84b167d8ccce65",
+      "sizeBytes": 70028,
+      "sha256": "f104bb95717b394270562b9c16636082c877b83a875a65e1eabd912136d93733",
+      "canonicalSizeBytes": 69138,
+      "canonicalSha256": "e8feda4b6bab159100cd0583c66ee79f23af2437da5b34298c8ecb46aa658f49",
       "canonicalizedLineEndings": true,
       "cacheKeys": [
         "app.bundle.min.js?v=20260621-npsh-margin-options1",
@@ -70,7 +70,7 @@
         "engineering-pump-performance-chart-audit.js?v=20260630-pipe-properties-live1",
         "engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3",
         "engineering-realtime-calculation-defense.js?v=20260701-user-flow-autosolve1",
-        "engineering-route-trace-audit.js?v=20260702-object-status-clean1",
+        "engineering-route-trace-audit.js?v=20260703-sink-boundary-layout1",
         "engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3",
         "engineering-source-temperature-runtime.js?v=20260701-source-volumetric-only1",
         "engineering-source-volumetric-only-runtime.js?v=20260702-source-boundary-clean2",
@@ -444,12 +444,12 @@
       {
         "path": "engineering-route-trace-audit.js",
         "exists": true,
-        "sizeBytes": 151950,
-        "sha256": "15dfe2f53d2f340940ab8f9d018ff8496a9ed95e71c112a166376b6e536e96ca",
-        "canonicalSizeBytes": 149222,
-        "canonicalSha256": "da53ef6a94f3259ed09ff45fc20a951e77a75c5635c057cc29d89e907252ca0d",
+        "sizeBytes": 160486,
+        "sha256": "ba819edc707d7a24c8b1869d1c1af2bd299fbdaaafb2a900db12950e70b41bdd",
+        "canonicalSizeBytes": 157792,
+        "canonicalSha256": "eaa99681f613009fa5ca9a0c9a6104203b150455bad1ebea6495e72ccd5db957",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-route-trace-audit.js?v=20260702-object-status-clean1"
+        "cacheKey": "engineering-route-trace-audit.js?v=20260703-sink-boundary-layout1"
       },
       {
         "path": "engineering-simulation-case-integrity-guard.js",
@@ -514,20 +514,20 @@
       {
         "path": "FILE_MANIFEST.md",
         "exists": true,
-        "sizeBytes": 36637,
-        "sha256": "230984595c3b71ccfa757c08ba4677c6138e5469fb0a78cbdc9dbaf8c920d24b",
-        "canonicalSizeBytes": 36480,
-        "canonicalSha256": "9e49e6635829b5aa0adc0baa5f2b490a82ef294e23147ce7711e3f296a213bda",
+        "sizeBytes": 36638,
+        "sha256": "3f2d80107b43964ecdd3f459e6ea5db69720f260f0cda455d619db9725d22d5f",
+        "canonicalSizeBytes": 36481,
+        "canonicalSha256": "5b33b46b2d3ad903c4162aaab185d7b12aa18159c8443a769fa4d8bdc107820a",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
       {
         "path": "index.html",
         "exists": true,
-        "sizeBytes": 70026,
-        "sha256": "13f1f03f31c700d7c5dcbae184dd532df762bf439502b688040a846f9d677e10",
-        "canonicalSizeBytes": 69136,
-        "canonicalSha256": "8184c5b77408685cd8511fba37093dda2a065e5a2de690d6da84b167d8ccce65",
+        "sizeBytes": 70028,
+        "sha256": "f104bb95717b394270562b9c16636082c877b83a875a65e1eabd912136d93733",
+        "canonicalSizeBytes": 69138,
+        "canonicalSha256": "e8feda4b6bab159100cd0583c66ee79f23af2437da5b34298c8ecb46aa658f49",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
@@ -605,7 +605,7 @@
     },
     "apiVersion": {
       "statusCode": 200,
-      "sha256": "51d36bf851abff55ffdfd3c82e5f292f6d8b66554efe497ed9fa4488f121e2f1",
+      "sha256": "8885a6b32fc0eef84ee7c49e2f62576ba31bc3f37f9c66e18e6087d1020052b7",
       "payload": {
         "ok": true,
         "appName": "GhaniSIM1 NPSH",
@@ -754,14 +754,18 @@
             "parity.fingerprint"
           ]
         },
-        "generatedAt": "2026-07-02T17:02:58.705Z"
+        "generatedAt": "2026-07-02T17:40:21.706Z"
       }
     },
     "verifiedAssets": []
   },
   "differences": {
-    "cacheKeysMissingOnLive": [],
-    "cacheKeysMissingLocally": [],
+    "cacheKeysMissingOnLive": [
+      "engineering-route-trace-audit.js?v=20260703-sink-boundary-layout1"
+    ],
+    "cacheKeysMissingLocally": [
+      "engineering-route-trace-audit.js?v=20260702-object-status-clean1"
+    ],
     "assetVerificationFailures": []
   },
   "cachePolicy": {
