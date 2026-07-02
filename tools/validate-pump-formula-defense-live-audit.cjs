@@ -372,11 +372,11 @@ assert(runtimeSource.includes('CLEAN_REMOVED_FORMULA_DEFENSE_OUTPUTS'), 'Runtime
 assert(runtimeSource.includes('EngineeringPerformanceRefreshGovernor'), 'Runtime must delegate scheduled open-window refreshes to the performance governor when available.');
 assert(!runtimeSource.includes("scheduleOpenFormulaDefenseWindowRefresh('', { reason: 'guard-loop'"), 'Runtime guard loop must not trigger repeated visual refreshes.');
 assert(
-  index.includes('engineering-pump-formula-defense-live-audit.js?v=20260630-pipe-properties-live1'),
+  index.includes('engineering-pump-formula-defense-live-audit.js?v=20260702-formula-defense-clean1'),
   'Index must cache-bust Pump Formula Defense live audit runtime.'
 );
 assert(
-  manifest.includes('Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260630-pipe-properties-live1'),
+  manifest.includes('Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260702-formula-defense-clean1'),
   'Manifest must document Pump Formula Defense live audit cache key.'
 );
 

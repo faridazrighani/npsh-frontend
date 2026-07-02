@@ -137,7 +137,7 @@ node npsh-api/tools/release-integrity-audit.cjs
 app.bundle.min.js.map sourcesContent: absent
 App bundle cache key: app.bundle.min.js?v=20260621-npsh-margin-options1
 Main style cache key: style.min.css?v=20260608-browser-issues1
-Bilingual terminology runtime cache key: engineering-bilingual-improvements.js?v=20260702-source-boundary-clean1
+Bilingual terminology runtime cache key: engineering-bilingual-improvements.js?v=20260702-source-boundary-clean2
 Source canvas parameter runtime cache key: engineering-src-canvas-parameter-runtime.js?v=20260702-object-status-clean1
 Source temperature runtime cache key: engineering-source-temperature-runtime.js?v=20260701-source-volumetric-only1
 Source volumetric-only runtime cache key: engineering-source-volumetric-only-runtime.js?v=20260702-source-boundary-clean2
@@ -175,7 +175,7 @@ NPSH margin runtime cache key: engineering-npsh-margin-runtime.js?v=20260622-loc
 NPSH margin runtime load placement: deferred realtimeScripts path before Pump NPSH Acceptance runtime; no synchronous first-load script tag; no-click initial canvas hydration now starts the visual runtime pack after shell load so Fluid Basis and canvas panels normalize without a canvas click
 Pump readiness visibility cache key: engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3
 Pump readiness visibility load placement: support-lazy feature script for developer panel hiding, not critical first-paint script
-Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260630-pipe-properties-live1
+Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260702-formula-defense-clean1
 Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260630-pipe-properties-live1
 Pump performance canonical chart cache key: engineering-pump-performance-canonical-chart.js?v=20260628-manual-npshr1
 Pump performance canonical chart load phase: critical shell, immediately after app.bundle.min.js, so Pump Datum - NPSHR margin-basis defaults and options are active before the first pump context-menu click

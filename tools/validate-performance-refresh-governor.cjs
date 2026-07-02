@@ -124,7 +124,7 @@ assert(
     && index.includes('engineering-realtime-calculation-defense.js?v=20260701-user-flow-autosolve1'),
   'index.html must keep route audit, governor, pump edit fast lane, and realtime defense cache-busted.'
 );
-assert(index.includes('engineering-bilingual-improvements.js?v=20260702-source-boundary-clean1'), 'index.html must cache-bust the realtime-first bilingual runtime.');
+assert(index.includes('engineering-bilingual-improvements.js?v=20260702-source-boundary-clean2'), 'index.html must cache-bust the realtime-first bilingual runtime.');
 assert(bilingualSource.includes('__NPSH_USE_LEGACY_BILINGUAL_AUTOSOLVE__ !== true'), 'Bilingual legacy autosolve bridge must be opt-in so realtime defense remains the only default autosolve owner.');
 assert(bilingualSource.includes('disabled-by-realtime-defense'), 'Bilingual runtime must mark the legacy autosolve bridge as disabled by realtime defense.');
 assert(bilingualSource.includes('REALTIME_FIRST_TEXT_KEYS'), 'Bilingual runtime must prune stale i18n entries for realtime-first labels.');
