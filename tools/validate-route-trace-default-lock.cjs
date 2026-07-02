@@ -12,7 +12,7 @@ const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 
-assert.equal(runtime.version, '2026.07-route-trace-audit-v35', 'Route trace audit runtime should expose the locked canvas object-card stability version.');
+assert.equal(runtime.version, '2026.07-route-trace-audit-v36', 'Route trace audit runtime should expose the locked canvas object-card stability version.');
 assert.equal(typeof runtime.openRouteAuditPanel, 'function', 'Dedicated route audit panel should remain available.');
 assert.equal(typeof runtime.pruneDefaultCanvasRouteTraceOverlays, 'function', 'Canvas route trace overlay pruning should be exposed for audit tests.');
 assert.equal(typeof runtime.pruneDefaultPumpRouteTraceRows, 'function', 'Pump route trace row pruning should be exposed for audit tests.');
@@ -624,21 +624,23 @@ try {
   assert.equal(staleHiddenPanel.dataset.routeTraceDefaultLock, undefined, 'Restored non-ROUTE TRACE panels should not keep stale route-trace lock metadata.');
   assert.deepEqual(
     labelsIn(legacyPumpPanel),
-    ['Flow', 'Suction Press.', 'Pump Head', 'Discharge Press.'],
-    'Legacy loaded pump panels should keep normal pump readouts while removing Route/Suction Loss/Disch. Loss and vapor-pressure rows.'
+    ['Flow', 'Suction Press.', 'Required Head', 'Discharge Press.'],
+    'Legacy loaded pump panels should migrate Pump Head to Required Head while removing Route/Suction Loss/Disch. Loss and vapor-pressure rows.'
   );
   assert.deepEqual(
     labelsIn(pressureAssistedPumpPanel),
-    ['Required Head', 'Discharge Press.'],
-    'Pressure-assisted route-only pump panels should label signed negative head as Required Head, not actual Pump Head.'
+    ['Hydraulic NPSH', 'Backend Valid.', 'Required Head', 'Discharge Press.'],
+    'Disconnected pressure-assisted pump panels should show Incomplete/Unverified status and label signed negative head as Required Head, not actual Pump Head.'
   );
   assert.deepEqual(
     valuesByLabelIn(blankRequiredHeadPumpPanel, '.pump-live-param-row', '.pump-live-param-label', '.pump-live-param-value'),
     {
+      'Hydraulic NPSH': 'Incomplete',
+      'Backend Valid.': 'Unverified',
       'Required Head': '37.664 m',
       'Discharge Press.': '5.722'
     },
-    'Route-only pump canvas panels should backfill blank Required Head from the model/system-head trace.'
+    'Route-only pump canvas panels should backfill blank Required Head from the model/system-head trace and avoid claiming backend validity when disconnected.'
   );
   assert.deepEqual(
     sectionsIn(canonicalPumpPanel),
@@ -728,11 +730,11 @@ try {
 }
 
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260701-object-card-stability1'),
+  index.includes('engineering-route-trace-audit.js?v=20260702-object-status-clean1'),
   'Index must load the route trace audit runtime with the default-lock cache key.'
 );
 assert(
-  manifest.includes('Route audit cache key: engineering-route-trace-audit.js?v=20260701-object-card-stability1'),
+  manifest.includes('Route audit cache key: engineering-route-trace-audit.js?v=20260702-object-status-clean1'),
   'Manifest must document the route trace default-lock cache key.'
 );
 

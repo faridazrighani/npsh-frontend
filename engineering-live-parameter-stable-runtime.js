@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const VERSION = "2026.07-live-parameter-stable5";
+  const VERSION = "2026.07-live-parameter-stable6";
   const OBJECT_SELECTOR = ".pfd-object";
   const PANEL_SELECTOR = ".pump-live-params, .tank-live-params, .source-live-params, .sink-live-params";
   const ROW_SELECTOR = ".pump-live-param-row, .tank-live-param-row, .source-live-param-row, .sink-live-param-row";
@@ -41,7 +41,6 @@
     "NPSH Required",
     "NPSH Margin",
     "NPSH Ratio",
-    "Pump Head",
     "Required Head",
     "Discharge Press."
   ]);

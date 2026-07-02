@@ -23,10 +23,10 @@ const index = read(indexPath);
 const manifest = read(manifestPath);
 const pkg = JSON.parse(read(packagePath));
 
-const cacheKey = 'engineering-canvas-fast-preview-runtime.js?v=20260702-canvas-fast-preview2';
+const cacheKey = 'engineering-canvas-fast-preview-runtime.js?v=20260702-canvas-fast-preview3';
 const cacheKeyCount = (index.match(new RegExp(cacheKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
 
-assert(runtime.includes('2026.07-canvas-fast-preview2'), 'runtime version is missing');
+assert(runtime.includes('2026.07-canvas-fast-preview3'), 'runtime version is missing');
 assert(runtime.includes('EngineeringCanvasFastPreviewRuntime'), 'global API is missing');
 assert(cacheKeyCount >= 2, 'runtime must load in feature and initial canvas hydration paths');
 assert(
@@ -57,6 +57,9 @@ assert(pkg.scripts['validate:canvas-fast-preview'] === 'node tools/validate-canv
   'NPSH Margin',
   'NPSH Ratio',
   'Hydraulic NPSH',
+  'Required Head',
+  'hasHydraulicConnectionForNode',
+  'Unverified',
   'vaporPressureHead'
 ].forEach((token) => {
   assert(runtime.includes(token), `runtime token is missing: ${token}`);
@@ -65,6 +68,7 @@ assert(pkg.scripts['validate:canvas-fast-preview'] === 'node tools/validate-canv
 assert(!/\bupdateSimulation\s*\(/.test(runtime), 'fast preview runtime must not call updateSimulation');
 assert(!/\bnotifyDependencyChanged\s*\(/.test(runtime), 'fast preview runtime must not schedule backend solves');
 assert(!/\bfetch\s*\(/.test(runtime), 'fast preview runtime must not call network APIs');
+assert(!/setRowValue\([^)]*"Pump Head"/s.test(runtime), 'fast preview runtime must not repaint manufacturer Pump Head');
 assert(/requestPreview\([^)]*input/.test(runtime), 'input-triggered requestPreview path is missing');
 assert(/beginPreviewWindow\(eventName,\s*1800,\s*isImmediateFluidTemperatureInput\(event\.target\)\)/.test(runtime), 'Fluid Basis temperature input must trigger immediate canvas preview before autosolve handlers');
 assert(/if \(immediate\) runImmediatePumpPreview/.test(runtime), 'Immediate input preview must repaint pump panel before heavier pipe/SNK refresh work');

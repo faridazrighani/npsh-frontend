@@ -17,6 +17,7 @@ class FakeElement {
     this.innerHTML = '';
     this.textContent = '';
     this.offsetParent = {};
+    this.parentNode = null;
   }
 
   get firstChild() {
@@ -38,17 +39,33 @@ class FakeElement {
   }
 
   insertBefore(node) {
+    node.parentNode = this;
     this.children.unshift(node);
     return node;
   }
 
   insertAdjacentElement(position, node) {
+    node.parentNode = this;
     if (position === 'afterend') {
       this.children.push(node);
       return node;
     }
     this.children.unshift(node);
     return node;
+  }
+
+  matches(selector) {
+    if (selector.includes('[data-pump-formula-defense-live-badges]') && this.attributes['data-pump-formula-defense-live-badges'] === 'true') return true;
+    if (selector.includes('[data-pump-formula-defense-vendor-summary]') && this.attributes['data-pump-formula-defense-vendor-summary'] === 'true') return true;
+    if (selector.includes('[data-pump-calculation-matrix]') && this.attributes['data-pump-calculation-matrix'] === 'true') return true;
+    if (selector.includes('.task-window-header') && /\btask-window-header\b/.test(this.className || '')) return true;
+    return false;
+  }
+
+  remove() {
+    if (!this.parentNode) return;
+    this.parentNode.children = this.parentNode.children.filter((child) => child !== this);
+    this.parentNode = null;
   }
 
   querySelector(selector) {
@@ -99,7 +116,11 @@ routeStageCell.textContent = 'Pipe/Fitting/Valve discharge';
 routeValueCell.textContent = '-';
 routeSourceCell.textContent = '-';
 routeTraceRow.textContent = 'Pipe/Fitting/Valve discharge - -';
+routeStageCell.parentNode = routeTraceRow;
+routeValueCell.parentNode = routeTraceRow;
+routeSourceCell.parentNode = routeTraceRow;
 routeTraceRow.children.push(routeStageCell, routeValueCell, routeSourceCell);
+routeTraceRow.parentNode = windowNode;
 windowNode.children.push(routeTraceRow);
 const snkRouteRow = new FakeElement('tr');
 const snkStageCell = new FakeElement('td');
@@ -109,8 +130,16 @@ snkStageCell.textContent = 'SNK';
 snkValueCell.textContent = '-';
 snkSourceCell.textContent = 'Downstream boundary from route trace';
 snkRouteRow.textContent = 'SNK - Downstream boundary from route trace';
+snkStageCell.parentNode = snkRouteRow;
+snkValueCell.parentNode = snkRouteRow;
+snkSourceCell.parentNode = snkRouteRow;
 snkRouteRow.children.push(snkStageCell, snkValueCell, snkSourceCell);
+snkRouteRow.parentNode = windowNode;
 windowNode.children.push(snkRouteRow);
+const legacyFormulaDefenseBlock = new FakeElement('section');
+legacyFormulaDefenseBlock.textContent = 'Short Answer for Advisor Required NPSHa Maximum Allowable NPSHr Volumetric Flow Volumetric Flow';
+legacyFormulaDefenseBlock.parentNode = windowNode;
+windowNode.children.push(legacyFormulaDefenseBlock);
 
 const listeners = [];
 globalThis.window = globalThis;
@@ -221,8 +250,7 @@ globalThis.__npshGlobalModel = {
             { title: 'Suction Loss', formula: 'HL = pipe major + fitting/valve/equipment minor + pipe allowance', substitution: '0.800 + 0.450 + 0.000 = 1.250 m', result: 1.25, unit: 'm' },
             { title: 'NPSHa', formula: 'NPSHa = Hs - Hv', substitution: '8.000 - 1.000', result: 7, unit: 'm' },
             { title: 'NPSHr', formula: 'NPSHr = manual input', substitution: 'Manual NPSHr = 4.000 m', result: 4, unit: 'm' },
-            { title: 'Required NPSHa', formula: 'Required NPSHa = governing available ANSI/HI margin criterion', substitution: 'max(4.000 x 1.050, 4.000 + 0.600) = 4.600 m', result: 4.6, unit: 'm' },
-            { title: 'Margin and Ratio', formula: 'Margin = NPSHa - NPSHr; Ratio = NPSHa / NPSHr; Excess = NPSHa - Required NPSHa', substitution: '7.000 - 4.000 = 3.000 m; 7.000 / 4.000 = 1.750; 7.000 - 4.600 = 2.400 m', result: 2.4, unit: 'm' }
+            { title: 'Margin and Ratio', formula: 'Margin = NPSHa - NPSHr; Ratio = NPSHa / NPSHr', substitution: '7.000 - 4.000 = 3.000 m; 7.000 / 4.000 = 1.750', result: 3, unit: 'm' }
           ]
         }
       }
@@ -269,9 +297,11 @@ assert(matrixPanel.innerHTML.includes('Discharge Loss'), 'Matrix must show the d
 assert(matrixPanel.innerHTML.includes('2.5 m'), 'Matrix must display the live discharge PFV loss number.');
 assert(matrixPanel.innerHTML.includes('reservoir/source boundary velocity is neglected'), 'Matrix must explain why reservoir/source velocity head can be zero.');
 assert(matrixPanel.innerHTML.includes('NPSHa'), 'Matrix must include NPSHa formula and result rows.');
-assert(matrixPanel.innerHTML.includes('Maximum Allowable NPSHr'), 'Matrix must include maximum allowable NPSHr formula and result rows.');
-assert(matrixPanel.innerHTML.includes('Manual NPSHr Comparison'), 'Matrix must compare Manual NPSHr against maximum allowable NPSHr.');
-assert(matrixPanel.innerHTML.includes('Not Required for route calculation'), 'Matrix must state that vendor curve verification does not block route calculation.');
+assert(!matrixPanel.innerHTML.includes('Required NPSHa'), 'Matrix must not show the removed Required NPSHa row.');
+assert(!matrixPanel.innerHTML.includes('Maximum Allowable NPSHr'), 'Matrix must not show the removed Maximum Allowable NPSHr rows.');
+assert(!matrixPanel.innerHTML.includes('Manual NPSHr Comparison'), 'Matrix must not show the removed Manual NPSHr Comparison row.');
+assert(!matrixPanel.innerHTML.includes('Vendor Curve Verification'), 'Matrix must not show the removed Vendor Curve Verification row.');
+assert(!matrixPanel.innerHTML.includes('NPSH Excess'), 'Matrix must not show the removed NPSH Excess row.');
 assert(!matrixPanel.innerHTML.includes('Operating Region'), 'Matrix must not include pump-curve operating-region rows.');
 assert(!matrixPanel.innerHTML.includes('Pump Performance Curve'), 'Matrix must not link pump route calculation to Pump Performance Curve.');
 assert(matrixPanel.innerHTML.includes('Terhubung ke'), 'Matrix must show where each formula is connected.');
@@ -279,17 +309,20 @@ assert.equal(routeValueCell.textContent, '2.5 m', 'Existing Route Trace discharg
 assert.equal(routeSourceCell.textContent, 'P-100 -> PIPE-2 -> SNK-100', 'Existing Route Trace discharge row must cite the discharge route source.');
 assert.equal(snkValueCell.textContent, 'H=30.353 m; Q=50 m3/h; P=1.744 bar a; z=29.085 m', 'Existing Route Trace SNK row must be hydrated from live sink boundary data when it was blank.');
 assert.equal(snkSourceCell.textContent, 'SNK-100 downstream boundary -> system head', 'Existing Route Trace SNK row must cite its downstream boundary source.');
+assert(!windowNode.children.includes(legacyFormulaDefenseBlock), 'Legacy Pump Formula Defense sections containing removed rows and duplicate Volumetric Flow block must be pruned.');
+assert.equal(windowNode.dataset.pumpFormulaDefenseLegacyPruned, 'pump-formula-defense-live-audit.v11', 'Pruned Pump Formula Defense windows should carry a legacy-pruned marker.');
 const matrixRows = runtime.buildCalculationMatrixRows('P-100');
-assert(matrixRows.some((row) => row.output === 'Required NPSHa' && /governing available ANSI\/HI margin criterion/.test(row.formula)), 'Matrix must include required NPSHa formula basis.');
+assert(!matrixRows.some((row) => /^(Required NPSHa|Maximum Allowable NPSHr|Maximum Allowable NPSHr Status|Manual NPSHr Comparison|Vendor Curve Verification|NPSH Excess)$/i.test(row.output)), 'Matrix rows must omit the removed Formula Defense outputs.');
 assert(matrixRows.some((row) => row.output === 'Suction Loss' && /Suction Pipe\/Fitting\/Valve/.test(row.connectedTo)), 'Matrix must connect suction loss to the PFV path.');
 assert(matrixRows.some((row) => row.output === 'Discharge Loss' && row.result === '2.5 m'), 'Matrix must include discharge loss as a live output row.');
-assert(matrixRows.some((row) => row.output === 'Maximum Allowable NPSHr' && /governing route-calculated allowable NPSHr/.test(row.formula)), 'Matrix must include maximum allowable NPSHr as a design output.');
-assert(matrixRows.some((row) => row.output === 'Manual NPSHr Comparison' && row.result === 'Safe'), 'Matrix must compare Manual NPSHr when available.');
+assert(matrixRows.some((row) => row.output === 'NPSH Margin' && row.result === '3 m'), 'Matrix must keep live NPSH margin calculation.');
+assert(matrixRows.some((row) => row.output === 'NPSH Ratio' && row.result === '1.75'), 'Matrix must keep live NPSH ratio calculation.');
 assert(matrixRows.some((row) => row.output === 'Route Calculation Status' && row.result === 'Calculated'), 'Matrix must expose route calculation status.');
 assert(!matrixRows.some((row) => /Operating Region|Pump Head Curve/i.test(row.output)), 'Matrix rows must drop pump-curve-only outputs.');
 
 const trace = globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.calculationTrace;
-assert.equal(trace.formulaDefenseRows.length, 9, 'Pump Formula Defense rows must be rebuilt from live trace steps plus actual-head and confidence gates.');
+assert(trace.formulaDefenseRows.length >= 7, 'Pump Formula Defense rows must keep live trace steps plus actual-head and confidence gates.');
+assert(!trace.formulaDefenseRows.some((row) => /^(Required NPSHa|Maximum Allowable NPSHr|Manual NPSHr Comparison|Vendor Curve Verification|NPSH Excess)$/i.test(row.step)), 'Pump Formula Defense rows must omit the removed advisor rows.');
 assert(trace.formulaDefenseRows.some((row) => row.step === 'Actual Pump Head'), 'Pump Formula Defense rows must include an Actual Pump Head evidence gate.');
 assert.equal(
   trace.formulaDefenseRows.find((row) => row.step === 'NPSHa')?.result,
@@ -335,7 +368,7 @@ assert(runtimeSource.includes('refreshPumpFormulaDefenseWindowContent'), 'Runtim
 assert(runtimeSource.includes('hydrateRouteTraceDischargeReadout'), 'Runtime must hydrate blank discharge route trace readouts from live backend route data.');
 assert(runtimeSource.includes('hydrateRouteTraceSinkReadout'), 'Runtime must hydrate blank SNK route trace readouts from live backend route data.');
 assert(runtimeSource.includes('hydrateAllPumpTopLevelResults'), 'Runtime must hydrate nested backend NPSH results into top-level pump label fields.');
-assert(runtimeSource.includes('Maximum Allowable NPSHr'), 'Runtime must expose maximum allowable NPSHr in Pump Formula Defense.');
+assert(runtimeSource.includes('CLEAN_REMOVED_FORMULA_DEFENSE_OUTPUTS'), 'Runtime must keep an explicit removed-row blocklist for clean Pump Formula Defense output.');
 assert(runtimeSource.includes('EngineeringPerformanceRefreshGovernor'), 'Runtime must delegate scheduled open-window refreshes to the performance governor when available.');
 assert(!runtimeSource.includes("scheduleOpenFormulaDefenseWindowRefresh('', { reason: 'guard-loop'"), 'Runtime guard loop must not trigger repeated visual refreshes.');
 assert(

@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const LOCK_VERSION = "2026.06-src-canvas-flow-basis-lock4";
+  const LOCK_VERSION = "2026.07-src-canvas-flow-basis-lock5";
   const ALWAYS_HIDDEN_ROWS = new Set(["Contribution", "Suction Loss", "NPSH at Pump", "Pump NPSHa"]);
   const DYNAMIC_ROWS = new Set(["Dyn Mode", "Target", "Dyn Feed", "Target Net", "Dyn Net", "Target Trend", "Dyn Trend"]);
   const SOURCE_TOOLTIP_HIDDEN_ROWS = new Set(["Contribution to tank", "Dynamic contribution"]);
@@ -130,6 +130,14 @@
       if (neighborFlow !== null) return neighborFlow;
     }
     return null;
+  }
+
+  function sourceHasHydraulicConnection(sourceId, modelRef = model()) {
+    if (!sourceId) return false;
+    return connectionList(modelRef).some((connection) => (
+      isHydraulicConnection(connection)
+      && (connectionFrom(connection) === sourceId || connectionTo(connection) === sourceId)
+    ));
   }
 
   function singleRouteSolvedFlowForSource(sourceId, modelRef) {
@@ -331,6 +339,9 @@
   }
 
   function sourceStatusDisplayValue(node = {}, canonical = {}) {
+    const modelRef = model();
+    const sourceId = sourceIdForNode({ node }, node, modelRef);
+    if (!sourceHasHydraulicConnection(sourceId, modelRef)) return "Incomplete";
     const rawStatus = normalizeRowLabel(
       node.results?.sourceStatus
       || node.results?.status
@@ -346,6 +357,43 @@
       return "OK";
     }
     return rawStatus || "No solved source route";
+  }
+
+  function syncSourcePresentationStatus(panel, source) {
+    const object = panel?.closest?.(".pfd-object");
+    const sourceId = source?.id || sourceIdForNode(source, source?.node || source || {}, model());
+    const connected = sourceHasHydraulicConnection(sourceId, model());
+    let changed = 0;
+    if (panel?.classList) {
+      if (panel.classList.contains("source-live-params-incomplete") !== !connected) {
+        if (!connected) panel.classList.add("source-live-params-incomplete");
+        else panel.classList.remove("source-live-params-incomplete");
+        changed += 1;
+      }
+      if (panel.classList.contains("source-live-params-safe") !== connected) {
+        if (connected) panel.classList.add("source-live-params-safe");
+        else panel.classList.remove("source-live-params-safe");
+        changed += 1;
+      }
+    }
+    if (object?.classList) {
+      if (object.classList.contains("source-status-incomplete") !== !connected) {
+        if (!connected) object.classList.add("source-status-incomplete");
+        else object.classList.remove("source-status-incomplete");
+        changed += 1;
+      }
+      if (object.classList.contains("source-status-safe") !== connected) {
+        if (connected) object.classList.add("source-status-safe");
+        else object.classList.remove("source-status-safe");
+        changed += 1;
+      }
+      const targetStatus = connected ? "normal" : "incomplete";
+      if (object.dataset.operatingStatus !== targetStatus) {
+        object.dataset.operatingStatus = targetStatus;
+        changed += 1;
+      }
+    }
+    return changed;
   }
 
   function sourceObjectTooltip(source, panel = null) {
@@ -551,6 +599,7 @@
           ["SRC Input Flow", "Mode"]
         );
       }
+      changed += syncSourcePresentationStatus(panel, source);
       changed += syncSourceObjectTooltip(panel, source);
     });
     return changed;

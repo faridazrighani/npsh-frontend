@@ -13,8 +13,8 @@ const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
 
-const LOCK_CACHE_KEY = "engineering-live-parameter-repaint-lock.css?v=20260701-object-card-stability1";
-const STABLE_RUNTIME_CACHE_KEY = "engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260701-object-card-stability1";
+const LOCK_CACHE_KEY = "engineering-live-parameter-repaint-lock.css?v=20260702-object-status-clean1";
+const STABLE_RUNTIME_CACHE_KEY = "engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260702-object-status-clean1";
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");
@@ -104,7 +104,7 @@ assert(
 );
 
 assert(!/rgba\(/i.test(lockCss), "Repaint-lock CSS must use opaque backgrounds; rgba backgrounds can reveal grid repaint.");
-assert(stableRuntime.includes('const VERSION = "2026.07-live-parameter-stable5"'), "Stable runtime must keep the global live parameter value-update version.");
+assert(stableRuntime.includes('const VERSION = "2026.07-live-parameter-stable6"'), "Stable runtime must keep the global live parameter value-update version.");
 assert(stableRuntime.includes("syncMatchingRows"), "Stable runtime must update matching row values in place.");
 assert(stableRuntime.includes("stabilizePanelFromReplacement"), "Stable runtime must preserve panel shells when the app renderer supplies replacements.");
 assert(stableRuntime.includes("shouldAllowStructureReplacement"), "Stable runtime must still allow intentional row-structure changes outside solve/drag lifecycle.");
@@ -119,6 +119,7 @@ assert(stableRuntime.includes("restoreMissingPanelNodes"), "Stable runtime must 
 assert(stableRuntime.includes("liveParameterStableNodesRestored"), "Stable runtime must mark restored row nodes for QA.");
 assert(stableRuntime.includes("PUMP_PROTECTED_SECTIONS"), "Stable runtime must restore only protected pump sections, not hidden route/audit rows.");
 assert(stableRuntime.includes("PUMP_PROTECTED_ROWS"), "Stable runtime must restore only protected pump canvas rows.");
+assert(!stableRuntime.includes('"Pump Head"'), "Stable runtime must not restore the removed manufacturer Pump Head row.");
 assert(stableRuntime.includes("SINK_PROTECTED_ROWS"), "Stable runtime must restore only protected sink canvas rows.");
 assert(stableRuntime.includes("shouldSnapshotPanelNode"), "Stable runtime must filter row snapshots before restoring missing panel nodes.");
 assert(stableRuntime.includes("stableSectionLabel"), "Stable runtime must normalize section labels with info-icon text before comparing snapshots.");
@@ -202,6 +203,10 @@ for (const [selector, background, boxShadow] of pumpStatusOutlines) {
   assertDeclaration(block, background, selector);
   assertDeclaration(block, boxShadow, selector);
 }
+
+const sourceIncompleteBlock = cssBlock(lockCss, '.object-type-source[data-operating-status="incomplete"] .object-icon');
+assertDeclaration(sourceIncompleteBlock, "background: #f8fafc !important;", "disconnected source icon");
+assertDeclaration(sourceIncompleteBlock, "box-shadow: 0 0 0 2px #94a3b8 !important;", "disconnected source icon");
 
 assert(
   /\.pump-live-params,\s*\.tank-live-params,\s*\.source-live-params,\s*\.sink-live-params\{[^}]*box-shadow:none;/m.test(styleCss),

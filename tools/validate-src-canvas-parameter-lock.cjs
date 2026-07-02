@@ -8,7 +8,7 @@ const INDEX_FILE = path.join(FRONTEND_ROOT, "index.html");
 const JOURNALS_DIR = path.join(FRONTEND_ROOT, "journals");
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
-const RUNTIME_CACHE_KEY = "engineering-src-canvas-parameter-runtime.js?v=20260701-source-volumetric-only1";
+const RUNTIME_CACHE_KEY = "engineering-src-canvas-parameter-runtime.js?v=20260702-object-status-clean1";
 const DEFAULT_ROW_LABELS = ["Mode", "SRC Input Flow", "Source P abs", "Source Elev.", "Source Head"];
 const ALWAYS_HIDDEN_ROWS = new Set(["Contribution", "Suction Loss", "NPSH at Pump", "Pump NPSHa"]);
 const DYNAMIC_ROWS = new Set(["Dyn Mode", "Target", "Dyn Feed", "Target Net", "Dyn Net", "Target Trend", "Dyn Trend"]);
@@ -96,7 +96,7 @@ function listSimulationUntirtaFiles() {
 }
 
 const runtime = fs.readFileSync(RUNTIME_FILE, "utf8");
-assert(runtime.includes('2026.06-src-canvas-flow-basis-lock4'), "Runtime must keep the source flow canvas basis lock version.");
+assert(runtime.includes('2026.07-src-canvas-flow-basis-lock5'), "Runtime must keep the source flow canvas basis lock version.");
 assert(runtime.includes("isSourceLiveDynamicDisplayActive = isRealtimeDynamicUnlocked"), "Runtime must override the SRC dynamic display gate.");
 assert(runtime.includes("setRealtimeDynamicUnlocked(true)"), "Runtime must unlock SRC dynamic rows when realtime dynamic starts.");
 assert(runtime.includes("setRealtimeDynamicUnlocked(false)"), "Runtime must lock SRC dynamic rows when realtime dynamic stops.");
@@ -112,6 +112,8 @@ assert(runtime.includes("solvedOperatingFlowForSource"), "Runtime must still rec
 assert(runtime.includes("connectedRouteFlowForSource"), "Runtime must read connected pipe/pump flow for SRC canvas realtime flow parity.");
 assert(runtime.includes("singleRouteSolvedFlowForSource"), "Runtime must safely fall back to single-route solved pump/sink flow before using static source input.");
 assert(runtime.includes("syncSourceObjectTooltip"), "Runtime must keep SRC object hover/title synchronized with canonical canvas values.");
+assert(runtime.includes("sourceHasHydraulicConnection"), "Runtime must keep disconnected SRC objects Incomplete instead of green/OK.");
+assert(runtime.includes("source-status-incomplete"), "Runtime must mark disconnected SRC object icons with the incomplete class.");
 assert(runtime.includes("dataset.sourceObjectTooltipLock"), "Runtime must mark SRC object hover/title synchronization for QA.");
 assert(runtime.includes('data-engineering-runtime-originaltitle'), "Runtime must update the SRC hover title backup used by the hover bridge.");
 assert(runtime.includes("patchSourceRenderFunction"), "Runtime must refresh SRC canvas/hover after render and backend-result hooks.");

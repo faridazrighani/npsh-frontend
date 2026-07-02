@@ -1,7 +1,7 @@
 !function registerEngineeringSourceVolumetricOnlyRuntime(root) {
   "use strict";
 
-  const VERSION = "2026.07-source-boundary-clean1";
+  const VERSION = "2026.07-source-boundary-clean2";
   const FLOW_MODE = "Volumetric Flow";
   const FIELD_ROW_SELECTOR = ".object-task-field-row, .pipe-task-field-row, tr, .prop-row";
   const HIDDEN_SOURCE_FIELD_KEYS = new Set([
@@ -40,10 +40,20 @@
     "updateSimulation",
     "applySimulationStateAtomic"
   ];
+  const SOURCE_CONTEXT_MENU_REMOVED_LABELS = [
+    "Open Tank / Reservoir",
+    "Pressurized Vessel",
+    "External Header / Pipe Tie-in",
+    "Fixed Flow Source",
+    "Standalone Boundary Source"
+  ];
 
   const patchedFunctions = new Set();
   let observer = null;
   let cleanupTimer = 0;
+  let contextMenuCleanupTimer = 0;
+  let lastSourceMenuSourceId = "";
+  let lastSourceMenuUntil = 0;
   let installAttempts = 0;
 
   function normalizeText(value) {
@@ -141,6 +151,32 @@
     if (matches.length === 1) return matches[0][0];
     const allSources = sourceEntries(modelRef);
     return allSources.length === 1 ? allSources[0][0] : "";
+  }
+
+  function sourceIdFromCanvasElement(element) {
+    const object = element?.closest?.(".object-type-source, [data-type='source'], [data-node-type='source'], .pfd-object");
+    if (!object) return "";
+    const modelRef = model();
+    const candidates = [
+      object.dataset?.nodeId,
+      object.dataset?.objectId,
+      object.dataset?.sourceId,
+      object.id
+    ].map(normalizeText).filter(Boolean);
+    for (const id of candidates) {
+      if (modelRef[id]?.type === "source") return id;
+    }
+    const text = normalizeText(object.textContent || "");
+    const matches = sourceEntries(modelRef).filter(([id, node]) => text.includes(id) || (node.name && text.includes(node.name)));
+    return matches.length === 1 ? matches[0][0] : "";
+  }
+
+  function rememberSourceContextTarget(target) {
+    const sourceId = sourceIdFromCanvasElement(target);
+    if (!sourceId) return false;
+    lastSourceMenuSourceId = sourceId;
+    lastSourceMenuUntil = Date.now() + 2500;
+    return true;
   }
 
   function isSourceScope(scope) {
@@ -446,7 +482,121 @@
   function cleanupSourceTaskWindows(rootNode = document) {
     normalizeAllSourceNodes();
     sourceScopes(rootNode).forEach(cleanupSourceScope);
+    cleanupSourceContextMenu(rootNode);
     document.documentElement.dataset.sourceVolumetricOnlyRuntime = VERSION;
+  }
+
+  function contextMenuElement(rootNode = document) {
+    if (rootNode?.id === "canvasContextMenu") return rootNode;
+    return rootNode?.querySelector?.("#canvasContextMenu")
+      || document.getElementById?.("canvasContextMenu")
+      || null;
+  }
+
+  function menuItemCandidates(menu) {
+    const candidates = Array.from(menu?.querySelectorAll?.("button, [role='menuitem'], a, li, .context-menu-item, .canvas-context-menu-item") || []);
+    if (candidates.length) return candidates;
+    return Array.from(menu?.children || []).filter((child) => normalizeText(child.textContent));
+  }
+
+  function contextMenuLooksLikeSource(menu) {
+    if (!menu) return false;
+    if (Date.now() <= lastSourceMenuUntil && lastSourceMenuSourceId) return true;
+    const text = normalizeText(menu.textContent || "");
+    return SOURCE_CONTEXT_MENU_REMOVED_LABELS.some((label) => text.includes(label));
+  }
+
+  function itemLabelText(item) {
+    return normalizeText(item?.textContent || "");
+  }
+
+  function setMenuItemPrimaryText(item, text) {
+    if (!item) return false;
+    if (item.children?.length) {
+      const textNode = Array.from(item.childNodes || []).find((node) => node.nodeType === 3 && normalizeText(node.textContent));
+      if (textNode) {
+        textNode.textContent = text;
+        return true;
+      }
+      const first = item.firstElementChild;
+      if (first && first.children.length <= 1) {
+        first.textContent = text;
+        return true;
+      }
+    }
+    item.textContent = text;
+    return true;
+  }
+
+  function runSourceConnectAction() {
+    const sourceId = lastSourceMenuSourceId || sourceEntries()[0]?.[0] || "";
+    try {
+      if (typeof root.startHydraulicConnectionFromSource === "function") {
+        root.startHydraulicConnectionFromSource(sourceId);
+      } else if (typeof root.activateConnectTool === "function") {
+        root.activateConnectTool("Straight");
+      } else {
+        root.document?.getElementById?.("btn-mode-connect")?.click?.();
+      }
+    } finally {
+      const menu = document.getElementById("canvasContextMenu");
+      if (menu) menu.classList.remove("show", "open", "visible");
+      if (menu) menu.hidden = true;
+    }
+  }
+
+  function addSourceConnectItem(menu, templateItem = null) {
+    if (!menu || menu.querySelector?.('[data-source-volumetric-only-connect="true"]')) return 0;
+    const item = templateItem?.cloneNode?.(false) || document.createElement("button");
+    if (item.tagName === "BUTTON") item.type = "button";
+    item.dataset.sourceVolumetricOnlyConnect = "true";
+    item.textContent = "Connect";
+    item.setAttribute("role", item.getAttribute("role") || "menuitem");
+    item.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runSourceConnectAction();
+    });
+    const deleteItem = menuItemCandidates(menu).find((candidate) => /^Delete\s+Source$/i.test(itemLabelText(candidate)));
+    if (deleteItem?.parentNode) deleteItem.parentNode.insertBefore(item, deleteItem);
+    else menu.appendChild(item);
+    return 1;
+  }
+
+  function cleanupSourceContextMenu(rootNode = document) {
+    if (typeof document === "undefined") return 0;
+    const menu = contextMenuElement(rootNode);
+    if (!menu || !contextMenuLooksLikeSource(menu)) return 0;
+    let changed = 0;
+    const items = menuItemCandidates(menu);
+    items.forEach((item) => {
+      const text = itemLabelText(item);
+      const remove = SOURCE_CONTEXT_MENU_REMOVED_LABELS.some((label) => text === label || text.startsWith(`${label} `));
+      if (remove) {
+        item.remove();
+        changed += 1;
+        return;
+      }
+      if (/^Delete(?:\s+Object)?$/i.test(text)) {
+        setMenuItemPrimaryText(item, "Delete Source");
+        item.dataset.sourceVolumetricOnlyDeleteLabel = VERSION;
+        changed += 1;
+      }
+    });
+    const refreshedItems = menuItemCandidates(menu);
+    const hasConnect = refreshedItems.some((item) => /^Connect$/i.test(itemLabelText(item)));
+    if (!hasConnect) changed += addSourceConnectItem(menu, refreshedItems[0] || null);
+    const allowedPattern = /^(User Task Object Properties|Object Properties|Connect|Delete Source)$/i;
+    menuItemCandidates(menu).forEach((item) => {
+      const text = itemLabelText(item);
+      if (!text || allowedPattern.test(text)) return;
+      if (SOURCE_CONTEXT_MENU_REMOVED_LABELS.some((label) => text.includes(label))) {
+        item.remove();
+        changed += 1;
+      }
+    });
+    menu.dataset.sourceVolumetricOnlyMenuClean = VERSION;
+    return changed;
   }
 
   function scheduleCleanup(rootNode = document, delayMs = 0) {
@@ -455,6 +605,15 @@
     cleanupTimer = root.setTimeout(() => {
       cleanupTimer = 0;
       cleanupSourceTaskWindows(rootNode);
+    }, Math.max(0, delayMs));
+  }
+
+  function scheduleContextMenuCleanup(rootNode = document, delayMs = 0) {
+    if (typeof document === "undefined" || typeof root.setTimeout !== "function") return;
+    root.clearTimeout?.(contextMenuCleanupTimer);
+    contextMenuCleanupTimer = root.setTimeout(() => {
+      contextMenuCleanupTimer = 0;
+      cleanupSourceContextMenu(rootNode);
     }, Math.max(0, delayMs));
   }
 
@@ -489,7 +648,7 @@
       '[data-prop-key="massFlow"],',
       '[data-prop-key="sourceType"],',
       '[data-prop-key="source-type-meaning"],',
-      '[data-source-volumetric-only-removed="2026.07-source-boundary-clean1"]{display:none!important;}',
+      '[data-source-volumetric-only-removed="2026.07-source-boundary-clean2"]{display:none!important;}',
       '.source-volumetric-only-hidden{display:none!important;}'
     ].join("\n");
     document.head.appendChild(style);
@@ -499,6 +658,12 @@
   function installEvents() {
     if (typeof document === "undefined" || document.documentElement.dataset.sourceVolumetricOnlyEvents === VERSION) return false;
     document.documentElement.dataset.sourceVolumetricOnlyEvents = VERSION;
+    ["pointerdown", "contextmenu", "click"].forEach((eventName) => {
+      document.addEventListener(eventName, (event) => {
+        if (!rememberSourceContextTarget(event.target)) return;
+        scheduleContextMenuCleanup(document, eventName === "contextmenu" ? 0 : 20);
+      }, true);
+    });
     document.addEventListener("input", (event) => {
       const input = event.target?.closest?.('input[data-key="flow"][data-node]');
       if (!input || model()?.[input.dataset.node]?.type !== "source") return;
@@ -527,10 +692,13 @@
         Array.from(mutation.addedNodes || []).some((node) => node?.nodeType === 1 && (
           node.matches?.(".task-window, #taskWindow, .object-properties-task-body")
           || node.querySelector?.("[data-prop-key='flowInputMode'], [data-key='massFlow'], [data-key='flow']")
+          || node.matches?.("#canvasContextMenu")
+          || node.querySelector?.("#canvasContextMenu")
         ))
       ))) {
         cleanupSourceTaskWindows(document);
         scheduleCleanup(document, 20);
+        scheduleContextMenuCleanup(document, 0);
       }
     });
     observer.observe(document.body || document.documentElement, { childList: true, subtree: true });

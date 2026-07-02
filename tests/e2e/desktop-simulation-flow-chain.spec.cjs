@@ -824,8 +824,8 @@ test('Source Properties shows Volumetric Flow in Boundary Data and removes Sourc
   }, caseData.sourceId);
 
   await page.waitForFunction(() => (
-    window.EngineeringSourceVolumetricOnlyRuntime?.version === '2026.07-source-boundary-clean1'
-    && document.documentElement.dataset.sourceVolumetricOnlyRuntime === '2026.07-source-boundary-clean1'
+    window.EngineeringSourceVolumetricOnlyRuntime?.version === '2026.07-source-boundary-clean2'
+    && document.documentElement.dataset.sourceVolumetricOnlyRuntime === '2026.07-source-boundary-clean2'
   ), null, { timeout: 10000 });
 
   const state = await page.evaluate((sourceId) => {
@@ -882,7 +882,7 @@ test('Source Properties shows Volumetric Flow in Boundary Data and removes Sourc
     };
   }, caseData.sourceId);
 
-  expect(state.runtime).toBe('2026.07-source-boundary-clean1');
+  expect(state.runtime).toBe('2026.07-source-boundary-clean2');
   expect(state.flowMode).toBe('Volumetric Flow');
   expect(Number(state.flow)).toBeCloseTo(9500 / Number(state.density), 4);
   expect(Number(state.massFlow)).toBeCloseTo(9500, 2);
@@ -995,7 +995,7 @@ test('Source Properties input edits stay clean, stable, and responsive', async (
   }, caseData.sourceId);
   const afterRect = await sourceWindow.boundingBox();
 
-  expect(editState.runtime).toBe('2026.07-source-boundary-clean1');
+  expect(editState.runtime).toBe('2026.07-source-boundary-clean2');
   expect(editState.samples).toEqual([]);
   expect(editState.text).not.toMatch(/\b(Source Definition|Source Type|Type Meaning|Flow Specification|Flow Input Mode|Mass Flow)\b/i);
   expect(Number(editState.pressure)).toBeCloseTo(2.25, 3);
@@ -1006,6 +1006,121 @@ test('Source Properties input edits stay clean, stable, and responsive', async (
   expect(Math.abs(afterRect.y - beforeRect.y)).toBeLessThanOrEqual(4);
   expect(Math.abs(afterRect.width - beforeRect.width)).toBeLessThanOrEqual(8);
   expect(Math.abs(afterRect.height - beforeRect.height)).toBeLessThanOrEqual(12);
+});
+
+test('Disconnected Source/Pump/Sink presentation stays incomplete and compact', async ({ page }) => {
+  const caseData = loadJournalCase('simulation-case-1');
+  const disconnectedProject = clone(caseData.project);
+  disconnectedProject.connections = [];
+  disconnectedProject.sourceLinks = [];
+  Object.values(disconnectedProject.model || {}).forEach((node) => {
+    if (['source', 'pump', 'sink', 'pipe'].includes(node?.type)) node.results = {};
+  });
+
+  await waitForNpshApp(page);
+  await loadProject(page, { ...caseData, project: disconnectedProject });
+
+  await page.evaluate(() => {
+    window.CanvasContextDock?.refresh?.();
+    window.EngineeringRouteTraceAudit?.refreshVisibleAuditSurfaces?.();
+  });
+
+  await page.waitForFunction((pumpId) => {
+    const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+    const panel = Array.from(document.querySelectorAll('.pump-live-params')).find((candidate) => {
+      const object = candidate.closest('.pfd-object, [data-node-id], [data-object-id]');
+      return object?.dataset?.nodeId === pumpId
+        || object?.dataset?.objectId === pumpId
+        || normalize(object?.textContent).includes(pumpId)
+        || normalize(candidate.textContent).includes(pumpId)
+        || document.querySelectorAll('.pump-live-params').length === 1;
+    });
+    return !!panel && normalize(panel.textContent).includes('Backend Valid.');
+  }, caseData.pumpId, { timeout: 15000 });
+
+  const state = await page.evaluate(({ sourceId, pumpId, sinkId }) => {
+    const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+    const isVisible = (element) => {
+      if (!element) return false;
+      const style = getComputedStyle(element);
+      return style.display !== 'none' && style.visibility !== 'hidden' && element.getClientRects().length > 0;
+    };
+    const objectFor = (id, type) => Array.from(document.querySelectorAll(`.pfd-object.object-type-${type}, .pfd-object[data-type="${type}"], .pfd-object`))
+      .find((object) => (
+        (object.classList?.contains(`object-type-${type}`) || object.dataset?.type === type)
+        && (object.dataset?.nodeId === id || object.dataset?.objectId === id || normalize(object.textContent).includes(id))
+      )) || null;
+    const rowMap = (panel, prefix) => Object.fromEntries(Array.from(panel?.querySelectorAll?.(`.${prefix}-live-param-row`) || []).map((row) => {
+      const label = normalize(row.querySelector(`.${prefix}-live-param-label`)?.textContent);
+      const value = normalize(row.querySelector(`.${prefix}-live-param-value, strong`)?.textContent);
+      return [label, value];
+    }).filter(([label]) => label));
+
+    const sourceObject = objectFor(sourceId, 'source');
+    const pumpObject = objectFor(pumpId, 'pump');
+    const sinkObject = objectFor(sinkId, 'sink');
+    const sourcePanel = sourceObject?.querySelector('.source-live-params') || document.querySelector('.source-live-params');
+    const pumpPanel = pumpObject?.querySelector('.pump-live-params') || document.querySelector('.pump-live-params');
+
+    window.currentSelectedNode = sinkId;
+    const sinkRoot = window.createObjectPropertiesTaskRoot?.(sinkId);
+    const sinkWindow = sinkRoot && typeof window.openPersistentObjectPropertiesTaskWindow === 'function'
+      ? window.openPersistentObjectPropertiesTaskWindow('object', sinkId, `${sinkId} Properties`, sinkRoot, { skipDismissedGuard: true })
+      : null;
+    window.renderSidebar?.(sinkId, { taskWindow: sinkWindow, skipDismissedGuard: true, preserveScroll: true });
+    window.EngineeringRouteTraceAudit?.syncSinkPropertyWindowCanonicalReadouts?.(document);
+    const sinkTaskWindow = sinkWindow || Array.from(document.querySelectorAll('.persistent-object-properties-task-window, #taskWindow, .task-window'))
+      .find((candidate) => isVisible(candidate) && normalize(candidate.textContent).includes(sinkId)) || null;
+    const sinkRows = Array.from(sinkTaskWindow?.querySelectorAll?.('.object-task-field-row, .pipe-task-field-row, tr, .prop-row, .field-row, .property-row') || [])
+      .filter(isVisible)
+      .map((row) => normalize(row.querySelector('.prop-label, label, th, td:first-child, div:first-child, span:first-child')?.textContent || row.textContent))
+      .filter(Boolean);
+    const sinkVisibleText = normalize(sinkTaskWindow?.innerText || '');
+
+    sourceObject?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2, clientX: 120, clientY: 120 }));
+    window.EngineeringSourceVolumetricOnlyRuntime?.cleanup?.(document);
+    const menuText = normalize(document.getElementById('canvasContextMenu')?.textContent || '');
+
+    return {
+      source: {
+        objectStatus: sourceObject?.dataset?.operatingStatus || '',
+        objectClass: sourceObject?.className || '',
+        panelClass: sourcePanel?.className || '',
+        title: sourceObject?.title || ''
+      },
+      pump: {
+        objectStatus: pumpObject?.dataset?.operatingStatus || '',
+        objectClass: pumpObject?.className || '',
+        rows: rowMap(pumpPanel, 'pump')
+      },
+      sink: {
+        rows: sinkRows,
+        visibleText: sinkVisibleText
+      },
+      menuText
+    };
+  }, { sourceId: caseData.sourceId, pumpId: caseData.pumpId, sinkId: caseData.sinkId });
+
+  expect(state.source.objectStatus).toBe('incomplete');
+  expect(state.source.objectClass).toContain('source-status-incomplete');
+  expect(state.source.panelClass).toContain('source-live-params-incomplete');
+  expect(state.source.title).toContain('SRC status: Incomplete');
+  expect(['', 'incomplete']).toContain(state.pump.objectStatus);
+  expect(state.pump.objectClass).toContain('pump-status-incomplete');
+  expect(state.pump.rows['Hydraulic NPSH']).toBe('Incomplete');
+  expect(state.pump.rows['Backend Valid.']).toBe('Unverified');
+  expect(Object.keys(state.pump.rows)).not.toContain('Pump Head');
+  expect(Object.keys(state.pump.rows)).toContain('Required Head');
+  expect(state.sink.visibleText).toMatch(/Flow Demand/i);
+  expect(state.sink.visibleText).toMatch(/Volumetric Flow/i);
+  expect(state.sink.visibleText).toMatch(/Calculated Abs\. Pressure/i);
+  expect(state.sink.visibleText).toMatch(/Elevation/i);
+  expect(state.sink.visibleText).not.toMatch(/\bActive\b|Boundary Mode|Pipe Pressure Type/i);
+  expect(state.sink.visibleText).not.toMatch(/Calculated Outlet Readout|Attached Pipe|Boundary Pressure Abs\.|Calc\. Boundary P|Pressure Residual|Static Pipe P|Stagnation P|Mass Flow|Hydraulic Head|Warnings/i);
+  expect(state.menuText).toMatch(/User Task Object Properties|Object Properties/i);
+  expect(state.menuText).toMatch(/Connect/i);
+  expect(state.menuText).toMatch(/Delete Source/i);
+  expect(state.menuText).not.toMatch(/Open Tank|Pressurized Vessel|External Header|Fixed Flow Source|Standalone Boundary Source/i);
 });
 
 test('Fluid Basis temperature edit autosolves pump route without solver click', async ({ page }, testInfo) => {
@@ -1096,7 +1211,7 @@ test('Canvas Pump/Pipe/SNK readouts fast-preview before backend final after Flui
   });
 
   await waitForNpshApp(page);
-  await page.waitForFunction(() => window.EngineeringCanvasFastPreviewRuntime?.version === '2026.07-canvas-fast-preview2', null, { timeout: 15000 });
+  await page.waitForFunction(() => window.EngineeringCanvasFastPreviewRuntime?.version === '2026.07-canvas-fast-preview3', null, { timeout: 15000 });
   await loadProject(page, caseData);
 
   const baseline = await runProtectedSolve(page, caseData);
@@ -1144,7 +1259,7 @@ test('Canvas Pump/Pipe/SNK readouts fast-preview before backend final after Flui
         normalize(candidate.querySelector('.pump-live-param-label')?.textContent) === 'NPSH Available'
       ));
       const value = normalize(row?.querySelector('.pump-live-param-value, strong')?.textContent);
-      if (value && value !== previousValue && panel?.dataset?.canvasFastPreview === '2026.07-canvas-fast-preview2') {
+      if (value && value !== previousValue && panel?.dataset?.canvasFastPreview === '2026.07-canvas-fast-preview3') {
         window.__canvasFastPreviewObservedElapsedMs = performance.now() - window.__canvasFastPreviewE2EStart;
         return;
       }
@@ -1173,8 +1288,8 @@ test('Canvas Pump/Pipe/SNK readouts fast-preview before backend final after Flui
     ));
     const value = normalize(row?.querySelector('.pump-live-param-value, strong')?.textContent);
     if (!value || value === previousValue) return false;
-    if (window.EngineeringCanvasFastPreviewRuntime?.version !== '2026.07-canvas-fast-preview2') return false;
-    if (document.documentElement.dataset.canvasFastPreviewRuntime !== '2026.07-canvas-fast-preview2') return false;
+    if (window.EngineeringCanvasFastPreviewRuntime?.version !== '2026.07-canvas-fast-preview3') return false;
+    if (document.documentElement.dataset.canvasFastPreviewRuntime !== '2026.07-canvas-fast-preview3') return false;
     return {
       elapsedMs: performance.now() - (window.__canvasFastPreviewE2EStart || performance.now()),
       observedElapsedMs: window.__canvasFastPreviewObservedElapsedMs,
@@ -1182,8 +1297,8 @@ test('Canvas Pump/Pipe/SNK readouts fast-preview before backend final after Flui
       previousValue,
       panelPreviewVersion: panel.dataset.canvasFastPreview || '',
       reason: document.documentElement.dataset.canvasFastPreviewReason || '',
-      pipePreviewCount: document.querySelectorAll('#svg-lines .pipe-hydraulic-label[data-canvas-fast-preview="2026.07-canvas-fast-preview2"]').length,
-      sinkPreviewCount: document.querySelectorAll('.sink-live-params[data-canvas-fast-preview="2026.07-canvas-fast-preview2"]').length
+      pipePreviewCount: document.querySelectorAll('#svg-lines .pipe-hydraulic-label[data-canvas-fast-preview="2026.07-canvas-fast-preview3"]').length,
+      sinkPreviewCount: document.querySelectorAll('.sink-live-params[data-canvas-fast-preview="2026.07-canvas-fast-preview3"]').length
     };
   }, {
     pumpId: caseData.pumpId,
@@ -1192,7 +1307,7 @@ test('Canvas Pump/Pipe/SNK readouts fast-preview before backend final after Flui
   const preview = await previewHandle.jsonValue();
 
   expect(preview.observedElapsedMs ?? preview.elapsedMs).toBeLessThan(900);
-  expect(preview.panelPreviewVersion).toBe('2026.07-canvas-fast-preview2');
+  expect(preview.panelPreviewVersion).toBe('2026.07-canvas-fast-preview3');
   expect(preview.pipePreviewCount).toBeGreaterThan(0);
   expect(preview.sinkPreviewCount).toBeGreaterThan(0);
 

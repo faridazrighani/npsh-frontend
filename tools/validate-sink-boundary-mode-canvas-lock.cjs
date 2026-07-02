@@ -54,7 +54,7 @@ const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 
-assert.equal(runtime.version, '2026.07-route-trace-audit-v35', 'Route trace runtime should expose the SNK boundary mode canvas lock version.');
+assert.equal(runtime.version, '2026.07-route-trace-audit-v36', 'Route trace runtime should expose the SNK boundary mode canvas lock version.');
 assert.equal(typeof runtime.sinkCanonicalValues, 'function', 'SNK canonical value helper should be exported for audit completeness checks.');
 assert.equal(typeof runtime.sinkModeDisplayValue, 'function', 'SNK mode display helper should be exported for audit completeness checks.');
 assert.equal(typeof runtime.syncSinkPropertyWindowCanonicalReadouts, 'function', 'SNK properties readout sync should be exported for audit completeness checks.');
@@ -175,19 +175,21 @@ assert(runtimeSource.includes('firstBooleanValue'), 'SNK canonical helper should
 assert(runtimeSource.includes("upsertSinkCanvasRow(panel, 'Head Res.'"), 'SNK canvas should add head residual readout when backend feasibility data exists.');
 assert(runtimeSource.includes("upsertSinkCanvasRow(panel, 'Max Elev.'"), 'SNK canvas should add maximum elevation readout when backend feasibility data exists.');
 assert(runtimeSource.includes('function syncSinkPropertyWindowCanonicalReadouts'), 'SNK properties panel should sync compact readouts from the same canonical values as canvas.');
+assert(runtimeSource.includes('function isSinkPropertyWindowCandidate'), 'SNK property sync should guard candidate windows before canonical row injection.');
+assert(runtimeSource.includes('Matriks Kalkulasi Pump NPSH') && runtimeSource.includes('Pump Formula Defense'), 'SNK property sync must skip Pump Formula Defense windows so duplicate sink rows cannot appear there.');
 assert(runtimeSource.includes("setSinkPropertyRowValue(windowNode, 'Calculated Abs. Pressure'"), 'SNK compact Calculated Abs. Pressure row should be explicitly synchronized.');
 assert(runtimeSource.includes("formatCanvasValue(canonical.pressureAbsBar, 'bar a')"), 'SNK compact pressure readout should use canonical selected-boundary pressure.');
-assert(runtimeSource.includes("hideSinkPropertyRows("), 'SNK property window should hide mode-ignored rows.');
-assert(runtimeSource.includes("'ignored-when-not-flow-demand'"), 'SNK Flow Demand property row should be hidden when the selected mode is not Flow Demand.');
-assert(runtimeSource.includes("'only-outlet-pressure-boundary'"), 'SNK pressure input rows should be hidden unless Outlet Pressure Boundary is selected.');
+assert(runtimeSource.includes('function compactSinkPropertyWindowRows'), 'SNK property window should use a compact allowlist cleanup.');
+assert(runtimeSource.includes("const allowed = new Set(['Flow Demand', 'Volumetric Flow', 'Calculated Abs. Pressure', 'Elevation']);"), 'SNK compact properties should keep only the requested visible rows.');
+assert(runtimeSource.includes("'sink-compact-hidden'"), 'SNK compact properties should hide removed mode/pressure rows without flashing.');
+assert(runtimeSource.includes("'sink-compact-readout-hidden'"), 'SNK compact properties should hide the lower calculated readout block.');
 assert(!runtimeSource.includes("'flow-demand-elevation-inherited'"), 'SNK Elevation row must not be hidden as inherited/internal in Flow Demand mode.');
-assert(runtimeSource.includes("'active-boundary-elevation'"), 'SNK Elevation row should be explicitly kept visible for all selected sink boundary modes.');
-assert(runtimeSource.includes("setSinkPropertyRowValues(windowNode, ['Required Boundary P', 'Required Sink P abs']"), 'Flow Demand properties should sync required boundary pressure readouts.');
-assert(runtimeSource.includes("setSinkPropertyRowValues(windowNode, ['Required Boundary Head', 'Required Sink Head']"), 'Flow Demand properties should sync required boundary head readouts.');
+assert(runtimeSource.includes("ensureSinkPropertyReadoutRow(windowNode, 'Volumetric Flow'"), 'SNK compact properties should add/keep Volumetric Flow.');
+assert(runtimeSource.includes("ensureSinkPropertyReadoutRow(windowNode, 'Elevation'"), 'SNK compact properties should keep Elevation visible.');
 assert(runtimeSource.includes('function removeLegacyGeneratedSinkPropertyRows'), 'SNK property window sync should remove old generated rows that changed the original SINK layout.');
 assert(runtimeSource.includes("const labels = ['Evaluated Flow', 'Outlet Pressure Assumption'];"), 'SNK property window should remove previous generated Evaluated Flow and Outlet Pressure Assumption rows.');
 assert(!runtimeSource.includes("upsertSinkPropertyReadout(windowNode, 'Evaluated Flow'"), 'SNK property window should not inject Evaluated Flow into the old SINK conditions layout.');
-assert(!runtimeSource.includes('function upsertSinkPropertyReadout'), 'SNK task window layout lock should not retain generated row insertion helpers.');
+assert(!runtimeSource.includes('function upsertSinkPropertyReadout'), 'SNK task window layout lock should not retain old generated row insertion helpers.');
 assert(runtimeSource.includes('function collapseSinkTraceSections'), 'SNK Calculation Trace section should be collapsed by the route trace lock.');
 assert(runtimeSource.includes('function lockSinkPropertyWindowLayout'), 'SNK property window should have an explicit layout lock.');
 assert(runtimeSource.includes('route-trace-sink-layout-locked'), 'SNK layout lock CSS/class marker should be present.');
@@ -204,7 +206,7 @@ assert(runtimeSource.includes('function syncSinkBoundaryModeOptions'), 'SNK Boun
 assert(!runtimeSource.includes('cloneNode'), 'SNK task window layout lock should not clone property rows.');
 assert(!runtimeSource.includes('sinkPropertyReadoutContainer'), 'SNK task window layout lock should not search for insertion containers.');
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260701-object-card-stability1'),
+  index.includes('engineering-route-trace-audit.js?v=20260702-object-status-clean1'),
   'Index must load the route trace audit runtime with the SNK boundary mode lock cache key.'
 );
 assert(

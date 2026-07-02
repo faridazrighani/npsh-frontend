@@ -5,6 +5,14 @@
   const BADGE_SELECTOR = '[data-pump-formula-defense-live-badges]';
   const SUMMARY_SELECTOR = '[data-pump-formula-defense-vendor-summary]';
   const MATRIX_SELECTOR = '[data-pump-calculation-matrix]';
+  const CLEAN_REMOVED_FORMULA_DEFENSE_OUTPUTS = new Set([
+    'required npsha',
+    'maximum allowable npshr',
+    'maximum allowable npshr status',
+    'manual npshr comparison',
+    'vendor curve verification',
+    'npsh excess'
+  ]);
   const REALTIME_EVENTS = [
     'npsh:calculation-stale',
     'npsh:calculation-calculating',
@@ -12,7 +20,7 @@
     'npsh:linked-views-refreshed',
     'npsh:realtime-autosolve-complete'
   ];
-  const LIVE_INPUT_PATTERN = /\b(inputMode|optimizationMode|npshrSourceMode|npshAssessmentMode|npshMarginBasis|designFlow|designHead|designNpshr|manualNpshr|minNpshMarginRatio|minNpshMargin|speed|flow|head|npshr|pressure|pressureInputBasis|pressureBasis|pressureEnergyBasis|elevation|suctionElevation|dischargeElevation|density|viscosity|kinematicViscosity|dynamicViscosity|vaporPressure|segments|length|diameter|roughness|fittingType|fittingQuantity|fittingK|minorLoss|additionalK|active|boundaryMode|demandFlow|requiredSystemHead|maxAllowableNpshr)\b/i;
+  const LIVE_INPUT_PATTERN = /\b(inputMode|optimizationMode|npshrSourceMode|npshAssessmentMode|npshMarginBasis|designFlow|designHead|designNpshr|manualNpshr|minNpshMarginRatio|minNpshMargin|speed|flow|head|npshr|pressure|pressureInputBasis|pressureBasis|pressureEnergyBasis|elevation|suctionElevation|dischargeElevation|density|viscosity|kinematicViscosity|dynamicViscosity|vaporPressure|segments|length|diameter|roughness|fittingType|fittingQuantity|fittingK|minorLoss|additionalK|active|boundaryMode|demandFlow|requiredSystemHead)\b/i;
   const RUNTIME_PATCH_FLAG_KEYS = [
     '__engineeringRealtimeCalculationDefenseUpdatePatched',
     '__engineeringRealtimeCalculationDefenseOriginal',
@@ -99,6 +107,36 @@
       .test(String(value || ''));
   }
 
+  function isCleanRemovedFormulaDefenseRow(row) {
+    const label = normalizeLabel(row?.step || row?.title || row?.output || row?.formulaName || '');
+    return CLEAN_REMOVED_FORMULA_DEFENSE_OUTPUTS.has(label);
+  }
+
+  function sanitizeFormulaDefenseRowForCleanLayout(row, evaluation = {}) {
+    if (!row || typeof row !== 'object') return row;
+    const clean = { ...row };
+    const label = normalizeLabel(clean.step || clean.title || clean.output || clean.formulaName || '');
+    if (label === 'margin and ratio') {
+      const margin = firstNumber(evaluation.npshMargin, evaluation.calculationTrace?.interpretation?.margin);
+      const ratio = firstNumber(evaluation.npshRatio, evaluation.calculationTrace?.interpretation?.ratio);
+      clean.formula = 'Margin = NPSHa - NPSHr; Ratio = NPSHa / NPSHr';
+      clean.equation = clean.formula;
+      clean.substitution = `${formatNumber(evaluation.npsha, 4)} - ${formatNumber(evaluation.npshr, 4)} = ${formatNumber(margin, 4)} m; ${formatNumber(evaluation.npsha, 4)} / ${formatNumber(evaluation.npshr, 4)} = ${formatNumber(ratio, 4)}`;
+      clean.substitutedValues = clean.substitution;
+      clean.result = margin ?? clean.result;
+      clean.unit = 'm';
+      clean.units = 'm';
+    }
+    return clean;
+  }
+
+  function cleanFormulaDefenseRows(rows = [], evaluation = {}) {
+    return (Array.isArray(rows) ? rows : [])
+      .filter((row) => !isCleanRemovedFormulaDefenseRow(row))
+      .map((row) => sanitizeFormulaDefenseRowForCleanLayout(row, evaluation))
+      .map((row, index) => ({ ...row, order: index + 1 }));
+  }
+
   function ensureActualPumpHeadFormulaDefenseRow(rows = [], evaluation = {}) {
     if (!Array.isArray(rows)) return false;
     if (rows.some((row) => normalizeLabel(row?.step || row?.title || row?.output) === 'actual pump head')) return false;
@@ -144,17 +182,21 @@
       row?.defenseNote
     ].join(' ')));
     if (existingRows.length && !existingRows.some((row) => row?.liveAuditFallback === true) && !existingHasDeprecatedCurveRows) {
-      ensureActualPumpHeadFormulaDefenseRow(existingRows, evaluation);
-      trace.academicFormulaDefenseRows = existingRows;
-      trace.formulaDefenseRows = existingRows;
+      const cleanRows = cleanFormulaDefenseRows(existingRows, evaluation);
+      ensureActualPumpHeadFormulaDefenseRow(cleanRows, evaluation);
+      trace.academicFormulaDefenseRows = cleanRows;
+      trace.formulaDefenseRows = cleanRows;
       return;
     }
-    const liveSteps = trace.steps.filter((step) => !isDeprecatedPumpCurveDefenseText(`${step?.title || step?.label || ''} ${step?.reference || ''} ${step?.formula || ''}`));
+    const liveSteps = trace.steps.filter((step) => {
+      if (isCleanRemovedFormulaDefenseRow({ step: step?.title || step?.label || '' })) return false;
+      return !isDeprecatedPumpCurveDefenseText(`${step?.title || step?.label || ''} ${step?.reference || ''} ${step?.formula || ''}`);
+    });
     const rows = liveSteps.map((step, index) => {
       const title = step.title || step.label || `Step ${index + 1}`;
       const formula = String(step.formula || '');
       const substitution = String(step.substitution || '');
-      return {
+      return sanitizeFormulaDefenseRowForCleanLayout({
         order: index + 1,
         liveAuditFallback: true,
         step: title,
@@ -169,7 +211,7 @@
         unit: step.unit || '',
         literature: defenseLiterature(title),
         defenseNote: defenseNote(title)
-      };
+      }, evaluation);
     });
     ensureActualPumpHeadFormulaDefenseRow(rows, evaluation);
     rows.push({
@@ -185,8 +227,9 @@
       defenseNote: 'This is the advisor-facing gate for why hydraulic safety and vendor/source confidence are separate.'
     });
     trace.formulaDefenseSchemaVersion = trace.formulaDefenseSchemaVersion || 'pump-formula-defense.v1';
-    trace.academicFormulaDefenseRows = rows;
-    trace.formulaDefenseRows = rows;
+    const cleanRows = cleanFormulaDefenseRows(rows, evaluation);
+    trace.academicFormulaDefenseRows = cleanRows;
+    trace.formulaDefenseRows = cleanRows;
   }
 
   function datasetPumpId(target) {
@@ -643,7 +686,6 @@
     const vaporHeadStep = findTraceStep(steps, 'Vapor Pressure Head');
     const npshaStep = findTraceStep(steps, 'NPSHa');
     const npshrStep = findTraceStep(steps, 'NPSHr');
-    const requiredNpshaStep = findTraceStep(steps, 'Required NPSHa');
     const marginRatioStep = findTraceStep(steps, 'Margin and Ratio');
 
     const flow = firstNumber(evaluation.flow, results.fixedFlow, results.flow, tracePump.flow, props.designFlow);
@@ -677,26 +719,6 @@
     if (npshExcess === null && npsha !== null && requiredNpsha !== null) {
       npshExcess = npsha - requiredNpsha;
     }
-    const maxNpshrByRatio = firstNumber(
-      evaluation.maxNpshrByRatio,
-      results.maxNpshrByRatio,
-      interpretation.maxNpshrByRatio,
-      npsha !== null && ratioLimit ? npsha / ratioLimit : null
-    );
-    const maxNpshrByMargin = firstNumber(
-      evaluation.maxNpshrByMargin,
-      results.maxNpshrByMargin,
-      interpretation.maxNpshrByMargin,
-      npsha !== null && absoluteMarginLimit !== null ? npsha - absoluteMarginLimit : null
-    );
-    const maxAllowableNpshr = firstNumber(
-      evaluation.maxAllowableNpshr,
-      results.maxAllowableNpshr,
-      interpretation.maxAllowableNpshr,
-      [maxNpshrByRatio, maxNpshrByMargin].filter((value) => value !== null).length
-        ? Math.min(...[maxNpshrByRatio, maxNpshrByMargin].filter((value) => value !== null))
-        : null
-    );
     const hydraulicStatus = firstCompleteStatus(evaluation.hydraulicStatus, evaluation.status, results.hydraulicNpshStatus, results.cavitationStatus, interpretation.hydraulicStatus, statusFromNpshNumbers(npsha, npshr, requiredNpsha));
     const engineeringStatus = firstCompleteStatus(evaluation.engineeringStatus, results.engineeringStatus, results.status, interpretation.engineeringStatus, hydraulicStatus);
     const dataConfidence = firstText(evaluation.dataConfidence, results.dataConfidence, interpretation.dataConfidence);
@@ -709,16 +731,6 @@
       || (npsha !== null ? 'Calculated' : 'Input Required');
     const requiredPumpHeadStatus = firstCompleteStatus(evaluation.requiredPumpHeadStatus, results.requiredPumpHeadStatus, interpretation.requiredPumpHeadStatus)
       || (requiredPumpHead !== null ? 'Calculated' : 'Input Required');
-    const rawMaxAllowableNpshrStatus = firstCompleteStatus(evaluation.maxAllowableNpshrStatus, results.maxAllowableNpshrStatus, interpretation.maxAllowableNpshrStatus);
-    const maxAllowableNpshrStatus = maxAllowableNpshr !== null
-      ? (/review|required/i.test(rawMaxAllowableNpshrStatus) ? 'Calculated' : (rawMaxAllowableNpshrStatus || 'Calculated'))
-      : (rawMaxAllowableNpshrStatus || marginCriteriaStatus);
-    const rawManualNpshrComparisonStatus = firstCompleteStatus(evaluation.manualNpshrComparisonStatus, results.manualNpshrComparisonStatus, interpretation.manualNpshrComparisonStatus);
-    const manualNpshrComparisonStatus = npshr !== null && maxAllowableNpshr !== null
-      ? (npshr <= maxAllowableNpshr ? 'Safe' : 'Warning')
-      : (rawManualNpshrComparisonStatus || (npshr === null ? 'Manual NPSHr not provided' : marginCriteriaStatus));
-    const vendorCurveVerificationStatus = firstText(evaluation.vendorCurveVerificationStatus, results.vendorCurveVerificationStatus, interpretation.vendorCurveVerificationStatus, 'Not Required for route calculation');
-
     addCalculationMatrixRow(rows, {
       output: 'Flow Evaluated',
       input: 'SNK demand flow / pump fixed-flow result / pump design flow',
@@ -854,7 +866,7 @@
       formula: 'NPSHa status = Calculated when every NPSHa term is available',
       substitution: `NPSHa=${formatWithUnit(npsha, 'm', 4)}`,
       result: npshaCalculationStatus,
-      connectedTo: 'NPSHa -> maximum allowable NPSHr and hydraulic status'
+      connectedTo: 'NPSHa -> NPSH margin, ratio, and hydraulic status'
     });
     addCalculationMatrixRow(rows, {
       output: 'NPSHr',
@@ -862,7 +874,7 @@
       formula: 'NPSHr = entered pump-side required NPSH for the evaluated duty',
       substitution: npshrStep?.substitution || `Q=${formatWithUnit(flow, 'm3/h')} -> NPSHr=${formatWithUnit(npshr, 'm')}`,
       result: formatTraceResult(npshrStep, npshr, 'm', 4),
-      connectedTo: 'Manual NPSHr -> NPSH margin and maximum allowable NPSHr comparison',
+      connectedTo: 'Manual NPSHr -> NPSH margin and ratio comparison',
       step: npshrStep
     });
     addCalculationMatrixRow(rows, {
@@ -871,7 +883,7 @@
       formula: 'Ratio limit = selected ANSI/HI/user basis',
       substitution: `basis=${firstText(criteria.basis, interpretation.marginBasis, props.npshMarginBasis, '-')}; ratio=${formatNumber(ratioLimit, 3)}`,
       result: formatNumber(ratioLimit, 3),
-      connectedTo: 'NPSH Acceptance Criteria -> Required NPSHa'
+      connectedTo: 'NPSH Acceptance Criteria -> cavitation-risk comparison'
     });
     addCalculationMatrixRow(rows, {
       output: 'Effective NPSH Margin',
@@ -879,48 +891,7 @@
       formula: 'Absolute margin limit = selected ANSI/HI/user basis',
       substitution: `basis=${firstText(criteria.basis, interpretation.marginBasis, props.npshMarginBasis, '-')}; margin=${formatWithUnit(absoluteMarginLimit, 'm', 3)}`,
       result: formatWithUnit(absoluteMarginLimit, 'm', 3),
-      connectedTo: 'NPSH Acceptance Criteria -> Required NPSHa'
-    });
-    addCalculationMatrixRow(rows, {
-      output: 'Required NPSHa',
-      input: 'NPSHr, effective ratio, and effective absolute margin',
-      formula: 'Required NPSHa = governing available ANSI/HI margin criterion',
-      substitution: requiredNpshaStep?.substitution || formatGoverningExpression(requiredNpshaCandidates(npshr, ratioLimit, absoluteMarginLimit), requiredNpsha, 'max'),
-      result: formatTraceResult(requiredNpshaStep, requiredNpsha, 'm', 4),
-      connectedTo: 'NPSHr + acceptance criteria -> Hydraulic NPSH Status',
-      step: requiredNpshaStep
-    });
-    addCalculationMatrixRow(rows, {
-      output: 'Maximum Allowable NPSHr',
-      input: 'Route-calculated NPSHa and selected NPSH margin criteria',
-      formula: 'NPSHr,max = governing route-calculated allowable NPSHr from selected ANSI/HI criterion',
-      substitution: formatGoverningExpression(allowableNpshrCandidates(npsha, ratioLimit, absoluteMarginLimit), maxAllowableNpshr, 'min'),
-      result: formatWithUnit(maxAllowableNpshr, 'm', 4),
-      connectedTo: 'NPSHa + acceptance criteria -> allowable pump NPSHr ceiling'
-    });
-    addCalculationMatrixRow(rows, {
-      output: 'Maximum Allowable NPSHr Status',
-      input: 'Maximum allowable NPSHr calculation',
-      formula: 'Status = Calculated when NPSHa and margin criteria are available',
-      substitution: `NPSHr,max=${formatWithUnit(maxAllowableNpshr, 'm', 4)}`,
-      result: maxAllowableNpshrStatus,
-      connectedTo: 'Allowable NPSHr ceiling -> manual NPSHr comparison'
-    });
-    addCalculationMatrixRow(rows, {
-      output: 'Manual NPSHr Comparison',
-      input: 'Manual NPSHr and maximum allowable NPSHr',
-      formula: 'Manual NPSHr status = Safe when Manual NPSHr <= NPSHr,max',
-      substitution: `${formatWithUnit(npshr, 'm', 4)} <= ${formatWithUnit(maxAllowableNpshr, 'm', 4)} -> ${manualNpshrComparisonStatus}`,
-      result: manualNpshrComparisonStatus,
-      connectedTo: 'Manual NPSHr -> Hydraulic NPSH Status and pump selection acceptance'
-    });
-    addCalculationMatrixRow(rows, {
-      output: 'Vendor Curve Verification',
-      input: 'Optional NPSHr evidence after route/design calculation',
-      formula: 'Route calculation gate does not require pump performance curve',
-      substitution: vendorCurveVerificationStatus,
-      result: vendorCurveVerificationStatus,
-      connectedTo: 'Pump Formula Defense evidence note only; not a route-calculation blocker'
+      connectedTo: 'NPSH Acceptance Criteria -> cavitation-risk comparison'
     });
     addCalculationMatrixRow(rows, {
       output: 'NPSH Margin',
@@ -941,19 +912,10 @@
       step: marginRatioStep
     });
     addCalculationMatrixRow(rows, {
-      output: 'NPSH Excess',
-      input: 'NPSHa and Required NPSHa',
-      formula: 'Excess = NPSHa - Required NPSHa',
-      substitution: `${formatNumber(npsha, 4)} - ${formatNumber(requiredNpsha, 4)} = ${formatNumber(npshExcess, 4)} m`,
-      result: formatWithUnit(npshExcess, 'm', 4),
-      connectedTo: 'Required NPSHa -> Hydraulic NPSH Status',
-      step: marginRatioStep
-    });
-    addCalculationMatrixRow(rows, {
       output: 'Hydraulic NPSH Status',
-      input: 'NPSHa, NPSHr, Required NPSHa, and NPSH Excess',
-      formula: 'Status = Safe when NPSHa satisfies selected required NPSHa; Warning/Risk otherwise',
-      substitution: `NPSHa=${formatWithUnit(npsha, 'm')}; Required=${formatWithUnit(requiredNpsha, 'm')}; Excess=${formatWithUnit(npshExcess, 'm')}`,
+      input: 'NPSHa, NPSHr, NPSH margin, and NPSH ratio',
+      formula: 'Status = Safe when the live NPSH margin and ratio satisfy the selected acceptance criteria; Warning/Risk otherwise',
+      substitution: `NPSHa=${formatWithUnit(npsha, 'm')}; NPSHr=${formatWithUnit(npshr, 'm')}; Margin=${formatWithUnit(npshMargin, 'm')}; Ratio=${formatNumber(npshRatio, 4)}`,
       result: hydraulicStatus || '-',
       connectedTo: 'Acceptance criteria -> NPSH Evaluation Report'
     });
@@ -1055,22 +1017,8 @@
       props.npshrSourceMode,
       npshrSource
     );
-    const maxAllowableNpshr = firstNumber(evaluation.maxAllowableNpshr, results.maxAllowableNpshr, trace.interpretation?.maxAllowableNpshr);
-    const npshr = firstNumber(evaluation.npshr, results.npshr, props.manualNpshr, props.designNpshr);
     const routeStatus = firstCompleteStatus(evaluation.routeCalculationStatus, results.routeCalculationStatus, trace.interpretation?.routeCalculationStatus) || '-';
-    const rawMaxNpshrStatus = firstCompleteStatus(evaluation.maxAllowableNpshrStatus, results.maxAllowableNpshrStatus, trace.interpretation?.maxAllowableNpshrStatus);
-    const maxNpshrStatus = maxAllowableNpshr !== null
-      ? (/review|required/i.test(rawMaxNpshrStatus) ? 'Calculated' : (rawMaxNpshrStatus || 'Calculated'))
-      : (rawMaxNpshrStatus || marginCriteriaStatus);
-    const rawManualNpshrCheck = firstCompleteStatus(evaluation.manualNpshrComparisonStatus, results.manualNpshrComparisonStatus, trace.interpretation?.manualNpshrComparisonStatus);
-    const manualNpshrCheck = npshr !== null && maxAllowableNpshr !== null
-      ? (npshr <= maxAllowableNpshr ? 'Safe' : 'Warning')
-      : (rawManualNpshrCheck || (npshr === null ? 'Manual NPSHr not provided' : marginCriteriaStatus));
     const marginBasis = firstText(criteria.basis, trace.interpretation?.marginBasis, props.npshMarginBasis, 'General Purpose');
-    const maxAllowableNpshrDisplay = maxAllowableNpshr !== null
-      ? formatWithUnit(maxAllowableNpshr, 'm', 4)
-      : marginCriteriaStatus;
-    const vendorCurveVerification = firstText(evaluation.vendorCurveVerificationStatus, results.vendorCurveVerificationStatus, trace.interpretation?.vendorCurveVerificationStatus, 'Not Required for route calculation');
     return {
       pageLock,
       releaseIntegrity,
@@ -1080,13 +1028,8 @@
       npshrSource,
       curveBasis,
       routeStatus,
-      maxNpshrStatus,
-      manualNpshrCheck,
       marginBasis,
       marginCriteriaStatus,
-      vendorCurveVerification,
-      maxAllowableNpshr,
-      maxAllowableNpshrDisplay,
       rowCount: rows.length,
       stepCount: steps.length
     };
@@ -1121,6 +1064,38 @@
       anchor.insertBefore(panel, anchor.firstChild);
     }
     return panel;
+  }
+
+  function pruneLegacyPumpFormulaDefenseContent(windowNode) {
+    if (!windowNode?.querySelectorAll) return 0;
+    const anchor = windowNode.querySelector('.task-window-body, .window-body, .task-content, .task-window-content, .modal-body') || windowNode;
+    const protectedSelector = [
+      BADGE_SELECTOR,
+      SUMMARY_SELECTOR,
+      MATRIX_SELECTOR,
+      '.task-window-header',
+      '[data-pump-formula-defense-live-badges]',
+      '[data-pump-formula-defense-vendor-summary]',
+      '[data-pump-calculation-matrix]'
+    ].join(',');
+    const legacyPattern = /Short Answer for Advisor|Current Calculation Summary|Formula Sequence|Source & Confidence Map|Review Notes\s*\/\s*Warnings|Required NPSHa|Maximum Allowable NPSHr|Manual NPSHr Comparison|Vendor Curve Verification|NPSH Excess|Route NPSHa and maximum allowable NPSHr|Volumetric Flow\s*Volumetric Flow/i;
+    let changed = 0;
+    Array.from(anchor.children || []).forEach((element) => {
+      if (!element || element.matches?.(protectedSelector) || element.querySelector?.(protectedSelector)) return;
+      const text = String(element.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!legacyPattern.test(text)) return;
+      element.remove();
+      changed += 1;
+    });
+    Array.from(anchor.querySelectorAll?.('section, article, details, table, tr, .formula-defense-card, .pump-formula-defense-card, .pump-defense-section, .fluid-help-metric, .prop-card') || []).forEach((element) => {
+      if (!element || element.matches?.(protectedSelector) || element.querySelector?.(protectedSelector)) return;
+      const text = String(element.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!legacyPattern.test(text)) return;
+      element.remove();
+      changed += 1;
+    });
+    if (changed && windowNode.dataset) windowNode.dataset.pumpFormulaDefenseLegacyPruned = VERSION;
+    return changed;
   }
 
   function hydrateRouteTraceDischargeReadout(windowNode, pumpId) {
@@ -1205,16 +1180,14 @@
         <div><span style="color:#64748b;">Route Status</span><strong style="display:block;">${escapeHtml(summary.routeStatus)}</strong></div>
         <div><span style="color:#64748b;">Curve Basis</span><strong style="display:block;">${escapeHtml(summary.curveBasis)}</strong></div>
         <div><span style="color:#64748b;">NPSH Margin Basis</span><strong style="display:block;">${escapeHtml(summary.marginBasis)}</strong></div>
-        <div><span style="color:#64748b;">Max Allowable NPSHr</span><strong style="display:block;">${escapeHtml(summary.maxAllowableNpshrDisplay)}</strong></div>
-        <div><span style="color:#64748b;">Manual NPSHr Check</span><strong style="display:block;">${escapeHtml(summary.manualNpshrCheck)}</strong></div>
       </div>
-      <div style="margin-top:6px;font-size:10.5px;color:#475569;">Vendor curve verification: <strong>${escapeHtml(summary.vendorCurveVerification)}</strong></div>
     `;
 
     const matrix = ensurePanel(windowNode, MATRIX_SELECTOR, 'data-pump-calculation-matrix', 'after-summary');
     matrix.innerHTML = renderCalculationMatrix(pumpId || windowNode.dataset?.pumpId);
     hydrateRouteTraceDischargeReadout(windowNode, pumpId || windowNode.dataset?.pumpId);
     hydrateRouteTraceSinkReadout(windowNode, pumpId || windowNode.dataset?.pumpId);
+    pruneLegacyPumpFormulaDefenseContent(windowNode);
   }
 
   function refreshPumpFormulaDefenseAudit(pumpId) {

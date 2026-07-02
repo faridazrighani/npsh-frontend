@@ -130,7 +130,7 @@ assert(decimalRuntime.includes('"Evaluated Flow"'), "Decimal display lock must p
 assert(decimalRuntime.includes('"Sink Flow"'), "Decimal display lock must protect SNK flow formatting globally.");
 assert(decimalRuntime.includes("attempts >= 32"), "Decimal display lock retry loop must stay short for performance.");
 
-assert(stableRuntime.includes('const VERSION = "2026.07-live-parameter-stable5"'), "Stable live parameter runtime must expose the global stable-shell version.");
+assert(stableRuntime.includes('const VERSION = "2026.07-live-parameter-stable6"'), "Stable live parameter runtime must expose the global stable-shell version.");
 assert(stableRuntime.includes('PANEL_SELECTOR = ".pump-live-params, .tank-live-params, .source-live-params, .sink-live-params"'), "Stable runtime must cover pump, tank, source, and sink canvas panels.");
 assert(stableRuntime.includes("syncMatchingRows"), "Stable runtime must update matching live rows in place.");
 assert(stableRuntime.includes("setTextIfChanged(valueElement(targetRow)"), "Stable runtime must patch numeric values through textContent.");
@@ -155,10 +155,10 @@ assert(stableRuntime.includes("MutationObserver"), "Stable runtime must watch la
 assert(stableRuntime.includes("dataset.liveParameterStableShell"), "Stable runtime must mark stable shell panels for QA.");
 assert(!stableRuntime.includes("innerHTML"), "Stable runtime must not rebuild live parameter panels via innerHTML.");
 
-assert(indexHtml.includes("engineering-src-canvas-parameter-runtime.js?v=20260701-source-volumetric-only1"), "Index must load the global SRC realtime indicator runtime.");
-assert(indexHtml.includes("engineering-source-volumetric-only-runtime.js?v=20260702-source-boundary-clean1"), "Index must load the Source volumetric-only runtime.");
-assert(indexHtml.includes("engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260701-object-card-stability1"), "Index must load the global stable live-parameter runtime with a physical filename cache-bust.");
-assert(indexHtml.includes("engineering-route-trace-audit.js?v=20260701-object-card-stability1"), "Index must load the global SNK/pump hover-sync runtime.");
+assert(indexHtml.includes("engineering-src-canvas-parameter-runtime.js?v=20260702-object-status-clean1"), "Index must load the global SRC realtime indicator runtime.");
+assert(indexHtml.includes("engineering-source-volumetric-only-runtime.js?v=20260702-source-boundary-clean2"), "Index must load the Source volumetric-only runtime.");
+assert(indexHtml.includes("engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260702-object-status-clean1"), "Index must load the global stable live-parameter runtime with a physical filename cache-bust.");
+assert(indexHtml.includes("engineering-route-trace-audit.js?v=20260702-object-status-clean1"), "Index must load the global SNK/pump hover-sync runtime.");
 assert(indexHtml.includes("engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2"), "Index must load the global decimal display lock.");
 
 assert(manifest.includes("Global live indicator engine-link validation"), "Manifest must document the global live indicator engine-link validation.");

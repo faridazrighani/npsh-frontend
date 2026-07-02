@@ -696,11 +696,11 @@
   ];
   const realtimeScripts = [
     'engineering-npsh-margin-runtime.js?v=20260622-local-live-sync1',
-    'engineering-src-canvas-parameter-runtime.js?v=20260701-source-volumetric-only1',
-    'engineering-source-volumetric-only-runtime.js?v=20260702-source-boundary-clean1',
-    'engineering-canvas-fast-preview-runtime.js?v=20260702-canvas-fast-preview2',
+    'engineering-src-canvas-parameter-runtime.js?v=20260702-object-status-clean1',
+    'engineering-source-volumetric-only-runtime.js?v=20260702-source-boundary-clean2',
+    'engineering-canvas-fast-preview-runtime.js?v=20260702-canvas-fast-preview3',
     'engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2',
-    'engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260701-object-card-stability1',
+    'engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260702-object-status-clean1',
     'engineering-canvas-clear-reset-guard.js?v=20260629-canvas-clear-reset1',
     'engineering-performance-refresh-governor.js?v=20260629-live-evidence1',
     'engineering-pump-edit-fast-lane.js?v=20260701-user-flow-npshr1',
@@ -719,7 +719,7 @@
     'engineering-parameter-task-runtime.js?v=20260626-head-power-audit1',
     'engineering-local-trace-fallback-runtime.js?v=20260628-manual-npshr1',
     'engineering-pipe-canvas-hydraulic-label-runtime-20260628-pfv-canvas-anchor1.js?v=20260630-pfv-label-noflicker1',
-    'engineering-canvas-fast-preview-runtime.js?v=20260702-canvas-fast-preview2',
+    'engineering-canvas-fast-preview-runtime.js?v=20260702-canvas-fast-preview3',
     'engineering-pipe-source-confidence-map-runtime.js?v=20260630-pipe-properties-live1',
     'engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5',
     'engineering-bilingual-improvements.js?v=20260702-source-boundary-clean1',
@@ -735,7 +735,7 @@
     'engineering-library-governance.js?v=20260530-pagespeed3',
     'engineering-caption-audit-overrides.js?v=20260630-pipe-properties-live1',
     'engineering-head-power-audit-guard.js?v=20260627-head-power-audit2',
-    'engineering-route-trace-audit.js?v=20260701-object-card-stability1',
+    'engineering-route-trace-audit.js?v=20260702-object-status-clean1',
     'engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3',
     'engineering-defense-export-package.js?v=20260702-source-boundary-clean1',
     'engineering-pipe-moody-chart-audit.js?v=20260630-pipe-moody-audit-clean-unused-pipe-fields1',
@@ -747,15 +747,15 @@
     ...statusScripts,
     'engineering-pipe-canvas-hydraulic-label-runtime-20260628-pfv-canvas-anchor1.js?v=20260630-pfv-label-noflicker1',
     'engineering-browser-issues-runtime.js?v=20260620-orphan-label-cleanup1',
-    'engineering-route-trace-audit.js?v=20260701-object-card-stability1',
-    'engineering-canvas-fast-preview-runtime.js?v=20260702-canvas-fast-preview2'
+    'engineering-route-trace-audit.js?v=20260702-object-status-clean1',
+    'engineering-canvas-fast-preview-runtime.js?v=20260702-canvas-fast-preview3'
   ];
   const taskWindow = document.getElementById('taskWindow');
   const syncInitialTaskSheet = () => taskWindow?.classList.toggle('task-window-mobile-sheet', window.matchMedia('(max-width: 639px)').matches);
   syncInitialTaskSheet();
   window.addEventListener('resize', syncInitialTaskSheet, { passive: true });
   const MAIN_STYLE_HREF = 'style.min.css?v=20260608-browser-issues1';
-  const LIVE_PARAMETER_REPAINT_LOCK_HREF = 'engineering-live-parameter-repaint-lock.css?v=20260701-object-card-stability1';
+  const LIVE_PARAMETER_REPAINT_LOCK_HREF = 'engineering-live-parameter-repaint-lock.css?v=20260702-object-status-clean1';
   const loadStylesheet = (id, href) => new Promise((resolve, reject) => {
     const existing = document.getElementById(id);
     if (existing) {

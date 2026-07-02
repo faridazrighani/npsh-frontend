@@ -1,7 +1,7 @@
 !function registerEngineeringCanvasFastPreviewRuntime(root) {
   "use strict";
 
-  const VERSION = "2026.07-canvas-fast-preview2";
+  const VERSION = "2026.07-canvas-fast-preview3";
   const GRAVITY_MS2 = 9.80665;
   const PUMP_PANEL_SELECTOR = ".pump-live-params";
   const SINK_PANEL_SELECTOR = ".sink-live-params";
@@ -155,6 +155,40 @@
     return all.length === 1 ? all[0][0] : "";
   }
 
+  function connectionList(modelRef = model()) {
+    const candidates = [
+      root.__npshConnections,
+      root.connections,
+      modelRef?.connections,
+      modelRef?.__connections
+    ];
+    for (const candidate of candidates) {
+      if (Array.isArray(candidate)) return candidate;
+    }
+    return [];
+  }
+
+  function isHydraulicConnection(connection = {}) {
+    const type = normalizeText(connection.connectionType || connection.type).toLowerCase();
+    return !type || type === "hydraulic" || /process|pipe|flow/.test(type);
+  }
+
+  function connectionFrom(connection = {}) {
+    return normalizeText(connection.from || connection.source || connection.fromNode || connection.rawFrom || connection.start || connection.sourceId);
+  }
+
+  function connectionTo(connection = {}) {
+    return normalizeText(connection.to || connection.target || connection.toNode || connection.rawTo || connection.end || connection.targetId);
+  }
+
+  function hasHydraulicConnectionForNode(nodeId, modelRef = model()) {
+    if (!nodeId) return false;
+    return connectionList(modelRef).some((connection) => (
+      isHydraulicConnection(connection)
+      && (connectionFrom(connection) === nodeId || connectionTo(connection) === nodeId)
+    ));
+  }
+
   function pumpResultView(pump = {}) {
     const results = pump.results || {};
     const evaluation = results.npshEvaluation || {};
@@ -181,6 +215,15 @@
       suctionPressure: firstFiniteValue(results.suctionPressure, evaluation.suctionPressure, trace.boundary?.suctionPressure),
       dischargePressure: firstFiniteValue(results.dischargePressure, evaluation.dischargePressure, trace.boundary?.dischargePressure),
       pumpHead: firstFiniteValue(results.pumpHead, results.head, evaluation.pumpHead, evaluation.head),
+      requiredSystemHead: firstFiniteValue(
+        results.requiredSystemHeadRaw,
+        evaluation.requiredSystemHeadRaw,
+        trace.systemHead?.requiredHeadRaw,
+        results.requiredSystemHead,
+        evaluation.requiredSystemHead,
+        trace.systemHead?.requiredHead,
+        results.systemHead?.requiredHead
+      ),
       hydraulicStatus: firstTextValue(
         results.hydraulicNpshStatus,
         results.cavitationStatus,
@@ -221,6 +264,7 @@
       suctionPressure: view.suctionPressure,
       dischargePressure: view.dischargePressure,
       pumpHead: view.pumpHead,
+      requiredSystemHead: view.requiredSystemHead,
       hydraulicStatus: view.hydraulicStatus,
       backendStatus: view.backendStatus,
       capturedAt: Date.now()
@@ -282,7 +326,13 @@
     const npshr = npshrRaw === null ? null : nonNegativeOrZero(npshrRaw);
     const margin = previewNpsha === null || npshr === null ? null : previewNpsha - npshr;
     const ratio = previewNpsha === null || !npshr ? null : previewNpsha / npshr;
-    const status = hydraulicStatusForPreview(previewNpsha, npshr, view.hydraulicStatus || baseline?.hydraulicStatus || "");
+    const isHydraulicallyConnected = hasHydraulicConnectionForNode(pumpId);
+    const status = isHydraulicallyConnected
+      ? hydraulicStatusForPreview(previewNpsha, npshr, view.hydraulicStatus || baseline?.hydraulicStatus || "")
+      : "Incomplete";
+    const backendStatus = isHydraulicallyConnected
+      ? (view.backendStatus || baseline?.backendStatus || "Unverified")
+      : "Unverified";
 
     let changed = 0;
     changed += setRowValue(pumpRowByLabel(panel, "Flow"), withUnit(firstFiniteValue(view.flow, baseline?.flow), "m3/h", 2));
@@ -291,11 +341,10 @@
     changed += setRowValue(pumpRowByLabel(panel, "NPSH Margin"), margin === null ? "-" : signedWithUnit(margin, "m", 4));
     changed += setRowValue(pumpRowByLabel(panel, "NPSH Ratio"), ratio === null ? "-" : fixed(ratio, 4));
     changed += setRowValue(pumpRowByLabel(panel, "Hydraulic NPSH"), status);
-    changed += setRowValue(pumpRowByLabel(panel, "Backend Valid."), view.backendStatus || baseline?.backendStatus || "-");
+    changed += setRowValue(pumpRowByLabel(panel, "Backend Valid."), backendStatus);
     changed += setRowValue(pumpRowByLabel(panel, "Suction Press."), withUnit(firstFiniteValue(view.suctionPressure, baseline?.suctionPressure), "bar a", 3));
     changed += setRowValue(pumpRowByLabel(panel, "Discharge Press."), withUnit(firstFiniteValue(view.dischargePressure, baseline?.dischargePressure), "bar a", 3));
-    changed += setRowValue(pumpRowByLabel(panel, "Pump Head"), withUnit(firstFiniteValue(view.pumpHead, baseline?.pumpHead), "m", 3));
-    changed += setRowValue(pumpRowByLabel(panel, "Required Head"), withUnit(firstFiniteValue(view.pumpHead, baseline?.pumpHead), "m", 3));
+    changed += setRowValue(pumpRowByLabel(panel, "Required Head"), withUnit(firstFiniteValue(view.requiredSystemHead, baseline?.requiredSystemHead), "m", 3));
 
     if (changed) {
       panel.dataset.canvasFastPreview = VERSION;

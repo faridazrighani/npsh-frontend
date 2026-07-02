@@ -1,5 +1,5 @@
 (function registerEngineeringRouteTraceAudit(root) {
-  const VERSION = '2026.07-route-trace-audit-v35';
+  const VERSION = '2026.07-route-trace-audit-v36';
   const PANEL_ID = 'engineeringRouteTraceAuditPanel';
   const PANEL_BODY_ID = 'engineeringRouteTraceAuditPanelBody';
   const MENU_BUTTON_ID = 'menu-tools-route-trace-audit';
@@ -33,7 +33,8 @@
     'NPSH Vapor Press.',
     'NPSH Vapor Pressure',
     'Vapor Press.',
-    'Vapor Press. Used'
+    'Vapor Press. Used',
+    'Pump Head'
   ]);
   const SINK_CANVAS_HIDDEN_ROW_LABELS = new Set([
     'Flow Demand',
@@ -168,8 +169,7 @@
 
   function pumpStatusRowsForLiveBuilder(pumpNode = {}) {
     if (!pumpNode || pumpNode.type !== 'pump') return [];
-    const canonical = pumpCanonicalStatusValues(pumpNode);
-    if (!canonical.hydraulicNpshStatus && !canonical.backendValidationStatus) return [];
+    const canonical = pumpCanonicalStatusValues(pumpNode, nodeIdForModelNode(pumpNode, 'pump'));
     const rows = [{ type: 'section', label: 'STATUS' }];
     if (canonical.hydraulicNpshStatus) rows.push({ label: 'Hydraulic NPSH', value: canonical.hydraulicNpshStatus });
     if (canonical.backendValidationStatus) rows.push({ label: 'Backend Valid.', value: canonical.backendValidationStatus });
@@ -221,6 +221,7 @@
   function canonicalPumpLiveParameterRows(rows, args = []) {
     if (!Array.isArray(rows)) return rows;
     const canonicalFlow = pumpCanonicalFlowForLiveRows(args[0]);
+    const requiredHead = pumpRequiredSystemHeadValue(args[0]);
     const filteredRows = rows.filter((row) => {
       const label = normalizedReadoutLabel(row?.label ?? row?.title ?? '');
       if (isLiveParameterSectionRow(row)) return !isHiddenPumpCanvasSectionText(label);
@@ -229,6 +230,14 @@
       const normalizedSection = normalizePumpLiveSectionRow(row);
       if (normalizedSection !== row) return normalizedSection;
       const label = normalizedReadoutLabel(row?.label ?? row?.title ?? '');
+      if (label === 'Required Head') {
+        return {
+          ...row,
+          value: liveRowValue(requiredHead, row?.unit || row?.units || 'm'),
+          unit: row?.unit || row?.units || 'm',
+          title: row?.title || 'Route-required head from the solved hydraulic system.'
+        };
+      }
       if (label !== 'Flow' || canonicalFlow === null) return row;
       return {
         ...row,
@@ -237,6 +246,14 @@
         title: row?.title || 'Route duty flow synchronized with the connected SRC/SNK boundary flow.'
       };
     });
+    if (!filteredRows.some((row) => normalizedReadoutLabel(row?.label ?? row?.title ?? '') === 'Required Head')) {
+      filteredRows.push({
+        label: 'Required Head',
+        value: liveRowValue(requiredHead, 'm'),
+        unit: 'm',
+        title: 'Route-required head from the solved hydraulic system.'
+      });
+    }
     return mergePumpStatusRowsForLiveBuilder(filteredRows, args);
   }
 
@@ -401,6 +418,26 @@
 
   function isHydraulicConnection(connection = {}) {
     return !connection.connectionType || String(connection.connectionType).toLowerCase() === 'hydraulic';
+  }
+
+  function nodeIdForModelNode(node, type = '') {
+    if (!node || typeof node !== 'object') return '';
+    const modelRef = model();
+    const directId = normalizeText(node.id || node.nodeId || node.objectId || node.props?.id);
+    if (directId && (!type || modelRef[directId]?.type === type)) return directId;
+    const matches = Object.entries(modelRef || {}).filter(([, candidate]) => (
+      candidate === node && (!type || candidate?.type === type)
+    ));
+    if (matches.length === 1) return matches[0][0];
+    return '';
+  }
+
+  function hasHydraulicConnectionForNode(nodeId, modelRef = model()) {
+    if (!nodeId) return false;
+    return connectionList(modelRef).some((candidate) => (
+      isHydraulicConnection(candidate)
+      && (connectionFrom(candidate) === nodeId || connectionTo(candidate) === nodeId)
+    ));
   }
 
   function connectedPipeForSink(sinkId, modelRef = model()) {
@@ -959,7 +996,24 @@
     return true;
   }
 
+  function isSinkPropertyWindowCandidate(windowNode) {
+    if (!windowNode) return false;
+    const classText = String(windowNode.className || '');
+    const dataText = Object.values(windowNode.dataset || {}).join(' ');
+    const headerText = normalizeText(windowNode.querySelector?.('.task-window-header, .object-properties-task-title, .task-title, h2, h3')?.textContent || '');
+    const windowText = normalizeText(windowNode.textContent || '');
+    const markerText = `${classText} ${dataText} ${headerText}`;
+    if (/\b(formula-defense|formula\s+defense|calculation\s+audit|analysis\s+report|route\s+calculation\s+audit|pump\s+formula|pipe\s+formula|source\s+formula|fluid\s+formula)\b/i.test(markerText)) {
+      return false;
+    }
+    if (/Matriks Kalkulasi Pump NPSH|Pump Formula Defense|Formula Defence|Formula Defense|Vendor Curve Verification/i.test(windowText)) {
+      return false;
+    }
+    return /Fluid Out Boundary Conditions|Sink Object Properties|Sink Properties|\bSNK-\d+\b/i.test(windowText);
+  }
+
   function sinkNodeForPropertyWindow(windowNode) {
+    if (!isSinkPropertyWindowCandidate(windowNode)) return null;
     const modelRef = model();
     const candidates = [
       windowNode?.dataset?.nodeId,
@@ -1126,6 +1180,130 @@
       }
       return changed;
     }, 0);
+  }
+
+  function sinkPropertyRowLabel(row) {
+    return normalizeText(sinkPropertyRowLabelCell(row)?.textContent || '');
+  }
+
+  function sinkPropertyEditableRows(windowNode) {
+    const selector = [
+      'tr',
+      '.fluid-field-row',
+      '.field-row',
+      '.property-row',
+      '.prop-row',
+      '.object-property-row',
+      '.object-task-field-row',
+      '[data-field-key]',
+      '[data-property-key]',
+      '[data-prop-key]'
+    ].join(',');
+    return Array.from(windowNode?.querySelectorAll?.(selector) || []).filter((row) => {
+      const label = sinkPropertyRowLabel(row);
+      if (!label) return false;
+      return !!(row.querySelector?.('input, select, textarea, .prop-value, .field-value, .property-value, strong') || /^(TD|TH)$/i.test(row.tagName || ''));
+    });
+  }
+
+  function createSinkPropertyReadoutRow(windowNode, label, value, anchorLabels = []) {
+    const template = sinkPropertyEditableRows(windowNode)[0]
+      || windowNode?.querySelector?.('tr, .object-task-field-row, .prop-row, .field-row');
+    const tag = template?.tagName?.toLowerCase() === 'tr' ? 'tr' : 'div';
+    const row = document.createElement(tag);
+    row.className = template?.className || 'object-task-field-row';
+    row.dataset.routeTraceSinkCompactGenerated = 'true';
+    const childTag = tag === 'tr' ? 'td' : 'div';
+    const labelCell = document.createElement(childTag);
+    labelCell.className = 'prop-label';
+    labelCell.textContent = label;
+    const valueCell = document.createElement(childTag);
+    valueCell.className = 'prop-value';
+    valueCell.textContent = value;
+    row.append(labelCell, valueCell);
+    const rows = sinkPropertyEditableRows(windowNode);
+    const anchor = anchorLabels.map((candidate) => sinkPropertyRowByLabel(windowNode, candidate)).find(Boolean);
+    if (anchor?.parentNode) {
+      anchor.insertAdjacentElement('afterend', row);
+    } else if (rows.length && rows[rows.length - 1].parentNode) {
+      rows[rows.length - 1].insertAdjacentElement('afterend', row);
+    } else {
+      const body = windowNode.querySelector?.('.task-window-body, .object-properties-task-body') || windowNode;
+      body?.appendChild?.(row);
+    }
+    return row;
+  }
+
+  function ensureSinkPropertyReadoutRow(windowNode, label, value, anchorLabels = []) {
+    let row = sinkPropertyRowByLabel(windowNode, label);
+    let changed = 0;
+    if (!row) {
+      row = createSinkPropertyReadoutRow(windowNode, label, value, anchorLabels);
+      changed += 1;
+    }
+    changed += setRowHiddenForSinkMode(row, false, 'sink-compact-visible');
+    changed += setSinkPropertyRowValue(windowNode, label, value);
+    if (row?.dataset) row.dataset.routeTraceSinkCompactVisible = VERSION;
+    return changed;
+  }
+
+  function normalizeSinkPropertyLabel(windowNode, fromLabel, toLabel) {
+    const row = sinkPropertyRowByLabel(windowNode, fromLabel);
+    if (!row || sinkPropertyRowByLabel(windowNode, toLabel)) return 0;
+    const labelCell = sinkPropertyRowLabelCell(row);
+    if (!labelCell || normalizeText(labelCell.textContent) === toLabel) return 0;
+    labelCell.textContent = toLabel;
+    row.dataset.routeTraceSinkCompactRelabeled = VERSION;
+    return 1;
+  }
+
+  function compactSinkPropertyWindowRows(windowNode, canonical = {}) {
+    if (!windowNode?.querySelectorAll) return 0;
+    let changed = 0;
+    changed += normalizeSinkPropertyLabel(windowNode, 'Demand Flow', 'Flow Demand');
+    changed += normalizeSinkPropertyLabel(windowNode, 'Sink Flow Demand', 'Flow Demand');
+
+    const flowText = formatCanvasValue(canonical.sinkFlow, 'm3/h');
+    const pressureText = formatCanvasValue(canonical.pressureAbsBar, 'bar a');
+    const elevationText = formatCanvasValue(canonical.elevation, 'm');
+    changed += ensureSinkPropertyReadoutRow(windowNode, 'Flow Demand', flowText, []);
+    changed += ensureSinkPropertyReadoutRow(windowNode, 'Volumetric Flow', flowText, ['Flow Demand']);
+    changed += ensureSinkPropertyReadoutRow(windowNode, 'Calculated Abs. Pressure', pressureText, ['Volumetric Flow', 'Flow Demand']);
+    changed += ensureSinkPropertyReadoutRow(windowNode, 'Elevation', elevationText, ['Calculated Abs. Pressure', 'Volumetric Flow']);
+
+    const allowed = new Set(['Flow Demand', 'Volumetric Flow', 'Calculated Abs. Pressure', 'Elevation']);
+    const hardHidden = /^(Active|Boundary Mode|Pipe Pressure Type|Boundary Abs\. Pressure|Required Boundary P|Required Sink P abs|Required Boundary Head|Required Sink Head|Boundary Pressure Input|Sink Pressure Input|Reference Pressure|Outlet Pressure|Sink Pressure|Pressure Input|Pressure Basis|Pressure Input Basis|Ignored Flow Demand)$/i;
+    sinkPropertyEditableRows(windowNode).forEach((row) => {
+      const label = sinkPropertyRowLabel(row);
+      if (!label) return;
+      const shouldHide = !allowed.has(label) && (
+        hardHidden.test(label)
+        || row.querySelector?.('select[data-key="active"], select[data-key="boundaryMode"], select[data-key="pipePressureType"], [data-key="boundaryMode"], [data-key="pipePressureType"]')
+        || row.dataset?.routeTraceSinkModeReadout === 'true'
+        || row.dataset?.routeTraceSinkModeGenerated === 'true'
+        || row.dataset?.routeTraceSinkCompactGenerated === 'true'
+      );
+      changed += setRowHiddenForSinkMode(row, shouldHide, shouldHide ? 'sink-compact-hidden' : 'sink-compact-visible');
+      if (row.dataset && allowed.has(label)) row.dataset.routeTraceSinkCompactVisible = VERSION;
+    });
+    const readoutTextPattern = /^(Calculated Outlet Readout|Attached Pipe|Boundary Pressure Abs\.?|Calc\. Boundary P|Pressure Residual|Static Pipe P|Stagnation P|Flow Rate|Mass Flow|Temperature|Hydraulic Head|Status|Warnings|\+\s*Calculation Trace|Calculation Trace)\b/i;
+    Array.from(windowNode.querySelectorAll('div, section, article, details, h2, h3, h4, .object-task-section-title, .prop-section-header, .object-summary-card, .summary-card, .fluid-help-metric, .prop-card, .property-card, .sink-readout-card, .boundary-readout-card, .object-task-card')).forEach((element) => {
+      if (element === windowNode || element.classList?.contains('task-window') || element.classList?.contains('task-window-body')) return;
+      const text = normalizeText(element.textContent || '');
+      if (!text) return;
+      const containsAllowedField = Array.from(element.querySelectorAll?.('tr, .object-task-field-row, .prop-row, .field-row, .property-row') || [])
+        .some((row) => allowed.has(sinkPropertyRowLabel(row)));
+      if (containsAllowedField) return;
+      const firstLine = text.split(/\s{2,}|\n/)[0] || text;
+      if (readoutTextPattern.test(firstLine) || readoutTextPattern.test(text)) {
+        changed += setRowHiddenForSinkMode(element, true, 'sink-compact-readout-hidden');
+      }
+    });
+    if (windowNode.dataset?.routeTraceSinkCompactProperties !== VERSION) {
+      if (windowNode.dataset) windowNode.dataset.routeTraceSinkCompactProperties = VERSION;
+      changed += 1;
+    }
+    return changed;
   }
 
   function isSinkTraceSectionLabel(value = '') {
@@ -1296,77 +1474,17 @@
       const sink = sinkNodeForPropertyWindow(windowNode);
       if (!sink) return;
       const canonical = sinkCanonicalValues(sink.node);
-      const kind = sinkBoundaryModeKind(canonical.mode);
-      const isFlowDemand = kind === 'flow-demand';
-      const isFreeOutlet = kind === 'free-outlet';
-      const isOutletPressure = kind === 'outlet-pressure';
       const pressureText = formatCanvasValue(canonical.pressureAbsBar, 'bar a');
-      const requiredBoundaryHeadText = formatCanvasValue(
-        firstFiniteValue(
-          sink.node?.results?.requiredBoundaryHead,
-          sink.node?.results?.calculationTrace?.boundary?.requiredBoundaryHead
-        ),
-        'm'
-      );
 
       changed += removeLegacyGeneratedSinkPropertyRows(windowNode);
       changed += lockSinkPropertyWindowLayout(windowNode);
       changed += setSinkPropertyRowValue(windowNode, 'Calculated Abs. Pressure', pressureText);
-      changed += setSinkPropertyRowValue(windowNode, 'Boundary Abs. Pressure', pressureText);
-      changed += setSinkPropertyRowValues(windowNode, ['Required Boundary P', 'Required Sink P abs'], pressureText);
-      changed += setSinkPropertyRowValues(windowNode, ['Required Boundary Head', 'Required Sink Head'], requiredBoundaryHeadText);
-      changed += setSinkPropertyRowValue(windowNode, 'Boundary Mode', sinkBoundaryModeFormLabel(canonical.mode));
       changed += setSinkPropertyRowsTitle(
         windowNode,
-        ['Calculated Abs. Pressure', 'Boundary Abs. Pressure'],
-        isFlowDemand
-          ? 'Flow Demand output: required absolute boundary pressure solved from required boundary head, elevation, and pipe pressure type.'
-          : isFreeOutlet
-          ? 'Free Outlet output: atmospheric absolute pressure, fixed at 0 bar g / 1.01325 bar a.'
-          : 'Outlet Pressure output: absolute boundary pressure converted from the selected pressure basis.'
+        ['Calculated Abs. Pressure'],
+        'Calculated absolute sink pressure from the active discharge hydraulic balance.'
       );
-
-      changed += hideSinkPropertyRows(
-        windowNode,
-        ['Flow Demand', 'Demand Flow', 'Sink Flow Demand'],
-        !isFlowDemand,
-        'ignored-when-not-flow-demand'
-      );
-      changed += hideSinkPropertyRows(
-        windowNode,
-        ['Required Boundary P', 'Required Sink P abs', 'Required Boundary Head', 'Required Sink Head'],
-        !isFlowDemand,
-        'only-flow-demand'
-      );
-      changed += hideSinkPropertyRows(
-        windowNode,
-        ['Boundary Pressure Input', 'Sink Pressure Input'],
-        !isOutletPressure,
-        'only-outlet-pressure-boundary'
-      );
-      changed += hideSinkPropertyRows(
-        windowNode,
-        ['Reference Pressure', 'Outlet Pressure', 'Sink Pressure', 'Pressure Input'],
-        !isOutletPressure,
-        'only-outlet-pressure-boundary'
-      );
-      changed += hideSinkPropertyRows(
-        windowNode,
-        ['Pressure Basis', 'Pressure Input Basis'],
-        !isOutletPressure,
-        'only-outlet-pressure-boundary'
-      );
-      changed += hideSinkPropertyRows(
-        windowNode,
-        ['Elevation', 'Sink Elevation', 'SNK Elevation'],
-        false,
-        'active-boundary-elevation'
-      );
-
-      const ignoredRow = sinkPropertyRowByLabel(windowNode, 'Ignored Flow Demand');
-      if (ignoredRow) {
-        changed += setRowHiddenForSinkMode(ignoredRow, isFlowDemand, 'only-non-flow-demand');
-      }
+      changed += compactSinkPropertyWindowRows(windowNode, canonical);
     });
     return changed;
   }
@@ -1508,12 +1626,66 @@
     return id && modelRef[id]?.type === 'pump' ? { id, node: modelRef[id] } : null;
   }
 
-  function pumpCanonicalStatusValues(pump = {}) {
+  function pumpManualNpshrValue(pump = {}) {
+    const props = pump.props || {};
+    const results = pump.results || {};
+    const evaluation = results.npshEvaluation || {};
+    return firstFiniteValue(
+      props.manualNpshr,
+      props.designNpshr,
+      props.npshr,
+      results.npshr,
+      results.npshRequired,
+      evaluation.npshr,
+      evaluation.npshRequired
+    );
+  }
+
+  function pumpRequiredSystemHeadValue(pump = {}) {
+    const results = pump.results || {};
+    const evaluation = results.npshEvaluation || {};
+    const traceSystemHead = results.calculationTrace?.systemHead
+      || evaluation.calculationTrace?.systemHead
+      || {};
+    return firstFiniteValue(
+      results.requiredSystemHeadRaw,
+      evaluation.requiredSystemHeadRaw,
+      traceSystemHead.requiredHeadRaw,
+      results.requiredSystemHead,
+      evaluation.requiredSystemHead,
+      traceSystemHead.requiredHead,
+      results.systemHead?.requiredHead,
+      results.systemHead?.requiredHeadRaw
+    );
+  }
+
+  function normalizeBackendValidationStatusForMatrix(...values) {
+    const raw = firstMeaningfulStatusValue(...values);
+    if (!raw) return 'Unverified';
+    if (/calculating|solv(?:e|ing)|pending|in\s*progress/i.test(raw)) return 'Calculating';
+    if (/stale|out[\s-]*of[\s-]*date|prior/i.test(raw)) return 'Stale';
+    if (/timeout|timed\s*out/i.test(raw)) return 'Timeout';
+    if (/unavailable|unusable|invalid|failed|error|unverified|not\s*usable|api/i.test(raw)) return 'Unavailable';
+    if (/connected|current|matched|usable|protected|backend/i.test(raw)) return 'Connected';
+    return raw;
+  }
+
+  function pumpCanonicalStatusValues(pump = {}, pumpId = '') {
+    const modelRef = model();
+    const resolvedPumpId = pumpId || nodeIdForModelNode(pump, 'pump');
+    if (!hasHydraulicConnectionForNode(resolvedPumpId, modelRef)) {
+      return {
+        hydraulicNpshStatus: 'Incomplete',
+        backendValidationStatus: 'Unverified'
+      };
+    }
+
     const results = pump.results || {};
     const evaluation = results.npshEvaluation || {};
     const interpretation = results.calculationTrace?.interpretation
       || evaluation.calculationTrace?.interpretation
       || {};
+    const manualNpshr = pumpManualNpshrValue(pump);
     const hydraulicNpshStatus = firstMeaningfulStatusValue(
       results.hydraulicNpshStatus,
       results.cavitationStatus,
@@ -1521,29 +1693,74 @@
       evaluation.status,
       interpretation.hydraulicStatus,
       results.status
-    );
-    const backendValidationStatus = firstMeaningfulStatusValue(
+    ) || (manualNpshr === null || manualNpshr <= 0 ? 'NPSHr Not Provided' : 'Incomplete');
+    const backendValidationStatus = normalizeBackendValidationStatusForMatrix(
       results.backendValidationStatus,
       evaluation.backendValidationStatus,
+      results.calculationFreshness,
+      evaluation.calculationFreshness,
+      root.__engineeringCalculationDefenseRealtimeState?.status,
       results.backendParity?.status === 'matched' ? 'Connected' : '',
       results.backendCalculationSource && !/unavailable|timeout/i.test(results.backendCalculationSource) ? 'Connected' : ''
     );
     return { hydraulicNpshStatus, backendValidationStatus };
   }
 
+  function pumpPresentationClassFromStatus(canonical = {}) {
+    const hydraulic = normalizeText(canonical.hydraulicNpshStatus);
+    const backend = normalizeText(canonical.backendValidationStatus);
+    if (/incomplete|unverified/i.test(hydraulic) || /^unverified$/i.test(backend)) return 'incomplete';
+    if (/cavitation|risk|fail|unsafe/i.test(hydraulic)) return 'risk';
+    if (/warning|review|not\s*provided|stale|timeout|unavailable/i.test(`${hydraulic} ${backend}`)) return 'warning';
+    if (/safe|ok|pass/i.test(hydraulic) && /^connected$/i.test(backend)) return 'safe';
+    return 'incomplete';
+  }
+
+  function syncPumpPresentationStatus(panel, canonical = null) {
+    const pump = pumpNodeForCanvasPanel(panel);
+    const values = canonical || pumpCanonicalStatusValues(pump?.node || {}, pump?.id || '');
+    const presentation = pumpPresentationClassFromStatus(values);
+    const object = panel?.closest?.('.pfd-object');
+    let changed = 0;
+    if (panel?.classList) {
+      ['safe', 'warning', 'risk', 'incomplete'].forEach((name) => {
+        const cls = `pump-live-params-${name}`;
+        const shouldHave = name === presentation;
+        if (panel.classList.contains(cls) !== shouldHave) {
+          if (shouldHave) panel.classList.add(cls);
+          else panel.classList.remove(cls);
+          changed += 1;
+        }
+      });
+    }
+    if (object?.classList) {
+      ['safe', 'warning', 'risk', 'incomplete'].forEach((name) => {
+        const cls = `pump-status-${name}`;
+        const shouldHave = name === presentation;
+        if (object.classList.contains(cls) !== shouldHave) {
+          if (shouldHave) object.classList.add(cls);
+          else object.classList.remove(cls);
+          changed += 1;
+        }
+      });
+      const nextOperatingStatus = presentation === 'safe' ? 'normal' : presentation;
+      if (object.dataset.operatingStatus !== nextOperatingStatus) {
+        object.dataset.operatingStatus = nextOperatingStatus;
+        changed += 1;
+      }
+    }
+    return changed;
+  }
+
   function ensurePumpStatusCanvasRows(panel) {
-    const pump = pumpNodeForCanvasPanel(panel)?.node;
+    const pump = pumpNodeForCanvasPanel(panel);
     if (!pump) return 0;
-    const canonical = pumpCanonicalStatusValues(pump);
-    if (!canonical.hydraulicNpshStatus && !canonical.backendValidationStatus) return 0;
+    const canonical = pumpCanonicalStatusValues(pump.node, pump.id);
     let changed = 0;
     upsertPumpCanvasSection(panel, 'STATUS', { beforeFirst: true });
-    if (canonical.hydraulicNpshStatus) {
-      changed += upsertPumpCanvasRow(panel, 'Hydraulic NPSH', canonical.hydraulicNpshStatus, ['STATUS']) ? 1 : 0;
-    }
-    if (canonical.backendValidationStatus) {
-      changed += upsertPumpCanvasRow(panel, 'Backend Valid.', canonical.backendValidationStatus, ['Hydraulic NPSH', 'STATUS']) ? 1 : 0;
-    }
+    changed += upsertPumpCanvasRow(panel, 'Hydraulic NPSH', canonical.hydraulicNpshStatus || 'Incomplete', ['STATUS']) ? 1 : 0;
+    changed += upsertPumpCanvasRow(panel, 'Backend Valid.', canonical.backendValidationStatus || 'Unverified', ['Hydraulic NPSH', 'STATUS']) ? 1 : 0;
+    changed += syncPumpPresentationStatus(panel, canonical);
     return changed;
   }
 
@@ -1577,66 +1794,49 @@
   }
 
   function normalizePumpHeadReadoutLabel(panel) {
-    const row = pumpPanelRowByLabels(panel, ['Pump Head', 'Required Head']);
-    const labelElement = row?.querySelector?.('.pump-live-param-label');
-    const valueElement = row?.querySelector?.('.pump-live-param-value, strong');
-    if (!row || !labelElement) return 0;
-
     const modelRef = model();
     const pumpId = sourceIdForPumpPanel(panel, modelRef);
-    const pumpResults = modelRef[pumpId]?.results || {};
-    const npshEvaluation = pumpResults.npshEvaluation || {};
-    const traceSystemHead = pumpResults.calculationTrace?.systemHead
-      || npshEvaluation.calculationTrace?.systemHead
-      || {};
-    const requiredHeadRaw = firstFiniteValue(
-      pumpResults.requiredSystemHeadRaw,
-      npshEvaluation.requiredSystemHeadRaw,
-      traceSystemHead.requiredHeadRaw,
-      pumpResults.requiredSystemHead,
-      npshEvaluation.requiredSystemHead,
-      traceSystemHead.requiredHead
-    );
-    const rowHead = pumpPanelNumericValue(row);
-    const routeOnly = pumpResults.routeOnlyNpshEvaluation === true
-      || /route-only/i.test(firstTextValue(pumpResults.solveMode, npshEvaluation.solveMode));
-    const pressureAssisted = firstBooleanValue(
-      pumpResults.pressureAssistedSystemHead,
-      npshEvaluation.pressureAssistedSystemHead,
-      traceSystemHead.pressureAssisted
-    ) === true || (requiredHeadRaw !== null && requiredHeadRaw < 0) || (rowHead !== null && rowHead < 0);
-    const matchesRequiredHead = requiredHeadRaw !== null
-      && rowHead !== null
-      && Math.abs(rowHead - requiredHeadRaw) <= 0.02;
-    const shouldUseRequiredLabel = routeOnly || (rowHead !== null && rowHead < 0) || (pressureAssisted && matchesRequiredHead);
-    const targetLabel = shouldUseRequiredLabel ? 'Required Head' : 'Pump Head';
+    const pump = modelRef[pumpId] || {};
+    const requiredHeadRaw = pumpRequiredSystemHeadValue(pump);
     let changed = 0;
+    const pumpHeadRows = Array.from(panel?.querySelectorAll?.('.pump-live-param-row') || []).filter((row) => (
+      normalizeText(row.querySelector?.('.pump-live-param-label')?.textContent) === 'Pump Head'
+    ));
+    let requiredRow = pumpPanelRowByLabels(panel, ['Required Head']);
 
-    if (normalizeText(labelElement.textContent) !== targetLabel) {
-      labelElement.textContent = targetLabel;
-      changed += 1;
+    pumpHeadRows.forEach((row) => {
+      if (!requiredRow) {
+        const labelElement = row.querySelector?.('.pump-live-param-label');
+        if (labelElement && normalizeText(labelElement.textContent) !== 'Required Head') {
+          labelElement.textContent = 'Required Head';
+          changed += 1;
+        }
+        requiredRow = row;
+      } else {
+        row.remove();
+        changed += 1;
+      }
+    });
+
+    if (!requiredRow) {
+      changed += upsertPumpCanvasRow(panel, 'Required Head', formatCanvasValue(requiredHeadRaw, 'm'), ['NPSH Ratio', 'DISCHARGE']) ? 1 : 0;
+      requiredRow = pumpPanelRowByLabels(panel, ['Required Head']);
     }
 
-    if (shouldUseRequiredLabel && requiredHeadRaw !== null && valueElement && isPlaceholderDisplayText(valueElement.textContent)) {
-      const displayValue = valueForExistingPumpRow(row, formatCanvasValue(requiredHeadRaw, 'm'));
+    const valueElement = requiredRow?.querySelector?.('.pump-live-param-value, strong');
+    const displayValue = valueForExistingPumpRow(requiredRow, formatCanvasValue(requiredHeadRaw, 'm'));
+    if (valueElement) {
       if (setTextIfChanged(valueElement, displayValue)) changed += 1;
     }
 
-    const title = shouldUseRequiredLabel
-      ? 'Signed route-required pump head; negative means source pressure/elevation already exceeds sink head plus route losses.'
-      : '';
-    if (title && row.title !== title) {
-      row.title = title;
-      changed += 1;
-    } else if (!title && row.dataset?.routeTracePumpHeadLabelLock && row.title) {
-      row.title = '';
+    const title = 'Route-required head from the solved hydraulic system. Manufacturer pump head/curve data is intentionally not shown in this application scope.';
+    if (requiredRow && requiredRow.title !== title) {
+      requiredRow.title = title;
       changed += 1;
     }
-    if (row.dataset) {
-      row.dataset.routeTracePumpHeadLabelLock = VERSION;
-      row.dataset.routeTracePumpHeadLabelMode = shouldUseRequiredLabel
-        ? (pressureAssisted ? 'required-head-pressure-assisted' : 'required-head-route-only')
-        : 'pump-head';
+    if (requiredRow?.dataset) {
+      requiredRow.dataset.routeTracePumpHeadLabelLock = VERSION;
+      requiredRow.dataset.routeTracePumpHeadLabelMode = 'required-system-head-only';
     }
     return changed;
   }
@@ -1648,6 +1848,7 @@
     panel.querySelectorAll('.pump-live-param-row').forEach((row) => {
       const label = normalizeText(row.querySelector('.pump-live-param-label')?.textContent);
       const value = valueWithUnitFromRow(row, '.pump-live-param-value, strong', '.pump-live-param-unit');
+      if (label === 'Pump Head') return;
       if (label && value) lines.push(`${label}: ${value}`);
     });
     return syncObjectTooltip(object, lines.join('\n'), 'routeTracePumpObjectTooltipLock');
@@ -2769,6 +2970,10 @@
       '.route-trace-canvas-overlay-hidden{display:none!important;}',
       '.route-trace-sink-mode-hidden{display:none!important;}',
       '.route-trace-sink-trace-collapsed{display:none!important;}',
+      '.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .object-task-field-row[data-route-trace-sink-compact-visible],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .pipe-task-field-row[data-route-trace-sink-compact-visible],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .prop-row[data-route-trace-sink-compact-visible],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .field-row[data-route-trace-sink-compact-visible]{display:grid!important;grid-template-columns:minmax(132px,.85fr) minmax(190px,1.15fr);align-items:center;gap:8px;min-height:42px;padding:8px 10px!important;border:1px solid #d8e6f2!important;border-radius:5px!important;background:#f8fbff!important;box-sizing:border-box;}',
+      '.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] .prop-label,.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] .field-label,.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] label{min-width:0;color:#17395a;font-size:11px;font-weight:500;line-height:1.25;}',
+      '.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] input,.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] select{width:100%!important;min-width:0!important;max-width:100%!important;height:28px!important;box-sizing:border-box;}',
+      '.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] .prop-value,.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] .field-value,.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-compact-visible] strong{min-width:0;color:#0f365d;font-size:12px;font-weight:800;line-height:1.25;overflow-wrap:anywhere;}',
       '.route-trace-sink-layout-locked .route-trace-sink-trace-toggle .prop-section-header{cursor:pointer;-webkit-user-select:none;user-select:none;}',
       '.route-trace-sink-layout-locked .route-trace-sink-trace-toggle .prop-section-header::before{content:"- ";font-weight:900;}',
       '.route-trace-sink-layout-locked .route-trace-sink-trace-toggle[data-route-trace-sink-trace-collapse="collapsed"] .prop-section-header::before{content:"+ ";}',

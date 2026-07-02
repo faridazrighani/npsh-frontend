@@ -4,8 +4,7 @@
   const SOURCE_ADVISOR_AUDIT_LOCK_REASON = 'src-window-simplified-for-academic-audit';
   const SOURCE_FORMULA_DEFENSE_PLACEMENT_LOCK = 'source-formula-defense-src-header-right-v1';
   const SOURCE_ADVISOR_HIDDEN_SECTIONS = 'pump-readiness,semantic-attachment,hydraulic-connection,defense-ready-note,source-definition,source-type,source-type-meaning,boundary-role,generic-meaning';
-  const SOURCE_TYPE_MEANING_VISIBLE_LOCK = 'source-type-meaning-visible-v1';
-  const SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK = 'source-fluid-basis-link-after-flow-v1';
+  const SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK = 'source-fluid-basis-link-clean-v2';
   const SOURCE_STANDARD_FORM_SCHEMA_VERSION = 'src-standard-form.v1';
   const SOURCE_STANDARD_FORM_LOCK = 'source-standard-form-all-surfaces-v1';
   const SOURCE_STANDARD_FORM_VALUE_POLICY = 'live-user-import-or-calculated-values-only';
@@ -1588,94 +1587,11 @@
       || /path hidrolik nyata|jalur hidrolik nyata/i.test(value);
   }
 
-  function normalizeSourceTypeForMeaning(sourceType = '') {
-    const value = String(sourceType || '').replace(/\s+/g, ' ').trim();
-    return RUNTIME_ID_TO_EN[value] || value || 'Open Tank / Reservoir';
-  }
-
-  function getSourceTypeMeaningText(sourceType = '') {
-    const language = getActiveRuntimeLanguage();
-    const type = normalizeSourceTypeForMeaning(sourceType);
-    const fallback = {
-      'Open Tank / Reservoir': {
-        en: 'Atmospheric tank or reservoir boundary. Pressure and elevation define the upstream source head basis.',
-        id: 'Boundary tangki/reservoir atmosferik; tekanan dan elevasi menentukan basis head source upstream.'
-      },
-      'Pressurized Vessel': {
-        en: 'Pressurized vessel boundary. Vessel pressure and liquid elevation define the upstream source head basis.',
-        id: 'Boundary vessel bertekanan. Tekanan vessel dan elevasi cairan menentukan basis head source upstream.'
-      },
-      'External Header / Pipe Tie-in': {
-        en: 'External header or pipe tie-in boundary. Pressure basis and pressure energy basis define the upstream source head.',
-        id: 'Boundary external header atau tie-in pipa. Basis tekanan dan basis energi tekanan menentukan head source upstream.'
-      },
-      'Fixed Flow Source': {
-        en: 'Specified inlet flow boundary; use a solid pipe and review the resulting pressure/head balance.',
-        id: 'Boundary flow inlet tertentu; gunakan pipa solid dan review hasil keseimbangan pressure/head.'
-      },
-      'Standalone Boundary Source': {
-        en: 'Standalone manual boundary. Pressure, elevation, and flow data are entered directly on SRC.',
-        id: 'Boundary manual mandiri. Data tekanan, elevasi, dan aliran dimasukkan langsung pada SRC.'
-      }
-    };
-    const entry = fallback[type] || fallback['Open Tank / Reservoir'];
-    if (language === 'id') return entry.id;
-    return entry.en;
-  }
-
-  function getSourceTypeValueFromWindow(windowNode) {
-    const select = windowNode?.querySelector?.('select[data-key="sourceType"], [data-prop-key="sourceType"] select, select.prop-input-field[data-key="sourceType"]');
-    const selectedText = select?.selectedOptions?.[0]?.textContent || '';
-    const fromSelect = select?.value || selectedText;
-    if (fromSelect) return normalizeSourceTypeForMeaning(fromSelect);
-    const nodeId = String(windowNode?.dataset?.nodeId || '').trim();
-    const modelNode = getRuntimeModel()?.[nodeId];
-    return normalizeSourceTypeForMeaning(modelNode?.props?.sourceType || modelNode?.props?.boundaryMode || '');
-  }
-
-  function createSourceTypeMeaningRow(windowNode, sourceTypeRow, sourceType) {
-    if (!root.document || !sourceTypeRow?.parentNode) return null;
-    const row = root.document.createElement('tr');
-    row.className = sourceTypeRow.className || 'pipe-task-field-row object-task-field-row';
-    row.dataset.propKey = 'source-type-meaning';
-    row.dataset.sourceTypeMeaningVisibleLock = SOURCE_TYPE_MEANING_VISIBLE_LOCK;
-    const label = root.document.createElement('td');
-    label.className = 'prop-label';
-    label.setAttribute('data-i18n-text', 'sidebar.field.typeMeaning');
-    label.setAttribute('data-i18n-fallback', 'Type Meaning');
-    const value = root.document.createElement('td');
-    value.className = 'prop-value';
-    value.dataset.key = 'source-type-meaning';
-    row.append(label, value);
-    sourceTypeRow.insertAdjacentElement('afterend', row);
-    updateSourceTypeMeaningRow(row, sourceType);
-    return row;
-  }
-
-  function updateSourceTypeMeaningRow(row, sourceType = '') {
-    if (!row) return;
-    const language = getActiveRuntimeLanguage();
-    const label = row.querySelector?.('.prop-label') || row.children?.[0];
-    const value = row.querySelector?.('.prop-value, [data-key="source-type-meaning"]') || row.children?.[1];
-    row.dataset.sourceTypeMeaningVisibleLock = SOURCE_TYPE_MEANING_VISIBLE_LOCK;
-    row.dataset.propKey = 'source-type-meaning';
-    row.dataset.sourceType = normalizeSourceTypeForMeaning(sourceType);
-    if (label) {
-      label.setAttribute?.('data-i18n-text', 'sidebar.field.typeMeaning');
-      label.setAttribute?.('data-i18n-fallback', 'Type Meaning');
-      label.textContent = language === 'id' ? 'Makna Tipe' : 'Type Meaning';
-    }
-    if (value) {
-      value.dataset.key = 'source-type-meaning';
-      value.textContent = getSourceTypeMeaningText(sourceType);
-    }
-  }
-
-  function keepSourceTypeMeaningRowsVisible(windowNode) {
+  function removeSourceTypeMeaningRows(windowNode) {
     if (!isSourceObjectPropertiesWindow(windowNode)) return 0;
     let removed = 0;
-    const rows = Array.from(windowNode.querySelectorAll?.('[data-prop-key="source-type-meaning"], [data-source-type-meaning-visible-lock], tr, .source-field-row, .object-property-row, .object-task-field-row, .source-field-card, .object-field, .field-card, .task-field, [data-field-key]') || [])
-      .filter((row) => row?.isConnected && (row.dataset?.propKey === 'source-type-meaning' || row.dataset?.sourceTypeMeaningVisibleLock || isSourceTypeMeaningText(row.textContent)));
+    const rows = Array.from(windowNode.querySelectorAll?.('[data-prop-key="source-type-meaning"], tr, .source-field-row, .object-property-row, .object-task-field-row, .source-field-card, .object-field, .field-card, .task-field, [data-field-key]') || [])
+      .filter((row) => row?.isConnected && (row.dataset?.propKey === 'source-type-meaning' || isSourceTypeMeaningText(row.textContent)));
     rows.forEach((row) => {
       if (!row?.isConnected) return;
       row.remove();
@@ -1845,24 +1761,6 @@
     return rows;
   }
 
-  function moveSourceFluidBasisAfterFlow(windowNode) {
-    const fluidHeader = findSourceSectionHeader(windowNode, ['Fluid Basis Link', 'Link Basis Fluida'], 'source-fluid-basis');
-    const flowHeader = findSourceSectionHeader(windowNode, ['Flow Specification', 'Spesifikasi Flow', 'Spesifikasi Aliran'], 'flowInputMode');
-    if (!fluidHeader || !flowHeader || fluidHeader === flowHeader || fluidHeader.parentNode !== flowHeader.parentNode) return false;
-    const parentRows = Array.from(fluidHeader.parentNode.children || []);
-    const fluidIndex = parentRows.indexOf(fluidHeader);
-    const flowIndex = parentRows.indexOf(flowHeader);
-    if (fluidIndex < 0 || flowIndex < 0 || fluidIndex > flowIndex) return false;
-    const fluidBlock = collectSourceSectionBlock(fluidHeader);
-    const flowBlock = collectSourceSectionBlock(flowHeader);
-    let insertAfter = flowBlock[flowBlock.length - 1] || flowHeader;
-    fluidBlock.forEach((row) => {
-      insertAfter.insertAdjacentElement('afterend', row);
-      insertAfter = row;
-    });
-    return true;
-  }
-
   function createSourceFluidBasisReadoutRow(anchorRow, config, valueText) {
     if (!root.document || !anchorRow?.parentNode) return null;
     const row = root.document.createElement(anchorRow.tagName?.toLowerCase() === 'tr' ? 'tr' : 'div');
@@ -1950,7 +1848,6 @@
     if (windowNode.dataset?.sourceFluidBasisLinkLayoutLock !== SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK) {
       windowNode.dataset.sourceFluidBasisLinkLayoutLock = SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK;
     }
-    moveSourceFluidBasisAfterFlow(windowNode);
     return ensureSourceFluidBasisExtraReadouts(windowNode);
   }
 
@@ -1963,7 +1860,7 @@
     if (windowNode.dataset && windowNode.dataset.advisorHideBoundaryRole !== 'true') windowNode.dataset.advisorHideBoundaryRole = 'true';
     if (windowNode.dataset && windowNode.dataset.advisorHideGenericMeaning !== 'true') windowNode.dataset.advisorHideGenericMeaning = 'true';
     ensureSourceFluidBasisLinkLayout(windowNode);
-    keepSourceTypeMeaningRowsVisible(windowNode);
+    removeSourceTypeMeaningRows(windowNode);
     let hidden = 0;
     windowNode.querySelectorAll?.('tr, h1, h2, h3, h4, h5, h6, legend, .fluid-field-row, .source-field-row, .object-property-row, .pipe-task-field-row, .object-task-field-row, .source-field-card, .object-field, .field-card, .task-field, [data-prop-key], [data-field-key], [class*="section-title"], [class*="section-heading"], [class*="card-title"]').forEach((row) => {
       if (!row.isConnected) return;
@@ -1980,7 +1877,7 @@
       }
       hidden += 1;
     });
-    keepSourceTypeMeaningRowsVisible(windowNode);
+    removeSourceTypeMeaningRows(windowNode);
     ensureSourceFluidBasisLinkLayout(windowNode);
     return hidden;
   }
@@ -2343,22 +2240,16 @@
           getSourceDefenseText('Pipe/Fitting/Valve loss, pump duty', 'Loss Pipe/Fitting/Valve, duty pompa')
         ],
         [
-          getSourceDefenseText('Mass Flow', 'Mass Flow'),
-          getSourceDefenseText('Why does mass flow become volumetric flow?', 'Mengapa mass flow menjadi volumetric flow?'),
-          getSourceDefenseText('Hydraulic velocity, Reynolds number, and pipe losses require volumetric flow, so mass flow is divided by density.', 'Velocity hidrolik, Reynolds number, dan pipe loss membutuhkan volumetric flow, sehingga mass flow dibagi dengan densitas.'),
-          getSourceDefenseText('Pipe velocity, Reynolds number', 'Velocity pipa, Reynolds number')
-        ],
-        [
-          getSourceDefenseText('Volumetric Flow (Calculated)', 'Volumetric Flow (Terhitung)'),
-          getSourceDefenseText('Is this user input or calculated result?', 'Apakah ini input user atau hasil perhitungan?'),
-          getSourceDefenseText('It is calculated from mass flow and density, then used by the hydraulic route for pipe/fitting/valve loss.', 'Ini dihitung dari mass flow dan densitas, lalu dipakai route hidrolik untuk loss pipe/fitting/valve.'),
+          getSourceDefenseText('Volumetric Flow', 'Volumetric Flow'),
+          getSourceDefenseText('Is this user input?', 'Apakah ini input user?'),
+          getSourceDefenseText('Yes. SRC uses volumetric flow as the boundary flow for hydraulic velocity, Reynolds number, and pipe/fitting/valve loss.', 'Ya. SRC memakai volumetric flow sebagai boundary flow untuk velocity hidrolik, Reynolds number, dan loss pipe/fitting/valve.'),
           getSourceDefenseText('Hydraulic loss, pump duty', 'Loss hidrolik, duty pompa')
         ],
         [
           getSourceDefenseText('Density', 'Densitas'),
           getSourceDefenseText('Where is density used?', 'Densitas digunakan di mana?'),
-          getSourceDefenseText('Density converts pressure to head and converts mass flow to volumetric flow when mass flow is selected.', 'Densitas mengonversi tekanan menjadi head dan mengonversi mass flow menjadi volumetric flow jika mode mass flow dipilih.'),
-          getSourceDefenseText('Head conversion, flow conversion', 'Konversi head, konversi flow')
+          getSourceDefenseText('Density converts absolute pressure to pressure head and is part of the Fluid Basis audit for the hydraulic route.', 'Densitas mengonversi tekanan absolut menjadi pressure head dan menjadi bagian audit Fluid Basis untuk route hidrolik.'),
+          getSourceDefenseText('Head conversion, Fluid Basis audit', 'Konversi head, audit Fluid Basis')
         ],
         [
           getSourceDefenseText('Kinematic Viscosity', 'Viskositas Kinematik'),

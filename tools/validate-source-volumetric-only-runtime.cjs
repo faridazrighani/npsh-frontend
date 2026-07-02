@@ -29,13 +29,13 @@ const index = read(indexPath);
 const manifest = read(manifestPath);
 const pkg = JSON.parse(read(packagePath));
 
-const runtimeCacheKey = 'engineering-source-volumetric-only-runtime.js?v=20260702-source-boundary-clean1';
+const runtimeCacheKey = 'engineering-source-volumetric-only-runtime.js?v=20260702-source-boundary-clean2';
 const bilingualCacheKey = 'engineering-bilingual-improvements.js?v=20260702-source-boundary-clean1';
 const sourceTemperatureCacheKey = 'engineering-source-temperature-runtime.js?v=20260701-source-volumetric-only1';
-const srcCanvasCacheKey = 'engineering-src-canvas-parameter-runtime.js?v=20260701-source-volumetric-only1';
+const srcCanvasCacheKey = 'engineering-src-canvas-parameter-runtime.js?v=20260702-object-status-clean1';
 const sourceStandardSections = bilingual.match(/const SOURCE_STANDARD_FORM_SECTIONS = Object\.freeze\(\[([\s\S]*?)\]\);/)?.[1] || '';
 
-assert(runtime.includes('2026.07-source-boundary-clean1'), 'runtime version is missing');
+assert(runtime.includes('2026.07-source-boundary-clean2'), 'runtime version is missing');
 assert(runtime.includes('EngineeringSourceVolumetricOnlyRuntime'), 'global API is missing');
 assert(index.includes(runtimeCacheKey), 'index must load the volumetric-only runtime');
 assert(index.includes(bilingualCacheKey), 'index must cache-bust bilingual source cleanup runtime');
@@ -66,6 +66,9 @@ assert(pkg.scripts['validate:source-volumetric-only'] === 'node tools/validate-s
   'removeSourceAdvisorBlocks',
   'removeDeprecatedRows',
   'syncModelFromFlowInput',
+  'cleanupSourceContextMenu',
+  'startHydraulicConnectionFromSource',
+  'Delete Source',
   'MutationObserver'
 ].forEach((token) => assert(runtime.includes(token), `runtime token is missing: ${token}`));
 
@@ -78,7 +81,8 @@ assert(!/\bfetch\s*\(/.test(runtime), 'volumetric-only runtime must not call net
 assert(sourceStandardSections, 'bilingual standard form section list is missing');
 assert(!sourceStandardSections.includes('Source Definition'), 'bilingual standard form must not require Source Definition');
 assert(!sourceStandardSections.includes('Flow Specification'), 'bilingual standard form must not require Flow Specification');
-assert(/function keepSourceTypeMeaningRowsVisible\(windowNode\) \{\s*if \(!isSourceObjectPropertiesWindow\(windowNode\)\) return 0;\s*let removed = 0;/m.test(bilingual), 'bilingual runtime must remove Type Meaning rows instead of restoring them');
+assert(/function removeSourceTypeMeaningRows\(windowNode\) \{\s*if \(!isSourceObjectPropertiesWindow\(windowNode\)\) return 0;\s*let removed = 0;/m.test(bilingual), 'bilingual runtime must remove Type Meaning rows instead of restoring them');
+assert(!bilingual.includes('keepSourceTypeMeaningRowsVisible'), 'bilingual runtime must not restore Type Meaning rows');
 
 assert(sourceTemperature.includes("node.props.flowInputMode = 'Volumetric Flow'"), 'source temperature runtime must force Volumetric Flow');
 assert(!sourceTemperature.includes("input[data-key=\"massFlow\"]"), 'source temperature runtime must not read Mass Flow input');
