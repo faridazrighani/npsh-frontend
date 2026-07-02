@@ -1,12 +1,12 @@
 {
   "schemaVersion": "local-live-sync-manifest.v1",
-  "generatedAt": "2026-07-02T16:42:02.413Z",
+  "generatedAt": "2026-07-02T17:00:57.782Z",
   "purpose": "Keeps the local preview server auditable against the deployed npsh.virsim.id package.",
-  "status": "review-required",
+  "status": "synced",
   "syncChecks": {
     "liveReachable": true,
-    "localIndexMatchesLive": false,
-    "cacheKeysMatch": false,
+    "localIndexMatchesLive": true,
+    "cacheKeysMatch": true,
     "verifiedLiveAssets": false,
     "assetVerificationFailures": 0,
     "apiCommitMatchesOriginMain": true,
@@ -16,10 +16,10 @@
     "frontendRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-frontend",
     "apiRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-api",
     "serverUrl": "http://127.0.0.1:4174/",
-    "frontendCommit": "b258477ef8094405e9ec37216ce10e3191edd88d",
-    "frontendOriginMain": "b258477ef8094405e9ec37216ce10e3191edd88d",
-    "apiCommit": "d053598ab8f67b717dd3ad24a3feaafe617b0750",
-    "apiOriginMain": "d053598ab8f67b717dd3ad24a3feaafe617b0750",
+    "frontendCommit": "9ece6a946f19d16b3024b1b1f5f9b396412b6d4b",
+    "frontendOriginMain": "9ece6a946f19d16b3024b1b1f5f9b396412b6d4b",
+    "apiCommit": "d8b4421ce78964f6bf56613f02907cb1327f0fc2",
+    "apiOriginMain": "d8b4421ce78964f6bf56613f02907cb1327f0fc2",
     "releaseIntegrity": {
       "schemaVersion": "release-integrity.v1",
       "rootFingerprint": "272f64b3a39c16d9640c86c4a215a0ab215c7214d32b0b8709d3ccf2f87e5e9d",
@@ -551,15 +551,15 @@
     "error": null,
     "index": {
       "statusCode": 200,
-      "sizeBytes": 70529,
-      "sha256": "ff601a486a65e520ed20d96fb5c08bcf18945c05e25de2bf8dde6a8ab2fee1be",
-      "canonicalSizeBytes": 69135,
-      "canonicalSha256": "877992ca53f327f2c28fc4ec5c6162b7dc92e1aa5cc067dbb6199a63c8218d8c",
+      "sizeBytes": 70574,
+      "sha256": "4df23b94e37eabc5a5a9167f2683f2b7a61b8c981ef3770c5e79844ba4c49aa7",
+      "canonicalSizeBytes": 69136,
+      "canonicalSha256": "8184c5b77408685cd8511fba37093dda2a065e5a2de690d6da84b167d8ccce65",
       "canonicalizedLineEndings": true,
       "cacheKeys": [
         "app.bundle.min.js?v=20260621-npsh-margin-options1",
         "engineering-analysis-report-live-runtime.js?v=20260629-live-evidence1",
-        "engineering-bilingual-improvements.js?v=20260702-source-boundary-clean1",
+        "engineering-bilingual-improvements.js?v=20260702-source-boundary-clean2",
         "engineering-browser-issues-runtime.js?v=20260620-orphan-label-cleanup1",
         "engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1",
         "engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1",
@@ -586,7 +586,7 @@
         "engineering-pipe-segments-file-runtime.js?v=20260630-pipe-properties-cleanup1",
         "engineering-pipe-source-confidence-map-runtime.js?v=20260630-pipe-properties-live1",
         "engineering-pump-edit-fast-lane.js?v=20260701-user-flow-npshr1",
-        "engineering-pump-formula-defense-live-audit.js?v=20260630-pipe-properties-live1",
+        "engineering-pump-formula-defense-live-audit.js?v=20260702-formula-defense-clean1",
         "engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5",
         "engineering-pump-npsh-acceptance-runtime.js?v=20260621-pump-npsh-acceptance3",
         "engineering-pump-performance-canonical-chart.js?v=20260628-manual-npshr1",
@@ -605,7 +605,7 @@
     },
     "apiVersion": {
       "statusCode": 200,
-      "sha256": "12cd9268d241ec5542c601b05b92bd3b207e4417aa69114066a62b6e9604d9aa",
+      "sha256": "b2c7ae43382f28ba8f83d226358d6772d4b712b4c058c0c049d6dfa2d52aeb3d",
       "payload": {
         "ok": true,
         "appName": "GhaniSIM1 NPSH",
@@ -754,20 +754,14 @@
             "parity.fingerprint"
           ]
         },
-        "generatedAt": "2026-07-02T16:42:01.044Z"
+        "generatedAt": "2026-07-02T17:00:55.400Z"
       }
     },
     "verifiedAssets": []
   },
   "differences": {
-    "cacheKeysMissingOnLive": [
-      "engineering-bilingual-improvements.js?v=20260702-source-boundary-clean2",
-      "engineering-pump-formula-defense-live-audit.js?v=20260702-formula-defense-clean1"
-    ],
-    "cacheKeysMissingLocally": [
-      "engineering-bilingual-improvements.js?v=20260702-source-boundary-clean1",
-      "engineering-pump-formula-defense-live-audit.js?v=20260630-pipe-properties-live1"
-    ],
+    "cacheKeysMissingOnLive": [],
+    "cacheKeysMissingLocally": [],
     "assetVerificationFailures": []
   },
   "cachePolicy": {
