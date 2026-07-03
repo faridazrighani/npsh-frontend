@@ -54,7 +54,7 @@ const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 
-assert.equal(runtime.version, '2026.07-route-trace-audit-v38', 'Route trace runtime should expose the SNK Source-style boundary layout version.');
+assert.equal(runtime.version, '2026.07-route-trace-audit-v40', 'Route trace runtime should expose the SNK editable four-field boundary layout version.');
 assert.equal(typeof runtime.sinkCanonicalValues, 'function', 'SNK canonical value helper should be exported for audit completeness checks.');
 assert.equal(typeof runtime.sinkModeDisplayValue, 'function', 'SNK mode display helper should be exported for audit completeness checks.');
 assert.equal(typeof runtime.syncSinkPropertyWindowCanonicalReadouts, 'function', 'SNK properties readout sync should be exported for audit completeness checks.');
@@ -178,17 +178,22 @@ assert(runtimeSource.includes('function syncSinkPropertyWindowCanonicalReadouts'
 assert(runtimeSource.includes('function isSinkPropertyWindowCandidate'), 'SNK property sync should guard candidate windows before canonical row injection.');
 assert(runtimeSource.includes('Matriks Kalkulasi Pump NPSH') && runtimeSource.includes('Pump Formula Defense'), 'SNK property sync must skip Pump Formula Defense windows so duplicate sink rows cannot appear there.');
 assert(runtimeSource.includes("setSinkPropertyRowValue(windowNode, 'Calculated Abs. Pressure'"), 'SNK compact Calculated Abs. Pressure row should be explicitly synchronized.');
-assert(runtimeSource.includes("formatCanvasValue(canonical.pressureAbsBar, 'bar a')"), 'SNK compact pressure readout should use canonical selected-boundary pressure.');
+assert(runtimeSource.includes("formatCanvasValue(sinkReferencePressureAbsBar(sinkNode), 'bar a')"), 'SNK compact pressure readout should use Reference Pressure + atmospheric pressure.');
+assert(runtimeSource.includes('function ensureSinkPropertyInputRow'), 'SNK compact properties should create editable input rows when the core renderer omits them.');
+assert(runtimeSource.includes('function commitSinkInputControlValue'), 'SNK compact input rows should write Flow Demand, Reference Pressure, and Elevation back to sink.props.');
 assert(runtimeSource.includes('function compactSinkPropertyWindowRows'), 'SNK property window should use a compact allowlist cleanup.');
-assert(runtimeSource.includes("const orderedLabels = ['Boundary Data Source', 'Pressure Basis', 'Boundary Pressure', 'Volumetric Flow', 'Calculated Abs. Pressure', 'Sink Elevation'];"), 'SNK compact properties should keep the requested Source-style visible rows in order.');
-assert(runtimeSource.includes('const allowed = new Set(orderedLabels);'), 'SNK compact properties should derive the visible allowlist from the ordered Source-style layout.');
+assert(runtimeSource.includes("const orderedLabels = ['Flow Demand', 'Elevation', 'Reference Pressure', 'Calculated Abs. Pressure'];"), 'SNK compact properties should keep the requested four visible rows in order.');
+assert(runtimeSource.includes('const allowed = new Set(orderedLabels);'), 'SNK compact properties should derive the visible allowlist from the ordered four-field layout.');
 assert(runtimeSource.includes("'sink-compact-hidden'"), 'SNK compact properties should hide removed mode/pressure rows without flashing.');
 assert(runtimeSource.includes("'sink-compact-readout-hidden'"), 'SNK compact properties should hide the lower calculated readout block.');
 assert(runtimeSource.includes('function markSinkBoundaryConditionsHeader'), 'SNK Fluid Out Boundary Conditions header should be explicitly marked for the Source Boundary Data layout.');
 assert(runtimeSource.includes('function markSinkBoundaryDataCardRow'), 'SNK compact rows should be marked as Boundary Data cards.');
 assert(runtimeSource.includes('function removeGeneratedSinkPropertyRowsByLabel'), 'SNK compact rows should remove old generated rows before rebuilding the Source-style layout.');
 assert(runtimeSource.includes('function normalizeSinkPropertyLabelFirst'), 'SNK compact rows should relabel original editable rows without cloning them.');
-assert(runtimeSource.includes('function demoteLegacySinkVolumetricFlowRows'), 'SNK compact rows should hide the legacy flow row so demandFlow becomes the visible Volumetric Flow input.');
+assert(runtimeSource.includes('function normalizeSinkCompactInputLabels'), 'SNK compact rows should relabel keyed inputs to Flow Demand, Elevation, and Reference Pressure.');
+assert(runtimeSource.includes('function normalizeSinkReferencePressureBasis'), 'SNK compact rows should lock hidden reference pressure basis to Gauge for the visible bar g input.');
+assert(runtimeSource.includes('function setSinkPropertyRowUnit'), 'SNK compact rows should force Reference Pressure units to bar g.');
+assert(runtimeSource.includes('function demoteLegacySinkVolumetricFlowRows'), 'SNK compact rows should hide the legacy flow row so demandFlow becomes the visible Flow Demand input.');
 assert(runtimeSource.includes('function sinkPropertyRowControlKey'), 'SNK compact rows should inspect field keys before deciding which Volumetric Flow row is visible.');
 assert(runtimeSource.includes('function orderSinkBoundaryDataRows'), 'SNK compact rows should be physically ordered under the Fluid Out Boundary Conditions header.');
 assert(runtimeSource.includes('function patchRenderSidebarSinkCleanup'), 'SNK renderSidebar cleanup should run synchronously after Sink task-window renders.');
@@ -201,14 +206,19 @@ assert(runtimeSource.includes('readoutBodyPattern'), 'SNK compact cleanup should
 assert(runtimeSource.includes("document.addEventListener('input', onChange, false)"), 'SNK property changes should run cleanup after application input handlers to prevent flash.');
 assert(runtimeSource.includes('observer.observe(body, { childList: true, subtree: true })'), 'SNK task-window mutations should be observed outside the canvas.');
 assert(runtimeSource.includes('.object-task-field-row:has([data-key="active"]'), 'SNK layout CSS should hide old dropdown rows before JS cleanup runs.');
-assert(!runtimeSource.includes('[data-key="pressureBasis"],[name="pressureBasis"]'), 'SNK layout CSS must not hide the visible Pressure Basis row.');
-assert(!runtimeSource.includes('[data-key="pressure"],[name="pressure"]'), 'SNK layout CSS must not hide the visible Boundary Pressure row.');
+assert(runtimeSource.includes('[data-key="pressureBasis"],[name="pressureBasis"]'), 'SNK layout CSS should pre-hide the old Pressure Basis row.');
+assert(runtimeSource.includes('[data-key="flow"],[name="flow"]'), 'SNK layout CSS should pre-hide the legacy Volumetric Flow row.');
+assert(!runtimeSource.includes('[data-key="pressure"],[name="pressure"]){display:none'), 'SNK layout CSS must not hide the visible Reference Pressure row.');
 assert(!runtimeSource.includes("'flow-demand-elevation-inherited'"), 'SNK Elevation row must not be hidden as inherited/internal in Flow Demand mode.');
-assert(runtimeSource.includes("ensureSinkPropertyReadoutRow(windowNode, 'Boundary Data Source'"), 'SNK compact properties should add/keep Boundary Data Source.');
-assert(runtimeSource.includes("ensureSinkPropertyReadoutRow(windowNode, 'Pressure Basis'"), 'SNK compact properties should add/keep Pressure Basis.');
-assert(runtimeSource.includes("ensureSinkPropertyReadoutRow(windowNode, 'Boundary Pressure'"), 'SNK compact properties should add/keep Boundary Pressure.');
-assert(runtimeSource.includes("ensureSinkPropertyReadoutRow(windowNode, 'Volumetric Flow'"), 'SNK compact properties should add/keep Volumetric Flow.');
-assert(runtimeSource.includes("ensureSinkPropertyReadoutRow(windowNode, 'Sink Elevation'"), 'SNK compact properties should keep Sink Elevation visible.');
+assert(runtimeSource.includes("ensureSinkPropertyInputRow(windowNode, 'Flow Demand'"), 'SNK compact properties should add/keep Flow Demand as an editable input.');
+assert(runtimeSource.includes("ensureSinkPropertyInputRow(windowNode, 'Elevation'"), 'SNK compact properties should add/keep Elevation as an editable input.');
+assert(runtimeSource.includes("ensureSinkPropertyInputRow(windowNode, 'Reference Pressure'"), 'SNK compact properties should add/keep Reference Pressure as an editable input.');
+assert(runtimeSource.includes("ensureSinkPropertyReadoutRow(windowNode, 'Calculated Abs. Pressure'"), 'SNK compact properties should keep Calculated Abs. Pressure visible.');
+assert(!runtimeSource.includes("ensureSinkPropertyReadoutRow(windowNode, 'Boundary Data Source'"), 'SNK compact properties should not add Boundary Data Source.');
+assert(!runtimeSource.includes("ensureSinkPropertyReadoutRow(windowNode, 'Pressure Basis'"), 'SNK compact properties should not add Pressure Basis.');
+assert(!runtimeSource.includes("ensureSinkPropertyReadoutRow(windowNode, 'Boundary Pressure'"), 'SNK compact properties should not add Boundary Pressure.');
+assert(!runtimeSource.includes("ensureSinkPropertyReadoutRow(windowNode, 'Volumetric Flow'"), 'SNK compact properties should not add Volumetric Flow.');
+assert(!runtimeSource.includes("ensureSinkPropertyReadoutRow(windowNode, 'Sink Elevation'"), 'SNK compact properties should not add Sink Elevation.');
 assert(runtimeSource.includes('function removeLegacyGeneratedSinkPropertyRows'), 'SNK property window sync should remove old generated rows that changed the original SINK layout.');
 assert(runtimeSource.includes("const labels = ['Evaluated Flow', 'Outlet Pressure Assumption'];"), 'SNK property window should remove previous generated Evaluated Flow and Outlet Pressure Assumption rows.');
 assert(!runtimeSource.includes("upsertSinkPropertyReadout(windowNode, 'Evaluated Flow'"), 'SNK property window should not inject Evaluated Flow into the old SINK conditions layout.');
@@ -229,7 +239,7 @@ assert(runtimeSource.includes('function syncSinkBoundaryModeOptions'), 'SNK Boun
 assert(!runtimeSource.includes('cloneNode'), 'SNK task window layout lock should not clone property rows.');
 assert(!runtimeSource.includes('sinkPropertyReadoutContainer'), 'SNK task window layout lock should not search for insertion containers.');
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260703-sink-boundary-cards1'),
+  index.includes('engineering-route-trace-audit.js?v=20260703-sink-boundary-input2'),
   'Index must load the route trace audit runtime with the SNK boundary mode lock cache key.'
 );
 assert(

@@ -2648,6 +2648,7 @@
     sourceStandardForm: cloneSourceStandardFormContract(),
     applySourceStandardFormToProject,
     validateSourceStandardFormWindow,
+    refreshSourceDefenseFallbacks: repairOpenSourceDefenseFallbacks,
     installRuntimeLocalizationBridge,
     getDiagnostics: getBilingualDiagnostics,
     traceRegistry

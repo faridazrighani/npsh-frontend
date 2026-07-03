@@ -204,7 +204,7 @@
       const modeKind = sinkModeKindForTarget(nodeId);
       if (['active', 'boundaryMode', 'elevation', 'pressureBasis'].includes(fieldKey)) return true;
       if (fieldKey === 'demandFlow') return modeKind === 'flow-demand';
-      if (fieldKey === 'pressure' || fieldKey === 'pressureInputBasis') return modeKind === 'outlet-pressure';
+      if (fieldKey === 'pressure' || fieldKey === 'pressureInputBasis') return true;
       return CALCULATION_FIELD_PATTERN.test(tokens.join(' '));
     }
     if (type === 'source') {

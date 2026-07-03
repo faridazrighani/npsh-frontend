@@ -137,7 +137,7 @@ node npsh-api/tools/release-integrity-audit.cjs
 app.bundle.min.js.map sourcesContent: absent
 App bundle cache key: app.bundle.min.js?v=20260621-npsh-margin-options1
 Main style cache key: style.min.css?v=20260608-browser-issues1
-Bilingual terminology runtime cache key: engineering-bilingual-improvements.js?v=20260702-source-boundary-clean2
+Bilingual terminology runtime cache key: engineering-bilingual-improvements.js?v=20260703-source-defense-refresh1
 Source canvas parameter runtime cache key: engineering-src-canvas-parameter-runtime.js?v=20260702-object-status-clean1
 Source temperature runtime cache key: engineering-source-temperature-runtime.js?v=20260701-source-volumetric-only1
 Source volumetric-only runtime cache key: engineering-source-volumetric-only-runtime.js?v=20260702-source-boundary-clean2
@@ -149,13 +149,13 @@ Pipe canvas hydraulic label runtime cache key: engineering-pipe-canvas-hydraulic
 Canvas fast preview runtime cache key: engineering-canvas-fast-preview-runtime.js?v=20260702-canvas-fast-preview3
 Pipe source confidence map runtime cache key: engineering-pipe-source-confidence-map-runtime.js?v=20260630-pipe-properties-live1
 Pump nozzle simplify runtime cache key: engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5
-Analysis Report live runtime cache key: engineering-analysis-report-live-runtime.js?v=20260629-live-evidence1
+Analysis Report live runtime cache key: engineering-analysis-report-live-runtime.js?v=20260703-snk-reference-pressure1
 Head Power Audit Guard cache key: engineering-head-power-audit-guard.js?v=20260627-head-power-audit2
-Route audit cache key: engineering-route-trace-audit.js?v=20260703-sink-boundary-cards1
+Route audit cache key: engineering-route-trace-audit.js?v=20260703-sink-boundary-input2
 Simulation case integrity guard cache key: engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3
 Performance refresh governor cache key: engineering-performance-refresh-governor.js?v=20260629-live-evidence1
 Pump edit fast lane cache key: engineering-pump-edit-fast-lane.js?v=20260701-user-flow-npshr1
-Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260701-user-flow-autosolve1
+Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1
 Suction-only NPSHa runtime cache key: engineering-suction-only-npsha-runtime.js?v=20260630-pipe-properties-live1
 Calculation lifecycle runtime cache key: engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1
 Calculation progress overlay cache key: engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1

@@ -10,7 +10,7 @@ const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const CASE_FILE = path.join(FRONTEND_ROOT, "journals", "simulasi_1", "simulasi_performansi_pompa_air_umpan_tangki_deaerator.untirta");
 const LOGO_FILE = path.join(FRONTEND_ROOT, "png", "untirta-universitas-sultanagengtirtayasa880x870.png");
-const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260629-live-evidence1";
+const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260703-snk-reference-pressure1";
 const VERSION = "2026.06-analysis-report-live17-head-power-audit";
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
@@ -306,9 +306,9 @@ assert(metrics.get("fluid basis - kinematic viscosity").valueText.includes("0.80
 assert(metricText(metrics, "Pipe Suction - Total head loss").includes("2.615534 m"), "Suction total loss must come from pipe trace totals.");
 assert(metricText(metrics, "Pipe Discharge - Total head loss").includes("11.668509 m"), "Discharge total loss must come from pipe trace totals.");
 assert(metricText(metrics, "Pipe Suction - PFV Start Elevation").includes("0 m"), "Suction PFV start elevation must come from the pipe endpoint.");
-assert(metricText(metrics, "Pipe Suction - PFV End Elevation").includes("-0.5 m"), "Suction PFV end elevation must come from the pipe endpoint.");
+assert(metricText(metrics, "Pipe Suction - PFV End Elevation").includes("0 m"), "Suction PFV end elevation must follow the cleaned pipe endpoint default.");
 assert(metricText(metrics, "Pipe Discharge - PFV Start Elevation").includes("0 m"), "Discharge PFV start elevation must come from the pipe endpoint.");
-assert(metricText(metrics, "Pipe Discharge - PFV End Elevation").includes("10 m"), "Discharge PFV end elevation must come from the pipe endpoint.");
+assert(metricText(metrics, "Pipe Discharge - PFV End Elevation").includes("0 m"), "Discharge PFV end elevation must follow the cleaned pipe endpoint default.");
 assert(metricText(metrics, "Pump - Pump Datum Elev.").includes("-0.5 m"), "Pump datum elevation must remain available for NPSH datum checks.");
 assert(!metrics.has("pump - elevation"), "Live metrics must omit deprecated Pump - Elevation.");
 assert(!metrics.has("pump - suction nozzle elev."), "Live metrics must omit old Pump - Suction Nozzle Elev. as an active metric.");
@@ -318,7 +318,8 @@ assert(metricText(metrics, "Pump - Required NPSHa").includes("3.0002 m"), "Pump 
 assert(metricText(metrics, "Pump - Maximum Allowable NPSHr").includes("5.8656 m"), "Pump maximum allowable NPSHr must be calculated from NPSHa and margin basis.");
 assert(metricText(metrics, "Pump - Route Calculation Status") === "Calculated", "Pump route calculation status must not be blocked by pump curve development.");
 assert(metricText(metrics, "Pump - Pump head evaluated").includes("24 m"), "Pump evaluated head must come from solved pump/system head.");
-assert(metricText(metrics, "SNK - Reference pressure").includes("Ignored in Flow Demand Boundary"), "SNK reference pressure must be marked ignored when Flow Demand Boundary is active.");
+assert(!metricText(metrics, "SNK - Reference pressure").toLowerCase().includes("ignored"), "SNK reference pressure must remain active when Flow Demand Boundary is active.");
+assert(metricText(metrics, "SNK - Reference pressure").includes("bar"), "SNK reference pressure must display a pressure value.");
 assert(metricText(metrics, "Outlet Readout - Vapor margin").includes("7.76"), "Outlet vapor margin must be recalculated from live pressure and Fluid Basis.");
 
 const routeOnlyDischargeLossProject = JSON.parse(JSON.stringify(project));

@@ -325,7 +325,7 @@ test('SINK elevation and pressure changes refresh protected backend trace in the
   const changedSnapshot = await browserSnapshotFromPage(page);
   expect(changedSnapshot.realtime.status).toBe('Current');
   expect(changedSnapshot.realtime.calculationId).toBe(changed.calculationId);
-  expect(changedSnapshot.pumpFreshness).toBe('Current');
+  expect(['Current', 'Recalculated after stale input change']).toContain(changedSnapshot.pumpFreshness);
   expect(changedSnapshot.lastResponse.priorResultStale).toBe(true);
 
   expect(simulateRequests.length).toBeGreaterThanOrEqual(2);

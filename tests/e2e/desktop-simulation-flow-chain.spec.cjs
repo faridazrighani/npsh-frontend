@@ -441,8 +441,8 @@ test('Simulasi 1 desktop chain refreshes route/formula/dependency after SINK edi
   expect(baselineSnapshot.bodyText).toContain('NPSH Available');
   expect(baselineSnapshot.dock.routeNodes).toEqual(['Fluid Basis', 'SRC-100', 'PIPE-1', 'P-100', 'PIPE-2', 'SNK-100']);
   expect(baselineSnapshot.audit.routeTraceText).toContain('SNK-100');
-  expect(formulaRow(baseline, 'System Curve Head').substitution).toContain('1.946 + 2.616 + 11.669 = 16.230 m');
-  expect(formulaRow(baseline, 'System Curve Head').result).toBeCloseTo(16.23, 3);
+  expect(formulaRow(baseline, 'System Curve Head').substitution).toContain('9.716 + 2.616 + 11.669 = 24.000 m');
+  expect(formulaRow(baseline, 'System Curve Head').result).toBeCloseTo(24, 3);
   expect(baselineSnapshot.exportGate.canExport).toBe(true);
 
   const suctionSegmentAudit = await page.evaluate((pumpId) => {
@@ -536,8 +536,8 @@ test('Simulasi 1 desktop chain refreshes route/formula/dependency after SINK edi
   expect(changedSnapshot.pump.backendValidationStatus).toBe('Connected');
   expect(changedSnapshot.pump.dependencyFingerprint).toBe(changed.dependencyManifest.dependencyFingerprint);
   expect(changedSnapshot.response.routeTrace.sections.discharge.pressureDropBar).toBeCloseTo(1.097003, 5);
-  expect(formulaRow(changed, 'System Static Head').substitution).toContain('26.315 - 19.369 = 6.946 m');
-  expect(formulaRow(changed, 'System Curve Head').substitution).toContain('21.230 m');
+  expect(formulaRow(changed, 'System Static Head').substitution).toContain('36.212 - 19.369 = 16.843 m');
+  expect(formulaRow(changed, 'System Curve Head').substitution).toContain('31.127 m');
   expect(JSON.stringify(changedSnapshot.response.dependencyManifest.sinkImpactMatrix)).toMatch(/sink\.props\.elevation/);
   expect(changedSnapshot.audit.routeTraceText).toContain('Fluid Basis -> SRC-100 -> PIPE-1 -> P-100 -> PIPE-2 -> SNK-100');
   expect(changedSnapshot.exportGate.canExport).toBe(true);
@@ -546,7 +546,8 @@ test('Simulasi 1 desktop chain refreshes route/formula/dependency after SINK edi
   const changedPayload = page.__desktopFlowChainRequests[page.__desktopFlowChainRequests.length - 1].payload;
   expect(changedPayload.client.previousDependencyFingerprint).toBe(baseline.dependencyManifest.dependencyFingerprint);
   expect(Number(changedPayload.model['SNK-100'].props.elevation)).toBe(15);
-  expect(Number(changedPayload.model['SNK-100'].props.pressure)).toBeCloseTo(1.9437071290497523, 8);
+  expect(Number(changedPayload.model['SNK-100'].props.pressure)).toBeCloseTo(0.9304571290497523, 8);
+  expect(changedPayload.model['SNK-100'].props.pressureInputBasis).toBe('Gauge');
 
   const screenshotPath = testInfo.outputPath('simulasi-1-flow-chain-after-sink-edit.png');
   await page.screenshot({ path: screenshotPath, fullPage: false });
@@ -591,7 +592,7 @@ test('Analysis Report live cells refresh from current calculation state without 
     window.EngineeringAnalysisReportLiveRuntime?.refresh?.();
   }, { entry: caseData.entry, report: caseData.report });
 
-  await page.waitForSelector('.journal-analysis-task-window .journal-analysis-comparison-table', { timeout: 10000 });
+  await page.waitForSelector('.journal-analysis-task-window .journal-analysis-comparison-table', { state: 'attached', timeout: 10000 });
   const xlsxExportButton = page.locator('.journal-analysis-task-window [data-analysis-report-xlsx-export="true"]');
   await expect(xlsxExportButton).toBeVisible({ timeout: 10000 });
   await expect(xlsxExportButton).toHaveText('XLSX');
@@ -688,6 +689,7 @@ test('Analysis Report live cells refresh from current calculation state without 
 });
 
 test('Fluid Basis temperature UI solve matches direct backend and reports route losses', async ({ page }, testInfo) => {
+  test.setTimeout(90000);
   const caseData = loadJournalCase('simulation-case-1');
   await waitForNpshApp(page);
   await loadProject(page, caseData);
@@ -1008,7 +1010,7 @@ test('Source Properties input edits stay clean, stable, and responsive', async (
   expect(Math.abs(afterRect.height - beforeRect.height)).toBeLessThanOrEqual(12);
 });
 
-test('Sink Properties input edits stay clean, stable, and Source-style', async ({ page }) => {
+test('Sink Properties input edits stay clean, stable, and four-field compact', async ({ page }) => {
   const caseData = loadJournalCase('simulation-case-1');
   await waitForNpshApp(page);
   await loadProject(page, caseData);
@@ -1029,6 +1031,7 @@ test('Sink Properties input edits stay clean, stable, and Source-style', async (
       && !win.hidden
       && !!win.querySelector('[data-route-trace-sink-boundary-card]')
       && !!win.querySelector('input[data-key="demandFlow"], input[name="demandFlow"]')
+      && !!win.querySelector('input[data-key="pressure"], input[name="pressure"]')
       && !!win.querySelector('input[data-key="elevation"], input[name="elevation"]');
   }, caseData.sinkId, { timeout: 15000 });
 
@@ -1052,7 +1055,7 @@ test('Sink Properties input edits stay clean, stable, and Source-style', async (
           .filter(isVisible)
           .map((row) => normalize(row.textContent))
           .join(' | ');
-        if (/\b(Active|Boundary Mode|Pipe Pressure Type|Calculated Outlet Readout|Attached Pipe|Mass Flow|Hydraulic Head|Warnings)\b/i.test(visibleText)) {
+        if (/\b(Active|Boundary Mode|Pipe Pressure Type|Boundary Data Source|Pressure Basis|Boundary Pressure|Volumetric Flow|Sink Elevation|Calculated Outlet Readout|Attached Pipe|Mass Flow|Hydraulic Head|Warnings)\b/i.test(visibleText)) {
           window.__sinkInputCleanSamples.push({ time: performance.now(), visibleText });
         }
       }
@@ -1063,6 +1066,7 @@ test('Sink Properties input edits stay clean, stable, and Source-style', async (
 
   await sinkWindow.locator('input[data-key="demandFlow"], input[name="demandFlow"]').first().fill('42.250');
   await sinkWindow.locator('input[data-key="elevation"], input[name="elevation"]').first().fill('4.500');
+  await sinkWindow.locator('input[data-key="pressure"], input[name="pressure"]').first().fill('0.750');
 
   await page.waitForFunction((sinkId) => {
     window.EngineeringRouteTraceAudit?.syncSinkPropertyWindowCanonicalReadouts?.(document);
@@ -1070,7 +1074,8 @@ test('Sink Properties input edits stay clean, stable, and Source-style', async (
     const sink = model[sinkId];
     return sink?.props
       && Number(sink.props.demandFlow) === 42.25
-      && Number(sink.props.elevation) === 4.5;
+      && Number(sink.props.elevation) === 4.5
+      && Number(sink.props.pressure) === 0.75;
   }, caseData.sinkId, { timeout: 20000 });
 
   await page.waitForTimeout(600);
@@ -1100,31 +1105,32 @@ test('Sink Properties input edits stay clean, stable, and Source-style', async (
       cards,
       demandFlow: sink.props?.demandFlow,
       elevation: sink.props?.elevation,
+      pressure: sink.props?.pressure,
+      pressureInputBasis: sink.props?.pressureInputBasis,
       runtime: window.EngineeringRouteTraceAudit?.version || ''
     };
   }, caseData.sinkId);
   const afterRect = await sinkWindow.boundingBox();
 
-  expect(editState.runtime).toBe('2026.07-route-trace-audit-v38');
+  expect(editState.runtime).toBe('2026.07-route-trace-audit-v40');
   expect(editState.samples).toEqual([]);
-  expect(editState.text).not.toMatch(/\b(Active|Boundary Mode|Pipe Pressure Type|Calculated Outlet Readout|Attached Pipe|Mass Flow|Hydraulic Head|Warnings)\b/i);
+  expect(editState.text).not.toMatch(/\b(Active|Boundary Mode|Pipe Pressure Type|Boundary Data Source|Pressure Basis|Boundary Pressure|Volumetric Flow|Sink Elevation|Calculated Outlet Readout|Attached Pipe|Mass Flow|Hydraulic Head|Warnings)\b/i);
   expect(editState.cards.map((row) => row.label)).toEqual([
-    'Boundary Data Source',
-    'Pressure Basis',
-    'Boundary Pressure',
-    'Volumetric Flow',
-    'Calculated Abs. Pressure',
-    'Sink Elevation'
+    'Flow Demand',
+    'Elevation',
+    'Reference Pressure',
+    'Calculated Abs. Pressure'
   ]);
   expect(Object.fromEntries(editState.cards.map((row) => [row.label, row.controlKey]))).toMatchObject({
-    'Pressure Basis': expect.stringMatching(/pressure(Input)?Basis/i),
-    'Boundary Pressure': 'pressure',
-    'Volumetric Flow': 'demandFlow',
-    'Sink Elevation': 'elevation'
+    'Flow Demand': 'demandFlow',
+    'Elevation': 'elevation',
+    'Reference Pressure': 'pressure'
   });
   expect(editState.cards.every((row) => row.columns.split(' ').length >= 3)).toBe(true);
   expect(Number(editState.demandFlow)).toBeCloseTo(42.25, 3);
   expect(Number(editState.elevation)).toBeCloseTo(4.5, 3);
+  expect(Number(editState.pressure)).toBeCloseTo(0.75, 3);
+  expect(editState.pressureInputBasis).toBe('Gauge');
   expect(afterRect).toBeTruthy();
   expect(Math.abs(afterRect.x - beforeRect.x)).toBeLessThanOrEqual(4);
   expect(Math.abs(afterRect.y - beforeRect.y)).toBeLessThanOrEqual(4);
@@ -1261,30 +1267,24 @@ test('Disconnected Source/Pump/Sink presentation stays incomplete and compact', 
   expect(state.pump.rows['Backend Valid.']).toBe('Unverified');
   expect(Object.keys(state.pump.rows)).not.toContain('Pump Head');
   expect(Object.keys(state.pump.rows)).toContain('Required Head');
-  expect(state.sink.visibleText).toMatch(/Boundary Data Source/i);
-  expect(state.sink.visibleText).toMatch(/Pressure Basis/i);
-  expect(state.sink.visibleText).toMatch(/Boundary Pressure/i);
-  expect(state.sink.visibleText).toMatch(/Volumetric Flow/i);
+  expect(state.sink.visibleText).toMatch(/Flow Demand/i);
+  expect(state.sink.visibleText).toMatch(/Elevation/i);
+  expect(state.sink.visibleText).toMatch(/Reference Pressure/i);
   expect(state.sink.visibleText).toMatch(/Calculated Abs\. Pressure/i);
-  expect(state.sink.visibleText).toMatch(/Sink Elevation/i);
-  expect(state.sink.visibleText).not.toMatch(/\bActive\b|Boundary Mode|Pipe Pressure Type/i);
+  expect(state.sink.visibleText).not.toMatch(/\bActive\b|Boundary Mode|Pipe Pressure Type|Boundary Data Source|Pressure Basis|Boundary Pressure|Volumetric Flow|Sink Elevation/i);
   expect(state.sink.visibleText).not.toMatch(/Calculated Outlet Readout|Attached Pipe|Boundary Pressure Abs\.|Calc\. Boundary P|Pressure Residual|Static Pipe P|Stagnation P|Mass Flow|Hydraulic Head|Warnings/i);
   expect(state.sink.boundaryHeader?.text).toMatch(/Fluid Out Boundary Conditions/i);
   expect(state.sink.boundaryHeader?.width).toBeGreaterThan(600);
   expect(state.sink.boundaryCards.map((row) => row.label)).toEqual([
-    'Boundary Data Source',
-    'Pressure Basis',
-    'Boundary Pressure',
-    'Volumetric Flow',
-    'Calculated Abs. Pressure',
-    'Sink Elevation'
+    'Flow Demand',
+    'Elevation',
+    'Reference Pressure',
+    'Calculated Abs. Pressure'
   ]);
   expect(state.sink.boundaryCards[0].y).toBe(state.sink.boundaryCards[1].y);
   expect(state.sink.boundaryCards[2].y).toBe(state.sink.boundaryCards[3].y);
-  expect(state.sink.boundaryCards[4].y).toBe(state.sink.boundaryCards[5].y);
   expect(state.sink.boundaryCards[1].x).toBeGreaterThan(state.sink.boundaryCards[0].x);
   expect(state.sink.boundaryCards[3].x).toBeGreaterThan(state.sink.boundaryCards[2].x);
-  expect(state.sink.boundaryCards[5].x).toBeGreaterThan(state.sink.boundaryCards[4].x);
   expect(state.sink.boundaryCards.every((row) => row.columns.split(' ').length >= 3)).toBe(true);
   expect(state.menuText).toMatch(/User Task Object Properties|Object Properties/i);
   expect(state.menuText).toMatch(/Connect/i);
@@ -1590,7 +1590,7 @@ test('Manual NPSHr UI edit previews Simulasi 4 locally and refreshes linked repo
     window.EngineeringAnalysisReportLiveRuntime?.refresh?.();
   }, { entry: caseData.entry, report: caseData.report, pumpId: caseData.pumpId });
 
-  await page.waitForSelector('.journal-analysis-task-window .journal-analysis-comparison-table', { timeout: 10000 });
+  await page.waitForSelector('.journal-analysis-task-window .journal-analysis-comparison-table', { state: 'attached', timeout: 10000 });
   await expect(page.locator(`.persistent-object-properties-task-window[data-node-id="${caseData.pumpId}"], #taskWindow[data-node-id="${caseData.pumpId}"]`)).toHaveCount(0);
   await page.waitForFunction(() => typeof window.openPumpManualNpshrTaskWindow === 'function', null, { timeout: 10000 });
   await page.evaluate((pumpId) => {

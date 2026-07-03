@@ -30,7 +30,7 @@ const manifest = read(manifestPath);
 const pkg = JSON.parse(read(packagePath));
 
 const runtimeCacheKey = 'engineering-source-volumetric-only-runtime.js?v=20260702-source-boundary-clean2';
-const bilingualCacheKey = 'engineering-bilingual-improvements.js?v=20260702-source-boundary-clean2';
+const bilingualCacheKey = 'engineering-bilingual-improvements.js?v=20260703-source-defense-refresh1';
 const sourceTemperatureCacheKey = 'engineering-source-temperature-runtime.js?v=20260701-source-volumetric-only1';
 const srcCanvasCacheKey = 'engineering-src-canvas-parameter-runtime.js?v=20260702-object-status-clean1';
 const sourceStandardSections = bilingual.match(/const SOURCE_STANDARD_FORM_SECTIONS = Object\.freeze\(\[([\s\S]*?)\]\);/)?.[1] || '';

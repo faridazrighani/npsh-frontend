@@ -683,10 +683,10 @@
     const sinkMode = cleanText(sinkResults.boundaryMode || sinkProps.boundaryMode || 'Flow Demand Boundary');
     const isSinkFlowDemand = /flow\s*demand/i.test(sinkMode);
     const configuredSinkDemand = firstNumber(sinkResults.configuredDemandFlow, sinkProps.demandFlow);
-    const sinkPressure = isSinkFlowDemand
-      ? firstNumber(sinkResults.requiredBoundaryPressure, sinkResults.calculatedPressure, sinkResults.boundaryPressure, sinkResults.staticPressure)
-      : firstNumber(sinkProps.pressure, sinkResults.boundaryPressure, sinkResults.calculatedPressure, sinkResults.staticPressure);
-    const sinkPressureInput = isSinkFlowDemand ? null : firstNumber(sinkProps.pressure, sinkResults.boundaryPressureInput);
+    const sinkPressure = firstNumber(sinkResults.boundaryPressure, sinkResults.calculatedPressure, sinkResults.staticPressure, sinkResults.absolutePressure, sinkProps.pressure);
+    const sinkPressureInput = firstNumber(sinkProps.pressure, sinkResults.boundaryPressureInput);
+    const sinkPressureInputBasis = cleanText(sinkProps.pressureInputBasis || sinkResults.pressureInputBasis || 'Gauge');
+    const sinkPressureInputUnit = /gauge/i.test(sinkPressureInputBasis) ? 'bar g' : 'bar a';
     const sinkFlow = firstNumber(sinkResults.flow, pumpFlow, configuredSinkDemand);
     const sinkMassFlow = firstNumber(sinkResults.massFlow, massFlowKgH(sinkFlow, density));
     const sinkElevation = firstNumber(sinkProps.elevation);
@@ -700,13 +700,13 @@
     set('SNK - Flow demand', withUnit(isSinkFlowDemand ? configuredSinkDemand : sinkFlow, 'm3/h', 6), isSinkFlowDemand ? configuredSinkDemand : sinkFlow);
     set('SNK - Flow Demand / Elevation', `${withUnit(isSinkFlowDemand ? configuredSinkDemand : sinkFlow, 'm3/h', 6)} / ${withUnit(sinkElevation, 'm', 6)}`, isSinkFlowDemand ? configuredSinkDemand : sinkFlow);
     set('SNK - Pressure Basis', cleanText(sinkProps.pressureBasis || sinkResults.pressureBasis || 'Static'), null);
-    set('SNK - Reference Pressure', isSinkFlowDemand ? 'Ignored in Flow Demand Boundary' : withUnit(sinkPressure, 'bar a', 11), isSinkFlowDemand ? null : sinkPressure);
-    set('SNK - Reference pressure', isSinkFlowDemand ? 'Ignored in Flow Demand Boundary' : withUnit(sinkPressure, 'bar a', 11), isSinkFlowDemand ? null : sinkPressure);
+    set('SNK - Reference Pressure', withUnit(sinkPressureInput, sinkPressureInputUnit, 11), sinkPressureInput);
+    set('SNK - Reference pressure', withUnit(sinkPressureInput, sinkPressureInputUnit, 11), sinkPressureInput);
     set('SNK - SNK Elevation', withUnit(sinkElevation, 'm', 6), sinkElevation);
     set('SNK - Elevation', withUnit(sinkElevation, 'm', 6), sinkElevation);
 
     set('Outlet Readout - Boundary Mode', sinkMode, null);
-    set('Outlet Readout - Boundary Pressure Input', isSinkFlowDemand ? 'Ignored in Flow Demand Boundary' : withUnit(sinkPressureInput, 'bar a', 9), isSinkFlowDemand ? null : sinkPressureInput);
+    set('Outlet Readout - Boundary Pressure Input', withUnit(sinkPressureInput, sinkPressureInputUnit, 9), sinkPressureInput);
     set('Outlet Readout - Boundary Abs. Pressure', withUnit(sinkPressure, 'bar a', 9), sinkPressure);
     set('Outlet Readout - Boundary abs pressure', withUnit(sinkPressure, 'bar a', 9), sinkPressure);
     set('Outlet Readout - Pressure Head', withUnit(outletPressureHead, 'm', 9), outletPressureHead);

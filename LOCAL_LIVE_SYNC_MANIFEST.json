@@ -1,6 +1,6 @@
 {
   "schemaVersion": "local-live-sync-manifest.v1",
-  "generatedAt": "2026-07-03T11:41:09.340Z",
+  "generatedAt": "2026-07-03T15:41:15.755Z",
   "purpose": "Keeps the local preview server auditable against the deployed npsh.virsim.id package.",
   "status": "review-required",
   "syncChecks": {
@@ -16,10 +16,10 @@
     "frontendRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-frontend",
     "apiRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-api",
     "serverUrl": "http://127.0.0.1:4174/",
-    "frontendCommit": "7ff974f5f3400da34ea69b0d75c0ffae250b6d58",
-    "frontendOriginMain": "7ff974f5f3400da34ea69b0d75c0ffae250b6d58",
-    "apiCommit": "d3c650653efec6a984e986dec18952451dd0021b",
-    "apiOriginMain": "d3c650653efec6a984e986dec18952451dd0021b",
+    "frontendCommit": "4815b6ed687a1cd0f05987f4ae8c40365734e681",
+    "frontendOriginMain": "4815b6ed687a1cd0f05987f4ae8c40365734e681",
+    "apiCommit": "975cfce03cd46b18179299a9ed17391f3bd4d304",
+    "apiOriginMain": "975cfce03cd46b18179299a9ed17391f3bd4d304",
     "releaseIntegrity": {
       "schemaVersion": "release-integrity.v1",
       "rootFingerprint": "ee4048f9869360b18ad0113bb2bd3a399ff42e99f66e0f7edd98a16f3053699f",
@@ -28,15 +28,15 @@
     },
     "index": {
       "path": "index.html",
-      "sizeBytes": 70026,
-      "sha256": "3562e0c5f0a87eda4722e24a2cf61e65b2e3994f966ae3eae928c06c547dd820",
-      "canonicalSizeBytes": 69136,
-      "canonicalSha256": "77a345f30b2123932ef27ab868d2463a8ef2617bc56379503f39ea57f7876581",
+      "sizeBytes": 70033,
+      "sha256": "eb8e22118bf5ab1c8a7e82738e90ab6cfde2b0a8d5636bcfe7b4b1e7d42a5bff",
+      "canonicalSizeBytes": 69143,
+      "canonicalSha256": "3d0ca1aaedf4ba5fb7452faf416398d62fedb29d6290ea4c5f0432ae3d57d035",
       "canonicalizedLineEndings": true,
       "cacheKeys": [
         "app.bundle.min.js?v=20260621-npsh-margin-options1",
-        "engineering-analysis-report-live-runtime.js?v=20260629-live-evidence1",
-        "engineering-bilingual-improvements.js?v=20260702-source-boundary-clean2",
+        "engineering-analysis-report-live-runtime.js?v=20260703-snk-reference-pressure1",
+        "engineering-bilingual-improvements.js?v=20260703-source-defense-refresh1",
         "engineering-browser-issues-runtime.js?v=20260620-orphan-label-cleanup1",
         "engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1",
         "engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1",
@@ -69,8 +69,8 @@
         "engineering-pump-performance-canonical-chart.js?v=20260628-manual-npshr1",
         "engineering-pump-performance-chart-audit.js?v=20260630-pipe-properties-live1",
         "engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3",
-        "engineering-realtime-calculation-defense.js?v=20260701-user-flow-autosolve1",
-        "engineering-route-trace-audit.js?v=20260703-sink-boundary-cards1",
+        "engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1",
+        "engineering-route-trace-audit.js?v=20260703-sink-boundary-input2",
         "engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3",
         "engineering-source-temperature-runtime.js?v=20260701-source-volumetric-only1",
         "engineering-source-volumetric-only-runtime.js?v=20260702-source-boundary-clean2",
@@ -94,22 +94,22 @@
       {
         "path": "engineering-analysis-report-live-runtime.js",
         "exists": true,
-        "sizeBytes": 92765,
-        "sha256": "dc914b3640fdb0b1e8a78308f5b38cfc56a7cc9a24e3368c258203fdd5de732d",
-        "canonicalSizeBytes": 91104,
-        "canonicalSha256": "1359429c87ca99ba27a7cf5388f118b3e1732b90ff51686af92cd42d0260c486",
+        "sizeBytes": 92617,
+        "sha256": "2740552c338c9be32847c80995eaecbc615e77c9c5d3be852674179905b888f1",
+        "canonicalSizeBytes": 90968,
+        "canonicalSha256": "f6d47906cfbf1d4f2ac136aa16315018e61b0f75b208d4236c763da896b1f54a",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-analysis-report-live-runtime.js?v=20260629-live-evidence1"
+        "cacheKey": "engineering-analysis-report-live-runtime.js?v=20260703-snk-reference-pressure1"
       },
       {
         "path": "engineering-bilingual-improvements.js",
         "exists": true,
-        "sizeBytes": 165048,
-        "sha256": "9c95800f8c41856fef5b1b7645a2400212a15eb3e692cbc5b5b89fe242714f17",
-        "canonicalSizeBytes": 162444,
-        "canonicalSha256": "0fe9826d3ad2380bdbe684b024d78e6620a7e2ffbf736d7f4e89b78df4df2990",
+        "sizeBytes": 165111,
+        "sha256": "de3cb736dbc92c9adc37f4045152d3a4d400e653833d68e2176c6221851bdb43",
+        "canonicalSizeBytes": 162513,
+        "canonicalSha256": "22f1c6c8e97d2500f59865c7a8f443c853bac76447e424c9715362074713acb8",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-bilingual-improvements.js?v=20260702-source-boundary-clean2"
+        "cacheKey": "engineering-bilingual-improvements.js?v=20260703-source-defense-refresh1"
       },
       {
         "path": "engineering-browser-issues-runtime.js",
@@ -434,22 +434,22 @@
       {
         "path": "engineering-realtime-calculation-defense.js",
         "exists": true,
-        "sizeBytes": 69209,
-        "sha256": "4e446de8fb3cbb720f20bd059ca07146c0165b1bbc6b18b0962f9c90d3ab8f5a",
-        "canonicalSizeBytes": 67810,
-        "canonicalSha256": "046ce31334c7c305ddbd967392836682214c96e26abffe84377f736d7d1f9aa1",
+        "sizeBytes": 69181,
+        "sha256": "f6f5b69dfcc5fa74d4cd062b35e63d01431936a839a250764f3f156cbaed313d",
+        "canonicalSizeBytes": 67784,
+        "canonicalSha256": "6868af45e64b2cca1c0bb7914171649a3390fe933c563c6eb2d26b458be2f821",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-realtime-calculation-defense.js?v=20260701-user-flow-autosolve1"
+        "cacheKey": "engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1"
       },
       {
         "path": "engineering-route-trace-audit.js",
         "exists": true,
-        "sizeBytes": 165966,
-        "sha256": "55313d0aa381f4a167869e846a628c99b037310eb541d1f0375d6848f17edf46",
-        "canonicalSizeBytes": 163304,
-        "canonicalSha256": "d08c8a7f25deb413eebbe9fa3a2c1e743bb66bd2306075b6cf53212e454936b7",
+        "sizeBytes": 178589,
+        "sha256": "84ae6ae2175717be6367380c29b2bcb7c34f5278371d86fdf4d9d17abb12b4c0",
+        "canonicalSizeBytes": 175942,
+        "canonicalSha256": "2787af67a90ad9afdcab7e3cb72225c2ce8c9f4712913af68fc9f47fdfc3d2f7",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-route-trace-audit.js?v=20260703-sink-boundary-cards1"
+        "cacheKey": "engineering-route-trace-audit.js?v=20260703-sink-boundary-input2"
       },
       {
         "path": "engineering-simulation-case-integrity-guard.js",
@@ -514,20 +514,20 @@
       {
         "path": "FILE_MANIFEST.md",
         "exists": true,
-        "sizeBytes": 36637,
-        "sha256": "835a2c89fe9f51e47a51be100ce88d2175afeb2192097dab8d4cc16214f15d17",
-        "canonicalSizeBytes": 36480,
-        "canonicalSha256": "3efdf04450e2eb9fc074415a9247a8ccef2eee020ff62efaa2c65e2ee22e0415",
+        "sizeBytes": 36644,
+        "sha256": "01f103289124e4527496a6a6d630eda3133223c7a393ec9075f7d39c32ef5dd9",
+        "canonicalSizeBytes": 36487,
+        "canonicalSha256": "158f3d10caff670d099c0931a132e84fcf06dae192a796c6673ed6f5f1f0c611",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
       {
         "path": "index.html",
         "exists": true,
-        "sizeBytes": 70026,
-        "sha256": "3562e0c5f0a87eda4722e24a2cf61e65b2e3994f966ae3eae928c06c547dd820",
-        "canonicalSizeBytes": 69136,
-        "canonicalSha256": "77a345f30b2123932ef27ab868d2463a8ef2617bc56379503f39ea57f7876581",
+        "sizeBytes": 70033,
+        "sha256": "eb8e22118bf5ab1c8a7e82738e90ab6cfde2b0a8d5636bcfe7b4b1e7d42a5bff",
+        "canonicalSizeBytes": 69143,
+        "canonicalSha256": "3d0ca1aaedf4ba5fb7452faf416398d62fedb29d6290ea4c5f0432ae3d57d035",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
@@ -551,10 +551,10 @@
     "error": null,
     "index": {
       "statusCode": 200,
-      "sizeBytes": 70576,
-      "sha256": "a7625f952e9e5e003ffb1ddf183d92238fee70195e14ccacbc0acdaf4bf6d053",
-      "canonicalSizeBytes": 69138,
-      "canonicalSha256": "e8feda4b6bab159100cd0583c66ee79f23af2437da5b34298c8ecb46aa658f49",
+      "sizeBytes": 70574,
+      "sha256": "a9369bf78833052468e0e67fcda0b3855d5ac8ec73d365bd4aab8672103fa206",
+      "canonicalSizeBytes": 69136,
+      "canonicalSha256": "77a345f30b2123932ef27ab868d2463a8ef2617bc56379503f39ea57f7876581",
       "canonicalizedLineEndings": true,
       "cacheKeys": [
         "app.bundle.min.js?v=20260621-npsh-margin-options1",
@@ -593,7 +593,7 @@
         "engineering-pump-performance-chart-audit.js?v=20260630-pipe-properties-live1",
         "engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3",
         "engineering-realtime-calculation-defense.js?v=20260701-user-flow-autosolve1",
-        "engineering-route-trace-audit.js?v=20260703-sink-boundary-layout1",
+        "engineering-route-trace-audit.js?v=20260703-sink-boundary-cards1",
         "engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3",
         "engineering-source-temperature-runtime.js?v=20260701-source-volumetric-only1",
         "engineering-source-volumetric-only-runtime.js?v=20260702-source-boundary-clean2",
@@ -605,7 +605,7 @@
     },
     "apiVersion": {
       "statusCode": 200,
-      "sha256": "6a4d655126cae81bf469d462a18bc2331d5151a3cc7e498d2f7a623046c8e517",
+      "sha256": "b1f4336c441136a35cc2086915be0c4ae6c8494254f2ddff4c38432888a9b4d0",
       "payload": {
         "ok": true,
         "appName": "GhaniSIM1 NPSH",
@@ -754,17 +754,23 @@
             "parity.fingerprint"
           ]
         },
-        "generatedAt": "2026-07-03T11:41:08.366Z"
+        "generatedAt": "2026-07-03T15:41:13.038Z"
       }
     },
     "verifiedAssets": []
   },
   "differences": {
     "cacheKeysMissingOnLive": [
-      "engineering-route-trace-audit.js?v=20260703-sink-boundary-cards1"
+      "engineering-analysis-report-live-runtime.js?v=20260703-snk-reference-pressure1",
+      "engineering-bilingual-improvements.js?v=20260703-source-defense-refresh1",
+      "engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1",
+      "engineering-route-trace-audit.js?v=20260703-sink-boundary-input2"
     ],
     "cacheKeysMissingLocally": [
-      "engineering-route-trace-audit.js?v=20260703-sink-boundary-layout1"
+      "engineering-analysis-report-live-runtime.js?v=20260629-live-evidence1",
+      "engineering-bilingual-improvements.js?v=20260702-source-boundary-clean2",
+      "engineering-realtime-calculation-defense.js?v=20260701-user-flow-autosolve1",
+      "engineering-route-trace-audit.js?v=20260703-sink-boundary-cards1"
     ],
     "assetVerificationFailures": []
   },

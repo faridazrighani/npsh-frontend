@@ -169,7 +169,7 @@ assert.equal(
 assert.equal(runtime.isCalculationField(fakeInput({ field: 'suctionElevation' })), true, 'Pump Datum Elev. must remain a route-only calculation input.');
 assert.equal(runtime.isCalculationField(fakeInput({ field: 'designFlow' })), false, 'Legacy designFlow must not trigger route-only autosolve.');
 assert.equal(runtime.isCalculationField(fakeInput({ field: 'curveData', inPumpCurveTable: true })), false, 'Pump curve table edits must not trigger route-only autosolve.');
-assert.equal(runtime.isCalculationField(fakeInput({ nodeId: 'SNK-100', field: 'pressure' })), false, 'SNK pressure must be ignored while Flow Demand Boundary is active.');
+assert.equal(runtime.isCalculationField(fakeInput({ nodeId: 'SNK-100', field: 'pressure' })), true, 'SNK Reference Pressure must trigger autosolve as an active boundary input.');
 assert.equal(runtime.isCalculationField(fakeInput({ nodeId: 'SNK-100', field: 'demandFlow' })), true, 'SNK demandFlow must trigger autosolve while Flow Demand Boundary is active.');
 
 globalThis.__npshGlobalModel['SRC-NEW'] = { type: 'source', props: {} };
@@ -371,16 +371,16 @@ const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 const parameterRuntime = fs.readFileSync(parameterRuntimePath, 'utf8');
 assert(
-  index.includes('engineering-realtime-calculation-defense.js?v=20260701-user-flow-autosolve1'),
+  index.includes('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1'),
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
   index.indexOf('engineering-pump-edit-fast-lane.js?v=20260701-user-flow-npshr1')
-    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260701-user-flow-autosolve1'),
+    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1'),
   'Pump edit fast lane must load before realtime calculation defense.'
 );
 assert(
-  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260701-user-flow-autosolve1'),
+  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1'),
   'Manifest must document the realtime calculation defense cache key.'
 );
 assert(

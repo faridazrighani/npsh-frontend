@@ -91,10 +91,10 @@ assert(
   'Index must load the simulation case integrity guard with cache busting.'
 );
 assert(
-  indexSource.indexOf('engineering-route-trace-audit.js?v=20260703-sink-boundary-cards1')
+  indexSource.indexOf('engineering-route-trace-audit.js?v=20260703-sink-boundary-input2')
     < indexSource.indexOf('engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3')
     && indexSource.indexOf('engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3')
-    > indexSource.indexOf('engineering-realtime-calculation-defense.js?v=20260701-user-flow-autosolve1')
+    > indexSource.indexOf('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1')
     && indexSource.indexOf('engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3')
     > indexSource.indexOf('const diagnosticScripts = ['),
   'Integrity guard must remain deferred with diagnostics after the realtime path so PageSpeed critical-path work stays calculation-only.'
