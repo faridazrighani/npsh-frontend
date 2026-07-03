@@ -1,12 +1,12 @@
 {
   "schemaVersion": "local-live-sync-manifest.v1",
-  "generatedAt": "2026-07-02T17:45:31.141Z",
+  "generatedAt": "2026-07-03T11:41:09.340Z",
   "purpose": "Keeps the local preview server auditable against the deployed npsh.virsim.id package.",
-  "status": "synced",
+  "status": "review-required",
   "syncChecks": {
     "liveReachable": true,
-    "localIndexMatchesLive": true,
-    "cacheKeysMatch": true,
+    "localIndexMatchesLive": false,
+    "cacheKeysMatch": false,
     "verifiedLiveAssets": false,
     "assetVerificationFailures": 0,
     "apiCommitMatchesOriginMain": true,
@@ -16,22 +16,22 @@
     "frontendRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-frontend",
     "apiRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-api",
     "serverUrl": "http://127.0.0.1:4174/",
-    "frontendCommit": "4f69f6a21fc4c435759faebae3302ada1811bb13",
-    "frontendOriginMain": "4f69f6a21fc4c435759faebae3302ada1811bb13",
-    "apiCommit": "d8b4421ce78964f6bf56613f02907cb1327f0fc2",
-    "apiOriginMain": "d8b4421ce78964f6bf56613f02907cb1327f0fc2",
+    "frontendCommit": "7ff974f5f3400da34ea69b0d75c0ffae250b6d58",
+    "frontendOriginMain": "7ff974f5f3400da34ea69b0d75c0ffae250b6d58",
+    "apiCommit": "d3c650653efec6a984e986dec18952451dd0021b",
+    "apiOriginMain": "d3c650653efec6a984e986dec18952451dd0021b",
     "releaseIntegrity": {
       "schemaVersion": "release-integrity.v1",
-      "rootFingerprint": "09c8b0858ed5469b2588b51384279a163b51459fc3526febbe460f03dad34837",
+      "rootFingerprint": "ee4048f9869360b18ad0113bb2bd3a399ff42e99f66e0f7edd98a16f3053699f",
       "fileCount": 421,
-      "generatedAt": "2026-07-02T17:38:55.225Z"
+      "generatedAt": "2026-07-03T11:40:29.246Z"
     },
     "index": {
       "path": "index.html",
-      "sizeBytes": 70028,
-      "sha256": "f104bb95717b394270562b9c16636082c877b83a875a65e1eabd912136d93733",
-      "canonicalSizeBytes": 69138,
-      "canonicalSha256": "e8feda4b6bab159100cd0583c66ee79f23af2437da5b34298c8ecb46aa658f49",
+      "sizeBytes": 70026,
+      "sha256": "3562e0c5f0a87eda4722e24a2cf61e65b2e3994f966ae3eae928c06c547dd820",
+      "canonicalSizeBytes": 69136,
+      "canonicalSha256": "77a345f30b2123932ef27ab868d2463a8ef2617bc56379503f39ea57f7876581",
       "canonicalizedLineEndings": true,
       "cacheKeys": [
         "app.bundle.min.js?v=20260621-npsh-margin-options1",
@@ -70,7 +70,7 @@
         "engineering-pump-performance-chart-audit.js?v=20260630-pipe-properties-live1",
         "engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3",
         "engineering-realtime-calculation-defense.js?v=20260701-user-flow-autosolve1",
-        "engineering-route-trace-audit.js?v=20260703-sink-boundary-layout1",
+        "engineering-route-trace-audit.js?v=20260703-sink-boundary-cards1",
         "engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3",
         "engineering-source-temperature-runtime.js?v=20260701-source-volumetric-only1",
         "engineering-source-volumetric-only-runtime.js?v=20260702-source-boundary-clean2",
@@ -444,12 +444,12 @@
       {
         "path": "engineering-route-trace-audit.js",
         "exists": true,
-        "sizeBytes": 160486,
-        "sha256": "ba819edc707d7a24c8b1869d1c1af2bd299fbdaaafb2a900db12950e70b41bdd",
-        "canonicalSizeBytes": 157792,
-        "canonicalSha256": "eaa99681f613009fa5ca9a0c9a6104203b150455bad1ebea6495e72ccd5db957",
+        "sizeBytes": 165966,
+        "sha256": "55313d0aa381f4a167869e846a628c99b037310eb541d1f0375d6848f17edf46",
+        "canonicalSizeBytes": 163304,
+        "canonicalSha256": "d08c8a7f25deb413eebbe9fa3a2c1e743bb66bd2306075b6cf53212e454936b7",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-route-trace-audit.js?v=20260703-sink-boundary-layout1"
+        "cacheKey": "engineering-route-trace-audit.js?v=20260703-sink-boundary-cards1"
       },
       {
         "path": "engineering-simulation-case-integrity-guard.js",
@@ -514,20 +514,20 @@
       {
         "path": "FILE_MANIFEST.md",
         "exists": true,
-        "sizeBytes": 36638,
-        "sha256": "3f2d80107b43964ecdd3f459e6ea5db69720f260f0cda455d619db9725d22d5f",
-        "canonicalSizeBytes": 36481,
-        "canonicalSha256": "5b33b46b2d3ad903c4162aaab185d7b12aa18159c8443a769fa4d8bdc107820a",
+        "sizeBytes": 36637,
+        "sha256": "835a2c89fe9f51e47a51be100ce88d2175afeb2192097dab8d4cc16214f15d17",
+        "canonicalSizeBytes": 36480,
+        "canonicalSha256": "3efdf04450e2eb9fc074415a9247a8ccef2eee020ff62efaa2c65e2ee22e0415",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
       {
         "path": "index.html",
         "exists": true,
-        "sizeBytes": 70028,
-        "sha256": "f104bb95717b394270562b9c16636082c877b83a875a65e1eabd912136d93733",
-        "canonicalSizeBytes": 69138,
-        "canonicalSha256": "e8feda4b6bab159100cd0583c66ee79f23af2437da5b34298c8ecb46aa658f49",
+        "sizeBytes": 70026,
+        "sha256": "3562e0c5f0a87eda4722e24a2cf61e65b2e3994f966ae3eae928c06c547dd820",
+        "canonicalSizeBytes": 69136,
+        "canonicalSha256": "77a345f30b2123932ef27ab868d2463a8ef2617bc56379503f39ea57f7876581",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
@@ -605,7 +605,7 @@
     },
     "apiVersion": {
       "statusCode": 200,
-      "sha256": "184794f8919230d7834142d8bda92096bf3b6fb65ffc428e0491329272413e7d",
+      "sha256": "6a4d655126cae81bf469d462a18bc2331d5151a3cc7e498d2f7a623046c8e517",
       "payload": {
         "ok": true,
         "appName": "GhaniSIM1 NPSH",
@@ -754,14 +754,18 @@
             "parity.fingerprint"
           ]
         },
-        "generatedAt": "2026-07-02T17:45:30.655Z"
+        "generatedAt": "2026-07-03T11:41:08.366Z"
       }
     },
     "verifiedAssets": []
   },
   "differences": {
-    "cacheKeysMissingOnLive": [],
-    "cacheKeysMissingLocally": [],
+    "cacheKeysMissingOnLive": [
+      "engineering-route-trace-audit.js?v=20260703-sink-boundary-cards1"
+    ],
+    "cacheKeysMissingLocally": [
+      "engineering-route-trace-audit.js?v=20260703-sink-boundary-layout1"
+    ],
     "assetVerificationFailures": []
   },
   "cachePolicy": {

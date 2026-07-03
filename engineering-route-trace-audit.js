@@ -1,5 +1,5 @@
 (function registerEngineeringRouteTraceAudit(root) {
-  const VERSION = '2026.07-route-trace-audit-v37';
+  const VERSION = '2026.07-route-trace-audit-v38';
   const PANEL_ID = 'engineeringRouteTraceAuditPanel';
   const PANEL_BODY_ID = 'engineeringRouteTraceAuditPanelBody';
   const MENU_BUTTON_ID = 'menu-tools-route-trace-audit';
@@ -55,8 +55,10 @@
   const solverCanvasLayoutSweepTimers = [];
   let routeObjectTooltipSyncTimer = null;
   let routeSurfaceRefreshPending = false;
+  let sinkPropertyWindowRefreshPending = false;
   let routeTraceInstallRefreshDone = false;
   let sinkPropertyChangeRefreshInstalled = false;
+  let renderSidebarSinkCleanupWrapped = null;
   let solverCanvasLayoutListenersInstalled = false;
   let pumpLiveParameterRowBuilderWrapped = null;
   let sinkLiveParameterRowBuilderWrapped = null;
@@ -706,6 +708,15 @@
     return {
       mode,
       pressureAbsBar,
+      pressureInputBasis: normalizeText(
+        props.pressureInputBasis
+        || props.pressureBasis
+        || results.pressureInputBasis
+        || results.pressureInputBasisLabel
+        || traceInput.pressureInputBasis
+        || traceBoundary.pressureInputBasis
+        || ''
+      ) || 'Gauge',
       elevation,
       sinkHead,
       sinkFlow: firstFiniteValue(
@@ -1182,8 +1193,27 @@
     }, 0);
   }
 
+  function removeGeneratedSinkPropertyRowsByLabel(windowNode, labels = []) {
+    return labels.reduce((changed, label) => {
+      const rows = Array.from(windowNode?.querySelectorAll?.('tr, .object-task-field-row, .pipe-task-field-row, .prop-row, .field-row, .property-row') || [])
+        .filter((row) => sinkPropertyRowLabel(row) === label);
+      rows.forEach((row) => {
+        if (row.dataset?.routeTraceSinkCompactGenerated === 'true' || row.dataset?.routeTraceSinkModeGenerated === 'true') {
+          row.remove();
+          changed += 1;
+        }
+      });
+      return changed;
+    }, 0);
+  }
+
   function sinkPropertyRowLabel(row) {
     return normalizeText(sinkPropertyRowLabelCell(row)?.textContent || '');
+  }
+
+  function sinkPropertyRowControlKey(row) {
+    const control = row?.querySelector?.('input, select, textarea, [data-key], [name]');
+    return normalizeText(control?.dataset?.key || control?.getAttribute?.('name') || control?.id || '');
   }
 
   function sinkPropertyEditableRows(windowNode) {
@@ -1255,6 +1285,34 @@
     labelCell.textContent = toLabel;
     row.dataset.routeTraceSinkCompactRelabeled = VERSION;
     return 1;
+  }
+
+  function normalizeSinkPropertyLabelFirst(windowNode, fromLabels, toLabel) {
+    let changed = 0;
+    fromLabels.forEach((fromLabel) => {
+      changed += normalizeSinkPropertyLabel(windowNode, fromLabel, toLabel);
+    });
+    return changed;
+  }
+
+  function demoteLegacySinkVolumetricFlowRows(windowNode) {
+    if (!windowNode?.querySelectorAll) return 0;
+    let changed = 0;
+    Array.from(windowNode.querySelectorAll('tr, .object-task-field-row, .pipe-task-field-row, .prop-row, .field-row, .property-row')).forEach((row) => {
+      if (sinkPropertyRowLabel(row) !== 'Volumetric Flow') return;
+      if (!/^flow$/i.test(sinkPropertyRowControlKey(row))) return;
+      const labelCell = sinkPropertyRowLabelCell(row);
+      if (labelCell && normalizeText(labelCell.textContent) !== 'Legacy Volumetric Flow') {
+        labelCell.textContent = 'Legacy Volumetric Flow';
+        changed += 1;
+      }
+      if (row.dataset?.routeTraceSinkLegacyFlow !== VERSION) {
+        if (row.dataset) row.dataset.routeTraceSinkLegacyFlow = VERSION;
+        changed += 1;
+      }
+      changed += setRowHiddenForSinkMode(row, true, 'sink-compact-hidden');
+    });
+    return changed;
   }
 
   function isSinkBoundaryConditionsSectionLabel(value = '') {
@@ -1347,23 +1405,62 @@
     return changed;
   }
 
+  function sinkBoundaryDataHeaderRow(windowNode) {
+    if (!windowNode?.querySelectorAll) return null;
+    return Array.from(windowNode.querySelectorAll('[data-route-trace-sink-boundary-header], tr, .object-task-section-title, .prop-section-header, .field-section-title, h2, h3, h4')).find((element) => {
+      const headerCell = element.classList?.contains('prop-section-header')
+        ? element
+        : element.querySelector?.('.prop-section-header, .object-task-section-title, .field-section-title') || element;
+      return isSinkBoundaryConditionsSectionLabel(headerCell?.textContent || '');
+    }) || null;
+  }
+
+  function orderSinkBoundaryDataRows(windowNode, labels) {
+    const header = sinkBoundaryDataHeaderRow(windowNode);
+    let anchor = header?.tagName === 'TR' ? header : (header?.closest?.('tr') || header);
+    if (!anchor?.parentNode) return 0;
+    let changed = 0;
+    labels.forEach((label) => {
+      const row = sinkPropertyRowByLabel(windowNode, label);
+      if (!row || row === anchor || row.previousElementSibling === anchor) {
+        anchor = row || anchor;
+        return;
+      }
+      anchor.insertAdjacentElement('afterend', row);
+      anchor = row;
+      changed += 1;
+    });
+    return changed;
+  }
+
   function compactSinkPropertyWindowRows(windowNode, canonical = {}) {
     if (!windowNode?.querySelectorAll) return 0;
     let changed = 0;
-    changed += normalizeSinkPropertyLabel(windowNode, 'Demand Flow', 'Flow Demand');
-    changed += normalizeSinkPropertyLabel(windowNode, 'Sink Flow Demand', 'Flow Demand');
+    changed += removeGeneratedSinkPropertyRowsByLabel(windowNode, ['Flow Demand', 'Volumetric Flow', 'Elevation']);
+    changed += demoteLegacySinkVolumetricFlowRows(windowNode);
+    changed += normalizeSinkPropertyLabelFirst(windowNode, ['Demand Flow', 'Sink Flow Demand', 'Flow Demand'], 'Volumetric Flow');
+    changed += normalizeSinkPropertyLabelFirst(
+      windowNode,
+      ['Reference Pressure', 'Outlet Pressure', 'Sink Pressure', 'Pressure Input', 'Boundary Pressure Input', 'Sink Pressure Input'],
+      'Boundary Pressure'
+    );
+    changed += normalizeSinkPropertyLabel(windowNode, 'Elevation', 'Sink Elevation');
     changed += markSinkBoundaryConditionsHeader(windowNode);
 
     const flowText = formatCanvasValue(canonical.sinkFlow, 'm3/h');
     const pressureText = formatCanvasValue(canonical.pressureAbsBar, 'bar a');
     const elevationText = formatCanvasValue(canonical.elevation, 'm');
-    changed += ensureSinkPropertyReadoutRow(windowNode, 'Flow Demand', flowText, []);
-    changed += ensureSinkPropertyReadoutRow(windowNode, 'Volumetric Flow', flowText, ['Flow Demand']);
-    changed += ensureSinkPropertyReadoutRow(windowNode, 'Calculated Abs. Pressure', pressureText, ['Volumetric Flow', 'Flow Demand']);
-    changed += ensureSinkPropertyReadoutRow(windowNode, 'Elevation', elevationText, ['Calculated Abs. Pressure', 'Volumetric Flow']);
+    const pressureBasisText = normalizeText(canonical.pressureInputBasis || 'Gauge') || 'Gauge';
+    changed += ensureSinkPropertyReadoutRow(windowNode, 'Boundary Data Source', 'Manual', []);
+    changed += ensureSinkPropertyReadoutRow(windowNode, 'Pressure Basis', pressureBasisText, ['Boundary Data Source']);
+    changed += ensureSinkPropertyReadoutRow(windowNode, 'Boundary Pressure', '0', ['Pressure Basis', 'Boundary Data Source']);
+    changed += ensureSinkPropertyReadoutRow(windowNode, 'Volumetric Flow', flowText, ['Boundary Pressure', 'Pressure Basis']);
+    changed += ensureSinkPropertyReadoutRow(windowNode, 'Calculated Abs. Pressure', pressureText, ['Volumetric Flow', 'Boundary Pressure']);
+    changed += ensureSinkPropertyReadoutRow(windowNode, 'Sink Elevation', elevationText, ['Calculated Abs. Pressure', 'Volumetric Flow']);
 
-    const allowed = new Set(['Flow Demand', 'Volumetric Flow', 'Calculated Abs. Pressure', 'Elevation']);
-    const hardHidden = /^(Active|Boundary Mode|Pipe Pressure Type|Boundary Abs\. Pressure|Required Boundary P|Required Sink P abs|Required Boundary Head|Required Sink Head|Boundary Pressure Input|Sink Pressure Input|Reference Pressure|Outlet Pressure|Sink Pressure|Pressure Input|Pressure Basis|Pressure Input Basis|Ignored Flow Demand)$/i;
+    const orderedLabels = ['Boundary Data Source', 'Pressure Basis', 'Boundary Pressure', 'Volumetric Flow', 'Calculated Abs. Pressure', 'Sink Elevation'];
+    const allowed = new Set(orderedLabels);
+    const hardHidden = /^(Active|Boundary Mode|Pipe Pressure Type|Boundary Abs\. Pressure|Required Boundary P|Required Sink P abs|Required Boundary Head|Required Sink Head|Pressure Input Basis|Ignored Flow Demand|Legacy Volumetric Flow|Flow Demand)$/i;
     sinkPropertyEditableRows(windowNode).forEach((row) => {
       const label = sinkPropertyRowLabel(row);
       if (!label) return;
@@ -1380,6 +1477,7 @@
         changed += markSinkBoundaryDataCardRow(row, label);
       }
     });
+    changed += orderSinkBoundaryDataRows(windowNode, orderedLabels);
     changed += hideLegacySinkCalculatedReadoutBlocks(windowNode, allowed);
     if (windowNode.dataset?.routeTraceSinkCompactProperties !== VERSION) {
       if (windowNode.dataset) windowNode.dataset.routeTraceSinkCompactProperties = VERSION;
@@ -2821,6 +2919,7 @@
       const prune = () => {
         const canvas = document.getElementById('canvas') || document;
         patchCanonicalLiveParameterRowBuilders();
+        syncSinkPropertyWindowCanonicalReadouts(document);
         if (SOLVER_CANVAS_LAYOUT_REFRESH_HOOKS.includes(functionName)) {
           scheduleSolverCanvasLayoutStabilitySweep(canvas);
           scheduleRouteObjectTooltipSync(canvas, 360);
@@ -2851,6 +2950,27 @@
       'updateSimulation',
       ...SOLVER_CANVAS_LAYOUT_REFRESH_HOOKS
     ].filter((functionName) => patchCanvasOverlayRenderFunction(functionName));
+  }
+
+  function patchRenderSidebarSinkCleanup() {
+    const current = root.renderSidebar;
+    if (typeof current !== 'function' || current === renderSidebarSinkCleanupWrapped) return false;
+    function renderSidebarWithSinkCleanup(nodeId, ...rest) {
+      const result = current.call(this, nodeId, ...rest);
+      const cleanup = () => {
+        if (model()?.[nodeId]?.type === 'sink') {
+          syncSinkPropertyWindowCanonicalReadouts(document);
+        }
+      };
+      if (result && typeof result.then === 'function') return result.finally(cleanup);
+      cleanup();
+      return result;
+    }
+    renderSidebarWithSinkCleanup.__routeTraceSinkCleanupPatched = VERSION;
+    renderSidebarWithSinkCleanup.__routeTraceSinkCleanupOriginal = current;
+    root.renderSidebar = renderSidebarWithSinkCleanup;
+    renderSidebarSinkCleanupWrapped = renderSidebarWithSinkCleanup;
+    return true;
   }
 
   function installSolverCanvasLayoutStabilityListeners() {
@@ -3053,7 +3173,7 @@
       '.route-trace-canvas-overlay-hidden{display:none!important;}',
       '.route-trace-sink-mode-hidden{display:none!important;}',
       '.route-trace-sink-trace-collapsed{display:none!important;}',
-      '.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-prop-key="active"],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-prop-key="boundaryMode"],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-prop-key="pipePressureType"],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-prop-key="pressureBasis"],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-prop-key="pressure"],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .object-task-field-row:has([data-key="active"],[name="active"],[data-key="boundaryMode"],[name="boundaryMode"],[data-key="pipePressureType"],[name="pipePressureType"],[data-key="pressureBasis"],[name="pressureBasis"],[data-key="pressure"],[name="pressure"]),.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .pipe-task-field-row:has([data-key="active"],[name="active"],[data-key="boundaryMode"],[name="boundaryMode"],[data-key="pipePressureType"],[name="pipePressureType"],[data-key="pressureBasis"],[name="pressureBasis"],[data-key="pressure"],[name="pressure"]){display:none!important;}',
+      '.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-prop-key="active"],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-prop-key="boundaryMode"],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-prop-key="pipePressureType"],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .object-task-field-row:has([data-key="active"],[name="active"],[data-key="boundaryMode"],[name="boundaryMode"],[data-key="pipePressureType"],[name="pipePressureType"]),.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .pipe-task-field-row:has([data-key="active"],[name="active"],[data-key="boundaryMode"],[name="boundaryMode"],[data-key="pipePressureType"],[name="pipePressureType"]){display:none!important;}',
       '.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-boundary-header]{display:block!important;width:100%!important;grid-column:1/-1!important;padding:4px 0 8px!important;border:0!important;background:transparent!important;text-align:center!important;box-sizing:border-box;}',
       '.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-boundary-header] .prop-section-header,.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-boundary-header-cell]{display:block!important;width:100%!important;padding:0!important;border:0!important;background:transparent!important;color:#0b3558!important;text-align:center!important;font-size:12px!important;font-weight:800!important;line-height:1.25!important;}',
       '.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .object-task-field-row[data-route-trace-sink-compact-visible],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .pipe-task-field-row[data-route-trace-sink-compact-visible],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .prop-row[data-route-trace-sink-compact-visible],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] .field-row[data-route-trace-sink-compact-visible],.route-trace-sink-layout-locked[data-route-trace-sink-layout-lock] [data-route-trace-sink-boundary-card][data-route-trace-sink-compact-visible]{display:grid!important;grid-template-columns:minmax(132px,.9fr) minmax(180px,1.1fr) auto;align-items:center;column-gap:8px;row-gap:4px;min-height:42px;height:auto!important;padding:7px 9px!important;border:1px solid #cfe0ee!important;border-radius:5px!important;background:#f8fbff!important;box-sizing:border-box;}',
@@ -3263,6 +3383,7 @@
     patchCanonicalLiveParameterRowBuilders();
     watchDefaultCanvasRouteTraceOverlays();
     const patchedCanvasOverlayHooks = patchCanvasOverlayRenderHooks();
+    const renderSidebarSinkCleanup = patchRenderSidebarSinkCleanup();
     pruneDefaultCanvasRouteTraceOverlays(typeof document !== 'undefined' ? document : null);
     const payloadBuilder = patchPayloadBuilder();
     const fetchSimulation = patchSimulationFetch();
@@ -3277,6 +3398,7 @@
       primaryResultApplier,
       sinkStatusTooltip,
       sinkPropertyChangeRefresh,
+      renderSidebarSinkCleanup,
       solverCanvasLayoutStability,
       canonicalLiveParameterRowBuilders,
       canvasOverlayRenderHooks: patchedCanvasOverlayHooks,
@@ -3291,6 +3413,7 @@
       || primaryResultApplier
       || sinkStatusTooltip
       || sinkPropertyChangeRefresh
+      || renderSidebarSinkCleanup
       || solverCanvasLayoutStability
       || canonicalLiveParameterRowBuilders
       || patchedCanvasOverlayHooks.length > 0;
@@ -3365,7 +3488,13 @@
             || node.closest?.('.persistent-object-properties-task-window, #taskWindow, [data-task-prop-body="true"]')
           ))
         ));
-        if (taskMutation) syncSinkPropertyWindowCanonicalReadouts(document);
+        if (taskMutation && !sinkPropertyWindowRefreshPending) {
+          sinkPropertyWindowRefreshPending = true;
+          root.setTimeout(() => {
+            sinkPropertyWindowRefreshPending = false;
+            syncSinkPropertyWindowCanonicalReadouts(document);
+          }, 0);
+        }
         if (routeSurfaceRefreshPending) return;
         routeSurfaceRefreshPending = true;
         root.setTimeout(() => {

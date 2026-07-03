@@ -1088,7 +1088,9 @@ test('Sink Properties input edits stay clean, stable, and Source-style', async (
       .filter(isVisible)
       .map((row) => ({
         label: normalize(row.querySelector('.prop-label, label, th, td:first-child, div:first-child, span:first-child')?.textContent || row.textContent),
-        columns: getComputedStyle(row).gridTemplateColumns
+        columns: getComputedStyle(row).gridTemplateColumns,
+        controlTag: row.querySelector('select, input, textarea')?.tagName || '',
+        controlKey: row.querySelector('select, input, textarea')?.dataset?.key || row.querySelector('select, input, textarea')?.name || ''
       }));
     const model = window.__npshGlobalModel || window.globalModel || {};
     const sink = model[sinkId] || {};
@@ -1103,10 +1105,23 @@ test('Sink Properties input edits stay clean, stable, and Source-style', async (
   }, caseData.sinkId);
   const afterRect = await sinkWindow.boundingBox();
 
-  expect(editState.runtime).toBe('2026.07-route-trace-audit-v37');
+  expect(editState.runtime).toBe('2026.07-route-trace-audit-v38');
   expect(editState.samples).toEqual([]);
   expect(editState.text).not.toMatch(/\b(Active|Boundary Mode|Pipe Pressure Type|Calculated Outlet Readout|Attached Pipe|Mass Flow|Hydraulic Head|Warnings)\b/i);
-  expect(editState.cards.map((row) => row.label)).toEqual(['Flow Demand', 'Volumetric Flow', 'Calculated Abs. Pressure', 'Elevation']);
+  expect(editState.cards.map((row) => row.label)).toEqual([
+    'Boundary Data Source',
+    'Pressure Basis',
+    'Boundary Pressure',
+    'Volumetric Flow',
+    'Calculated Abs. Pressure',
+    'Sink Elevation'
+  ]);
+  expect(Object.fromEntries(editState.cards.map((row) => [row.label, row.controlKey]))).toMatchObject({
+    'Pressure Basis': expect.stringMatching(/pressure(Input)?Basis/i),
+    'Boundary Pressure': 'pressure',
+    'Volumetric Flow': 'demandFlow',
+    'Sink Elevation': 'elevation'
+  });
   expect(editState.cards.every((row) => row.columns.split(' ').length >= 3)).toBe(true);
   expect(Number(editState.demandFlow)).toBeCloseTo(42.25, 3);
   expect(Number(editState.elevation)).toBeCloseTo(4.5, 3);
@@ -1246,19 +1261,30 @@ test('Disconnected Source/Pump/Sink presentation stays incomplete and compact', 
   expect(state.pump.rows['Backend Valid.']).toBe('Unverified');
   expect(Object.keys(state.pump.rows)).not.toContain('Pump Head');
   expect(Object.keys(state.pump.rows)).toContain('Required Head');
-  expect(state.sink.visibleText).toMatch(/Flow Demand/i);
+  expect(state.sink.visibleText).toMatch(/Boundary Data Source/i);
+  expect(state.sink.visibleText).toMatch(/Pressure Basis/i);
+  expect(state.sink.visibleText).toMatch(/Boundary Pressure/i);
   expect(state.sink.visibleText).toMatch(/Volumetric Flow/i);
   expect(state.sink.visibleText).toMatch(/Calculated Abs\. Pressure/i);
-  expect(state.sink.visibleText).toMatch(/Elevation/i);
+  expect(state.sink.visibleText).toMatch(/Sink Elevation/i);
   expect(state.sink.visibleText).not.toMatch(/\bActive\b|Boundary Mode|Pipe Pressure Type/i);
   expect(state.sink.visibleText).not.toMatch(/Calculated Outlet Readout|Attached Pipe|Boundary Pressure Abs\.|Calc\. Boundary P|Pressure Residual|Static Pipe P|Stagnation P|Mass Flow|Hydraulic Head|Warnings/i);
   expect(state.sink.boundaryHeader?.text).toMatch(/Fluid Out Boundary Conditions/i);
   expect(state.sink.boundaryHeader?.width).toBeGreaterThan(600);
-  expect(state.sink.boundaryCards.map((row) => row.label)).toEqual(['Flow Demand', 'Volumetric Flow', 'Calculated Abs. Pressure', 'Elevation']);
+  expect(state.sink.boundaryCards.map((row) => row.label)).toEqual([
+    'Boundary Data Source',
+    'Pressure Basis',
+    'Boundary Pressure',
+    'Volumetric Flow',
+    'Calculated Abs. Pressure',
+    'Sink Elevation'
+  ]);
   expect(state.sink.boundaryCards[0].y).toBe(state.sink.boundaryCards[1].y);
   expect(state.sink.boundaryCards[2].y).toBe(state.sink.boundaryCards[3].y);
+  expect(state.sink.boundaryCards[4].y).toBe(state.sink.boundaryCards[5].y);
   expect(state.sink.boundaryCards[1].x).toBeGreaterThan(state.sink.boundaryCards[0].x);
   expect(state.sink.boundaryCards[3].x).toBeGreaterThan(state.sink.boundaryCards[2].x);
+  expect(state.sink.boundaryCards[5].x).toBeGreaterThan(state.sink.boundaryCards[4].x);
   expect(state.sink.boundaryCards.every((row) => row.columns.split(' ').length >= 3)).toBe(true);
   expect(state.menuText).toMatch(/User Task Object Properties|Object Properties/i);
   expect(state.menuText).toMatch(/Connect/i);
