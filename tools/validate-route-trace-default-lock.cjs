@@ -734,11 +734,11 @@ try {
 }
 
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260704-sink-pabs-dedupe1'),
+  index.includes('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260704-sink-pabs-dedupe1'),
   'Index must load the route trace audit runtime with the default-lock cache key.'
 );
 assert(
-  manifest.includes('Route audit cache key: engineering-route-trace-audit.js?v=20260704-sink-pabs-dedupe1'),
+  manifest.includes('Route audit cache key: engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260704-sink-pabs-dedupe1'),
   'Manifest must document the route trace default-lock cache key.'
 );
 

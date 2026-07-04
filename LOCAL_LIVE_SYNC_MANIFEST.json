@@ -1,6 +1,6 @@
 {
   "schemaVersion": "local-live-sync-manifest.v1",
-  "generatedAt": "2026-07-04T12:35:56.987Z",
+  "generatedAt": "2026-07-04T12:48:00.735Z",
   "purpose": "Keeps the local preview server auditable against the deployed npsh.virsim.id package.",
   "status": "review-required",
   "syncChecks": {
@@ -16,8 +16,8 @@
     "frontendRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-frontend",
     "apiRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-api",
     "serverUrl": "http://127.0.0.1:4174/",
-    "frontendCommit": "2865951a112687364ddf894a13ab0b615f41c790",
-    "frontendOriginMain": "2865951a112687364ddf894a13ab0b615f41c790",
+    "frontendCommit": "235cfc102ffeb3a7eb8e6cd7c65f2a6ba13d5126",
+    "frontendOriginMain": "235cfc102ffeb3a7eb8e6cd7c65f2a6ba13d5126",
     "apiCommit": "f56c0aaff90900dbfc065bae7acc731024c7298e",
     "apiOriginMain": "f56c0aaff90900dbfc065bae7acc731024c7298e",
     "releaseIntegrity": {
@@ -28,10 +28,10 @@
     },
     "index": {
       "path": "index.html",
-      "sizeBytes": 70027,
-      "sha256": "4f8f34405ce93b21f0be4b57b7f04c0df56d412292655c0391e51dbc39894f98",
-      "canonicalSizeBytes": 69137,
-      "canonicalSha256": "c572b17c7a8dfd020d1a7f901e57eaa6fd2bd049f1808797f1acd8984b352901",
+      "sizeBytes": 70081,
+      "sha256": "bf3aebe648c985e27e4f22737baf464fcb3a5ef8ec04fc7432eb99f93f48145e",
+      "canonicalSizeBytes": 69191,
+      "canonicalSha256": "2e373ac830ee520368cff49d8880452f2a36715e90eb3544b062f95ec4fbe67f",
       "canonicalizedLineEndings": true,
       "cacheKeys": [
         "app.bundle.min.js?v=20260621-npsh-margin-options1",
@@ -70,7 +70,7 @@
         "engineering-pump-performance-chart-audit.js?v=20260630-pipe-properties-live1",
         "engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3",
         "engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1",
-        "engineering-route-trace-audit.js?v=20260704-sink-pabs-dedupe1",
+        "engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260704-sink-pabs-dedupe1",
         "engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3",
         "engineering-source-temperature-runtime.js?v=20260701-source-volumetric-only1",
         "engineering-source-volumetric-only-runtime.js?v=20260702-source-boundary-clean2",
@@ -442,14 +442,14 @@
         "cacheKey": "engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1"
       },
       {
-        "path": "engineering-route-trace-audit.js",
+        "path": "engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js",
         "exists": true,
         "sizeBytes": 181004,
         "sha256": "3bb57b8089ad682d1a514d349d6841405da32a5da1a1e1fd408a67d1a1b8c267",
         "canonicalSizeBytes": 178404,
         "canonicalSha256": "9184146d095554496f274d45cd26ec328337ba0722f26e6a0b51aed33ab9b486",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-route-trace-audit.js?v=20260704-sink-pabs-dedupe1"
+        "cacheKey": "engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260704-sink-pabs-dedupe1"
       },
       {
         "path": "engineering-simulation-case-integrity-guard.js",
@@ -514,20 +514,20 @@
       {
         "path": "FILE_MANIFEST.md",
         "exists": true,
-        "sizeBytes": 36641,
-        "sha256": "4a0f0d59d8b837f936e5fd7bdef5d69fdd7c84b2120bb9fe6b8b4a8b0ea33a54",
-        "canonicalSizeBytes": 36484,
-        "canonicalSha256": "04f2ee32ccefc3de4416851165caa23f59480de11ffc9fcbf07761e68a997cc0",
+        "sizeBytes": 36883,
+        "sha256": "dc1e7bc1b670858e7edd883330d1087eb3cb2d37975b50a25cd5e3711562c7d0",
+        "canonicalSizeBytes": 36726,
+        "canonicalSha256": "b2a05fcfd1c0a797b9e9370f1d21736abe79eca79bb737fe884dac3c102d6c37",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
       {
         "path": "index.html",
         "exists": true,
-        "sizeBytes": 70027,
-        "sha256": "4f8f34405ce93b21f0be4b57b7f04c0df56d412292655c0391e51dbc39894f98",
-        "canonicalSizeBytes": 69137,
-        "canonicalSha256": "c572b17c7a8dfd020d1a7f901e57eaa6fd2bd049f1808797f1acd8984b352901",
+        "sizeBytes": 70081,
+        "sha256": "bf3aebe648c985e27e4f22737baf464fcb3a5ef8ec04fc7432eb99f93f48145e",
+        "canonicalSizeBytes": 69191,
+        "canonicalSha256": "2e373ac830ee520368cff49d8880452f2a36715e90eb3544b062f95ec4fbe67f",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
@@ -551,10 +551,10 @@
     "error": null,
     "index": {
       "statusCode": 200,
-      "sizeBytes": 70537,
-      "sha256": "0e6ea48b0fdc836893b66e1675064fbb77dff8e757335ebcec117278ba1637a4",
-      "canonicalSizeBytes": 69143,
-      "canonicalSha256": "3d0ca1aaedf4ba5fb7452faf416398d62fedb29d6290ea4c5f0432ae3d57d035",
+      "sizeBytes": 70531,
+      "sha256": "0b84b7f4314563b936265ca0152b85ad9471efa09ceabb6b33d9246cf2893a2c",
+      "canonicalSizeBytes": 69137,
+      "canonicalSha256": "c572b17c7a8dfd020d1a7f901e57eaa6fd2bd049f1808797f1acd8984b352901",
       "canonicalizedLineEndings": true,
       "cacheKeys": [
         "app.bundle.min.js?v=20260621-npsh-margin-options1",
@@ -593,7 +593,7 @@
         "engineering-pump-performance-chart-audit.js?v=20260630-pipe-properties-live1",
         "engineering-pump-readiness-visibility-runtime.js?v=20260607-pump-readiness-visibility3",
         "engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1",
-        "engineering-route-trace-audit.js?v=20260703-sink-boundary-input2",
+        "engineering-route-trace-audit.js?v=20260704-sink-pabs-dedupe1",
         "engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3",
         "engineering-source-temperature-runtime.js?v=20260701-source-volumetric-only1",
         "engineering-source-volumetric-only-runtime.js?v=20260702-source-boundary-clean2",
@@ -605,7 +605,7 @@
     },
     "apiVersion": {
       "statusCode": 200,
-      "sha256": "38ec88be294647d79e24fdcc0d813811684de5c10078745315cfb038ffa94ab3",
+      "sha256": "901b1631e7c0d32f55eed732cc68f64406e8949cb271358ef335e15facf46cad",
       "payload": {
         "ok": true,
         "appName": "GhaniSIM1 NPSH",
@@ -754,17 +754,17 @@
             "parity.fingerprint"
           ]
         },
-        "generatedAt": "2026-07-04T12:35:56.444Z"
+        "generatedAt": "2026-07-04T12:48:00.211Z"
       }
     },
     "verifiedAssets": []
   },
   "differences": {
     "cacheKeysMissingOnLive": [
-      "engineering-route-trace-audit.js?v=20260704-sink-pabs-dedupe1"
+      "engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260704-sink-pabs-dedupe1"
     ],
     "cacheKeysMissingLocally": [
-      "engineering-route-trace-audit.js?v=20260703-sink-boundary-input2"
+      "engineering-route-trace-audit.js?v=20260704-sink-pabs-dedupe1"
     ],
     "assetVerificationFailures": []
   },
