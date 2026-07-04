@@ -12,7 +12,7 @@ const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 
-assert.equal(runtime.version, '2026.07-route-trace-audit-v40', 'Route trace audit runtime should expose the locked canvas object-card stability version.');
+assert.equal(runtime.version, '2026.07-route-trace-audit-v41', 'Route trace audit runtime should expose the locked canvas object-card stability version.');
 assert.equal(typeof runtime.openRouteAuditPanel, 'function', 'Dedicated route audit panel should remain available.');
 assert.equal(typeof runtime.pruneDefaultCanvasRouteTraceOverlays, 'function', 'Canvas route trace overlay pruning should be exposed for audit tests.');
 assert.equal(typeof runtime.pruneDefaultPumpRouteTraceRows, 'function', 'Pump route trace row pruning should be exposed for audit tests.');
@@ -434,6 +434,7 @@ try {
   legacySinkPanel.appendChild(sinkRow('Mode', 'Flow'));
   legacySinkPanel.appendChild(sinkRow('Flow Demand', '50.000'));
   legacySinkPanel.appendChild(sinkRow('Outlet Flow', '50.000'));
+  legacySinkPanel.appendChild(sinkRow('Sink P abs', '99.999'));
   legacySinkPanel.appendChild(sinkRow('Required Press.', '1.744'));
   legacySinkPanel.appendChild(sinkRow('Discharge Loss', '11.700'));
   legacySinkPanel.appendChild(sinkRow('Vapor Press.', '1.014'));
@@ -575,6 +576,8 @@ try {
     { label: 'Outlet Flow', value: '39.700' },
     { label: 'Sink Flow', value: '39.700' },
     { label: 'Sink P abs', value: '4.936' },
+    { label: 'Required Press.', value: '4.936' },
+    { label: 'Required Sink P abs', value: '4.936' },
     { label: 'Discharge Loss', value: '0.300' },
     { label: 'Vapor Press.', value: '0.702' },
     { label: 'Vapor Margin', value: '+4.234' }
@@ -731,11 +734,11 @@ try {
 }
 
 assert(
-  index.includes('engineering-route-trace-audit.js?v=20260703-sink-boundary-input2'),
+  index.includes('engineering-route-trace-audit.js?v=20260704-sink-pabs-dedupe1'),
   'Index must load the route trace audit runtime with the default-lock cache key.'
 );
 assert(
-  manifest.includes('Route audit cache key: engineering-route-trace-audit.js?v=20260703-sink-boundary-input2'),
+  manifest.includes('Route audit cache key: engineering-route-trace-audit.js?v=20260704-sink-pabs-dedupe1'),
   'Manifest must document the route trace default-lock cache key.'
 );
 

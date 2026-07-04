@@ -1112,7 +1112,7 @@ test('Sink Properties input edits stay clean, stable, and four-field compact', a
   }, caseData.sinkId);
   const afterRect = await sinkWindow.boundingBox();
 
-  expect(editState.runtime).toBe('2026.07-route-trace-audit-v40');
+  expect(editState.runtime).toBe('2026.07-route-trace-audit-v41');
   expect(editState.samples).toEqual([]);
   expect(editState.text).not.toMatch(/\b(Active|Boundary Mode|Pipe Pressure Type|Boundary Data Source|Pressure Basis|Boundary Pressure|Volumetric Flow|Sink Elevation|Calculated Outlet Readout|Attached Pipe|Mass Flow|Hydraulic Head|Warnings)\b/i);
   expect(editState.cards.map((row) => row.label)).toEqual([

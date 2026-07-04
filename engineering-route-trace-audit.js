@@ -1,5 +1,5 @@
 (function registerEngineeringRouteTraceAudit(root) {
-  const VERSION = '2026.07-route-trace-audit-v40';
+  const VERSION = '2026.07-route-trace-audit-v41';
   const PANEL_ID = 'engineeringRouteTraceAuditPanel';
   const PANEL_BODY_ID = 'engineeringRouteTraceAuditPanelBody';
   const MENU_BUTTON_ID = 'menu-tools-route-trace-audit';
@@ -39,10 +39,49 @@
   const SINK_CANVAS_HIDDEN_ROW_LABELS = new Set([
     'Flow Demand',
     'Outlet Flow',
+    'Required Press.',
+    'Required Press',
+    'Outlet Press.',
+    'Outlet Press',
+    'Required outlet pressure',
+    'Outlet pressure',
+    'Required Sink P abs',
+    'Required Boundary P',
+    'Boundary Abs. Pressure',
     'Discharge Loss',
     'Vapor Press.',
     'Vapor Margin',
     'Pump NPSH Margin'
+  ]);
+  const SINK_CANVAS_CANONICAL_ROW_LABELS = new Set([
+    'Mode',
+    'Sink Flow',
+    'Sink P abs',
+    'Sink Elev.',
+    'Sink Head',
+    'Boundary',
+    'Head Res.',
+    'Max Elev.'
+  ]);
+  const SINK_CANVAS_LEGACY_CANONICAL_LABELS = new Map([
+    ['Flow Demand', 'Sink Flow'],
+    ['Outlet Flow', 'Sink Flow'],
+    ['Required Press.', 'Sink P abs'],
+    ['Required Press', 'Sink P abs'],
+    ['Outlet Press.', 'Sink P abs'],
+    ['Outlet Press', 'Sink P abs'],
+    ['Required outlet pressure', 'Sink P abs'],
+    ['Outlet pressure', 'Sink P abs'],
+    ['Required Sink P abs', 'Sink P abs'],
+    ['Required Boundary P', 'Sink P abs'],
+    ['Boundary Abs. Pressure', 'Sink P abs'],
+    ['SNK Elevation', 'Sink Elev.'],
+    ['SNK hydraulic head', 'Sink Head'],
+    ['SNK Hydraulic Head', 'Sink Head'],
+    ['Required Sink Head', 'Sink Head'],
+    ['Boundary Feasibility', 'Boundary'],
+    ['Head Residual', 'Head Res.'],
+    ['Max SNK Elevation', 'Max Elev.']
   ]);
   let canvasOverlayObserver = null;
   let canvasOverlayPruneTimer = null;
@@ -90,6 +129,11 @@
 
   function normalizedReadoutLabel(value) {
     return normalizeText(value).replace(/\s*[:：]\s*$/, '');
+  }
+
+  function canonicalSinkCanvasLabel(value) {
+    const label = normalizedReadoutLabel(value);
+    return SINK_CANVAS_LEGACY_CANONICAL_LABELS.get(label) || label;
   }
 
   function isHiddenPumpCanvasSectionText(value) {
@@ -216,7 +260,10 @@
     const canonicalRows = canonicalSinkRowsForLiveBuilder(sinkNodeForLiveRows(args));
     if (!canonicalRows.length) return rows;
     const canonicalLabels = new Set(canonicalRows.map((row) => row.label));
-    const withoutTransientRows = rows.filter((row) => !canonicalLabels.has(normalizedReadoutLabel(row?.label ?? row?.title ?? '')));
+    const withoutTransientRows = rows.filter((row) => {
+      const label = normalizedReadoutLabel(row?.label ?? row?.title ?? '');
+      return !canonicalLabels.has(canonicalSinkCanvasLabel(label));
+    });
     return [...canonicalRows, ...withoutTransientRows];
   }
 
@@ -339,12 +386,13 @@
     panels.forEach((panel) => {
       normalizeDefaultSinkCanvasRows(panel);
       panel.querySelectorAll('.sink-live-param-row').forEach((row) => {
-        const label = normalizeText(row.querySelector('.sink-live-param-label')?.textContent);
-        if (SINK_CANVAS_HIDDEN_ROW_LABELS.has(label)) {
+        const label = normalizedReadoutLabel(row.querySelector('.sink-live-param-label')?.textContent);
+        if (SINK_CANVAS_HIDDEN_ROW_LABELS.has(label) || SINK_CANVAS_HIDDEN_ROW_LABELS.has(canonicalSinkCanvasLabel(label))) {
           row.remove();
           removed += 1;
         }
       });
+      removed += pruneDuplicateSinkCanvasRows(panel);
     });
     return removed;
   }
@@ -978,6 +1026,28 @@
     return Array.from(panel.querySelectorAll('.sink-live-param-row')).find((row) => (
       normalizeText(row.querySelector('.sink-live-param-label')?.textContent) === label
     )) || null;
+  }
+
+  function pruneDuplicateSinkCanvasRows(panel) {
+    if (!panel?.querySelectorAll) return 0;
+    const seen = new Set();
+    let removed = 0;
+    panel.querySelectorAll('.sink-live-param-row').forEach((row) => {
+      const labelElement = row.querySelector('.sink-live-param-label');
+      const canonicalLabel = canonicalSinkCanvasLabel(labelElement?.textContent);
+      if (!SINK_CANVAS_CANONICAL_ROW_LABELS.has(canonicalLabel)) return;
+      if (seen.has(canonicalLabel)) {
+        row.remove();
+        removed += 1;
+        return;
+      }
+      seen.add(canonicalLabel);
+      if (labelElement && normalizedReadoutLabel(labelElement.textContent) !== canonicalLabel) {
+        labelElement.textContent = canonicalLabel;
+        removed += 1;
+      }
+    });
+    return removed;
   }
 
   function sinkPanelNumericValue(panel, labels = []) {
@@ -2427,6 +2497,7 @@
           row.dataset.routeTraceSinkTerminologyLock = VERSION;
         }
       });
+      changed += pruneDuplicateSinkCanvasRows(panel);
       changed += syncSinkObjectTooltip(panel, sink?.node || {}, canonical);
     });
     return changed;
@@ -2499,6 +2570,7 @@
       if (canonical.maxAllowableSnkElevation !== null) {
         changed += upsertSinkCanvasRow(panel, 'Max Elev.', formatCanvasValue(canonical.maxAllowableSnkElevation, 'm'), ['Head Res.', 'Boundary', 'Sink Head']) ? 1 : 0;
       }
+      changed += pruneDuplicateSinkCanvasRows(panel);
       changed += syncSinkObjectTooltip(panel, node, canonical);
     });
     return changed;
