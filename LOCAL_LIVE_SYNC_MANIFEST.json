@@ -1,6 +1,6 @@
 {
   "schemaVersion": "local-live-sync-manifest.v1",
-  "generatedAt": "2026-07-06T10:40:05.724Z",
+  "generatedAt": "2026-07-06T10:51:53.995Z",
   "purpose": "Keeps the local preview server auditable against the deployed npsh.virsim.id package.",
   "status": "synced",
   "syncChecks": {
@@ -16,8 +16,8 @@
     "frontendRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-frontend",
     "apiRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-api",
     "serverUrl": "http://127.0.0.1:4174/",
-    "frontendCommit": "9019fbf24daa4aaefe098f740e5879fbc154d054",
-    "frontendOriginMain": "9019fbf24daa4aaefe098f740e5879fbc154d054",
+    "frontendCommit": "9f3754abf96bf5e1f2e714710d9b5e3d4fd4c177",
+    "frontendOriginMain": "9f3754abf96bf5e1f2e714710d9b5e3d4fd4c177",
     "apiCommit": "4ce4c0fd77d4cf38b5b62521c203a54bc30c8b6f",
     "apiOriginMain": "4ce4c0fd77d4cf38b5b62521c203a54bc30c8b6f",
     "releaseIntegrity": {
@@ -536,10 +536,10 @@
       {
         "path": "FILE_MANIFEST.md",
         "exists": true,
-        "sizeBytes": 38348,
-        "sha256": "a3689bf7f241618845d6c5d00dbaaf7be4f75736a576f53e4d9fee9480104a41",
-        "canonicalSizeBytes": 38205,
-        "canonicalSha256": "42d9ae74a3ff62d1453f2c1180ccfa88e6124a65f9070bda1f0ab615334a8f9f",
+        "sizeBytes": 38415,
+        "sha256": "6546053ee5b704dd1ab13bfa8c8635e3e8f05f5876b89d8474f7792b364d5145",
+        "canonicalSizeBytes": 38274,
+        "canonicalSha256": "fda900b8dc022f47edd13df025a4e157f533aead65b864e0e3701c7a0f2a89b2",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
@@ -629,7 +629,7 @@
     },
     "apiVersion": {
       "statusCode": 200,
-      "sha256": "368927fffa72747a34524345a91d6dc30da35aabdbd9738af3e7fbebfe34a940",
+      "sha256": "5885f8772993ed65b9bac7bef81ae72916920ebc36781bfa54d2ac42ab53742e",
       "payload": {
         "ok": true,
         "appName": "GhaniSIM1 NPSH",
@@ -778,7 +778,7 @@
             "parity.fingerprint"
           ]
         },
-        "generatedAt": "2026-07-06T10:40:05.638Z"
+        "generatedAt": "2026-07-06T10:51:53.960Z"
       }
     },
     "verifiedAssets": []

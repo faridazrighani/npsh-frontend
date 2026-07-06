@@ -6,6 +6,7 @@ const runtimePath = path.join(root, 'engineering-canvas-fast-preview-runtime.js'
 const indexPath = path.join(root, 'index.html');
 const manifestPath = path.join(root, 'FILE_MANIFEST.md');
 const packagePath = path.join(root, 'package.json');
+const publishPath = path.join(root, 'tools', 'publish-local-live.cjs');
 
 function read(file) {
   return fs.readFileSync(file, 'utf8');
@@ -22,6 +23,7 @@ const runtime = read(runtimePath);
 const index = read(indexPath);
 const manifest = read(manifestPath);
 const pkg = JSON.parse(read(packagePath));
+const publish = read(publishPath);
 
 const cacheKey = 'engineering-canvas-fast-preview-runtime.js?v=20260706-canvas-fast-preview17';
 const cacheKeyCount = (index.match(new RegExp(cacheKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
@@ -37,6 +39,10 @@ assert(
 assert(manifest.includes('engineering-canvas-fast-preview-runtime.js public-safe'), 'manifest inventory entry is missing');
 assert(manifest.includes(`Canvas fast preview runtime cache key: ${cacheKey}`), 'manifest cache key is missing');
 assert(pkg.scripts['validate:canvas-fast-preview'] === 'node tools/validate-canvas-fast-preview-runtime.cjs', 'npm validation script is missing');
+assert(publish.includes("['run', 'validate:canvas-fast-preview']"), 'publish flow must run the canvas fast-preview regression lock before deploy.');
+assert(publish.includes("['run', 'validate:live-parameter-repaint-lock']"), 'publish flow must run the live-parameter repaint lock before deploy.');
+assert(publish.includes("['run', 'validate:pipe-canvas-hydraulic-label']"), 'publish flow must run the pipe canvas label lock before deploy.');
+assert(manifest.includes('Canvas fast preview validation: npm run validate:canvas-fast-preview'), 'FILE_MANIFEST must document the canvas fast-preview validator.');
 
 [
   'requestAnimationFrame',

@@ -96,6 +96,9 @@ function refreshManifest({ verifyAssets = false } = {}) {
 function runChecks() {
   if (skipChecks) return;
   [
+    ['run', 'validate:canvas-fast-preview'],
+    ['run', 'validate:live-parameter-repaint-lock'],
+    ['run', 'validate:pipe-canvas-hydraulic-label'],
     ['run', 'validate:pipe-properties-cleanup-runtime'],
     ['run', 'validate:pipe-segments-file-runtime'],
     ['run', 'validate:pipe-source-confidence-map'],

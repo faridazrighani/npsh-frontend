@@ -191,6 +191,7 @@ Literature PDF viewer cache key: engineering-literature-pdf-viewer.js?v=20260609
 SRC Algorithm help runtime cache key: engineering-src-algorithm-help-runtime.js?v=20260628-manual-npshr1
 Live parameter repaint lock cache key: engineering-live-parameter-repaint-lock.css?v=20260702-object-status-clean1
 Live parameter repaint lock validation: npm run validate:live-parameter-repaint-lock
+Canvas fast preview validation: npm run validate:canvas-fast-preview
 Export canvas snapshot validation: npm run validate:export-canvas-snapshot-lock
 Literature PDF viewer validation: npm run validate:literature-pdf-viewer
 SRC Algorithm help validation: npm run validate:src-algorithm-help
