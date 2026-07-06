@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const VERSION = "2026.06-pipe-canvas-hydraulic-label13";
+  const VERSION = "2026.07-pipe-canvas-static-pressure-clean1";
   const STYLE_ID = "engineeringPipeCanvasHydraulicLabelStyle";
   const SVG_NS = "http://www.w3.org/2000/svg";
   const LABEL_SELECTOR = "#svg-lines .pipe-delta-label[data-pipe-id]";
@@ -255,7 +255,7 @@
     const velocity = representativeVelocity({ pipe, flow, trace, calculatedSegments });
 
     const rows = [
-      { key: "P\u2081\u2192P\u2082", value: formatPressurePair(pin, pout), title: "Inlet pressure to outlet pressure" },
+      { key: "P stat.", value: formatPressurePair(pin, pout), title: "Static endpoint pressure including elevation head" },
       { key: "v", value: formatVelocity(velocity), title: "Flow velocity" },
       { key: "\u03a3K", value: formatTotalK(totalK), title: "Total loss coefficient" },
       { key: "h_f", value: formatHead(majorLoss), title: "Major/friction head loss" },
@@ -264,7 +264,7 @@
 
     const title = [
       `${pipe.name || pipeId} Pipe/Fitting/Valve`,
-      `P1 to P2 ${formatPressurePair(pin, pout)}`,
+      `Static endpoint P ${formatPressurePair(pin, pout)}`,
       `v ${formatVelocity(velocity)}`,
       `Total K ${formatTotalK(totalK)}`,
       `Major loss h_f ${formatHead(majorLoss)}`,

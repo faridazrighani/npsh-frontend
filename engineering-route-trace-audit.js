@@ -2135,17 +2135,9 @@
 
   function pumpManualNpshrValue(pump = {}) {
     const props = pump.props || {};
-    const results = pump.results || {};
-    const evaluation = results.npshEvaluation || {};
-    return firstFiniteValue(
-      props.manualNpshr,
-      props.designNpshr,
-      props.npshr,
-      results.npshr,
-      results.npshRequired,
-      evaluation.npshr,
-      evaluation.npshRequired
-    );
+    if (props.manualNpshr === null || props.manualNpshr === undefined || String(props.manualNpshr).trim() === '') return null;
+    const value = firstFiniteValue(props.manualNpshr);
+    return value !== null && value >= 0 ? value : 0;
   }
 
   function pumpRequiredSystemHeadValue(pump = {}) {
@@ -2200,7 +2192,7 @@
       evaluation.status,
       interpretation.hydraulicStatus,
       results.status
-    ) || (manualNpshr === null || manualNpshr <= 0 ? 'NPSHr Not Provided' : 'Incomplete');
+    ) || (manualNpshr === null || manualNpshr <= 0 ? 'NPSHa Calculated' : 'Incomplete');
     const backendValidationStatus = normalizeBackendValidationStatusForMatrix(
       results.backendValidationStatus,
       evaluation.backendValidationStatus,

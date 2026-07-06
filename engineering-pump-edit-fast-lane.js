@@ -2,6 +2,7 @@
   const root = typeof window !== 'undefined' ? window : globalThis;
   const VERSION = 'engineering-pump-edit-fast-lane.v7';
   const CACHE_KEY = '20260701-user-flow-npshr1';
+  const NPSHA_CALCULATED_STATUS = 'NPSHa Calculated';
   const PUMP_WINDOW_SELECTOR = [
     '.persistent-object-properties-task-window',
     '#taskWindow',
@@ -386,14 +387,14 @@
       pump.results.npshExcess = null;
       pump.results.requiredNpsha = null;
       pump.results.manualNpshrComparisonStatus = 'Not Provided';
-      evaluation.status = 'NPSHr Not Provided';
-      evaluation.hydraulicStatus = 'NPSHr Not Provided';
-      evaluation.engineeringStatus = 'NPSHr Not Provided';
-      evaluation.message = 'Manual NPSHr is not provided.';
-      pump.results.status = 'NPSHr Not Provided';
-      pump.results.hydraulicNpshStatus = 'NPSHr Not Provided';
-      pump.results.engineeringStatus = 'NPSHr Not Provided';
-      pump.results.engineeringMessage = 'Manual NPSHr is not provided.';
+      evaluation.status = NPSHA_CALCULATED_STATUS;
+      evaluation.hydraulicStatus = NPSHA_CALCULATED_STATUS;
+      evaluation.engineeringStatus = NPSHA_CALCULATED_STATUS;
+      evaluation.message = 'NPSHa is calculated; Manual NPSHr is not provided.';
+      pump.results.status = NPSHA_CALCULATED_STATUS;
+      pump.results.hydraulicNpshStatus = NPSHA_CALCULATED_STATUS;
+      pump.results.engineeringStatus = NPSHA_CALCULATED_STATUS;
+      pump.results.engineeringMessage = 'NPSHa is calculated; Manual NPSHr is not provided.';
     }
     if (npsha !== null && npshr !== null && criteria.valid) {
       const requiredTerms = requiredNpshaByCriteria(npshr, criteria);

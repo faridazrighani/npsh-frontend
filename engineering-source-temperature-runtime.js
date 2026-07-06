@@ -194,13 +194,6 @@
         if (!Number.isFinite(temp) || !isWaterPropertyCorrelationFluid(base)) {
             return applyExtendedProperties(base);
         }
-        const propertyMethod = String(base.propertyMethod || base.fluidPropertySource || '');
-        const syncRequested = base.temperaturePropertySyncRequested === true
-            || base.temperaturePropertySynced === true
-            || /fluid basis temperature correlation/i.test(propertyMethod);
-        if (/journal|validation basis/i.test(propertyMethod) && !syncRequested) {
-            return applyExtendedProperties(base);
-        }
         const resolved = applyWaterCorrelationProperties(base, calculateRuntimeWaterProperties(temp), temp, 'Fluid Basis temperature');
         resolved.fluidPropertySource = 'Fluid Basis temperature correlation';
         resolved.temperaturePropertySynced = true;
@@ -231,6 +224,7 @@
             || props.temperaturePropertySynced === true
             || /fluid basis temperature correlation/i.test(propertyMethod);
         if (alreadySynced) return null;
+        if (isWaterPropertyCorrelationFluid(props)) return null;
         const lockedPropertyBasis = /journal|validation basis|manual|user input|user-defined|custom/i.test(propertyMethod);
         if (!lockedPropertyBasis) return null;
 
@@ -785,7 +779,7 @@
         installSourceFluidBasisOnlyUiGuard,
         installFluidBasisTemperatureSyncGuard,
         sourceCustomTemperatureUiEnabled: SOURCE_CUSTOM_TEMPERATURE_UI_ENABLED,
-        version: '20260623-fluid-basis-temperature-lock-warning-v1'
+        version: '20260706-fluid-basis-temperature-global-sync-v1'
     };
     installSourceTemperatureStabilityGuard();
     installSourceFluidBasisOnlyUiGuard();

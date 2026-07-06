@@ -26,6 +26,7 @@
     "validate:global-live-indicator-engine-link": "node tools/validate-global-live-indicator-engine-link.cjs",
     "validate:sink-boundary-mode-canvas-lock": "node tools/validate-sink-boundary-mode-canvas-lock.cjs",
     "validate:pump-readiness-visibility-lock": "node tools/validate-pump-readiness-visibility-lock.cjs",
+    "validate:pump-status-visual-lock": "node tools/validate-pump-status-visual-lock.cjs",
     "validate:pump-npsh-acceptance": "node tools/validate-pump-npsh-acceptance-runtime.cjs",
     "validate:local-api-preview": "node tools/validate-local-api-preview.cjs",
     "validate:local-api-preview-single-flight": "node tools/validate-local-api-preview-single-flight.cjs",

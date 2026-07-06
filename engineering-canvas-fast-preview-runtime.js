@@ -1,8 +1,9 @@
 !function registerEngineeringCanvasFastPreviewRuntime(root) {
   "use strict";
 
-  const VERSION = "2026.07-canvas-fast-preview3";
+  const VERSION = "2026.07-canvas-fast-preview4";
   const GRAVITY_MS2 = 9.80665;
+  const NPSHA_CALCULATED_STATUS = "NPSHa Calculated";
   const PUMP_PANEL_SELECTOR = ".pump-live-params";
   const SINK_PANEL_SELECTOR = ".sink-live-params";
   const CALCULATION_TARGET_SELECTOR = [
@@ -65,6 +66,11 @@
   function nonNegativeOrZero(value) {
     const number = finiteNumber(value);
     return number !== null && number >= 0 ? number : 0;
+  }
+
+  function optionalManualNpshr(value) {
+    if (value === null || value === undefined || String(value).trim() === "") return null;
+    return nonNegativeOrZero(value);
   }
 
   function fixed(value, digits = 3) {
@@ -195,23 +201,16 @@
     const trace = results.calculationTrace || evaluation.calculationTrace || {};
     const basis = trace.basis || {};
     const props = pump.props || {};
-    const propsNpshr = Object.prototype.hasOwnProperty.call(props, "manualNpshr")
-      ? nonNegativeOrZero(props.manualNpshr)
-      : Object.prototype.hasOwnProperty.call(props, "designNpshr")
-      ? nonNegativeOrZero(props.designNpshr)
-      : null;
+    const propsNpshr = optionalManualNpshr(props.manualNpshr);
+    const resultNpshr = propsNpshr === null
+      ? null
+      : firstFiniteValue(results.npshr, results.npshRequired, evaluation.npshr, evaluation.npshRequired);
     return {
       flow: firstFiniteValue(results.flow, results.flowM3H, evaluation.flow, evaluation.flowM3H, pump.props?.designFlow, pump.props?.flow),
       npsha: firstFiniteValue(results.npsha, results.npshAvailable, evaluation.npsha, evaluation.npshAvailable),
-      npshr: firstFiniteValue(
-        propsNpshr,
-        results.npshr,
-        results.npshRequired,
-        evaluation.npshr,
-        evaluation.npshRequired
-      ),
-      npshMargin: firstFiniteValue(results.npshMargin, evaluation.npshMargin),
-      npshRatio: firstFiniteValue(results.npshRatio, evaluation.npshRatio),
+      npshr: firstFiniteValue(propsNpshr, resultNpshr),
+      npshMargin: propsNpshr === null ? null : firstFiniteValue(results.npshMargin, evaluation.npshMargin),
+      npshRatio: propsNpshr === null ? null : firstFiniteValue(results.npshRatio, evaluation.npshRatio),
       suctionPressure: firstFiniteValue(results.suctionPressure, evaluation.suctionPressure, trace.boundary?.suctionPressure),
       dischargePressure: firstFiniteValue(results.dischargePressure, evaluation.dischargePressure, trace.boundary?.dischargePressure),
       pumpHead: firstFiniteValue(results.pumpHead, results.head, evaluation.pumpHead, evaluation.head),
@@ -303,8 +302,8 @@
 
   function hydraulicStatusForPreview(npsha, npshr, fallback = "") {
     const required = finiteNumber(npshr);
-    if (required === null || required <= 0) return "NPSHr Not Provided";
     const available = finiteNumber(npsha);
+    if (required === null || required <= 0) return available === null ? (fallback || "-") : NPSHA_CALCULATED_STATUS;
     if (available === null) return fallback || "-";
     return available >= required ? "OK" : "Cavitation Risk";
   }

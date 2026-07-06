@@ -1,7 +1,7 @@
 !function registerEngineeringSourceVolumetricOnlyRuntime(root) {
   "use strict";
 
-  const VERSION = "2026.07-source-boundary-clean2";
+  const VERSION = "2026.07-source-boundary-snk-flow-sync1";
   const FLOW_MODE = "Volumetric Flow";
   const FIELD_ROW_SELECTOR = ".object-task-field-row, .pipe-task-field-row, tr, .prop-row";
   const HIDDEN_SOURCE_FIELD_KEYS = new Set([
@@ -77,6 +77,283 @@
     return Object.entries(modelRef || {}).filter(([, node]) => node?.type === "source");
   }
 
+  function sinkEntries(modelRef = model()) {
+    return Object.entries(modelRef || {}).filter(([, node]) => node?.type === "sink");
+  }
+
+  function connectionList(modelRef = model()) {
+    const candidates = [
+      root.connections,
+      root.__npshConnections,
+      modelRef?.connections,
+      root.globalModel?.connections
+    ];
+    for (const candidate of candidates) {
+      if (Array.isArray(candidate)) return candidate;
+    }
+    return [];
+  }
+
+  function connectionPipeId(connection = {}) {
+    return normalizeText(connection.pipeId || connection.pipe || connection.via || connection.edgeId || "");
+  }
+
+  function connectionFrom(connection = {}) {
+    return normalizeText(connection.from || connection.source || connection.fromNode || "");
+  }
+
+  function connectionTo(connection = {}) {
+    return normalizeText(connection.to || connection.target || connection.toNode || "");
+  }
+
+  function isHydraulicConnection(connection = {}) {
+    const kind = normalizeText(connection.connectionType || connection.type || "");
+    return !kind || /^hydraulic$/i.test(kind);
+  }
+
+  function connectedSinkIdsForSource(sourceId, modelRef = model()) {
+    if (!sourceId) return [];
+    const hydraulicConnections = connectionList(modelRef).filter(isHydraulicConnection);
+    if (!hydraulicConnections.length) return [];
+    const visited = new Set([sourceId]);
+    const queue = [sourceId];
+    const sinkIds = new Set();
+
+    while (queue.length) {
+      const currentId = queue.shift();
+      hydraulicConnections.forEach((connection) => {
+        const ids = [
+          connectionFrom(connection),
+          connectionTo(connection),
+          connectionPipeId(connection)
+        ].filter(Boolean);
+        if (!ids.includes(currentId)) return;
+        ids.forEach((id) => {
+          if (!id || visited.has(id)) return;
+          visited.add(id);
+          if (modelRef?.[id]?.type === "sink") sinkIds.add(id);
+          queue.push(id);
+        });
+      });
+    }
+
+    return Array.from(sinkIds);
+  }
+
+  function connectedSourceIdsForSink(sinkId, modelRef = model()) {
+    if (!sinkId) return [];
+    const hydraulicConnections = connectionList(modelRef).filter(isHydraulicConnection);
+    if (!hydraulicConnections.length) return [];
+    const visited = new Set([sinkId]);
+    const queue = [sinkId];
+    const sourceIds = new Set();
+
+    while (queue.length) {
+      const currentId = queue.shift();
+      hydraulicConnections.forEach((connection) => {
+        const ids = [
+          connectionFrom(connection),
+          connectionTo(connection),
+          connectionPipeId(connection)
+        ].filter(Boolean);
+        if (!ids.includes(currentId)) return;
+        ids.forEach((id) => {
+          if (!id || visited.has(id)) return;
+          visited.add(id);
+          if (modelRef?.[id]?.type === "source") sourceIds.add(id);
+          queue.push(id);
+        });
+      });
+    }
+
+    return Array.from(sourceIds);
+  }
+
+  function sinkIdsForSourceFlowSync(sourceId, modelRef = model()) {
+    const connected = connectedSinkIdsForSource(sourceId, modelRef);
+    if (connected.length) return connected;
+    const sources = sourceEntries(modelRef);
+    const sinks = sinkEntries(modelRef);
+    if (sources.length === 1 && sinks.length === 1 && (!sourceId || sourceId === sources[0][0])) {
+      return [sinks[0][0]];
+    }
+    return [];
+  }
+
+  function sourceIdsForSinkFlowSync(sinkId, modelRef = model()) {
+    const connected = connectedSourceIdsForSink(sinkId, modelRef);
+    if (connected.length) return connected;
+    const sources = sourceEntries(modelRef);
+    const sinks = sinkEntries(modelRef);
+    if (sources.length === 1 && sinks.length === 1 && (!sinkId || sinkId === sinks[0][0])) {
+      return [sources[0][0]];
+    }
+    return [];
+  }
+
+  function formatFlowInputValue(value) {
+    const number = finiteNumber(value);
+    if (number === null) return "";
+    return String(Number(number.toFixed(6)));
+  }
+
+  function syncSinkDemandInputControls(sinkIds, flow) {
+    if (typeof document === "undefined" || !Array.isArray(sinkIds) || !sinkIds.length) return 0;
+    const nextValue = formatFlowInputValue(flow);
+    let changed = 0;
+    sinkIds.forEach((sinkId) => {
+      const escaped = cssEscape(sinkId);
+      const selector = [
+        `input[data-key="demandFlow"][data-node="${escaped}"]`,
+        `input[data-key="demandFlow"][data-node-id="${escaped}"]`,
+        `input[name="demandFlow"][data-node="${escaped}"]`,
+        `input[name="demandFlow"][data-node-id="${escaped}"]`
+      ].join(",");
+      document.querySelectorAll(selector).forEach((input) => {
+        if (document.activeElement === input) return;
+        if (input.value === nextValue) return;
+        input.value = nextValue;
+        changed += 1;
+      });
+    });
+    return changed;
+  }
+
+  function syncSourceFlowInputControls(sourceIds, flow) {
+    if (typeof document === "undefined" || !Array.isArray(sourceIds) || !sourceIds.length) return 0;
+    const nextValue = formatFlowInputValue(flow);
+    let changed = 0;
+    sourceIds.forEach((sourceId) => {
+      const escaped = cssEscape(sourceId);
+      const selector = [
+        `input[data-key="flow"][data-node="${escaped}"]`,
+        `input[data-key="flow"][data-node-id="${escaped}"]`,
+        `input[name="flow"][data-node="${escaped}"]`,
+        `input[name="flow"][data-node-id="${escaped}"]`
+      ].join(",");
+      document.querySelectorAll(selector).forEach((input) => {
+        if (document.activeElement === input) return;
+        if (input.value === nextValue) return;
+        input.value = nextValue;
+        changed += 1;
+      });
+    });
+    return changed;
+  }
+
+  function refreshSinkDemandSurfaces(sinkIds, flow) {
+    const inputChanges = syncSinkDemandInputControls(sinkIds, flow);
+    if (typeof document !== "undefined" && typeof root.EngineeringRouteTraceAudit?.syncSinkPropertyWindowCanonicalReadouts === "function") {
+      root.EngineeringRouteTraceAudit.syncSinkPropertyWindowCanonicalReadouts(document);
+    }
+    return inputChanges;
+  }
+
+  function syncSinkDemandFromSourceFlow(sourceId, sourceNode, modelRef = model(), options = {}) {
+    const props = sourceNode?.props || {};
+    const flow = finiteNumber(props.flow ?? props.flowM3h ?? props.volumetricFlow);
+    if (flow === null || flow < 0) return { changed: 0, sinkIds: [] };
+    const sinkIds = sinkIdsForSourceFlowSync(sourceId, modelRef);
+    let changed = 0;
+    const updatedSinkIds = [];
+
+    sinkIds.forEach((sinkId) => {
+      const sink = modelRef?.[sinkId];
+      if (!sink || sink.type !== "sink") return;
+      if (!sink.props || typeof sink.props !== "object") sink.props = {};
+      let sinkChanged = false;
+      const currentDemand = finiteNumber(sink.props.demandFlow);
+      if (currentDemand === null || Math.abs(currentDemand - flow) > 1e-9) {
+        sink.props.demandFlow = flow;
+        sinkChanged = true;
+      }
+      const currentAlias = finiteNumber(sink.props.flowDemand);
+      if (currentAlias === null || Math.abs(currentAlias - flow) > 1e-9) {
+        sink.props.flowDemand = flow;
+        sinkChanged = true;
+      }
+      if (sink.props.boundaryMode !== "Flow Demand Boundary") {
+        sink.props.boundaryMode = "Flow Demand Boundary";
+        sinkChanged = true;
+      }
+      if (sinkChanged) {
+        sink.props.flowDemandSyncedFromSource = sourceId;
+        sink.props.flowDemandSyncBasis = "SRC Volumetric Flow";
+        updatedSinkIds.push(sinkId);
+        changed += 1;
+      }
+    });
+
+    if ((updatedSinkIds.length || options.refreshInputs) && options.refreshInputs !== false) {
+      refreshSinkDemandSurfaces(sinkIds, flow);
+    }
+
+    return { changed, sinkIds: updatedSinkIds };
+  }
+
+  function syncSourceFlowFromSinkDemand(sinkId, sinkNode, modelRef = model(), options = {}) {
+    const props = sinkNode?.props || {};
+    const flow = finiteNumber(props.demandFlow ?? props.flowDemand);
+    if (flow === null || flow < 0) return { changed: 0, sourceIds: [] };
+    const sourceIds = sourceIdsForSinkFlowSync(sinkId, modelRef);
+    let changed = 0;
+    const updatedSourceIds = [];
+
+    sourceIds.forEach((sourceId) => {
+      const source = modelRef?.[sourceId];
+      if (!source || source.type !== "source") return;
+      if (!source.props || typeof source.props !== "object") source.props = {};
+      let sourceChanged = false;
+      const currentFlow = finiteNumber(source.props.flow);
+      if (currentFlow === null || Math.abs(currentFlow - flow) > 1e-9) {
+        source.props.flow = flow;
+        sourceChanged = true;
+      }
+      const currentAlias = finiteNumber(source.props.volumetricFlow);
+      if (currentAlias === null || Math.abs(currentAlias - flow) > 1e-9) {
+        source.props.volumetricFlow = flow;
+        sourceChanged = true;
+      }
+      if (source.props.flowInputMode !== FLOW_MODE) {
+        source.props.flowInputMode = FLOW_MODE;
+        sourceChanged = true;
+      }
+      const density = activeDensity(modelRef);
+      if (density > 0) {
+        const derivedMassFlow = flow * density;
+        if (Math.abs((finiteNumber(source.props.massFlow) || 0) - derivedMassFlow) > 0.000001) {
+          source.props.massFlow = derivedMassFlow;
+          sourceChanged = true;
+        }
+        source.props.massFlowDerived = true;
+      }
+      if (sourceChanged) {
+        source.props.flowSyncedFromSink = sinkId;
+        source.props.flowSyncBasis = "SNK Flow Demand";
+        updatedSourceIds.push(sourceId);
+        changed += 1;
+      }
+      syncSinkDemandFromSourceFlow(sourceId, source, modelRef, { refreshInputs: options.refreshInputs !== false });
+    });
+
+    if ((updatedSourceIds.length || options.refreshInputs) && options.refreshInputs !== false) {
+      syncSourceFlowInputControls(sourceIds, flow);
+    }
+
+    return { changed, sourceIds: updatedSourceIds };
+  }
+
+  function syncAllSinkDemandFromSourceFlow(modelRef = model(), options = {}) {
+    let changed = 0;
+    const sinkIds = new Set();
+    sourceEntries(modelRef).forEach(([id, node]) => {
+      const result = syncSinkDemandFromSourceFlow(id, node, modelRef, options);
+      changed += result.changed;
+      result.sinkIds.forEach((sinkId) => sinkIds.add(sinkId));
+    });
+    return { changed, sinkIds: Array.from(sinkIds) };
+  }
+
   function normalizeSourceNode(id, node, modelRef = model()) {
     if (!node || node.type !== "source") return false;
     if (!node.props || typeof node.props !== "object") node.props = {};
@@ -123,6 +400,7 @@
     let changed = 0;
     sourceEntries(modelRef).forEach(([id, node]) => {
       if (normalizeSourceNode(id, node, modelRef)) changed += 1;
+      changed += syncSinkDemandFromSourceFlow(id, node, modelRef, { refreshInputs: false }).changed;
     });
     return changed;
   }
@@ -455,13 +733,15 @@
         node.props.massFlowDerived = true;
       }
     }
-    if (notify && typeof root.EngineeringRealtimeCalculationDefense?.notifyDependencyChanged === "function") {
+    const synced = syncSinkDemandFromSourceFlow(sourceId, node, model(), { refreshInputs: true });
+    if ((notify || synced.sinkIds.length) && typeof root.EngineeringRealtimeCalculationDefense?.notifyDependencyChanged === "function") {
       root.EngineeringRealtimeCalculationDefense.notifyDependencyChanged({
-        dependency: "source.volumetric-flow",
+        dependency: "source.volumetric-flow/sink.flow-demand",
         nodeId: sourceId,
-        reason: "Source Volumetric Flow changed; recalculating route hydraulic/NPSH results.",
+        reason: "Source Volumetric Flow changed; SNK Flow Demand synced and route hydraulic/NPSH results are recalculating.",
         sourceEvent: "source-volumetric-flow-input",
-        target: input
+        target: input,
+        impactedSinkIds: synced.sinkIds
       });
     }
     return true;
@@ -648,7 +928,7 @@
       '[data-prop-key="massFlow"],',
       '[data-prop-key="sourceType"],',
       '[data-prop-key="source-type-meaning"],',
-      '[data-source-volumetric-only-removed="2026.07-source-boundary-clean2"]{display:none!important;}',
+      `[data-source-volumetric-only-removed="${VERSION}"]{display:none!important;}`,
       '.source-volumetric-only-hidden{display:none!important;}'
     ].join("\n");
     document.head.appendChild(style);
@@ -669,6 +949,29 @@
       if (!input || model()?.[input.dataset.node]?.type !== "source") return;
       syncModelFromFlowInput(input, input.dataset.sourceVolumetricOnlyCreated === VERSION);
       scheduleCleanup(input.closest(".task-window, #taskWindow, .object-properties-task-body, [role='dialog']") || document, 0);
+    }, true);
+    document.addEventListener("input", (event) => {
+      const input = event.target?.closest?.('input[data-key="demandFlow"][data-node], input[name="demandFlow"][data-node]');
+      const sinkId = input?.dataset?.node || input?.dataset?.nodeId || "";
+      const sink = model()?.[sinkId];
+      if (!input || !sink || sink.type !== "sink") return;
+      const value = finiteNumber(input.value);
+      if (value !== null && value >= 0) {
+        if (!sink.props || typeof sink.props !== "object") sink.props = {};
+        sink.props.demandFlow = value;
+        sink.props.flowDemand = value;
+      }
+      const synced = syncSourceFlowFromSinkDemand(sinkId, sink, model(), { refreshInputs: true });
+      if (synced.sourceIds.length && typeof root.EngineeringRealtimeCalculationDefense?.notifyDependencyChanged === "function") {
+        root.EngineeringRealtimeCalculationDefense.notifyDependencyChanged({
+          dependency: "sink.flow-demand/source.volumetric-flow",
+          nodeId: synced.sourceIds[0],
+          reason: "SNK Flow Demand changed; SRC Volumetric Flow synced and route hydraulic/NPSH results are recalculating.",
+          sourceEvent: "sink-flow-demand-input",
+          target: input,
+          impactedSinkIds: [sinkId]
+        });
+      }
     }, true);
     document.addEventListener("change", (event) => {
       const target = event.target;
@@ -731,6 +1034,9 @@
     install,
     cleanup: cleanupSourceTaskWindows,
     normalizeAllSourceNodes,
+    syncAllSinkDemandFromSourceFlow,
+    syncSinkDemandFromSourceFlow,
+    syncSourceFlowFromSinkDemand,
     syncModelFromFlowInput
   };
 

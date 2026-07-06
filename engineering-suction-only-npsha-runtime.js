@@ -792,7 +792,7 @@
   }
 
   function npshStatus(npsha, npshr, route) {
-    if (!(npshr > 0)) return { status: "NPSHr Not Provided", margin: null, ratio: null };
+    if (!(npshr > 0)) return { status: "NPSHa Calculated", margin: null, ratio: null };
     const margin = npsha - npshr;
     const ratio = npshr > 0 ? npsha / npshr : null;
     const minMargin = firstFiniteValue(route.pump?.props?.minNpshMargin, 0);
@@ -1050,7 +1050,7 @@
     const calculationTrace = buildLocalPumpTrace(route, result);
     const npshrProvided = result.npshr > 0;
     const status = result.status;
-    const statusForPanel = npshrProvided ? status : "NPSHr Not Provided";
+    const statusForPanel = npshrProvided ? status : "NPSHa Calculated";
     const evaluation = {
       ...(pumpResults.npshEvaluation || {}),
       status: statusForPanel,

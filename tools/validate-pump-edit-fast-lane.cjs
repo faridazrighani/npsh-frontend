@@ -148,9 +148,9 @@ assert.equal(globalThis.__npshGlobalModel['P-100'].props.manualNpshr, 0, 'Negati
 const blankManualInput = new FakeInput({ key: 'manualNpshr', value: '' });
 runtime.applyInputToPump(blankManualInput, manualClass);
 assert.equal(globalThis.__npshGlobalModel['P-100'].props.manualNpshr, '', 'Blank Manual NPSHr must remain blank rather than becoming zero.');
-assert.equal(globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.npshr, null, 'Blank Manual NPSHr must return to NPSHr Not Provided.');
+assert.equal(globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.npshr, null, 'Blank Manual NPSHr must return to blank NPSHr.');
 assert.equal(globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.npshMargin, null, 'Blank Manual NPSHr must clear NPSH margin.');
-assert.equal(globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.status, 'NPSHr Not Provided', 'Blank Manual NPSHr must restore the initial NPSHr warning state.');
+assert.equal(globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.status, 'NPSHa Calculated', 'Blank Manual NPSHr must keep NPSHa calculated while clearing the manual comparison.');
 runtime.applyInputToPump(manualNpshrInput, manualClass);
 
 const designHeadInput = new FakeInput({ key: 'designHead', value: '26' });

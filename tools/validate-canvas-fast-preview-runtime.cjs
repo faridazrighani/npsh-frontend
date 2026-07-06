@@ -23,15 +23,15 @@ const index = read(indexPath);
 const manifest = read(manifestPath);
 const pkg = JSON.parse(read(packagePath));
 
-const cacheKey = 'engineering-canvas-fast-preview-runtime.js?v=20260702-canvas-fast-preview3';
+const cacheKey = 'engineering-canvas-fast-preview-runtime.js?v=20260706-canvas-fast-preview4';
 const cacheKeyCount = (index.match(new RegExp(cacheKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
 
-assert(runtime.includes('2026.07-canvas-fast-preview3'), 'runtime version is missing');
+assert(runtime.includes('2026.07-canvas-fast-preview4'), 'runtime version is missing');
 assert(runtime.includes('EngineeringCanvasFastPreviewRuntime'), 'global API is missing');
 assert(cacheKeyCount >= 2, 'runtime must load in feature and initial canvas hydration paths');
 assert(
   index.indexOf(cacheKey) >= 0
-    && index.indexOf(cacheKey) < index.indexOf('engineering-source-temperature-runtime.js?v=20260701-source-volumetric-only1'),
+    && index.indexOf(cacheKey) < index.indexOf('engineering-source-temperature-runtime.js?v=20260706-fluid-temperature-global1'),
   'fast preview runtime must load before Source Temperature runtime so input previews are not delayed by autosolve handlers'
 );
 assert(manifest.includes('engineering-canvas-fast-preview-runtime.js public-safe'), 'manifest inventory entry is missing');
@@ -73,5 +73,9 @@ assert(/requestPreview\([^)]*input/.test(runtime), 'input-triggered requestPrevi
 assert(/beginPreviewWindow\(eventName,\s*1800,\s*isImmediateFluidTemperatureInput\(event\.target\)\)/.test(runtime), 'Fluid Basis temperature input must trigger immediate canvas preview before autosolve handlers');
 assert(/if \(immediate\) runImmediatePumpPreview/.test(runtime), 'Immediate input preview must repaint pump panel before heavier pipe/SNK refresh work');
 assert(/setRowValue\([^)]*NPSH Available/s.test(runtime), 'pump NPSHa row repaint is missing');
+assert(runtime.includes('function optionalManualNpshr'), 'fast preview must distinguish blank Manual NPSHr from explicit zero.');
+assert(runtime.includes('const propsNpshr = optionalManualNpshr(props.manualNpshr);'), 'fast preview NPSHr source must be Manual NPSHr only.');
+assert(!runtime.includes('props.designNpshr') || !/propsNpshr[\s\S]{0,220}designNpshr/.test(runtime), 'fast preview must not fall back to legacy designNpshr for NPSHr display.');
+assert(runtime.includes('npshMargin: propsNpshr === null ? null'), 'fast preview must keep NPSH margin blank without Manual NPSHr.');
 
 console.log('Canvas fast preview runtime validation passed.');
