@@ -18,6 +18,7 @@ const indexHtml = read(INDEX_FILE);
 const packageJson = JSON.parse(read(PACKAGE_FILE));
 const manifest = fs.existsSync(MANIFEST_FILE) ? read(MANIFEST_FILE) : '';
 const runtime = require(RUNTIME_FILE);
+const CLEANUP_RUNTIME_URL = 'engineering-pipe-properties-cleanup-runtime.js?v=20260706-pipe-hl-allow-clean1';
 
 assert.strictEqual(runtime.version, 'engineering-pipe-segments-file-runtime.v4');
 assert.strictEqual(runtime.cacheKey, '20260630-pipe-properties-cleanup1');
@@ -37,7 +38,7 @@ assert(
   'index.html must cache-bust and load the Pipe Segments file runtime.'
 );
 assert(
-  indexHtml.indexOf('engineering-pipe-properties-cleanup-runtime.js?v=20260630-pipe-properties-cleanup1')
+  indexHtml.indexOf(CLEANUP_RUNTIME_URL)
     < indexHtml.indexOf('engineering-pipe-segments-file-runtime.js?v=20260630-pipe-properties-cleanup1'),
   'Pipe Properties cleanup runtime must load before Pipe Segments runtime.'
 );

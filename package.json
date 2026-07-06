@@ -18,6 +18,7 @@
     "validate:export-canvas-snapshot-lock": "node tools/validate-export-canvas-snapshot-lock.cjs",
     "validate:live-parameter-repaint-lock": "node tools/validate-live-parameter-repaint-lock.cjs",
     "validate:src-canvas-parameter-lock": "node tools/validate-src-canvas-parameter-lock.cjs",
+    "validate:src-connect-context": "node tools/validate-src-connect-context-runtime.cjs",
     "validate:source-volumetric-only": "node tools/validate-source-volumetric-only-runtime.cjs",
     "validate:fluid-basis-phase-chart": "node tools/validate-fluid-basis-phase-chart-runtime.cjs",
     "validate:decimal-display-lock": "node tools/validate-decimal-display-lock.cjs",

@@ -1,7 +1,7 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
   const VERSION = 'engineering-pipe-properties-cleanup-runtime.v1';
-  const CACHE_KEY = '20260630-pipe-properties-cleanup1';
+  const CACHE_KEY = '20260706-pipe-hl-allow-clean1';
   const STYLE_ID = 'engineering-pipe-properties-cleanup-style';
   const SURFACE_SELECTOR = [
     '.persistent-object-properties-task-window[data-kind="pipe"]',
@@ -35,7 +35,8 @@
   ];
   const REMOVED_SEGMENT_LABELS = [
     'z in (m)',
-    'z out (m)'
+    'z out (m)',
+    'hL Allow (m)'
   ];
   const HIGH_POINT_PATTERN = /^(?:controlling\s+)?high\s+point/i;
   const ROW_SELECTOR = [

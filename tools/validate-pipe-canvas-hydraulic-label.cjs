@@ -11,13 +11,16 @@ const RUNTIME_FILE = path.join(FRONTEND_ROOT, "engineering-pipe-canvas-hydraulic
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
-const CACHE_KEY = "engineering-pipe-canvas-hydraulic-label-runtime-20260628-pfv-canvas-anchor1.js?v=20260706-pfv-fast-preview-inherit1";
-const VERSION = "2026.07-pipe-canvas-static-pressure-clean1";
+const CACHE_KEY = "engineering-pipe-canvas-hydraulic-label-runtime-20260628-pfv-canvas-anchor1.js?v=20260706-pfv-five-decimals1";
+const VERSION = "2026.07-pipe-canvas-label-five-decimals1";
 const P_PAIR_KEY = "P stat.";
 const REMOVED_SCOPE_LABEL = ["d", "P", " loss"].join("");
 const REMOVED_FORMATTER_TOKEN = ["format", "Pressure", "Drop"].join("");
 const REMOVED_TITLE_TOKEN = ["Positive", " pressure", " drop"].join("");
-const SIGMA_K_KEY = "\u03a3K";
+const TOTAL_K_KEY = "Total K";
+const TOTAL_HL_KEY = "Total hL";
+const MINOR_KEY = "Minor";
+const MAJOR_KEY = "Major";
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");
@@ -58,9 +61,9 @@ assert(
   "package.json must expose validate:pipe-canvas-hydraulic-label."
 );
 assert(runtime.includes(`const VERSION = "${VERSION}"`), "Runtime version must match the cache key.");
-assert(runtime.includes("DISPLAY_DIGITS = 3"), "Runtime must lock pipe canvas label numbers to 3 decimals.");
+assert(runtime.includes("DISPLAY_DIGITS = 5"), "Runtime must lock pipe canvas label numbers to 5 decimals.");
 assert(runtime.includes("BLOCK_WIDTH = 178"), "Runtime must keep the canvas hydraulic label readable at pump-label font size.");
-assert(runtime.includes("BLOCK_HEIGHT = 76"), "Runtime must keep the canvas hydraulic label readable at pump-label font size.");
+assert(runtime.includes("BLOCK_HEIGHT = 88"), "Runtime must keep the six-row canvas hydraulic label readable at pump-label font size.");
 assert(runtime.includes("ROW_GAP = 12.5"), "Runtime must keep readable row spacing at pump-label font size.");
 assert(runtime.includes("font-size: 10px"), "Runtime must keep pipe label text aligned with pump label size.");
 assert(runtime.includes("var(--font-main"), "Runtime must use the same font family source as pump object labels.");
@@ -71,9 +74,10 @@ assert(runtime.includes("Static endpoint pressure including elevation head"), "R
 assert(!runtime.includes(`"${REMOVED_SCOPE_LABEL}"`), "Runtime must not render the removed pressure-loss canvas row.");
 assert(!runtime.includes(REMOVED_FORMATTER_TOKEN), "Runtime must not keep removed pressure-loss formatting logic.");
 assert(!runtime.includes(REMOVED_TITLE_TOKEN), "Runtime must not keep removed pressure-loss tooltip/title text.");
-assert(runtime.includes("\\u03a3K"), "Runtime must render total K with sigma symbol.");
-assert(runtime.includes("h_f"), "Runtime must render major loss as h_f.");
-assert(runtime.includes("h_m"), "Runtime must render minor loss as h_m.");
+assert(runtime.includes('"Total K"'), "Runtime must render total K with the requested full label.");
+assert(runtime.includes('"Total hL"'), "Runtime must render total head loss with the requested full label.");
+assert(runtime.includes('"Minor"'), "Runtime must render minor loss with the requested label.");
+assert(runtime.includes('"Major"'), "Runtime must render major loss with the requested label.");
 assert(runtime.includes("MutationObserver"), "Runtime must observe SVG label insertions.");
 assert(runtime.includes("patchDrawConnections"), "Runtime must patch drawConnections refreshes.");
 assert(runtime.includes("patchUpdateSimulation"), "Runtime must patch updateSimulation refreshes.");
@@ -154,16 +158,17 @@ assert(api.parseLabelTransform("translate(118.5 92.25) rotate(-90)").angle === -
 assert(api.smartLabelCandidates(90)[0].name === "right", "Vertical pipe labels should try side placement first.");
 assert(api.smartLabelCandidates(0)[0].name === "above", "Horizontal pipe labels should try above placement first.");
 assert(api.canonicalLabelPlacement({ x: 120, y: 80, angle: 0 }).transform === "translate(120.0 66.0)", "Horizontal PFV labels must keep the desktop above-pipe placement on cellular.");
-assert(api.canonicalLabelPlacement({ x: 120, y: 80, angle: 90 }).transform === "translate(251.0 126.0)", "Vertical PFV labels must keep the desktop side placement on cellular.");
+assert(api.canonicalLabelPlacement({ x: 120, y: 80, angle: 90 }).transform === "translate(251.0 132.0)", "Vertical PFV labels must keep the desktop side placement on cellular.");
 const label = api.buildPipeHydraulicLabelData("PIPE-1");
 assert(label, "Runtime must build label data for a pipe.");
 const values = Object.fromEntries(label.rows.map((row) => [row.key, row.value]));
-assert(values[P_PAIR_KEY] === "5.200 \u2192 4.720 bar", "Static pressure pair must be formatted with 3 decimals and bar.");
+assert(values[P_PAIR_KEY] === "5.20000 \u2192 4.72000 bar", "Static pressure pair must be formatted with 5 decimals and bar.");
 assert(!Object.prototype.hasOwnProperty.call(values, REMOVED_SCOPE_LABEL), "PFV label data must not include the removed pressure-loss canvas row.");
-assert(values.v === "2.800 m/s", "Velocity must be formatted with 3 decimals and m/s.");
-assert(values[SIGMA_K_KEY] === "4.600", "Total K must be formatted with 3 decimals and no unit.");
-assert(values.h_f === "3.200 m", "Major loss must be formatted with 3 decimals and m.");
-assert(values.h_m === "1.600 m", "Minor loss must be formatted with 3 decimals and m.");
+assert(values.v === "2.80000 m/s", "Velocity must be formatted with 5 decimals and m/s.");
+assert(values[TOTAL_K_KEY] === "4.60000", "Total K must be formatted with 5 decimals and no unit.");
+assert(values[TOTAL_HL_KEY] === "4.80000 m", "Total hL must be formatted with 5 decimals and m.");
+assert(values[MINOR_KEY] === "1.60000 m", "Minor loss must be formatted with 5 decimals and m.");
+assert(values[MAJOR_KEY] === "3.20000 m", "Major loss must be formatted with 5 decimals and m.");
 
 const emptyModel = {
   "PIPE-EMPTY": {
@@ -177,8 +182,9 @@ const emptyApi = loadRuntime(runtime, emptyModel);
 const emptyLabel = emptyApi.buildPipeHydraulicLabelData("PIPE-EMPTY");
 const emptyValues = Object.fromEntries(emptyLabel.rows.map((row) => [row.key, row.value]));
 assert(!Object.prototype.hasOwnProperty.call(emptyValues, REMOVED_SCOPE_LABEL), "Empty PFV label must not include the removed pressure-loss canvas row.");
-assert(emptyValues[SIGMA_K_KEY] === "-", "Missing total K must stay blank instead of 0.000.");
-assert(emptyValues.h_f === "- m", "Missing major loss must stay blank instead of 0.000 m.");
-assert(emptyValues.h_m === "- m", "Missing minor loss must stay blank instead of 0.000 m.");
+assert(emptyValues[TOTAL_K_KEY] === "-", "Missing total K must stay blank instead of 0.00000.");
+assert(emptyValues[TOTAL_HL_KEY] === "- m", "Missing total hL must stay blank instead of 0.00000 m.");
+assert(emptyValues[MINOR_KEY] === "- m", "Missing minor loss must stay blank instead of 0.00000 m.");
+assert(emptyValues[MAJOR_KEY] === "- m", "Missing major loss must stay blank instead of 0.00000 m.");
 
 console.log("Pipe canvas hydraulic label validation passed.");

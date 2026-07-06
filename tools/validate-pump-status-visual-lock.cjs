@@ -14,6 +14,7 @@ const manifest = fs.readFileSync(manifestPath, 'utf8');
 const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
 
 const cacheKey = 'engineering-pump-status-visual-lock.js?v=20260706-pump-incomplete-badge1';
+const pipeCleanupCacheKey = 'engineering-pipe-properties-cleanup-runtime.js?v=20260706-pipe-hl-allow-clean1';
 
 assert(runtimeSource.includes('2026.07-pump-status-visual-lock2'), 'runtime version is missing');
 assert(runtimeSource.includes('NpshPumpStatusVisualLock'), 'runtime global API is missing');
@@ -27,7 +28,7 @@ assert(
   'pump visual lock must load after app.bundle.min.js so it can patch app status functions'
 );
 assert(
-  index.indexOf(cacheKey) < index.indexOf('engineering-pipe-properties-cleanup-runtime.js?v=20260630-pipe-properties-cleanup1'),
+  index.indexOf(cacheKey) < index.indexOf(pipeCleanupCacheKey),
   'pump visual lock must load in the critical script pack before later UI guards'
 );
 assert(manifest.includes('engineering-pump-status-visual-lock.js public-safe'), 'manifest runtime inventory entry is missing');

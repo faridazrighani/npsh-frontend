@@ -1,15 +1,15 @@
 !function(root) {
   "use strict";
 
-  const VERSION = "2026.07-pipe-canvas-static-pressure-clean1";
+  const VERSION = "2026.07-pipe-canvas-label-five-decimals1";
   const STYLE_ID = "engineeringPipeCanvasHydraulicLabelStyle";
   const SVG_NS = "http://www.w3.org/2000/svg";
   const LABEL_SELECTOR = "#svg-lines .pipe-delta-label[data-pipe-id]";
-  const DISPLAY_DIGITS = 3;
+  const DISPLAY_DIGITS = 5;
   const BLOCK_WIDTH = 178;
-  const BLOCK_HEIGHT = 76;
-  const BLOCK_TOP = -84;
-  const ROW_TOP = -69;
+  const BLOCK_HEIGHT = 88;
+  const BLOCK_TOP = -96;
+  const ROW_TOP = -81;
   const ROW_GAP = 12.5;
   const KEY_X = -82;
   const VALUE_X = -34;
@@ -246,6 +246,13 @@
       results.fittingLoss,
       sumCalculatedSegmentValue(calculatedSegments, "minorLoss")
     );
+    const totalLoss = firstFiniteValue(
+      totals.totalLoss,
+      results.headLoss,
+      results.totalLoss,
+      sumCalculatedSegmentValue(calculatedSegments, "totalLoss"),
+      majorLoss !== null || minorLoss !== null ? (majorLoss || 0) + (minorLoss || 0) : null
+    );
     const totalK = firstFiniteValue(
       totals.totalK,
       results.totalK,
@@ -257,9 +264,10 @@
     const rows = [
       { key: "P stat.", value: formatPressurePair(pin, pout), title: "Static endpoint pressure including elevation head" },
       { key: "v", value: formatVelocity(velocity), title: "Flow velocity" },
-      { key: "\u03a3K", value: formatTotalK(totalK), title: "Total loss coefficient" },
-      { key: "h_f", value: formatHead(majorLoss), title: "Major/friction head loss" },
-      { key: "h_m", value: formatHead(minorLoss), title: "Minor/local head loss" }
+      { key: "Total K", value: formatTotalK(totalK), title: "Total loss coefficient" },
+      { key: "Total hL", value: formatHead(totalLoss), title: "Total pipe/fitting/valve head loss" },
+      { key: "Minor", value: formatHead(minorLoss), title: "Minor/local head loss" },
+      { key: "Major", value: formatHead(majorLoss), title: "Major/friction head loss" }
     ];
 
     const title = [
@@ -267,8 +275,9 @@
       `Static endpoint P ${formatPressurePair(pin, pout)}`,
       `v ${formatVelocity(velocity)}`,
       `Total K ${formatTotalK(totalK)}`,
-      `Major loss h_f ${formatHead(majorLoss)}`,
-      `Minor loss h_m ${formatHead(minorLoss)}`
+      `Total hL ${formatHead(totalLoss)}`,
+      `Minor loss ${formatHead(minorLoss)}`,
+      `Major loss ${formatHead(majorLoss)}`
     ].join(" | ");
 
     return {

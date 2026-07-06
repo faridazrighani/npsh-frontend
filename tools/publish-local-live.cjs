@@ -97,6 +97,7 @@ function runChecks() {
   if (skipChecks) return;
   [
     ['run', 'validate:canvas-fast-preview'],
+    ['run', 'validate:src-connect-context'],
     ['run', 'validate:route-trace-default-lock'],
     ['run', 'validate:live-parameter-repaint-lock'],
     ['run', 'validate:pipe-canvas-hydraulic-label'],
