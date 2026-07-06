@@ -38,14 +38,14 @@ assert.strictEqual(
 );
 
 assert(
-  indexHtml.includes('engineering-pump-edit-fast-lane.js?v=20260706-pump-edit-fast-lane2')
+  indexHtml.includes('engineering-pump-edit-fast-lane.js?v=20260706-pump-edit-status-matrix1')
     && indexHtml.includes('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1')
     && indexHtml.includes('engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1')
     && indexHtml.includes('engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1'),
   'index.html must load pump fast lane, realtime defense, lifecycle runtime, and progress overlay.'
 );
 assert(
-  indexHtml.indexOf('engineering-pump-edit-fast-lane.js?v=20260706-pump-edit-fast-lane2')
+  indexHtml.indexOf('engineering-pump-edit-fast-lane.js?v=20260706-pump-edit-status-matrix1')
     < indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1')
     && indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1')
       < indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1')

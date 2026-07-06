@@ -75,7 +75,7 @@ assert.equal(
 );
 
 const npshaOnlyPump = pump({
-  hydraulicNpshStatus: 'NPSHr Not Provided',
+  hydraulicNpshStatus: 'NPSHa Calculated',
   backendValidationStatus: 'Connected',
   cavitationStatus: 'Safe',
   npsha: 9.9289,
@@ -85,7 +85,7 @@ setRuntimeState({ 'P-100': npshaOnlyPump }, [{ from: 'SRC-100', to: 'P-100', con
 assert.equal(
   runtime.resolvePumpOperatingVisualStatus(npshaOnlyPump, 'P-100'),
   'warning',
-  'NPSHa-only route without NPSHr must display Warning/NPSHr Not Provided, not Safe'
+  'NPSHa-only route without NPSHr must display Warning/NPSHa Calculated, not Safe'
 );
 
 const safePump = pump({

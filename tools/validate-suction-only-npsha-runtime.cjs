@@ -10,8 +10,8 @@ const indexPath = path.join(root, 'index.html');
 const runtime = fs.readFileSync(runtimePath, 'utf8');
 const indexHtml = fs.readFileSync(indexPath, 'utf8');
 
-assert.match(indexHtml, /engineering-suction-only-npsha-runtime\.js\?v=20260706-suction-only-npsha2/, 'index.html must load the suction-only NPSHa runtime with a fresh cache key.');
-assert.match(runtime, /const VERSION = "2026\.06-suction-only-npsha4"/, 'runtime version should match the cache key.');
+assert.match(indexHtml, /engineering-suction-only-npsha-runtime\.js\?v=20260706-suction-only-status-matrix1/, 'index.html must load the suction-only NPSHa runtime with a fresh cache key.');
+assert.match(runtime, /const VERSION = "2026\.07-suction-only-npsha5-status-matrix"/, 'runtime version should match the cache key.');
 assert.match(runtime, /runBackendProtectedPumpSimulation/, 'runtime must call the protected backend pump simulation.');
 assert.match(runtime, /Suction Only/, 'runtime must recognize the suction-only route status.');
 assert.match(runtime, /Downstream Required/, 'runtime must keep downstream required-head status separate.');
@@ -86,9 +86,9 @@ async function runRuntimeSmoke() {
       const pipe = windowMock.globalModel['PIPE-1'];
       pump.results = {
         ...pump.results,
-        status: 'Safe',
-        hydraulicNpshStatus: 'Safe',
-        cavitationStatus: 'Safe',
+        status: 'OK',
+        hydraulicNpshStatus: 'OK',
+        cavitationStatus: 'OK',
         backendValidationStatus: 'Connected',
         routeCalculationStatus: 'Suction Only',
         requiredPumpHeadStatus: 'Downstream Required',
@@ -182,9 +182,9 @@ async function runRuntimeSmoke() {
             status: 'backend-engine-ready',
             cutover: { primaryEligible: true },
             results: {
-              status: 'Safe',
-              hydraulicStatus: 'Safe',
-              engineeringStatus: 'Safe',
+              status: 'OK',
+              hydraulicStatus: 'OK',
+              engineeringStatus: 'OK',
               routeCalculationStatus: 'Suction Only',
               requiredPumpHeadStatus: 'Downstream Required',
               flow: 9.528,
@@ -318,7 +318,7 @@ runRuntimeSmoke().then(() => {
   console.log(JSON.stringify({
     passed: true,
     runtime: path.basename(runtimePath),
-    cacheKey: '20260706-suction-only-npsha2',
+    cacheKey: '20260706-suction-only-status-matrix1',
     smoke: 'SRC -> PFV -> Pump calculated'
   }, null, 2));
 }).catch((error) => {

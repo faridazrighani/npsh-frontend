@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const VERSION = "2026.06-suction-only-npsha4";
+  const VERSION = "2026.07-suction-only-npsha5-status-matrix";
   const SOLVE_DELAY_MS = 420;
   const RETRY_DELAY_MS = 900;
   const MAX_RETRIES = 8;
@@ -378,9 +378,10 @@
     pumpResults.vaporPressureHead = firstFiniteValue(result.vaporPressureHead, pumpResults.vaporPressureHead);
     pumpResults.routeCalculationStatus = result.routeCalculationStatus || pumpResults.routeCalculationStatus || "Suction Only";
     pumpResults.requiredPumpHeadStatus = result.requiredPumpHeadStatus || pumpResults.requiredPumpHeadStatus || "Downstream Required";
-    pumpResults.status = result.status || result.hydraulicStatus || pumpResults.status || "Safe";
-    pumpResults.hydraulicNpshStatus = result.hydraulicStatus || result.status || pumpResults.hydraulicNpshStatus || "Safe";
-    pumpResults.engineeringStatus = result.engineeringStatus || result.status || pumpResults.engineeringStatus || "Safe";
+    const fallbackHydraulicStatus = resultNpshr !== null ? "OK" : "NPSHa Calculated";
+    pumpResults.status = result.status || result.hydraulicStatus || pumpResults.status || fallbackHydraulicStatus;
+    pumpResults.hydraulicNpshStatus = result.hydraulicStatus || result.status || pumpResults.hydraulicNpshStatus || fallbackHydraulicStatus;
+    pumpResults.engineeringStatus = result.engineeringStatus || result.status || pumpResults.engineeringStatus || fallbackHydraulicStatus;
     pumpResults.cavitationStatus = pumpResults.hydraulicNpshStatus;
     pumpResults.actualPumpHeadAvailable = false;
     pumpResults.pumpHead = null;
@@ -797,11 +798,11 @@
     const ratio = npshr > 0 ? npsha / npshr : null;
     const minMargin = firstFiniteValue(route.pump?.props?.minNpshMargin, 0);
     const minRatio = firstFiniteValue(route.pump?.props?.minNpshMarginRatio, 1);
-    if (npsha <= npshr) return { status: "NPSH Risk", margin, ratio };
+    if (npsha <= npshr) return { status: "Cavitation Risk", margin, ratio };
     if ((minMargin !== null && margin < minMargin) || (minRatio !== null && ratio !== null && ratio < minRatio)) {
       return { status: "Warning", margin, ratio };
     }
-    return { status: "Safe", margin, ratio };
+    return { status: "OK", margin, ratio };
   }
 
   function buildLocalPumpTrace(route, result) {
@@ -1155,9 +1156,10 @@
     pumpResults.pumpHead = null;
     pumpResults.head = null;
     pumpResults.dischargePressure = null;
+    const fallbackHydraulicStatus = firstPositiveValue(route.pump?.props?.manualNpshr) !== null ? "OK" : "NPSHa Calculated";
     pumpResults.status = text(pumpResults.status) && !/incomplete|input required/i.test(pumpResults.status)
       ? pumpResults.status
-      : (evaluation.status || evaluation.hydraulicStatus || "Safe");
+      : (evaluation.status || evaluation.hydraulicStatus || fallbackHydraulicStatus);
     pumpResults.hydraulicNpshStatus = pumpResults.hydraulicNpshStatus || evaluation.hydraulicStatus || pumpResults.status;
     pumpResults.cavitationStatus = pumpResults.cavitationStatus || pumpResults.hydraulicNpshStatus;
     markPumpCurrent(route);

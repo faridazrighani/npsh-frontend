@@ -25,10 +25,10 @@ const manifest = read(manifestPath);
 const pkg = JSON.parse(read(packagePath));
 const publish = read(publishPath);
 
-const cacheKey = 'engineering-canvas-fast-preview-runtime.js?v=20260706-canvas-fast-preview17';
+const cacheKey = 'engineering-canvas-fast-preview-runtime.js?v=20260706-canvas-fast-preview18';
 const cacheKeyCount = (index.match(new RegExp(cacheKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
 
-assert(runtime.includes('2026.07-canvas-fast-preview17'), 'runtime version is missing');
+assert(runtime.includes('2026.07-canvas-fast-preview18'), 'runtime version is missing');
 assert(runtime.includes('EngineeringCanvasFastPreviewRuntime'), 'global API is missing');
 assert(cacheKeyCount >= 2, 'runtime must load in feature and initial canvas hydration paths');
 assert(
@@ -66,7 +66,9 @@ assert(manifest.includes('Canvas fast preview validation: npm run validate:canva
   'Required Head',
   'hasHydraulicConnectionForNode',
   'Unverified',
-  'vaporPressureHead'
+  'vaporPressureHead',
+  'normalizeBackendValidationStatusForMatrix',
+  'normalizeHydraulicNpshStatusForMatrix'
 ].forEach((token) => {
   assert(runtime.includes(token), `runtime token is missing: ${token}`);
 });
@@ -94,6 +96,11 @@ assert(/beginPreviewWindow\(event\?\.detail\?\.sourceEvent \|\| eventName,\s*180
 assert(runtime.includes('function applyTransientPumpPreview'), 'fast preview must publish transient pump result values so renderer rebuilds cannot restore stale NPSHa rows.');
 assert(runtime.includes('__canvasFastPreviewTransient'), 'transient pump preview results must be tagged for audit and baseline guards.');
 assert(runtime.includes('options.preservePreviewFluidBasis && pumpNode?.results?.__canvasFastPreviewTransient'), 'baseline capture must not treat transient preview values as authoritative results.');
+assert(runtime.includes('return "NPSHa Calculated";') || runtime.includes('return NPSHA_CALCULATED_STATUS;'), 'fast preview must keep NPSHa-only pumps in the NPSHa Calculated status.');
+assert(runtime.includes('return "Cavitation Risk";'), 'fast preview must keep cavitation-risk status canonical.');
+assert(runtime.includes('return "Warning";'), 'fast preview must keep warning status canonical.');
+assert(runtime.includes('return "OK";'), 'fast preview must keep satisfied Manual NPSHr comparison canonical as OK.');
+assert(runtime.includes('normalizeBackendValidationStatusForMatrix(view.backendStatus, baseline?.backendStatus)'), 'fast preview backend row must be normalized to the Backend Valid. matrix before repaint.');
 assert(runtime.includes('function stampExistingPipeAndSinkPreview'), 'immediate preview must stamp existing pipe/SNK readouts after the lightweight refresh.');
 assert(runtime.includes('stampExistingPipeAndSinkPreview(document)\n      + refreshPumpPanels(document)\n      + stampExistingPipeAndSinkPreview(document)'), 'immediate pump preview must stamp pipe/SNK readouts before and after pump repaint.');
 assert(runtime.includes('requestPreview(reason);'), 'the full pipe/SNK refresh must remain scheduled on the normal preview frame.');

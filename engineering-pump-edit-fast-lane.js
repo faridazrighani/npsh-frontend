@@ -1,7 +1,7 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-pump-edit-fast-lane.v7';
-  const CACHE_KEY = '20260706-pump-edit-fast-lane2';
+  const VERSION = 'engineering-pump-edit-fast-lane.v8';
+  const CACHE_KEY = '20260706-pump-edit-status-matrix1';
   const NPSHA_CALCULATED_STATUS = 'NPSHa Calculated';
   const PUMP_WINDOW_SELECTOR = [
     '.persistent-object-properties-task-window',
@@ -406,8 +406,8 @@
       const maxNpshrByRatio = allowableTerms.maxNpshrByRatio;
       const maxNpshrByMargin = allowableTerms.maxNpshrByMargin;
       const maxAllowableNpshr = allowableTerms.maxAllowable;
-      const status = npsha < npshr ? 'Cavitation Risk' : (npsha < required ? 'Warning' : 'Safe');
-      const manualStatus = maxAllowableNpshr !== null ? (npshr <= maxAllowableNpshr ? 'Safe' : 'Warning') : 'Review Required';
+      const status = npsha < npshr ? 'Cavitation Risk' : (npsha < required ? 'Warning' : 'OK');
+      const manualStatus = maxAllowableNpshr !== null ? (npshr <= maxAllowableNpshr ? 'OK' : 'Warning') : 'Review Required';
       evaluation.requiredNpsha = round(required, 6);
       evaluation.npshMargin = round(margin, 6);
       evaluation.npshRatio = round(ratio, 6);

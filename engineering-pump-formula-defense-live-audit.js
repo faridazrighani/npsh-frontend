@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-formula-defense-live-audit.v11';
+  const VERSION = 'pump-formula-defense-live-audit.v12';
   const WINDOW_SELECTOR = '.pump-formula-defense-task-window';
   const BADGE_SELECTOR = '[data-pump-formula-defense-live-badges]';
   const SUMMARY_SELECTOR = '[data-pump-formula-defense-vendor-summary]';
@@ -328,7 +328,7 @@
     if (npsha === null || npshr === null || npshr <= 0) return '';
     if (npsha <= npshr) return 'Cavitation Risk';
     if (requiredNpsha !== null && npsha < requiredNpsha) return 'Warning';
-    return 'Safe';
+    return 'OK';
   }
 
   function criteriaAvailabilityStatus(ratioLimit, absoluteMarginLimit) {
@@ -914,7 +914,7 @@
     addCalculationMatrixRow(rows, {
       output: 'Hydraulic NPSH Status',
       input: 'NPSHa, NPSHr, NPSH margin, and NPSH ratio',
-      formula: 'Status = Safe when the live NPSH margin and ratio satisfy the selected acceptance criteria; Warning/Risk otherwise',
+      formula: 'Status = OK when the live NPSH margin and ratio satisfy the selected acceptance criteria; Warning/Risk otherwise',
       substitution: `NPSHa=${formatWithUnit(npsha, 'm')}; NPSHr=${formatWithUnit(npshr, 'm')}; Margin=${formatWithUnit(npshMargin, 'm')}; Ratio=${formatNumber(npshRatio, 4)}`,
       result: hydraulicStatus || '-',
       connectedTo: 'Acceptance criteria -> NPSH Evaluation Report'

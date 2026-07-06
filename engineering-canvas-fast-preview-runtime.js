@@ -1,7 +1,7 @@
 !function registerEngineeringCanvasFastPreviewRuntime(root) {
   "use strict";
 
-  const VERSION = "2026.07-canvas-fast-preview17";
+  const VERSION = "2026.07-canvas-fast-preview18";
   const GRAVITY_MS2 = 9.80665;
   const NPSHA_CALCULATED_STATUS = "NPSHa Calculated";
   const SUCTION_VAPOR_WARNING_HEAD_M = 0.5;
@@ -69,6 +69,28 @@
       if (text && text !== "-") return text;
     }
     return "";
+  }
+
+  function normalizeBackendValidationStatusForMatrix(...values) {
+    const raw = firstTextValue(...values);
+    if (!raw) return "Unverified";
+    if (/calculating|solv(?:e|ing)|pending|in\s*progress/i.test(raw)) return "Calculating";
+    if (/stale|out[\s-]*of[\s-]*date|prior/i.test(raw)) return "Stale";
+    if (/timeout|timed\s*out/i.test(raw)) return "Timeout";
+    if (/unavailable|unusable|invalid|failed|error|unverified|not\s*usable|api/i.test(raw)) return "Unavailable";
+    if (/connected|current|matched|usable|protected|backend/i.test(raw)) return "Connected";
+    return raw;
+  }
+
+  function normalizeHydraulicNpshStatusForMatrix(...values) {
+    const raw = firstTextValue(...values);
+    if (!raw) return "";
+    if (/incomplete|input\s*required|unknown|not\s*connected|incomplete\s*network|incomplete\s*calculation/i.test(raw)) return "Incomplete";
+    if (/cavitation|npsh\s*risk|risk|unsafe|fail/i.test(raw)) return "Cavitation Risk";
+    if (/warning|review|near\s*vapor/i.test(raw)) return "Warning";
+    if (/not\s*provided|npshr\s*not\s*provided|manual\s*npshr|npsha\s*calculated/i.test(raw)) return NPSHA_CALCULATED_STATUS;
+    if (/safe|ok|pass/i.test(raw)) return "OK";
+    return raw;
   }
 
   function nonNegativeOrZero(value) {
@@ -371,13 +393,14 @@
   function hydraulicStatusForPreview(npsha, npshr, fallback = "", suctionVaporGuard = null) {
     const required = finiteNumber(npshr);
     const available = finiteNumber(npsha);
+    const normalizedFallback = normalizeHydraulicNpshStatusForMatrix(fallback);
     if (required === null || required <= 0) {
-      if (available === null) return fallback || "-";
+      if (available === null) return normalizedFallback || "-";
       if (suctionVaporGuard?.risk) return "Cavitation Risk";
       if (suctionVaporGuard?.warning) return "Warning";
       return NPSHA_CALCULATED_STATUS;
     }
-    if (available === null) return fallback || "-";
+    if (available === null) return normalizedFallback || "-";
     if (suctionVaporGuard?.risk) return "Cavitation Risk";
     if (available >= required) return suctionVaporGuard?.warning ? "Warning" : "OK";
     return "Cavitation Risk";
@@ -458,7 +481,7 @@
       ? hydraulicStatusForPreview(previewNpsha, npshr, view.hydraulicStatus || baseline?.hydraulicStatus || "", suctionVaporGuard)
       : "Incomplete";
     const backendStatus = isHydraulicallyConnected
-      ? (view.backendStatus || baseline?.backendStatus || "Unverified")
+      ? normalizeBackendValidationStatusForMatrix(view.backendStatus, baseline?.backendStatus)
       : "Unverified";
     const transientApplied = applyTransientPumpPreview(pumpNode, {
       npsha: previewNpsha,

@@ -1,7 +1,7 @@
 (function installEngineeringAnalysisReportLiveRuntime(root) {
   'use strict';
 
-  const VERSION = '2026.06-analysis-report-live17-head-power-audit';
+  const VERSION = '2026.07-analysis-report-live18-status-matrix';
   const REFRESH_MS = 3000;
   const ACTIVE_SELECTOR = '.journal-analysis-task-window, .journal-analysis-report-panel';
   const RESPONSIVE_STYLE_ID = 'engineeringAnalysisReportLiveResponsiveStyle';
@@ -221,11 +221,22 @@
 
   const statusNeedsCalculatedFallback = (value) => /input\s*required|incomplete|unknown/i.test(String(value || ''));
 
+  const normalizeHydraulicStatusForMatrix = (value) => {
+    const raw = cleanText(value, '').replace(/\s+/g, ' ').trim();
+    if (!raw) return '';
+    if (/incomplete|input\s*required|unknown|not\s*connected|incomplete\s*network|incomplete\s*calculation/i.test(raw)) return 'Incomplete';
+    if (/cavitation|npsh\s*risk|risk|unsafe|fail/i.test(raw)) return 'Cavitation Risk';
+    if (/warning|review|near\s*vapor/i.test(raw)) return 'Warning';
+    if (/not\s*provided|npshr\s*not\s*provided|manual\s*npshr|npsha\s*calculated/i.test(raw)) return 'NPSHa Calculated';
+    if (/safe|ok|pass/i.test(raw)) return 'OK';
+    return raw;
+  };
+
   const calculatedNpshStatus = (npsha, npshr, requiredNpsha) => {
     if (npsha === null || npshr === null) return null;
     if (npsha <= npshr) return 'Cavitation Risk';
     if (requiredNpsha !== null && npsha < requiredNpsha) return 'Warning';
-    return 'Safe';
+    return 'OK';
   };
 
   const chooseCalculatedStatus = (rawStatus, calculatedStatus, fallback = '-') => {
@@ -580,7 +591,9 @@
     const dischargeLoss = firstNumber(routeDischargeLoss(pumpResults, npsh), pipeMetric(dischargePipe, 'totalLoss'));
     const computedHydraulicStatus = calculatedNpshStatus(npsha, npshr, requiredNpsha);
     const rawHydraulicStatus = npsh.hydraulicStatus || pumpResults.hydraulicNpshStatus || npsh.status || pumpResults.cavitationStatus || 'Incomplete';
-    const hydraulicStatus = chooseCalculatedStatus(rawHydraulicStatus, computedHydraulicStatus, 'Incomplete');
+    const hydraulicStatus = normalizeHydraulicStatusForMatrix(
+      chooseCalculatedStatus(rawHydraulicStatus, computedHydraulicStatus, 'Incomplete')
+    ) || 'Incomplete';
     const dataConfidence = [pumpResults.dataConfidenceStatus || npsh.dataConfidenceStatus, pumpResults.dataConfidence || npsh.dataConfidence]
       .filter(Boolean)
       .join(': ');
@@ -597,7 +610,7 @@
       ? (/review|required|input/i.test(rawMaxAllowableNpshrStatus) ? 'Calculated' : (rawMaxAllowableNpshrStatus || 'Calculated'))
       : (rawMaxAllowableNpshrStatus || 'Review Required');
     const computedManualComparisonStatus = npshr !== null
-      ? (maxAllowableNpshr !== null ? (npshr <= maxAllowableNpshr ? 'Safe' : 'Warning') : 'Review Required')
+      ? (maxAllowableNpshr !== null ? (npshr <= maxAllowableNpshr ? 'OK' : 'Warning') : 'Review Required')
       : 'Not Provided';
     const rawManualNpshrComparisonStatus = cleanText(npsh.manualNpshrComparisonStatus || pumpResults.manualNpshrComparisonStatus || npshTraceInterpretation.manualNpshrComparisonStatus || '');
     const manualNpshrComparisonStatus = maxAllowableNpshr !== null && npshr !== null

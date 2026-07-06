@@ -1819,7 +1819,7 @@ test('Manual NPSHr UI edit previews Simulasi 4 locally and refreshes linked repo
     };
   }, caseData.pumpId, { timeout: 15000 });
   const localPreview = await localPreviewHandle.jsonValue();
-  expect(localPreview.status).toBe('Safe');
+  expect(localPreview.status).toBe('OK');
   expect(['Local preview', 'Current']).toContain(localPreview.freshness);
   await expect.poll(() => page.__desktopFlowChainRequests.length, {
     timeout: 15000,

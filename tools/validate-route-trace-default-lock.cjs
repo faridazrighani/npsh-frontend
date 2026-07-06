@@ -11,8 +11,9 @@ const runtime = require(runtimePath);
 const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
+const publish = fs.readFileSync(path.join(rootDir, 'tools', 'publish-local-live.cjs'), 'utf8');
 
-assert.equal(runtime.version, '2026.07-route-trace-audit-v41', 'Route trace audit runtime should expose the locked canvas object-card stability version.');
+assert.equal(runtime.version, '2026.07-route-trace-audit-v42', 'Route trace audit runtime should expose the locked canvas object-card stability version.');
 assert.equal(typeof runtime.openRouteAuditPanel, 'function', 'Dedicated route audit panel should remain available.');
 assert.equal(typeof runtime.pruneDefaultCanvasRouteTraceOverlays, 'function', 'Canvas route trace overlay pruning should be exposed for audit tests.');
 assert.equal(typeof runtime.pruneDefaultPumpRouteTraceRows, 'function', 'Pump route trace row pruning should be exposed for audit tests.');
@@ -38,6 +39,12 @@ assert(runtimeSource.includes('function isHiddenPumpCanvasSectionText'), 'Pump l
 assert(runtimeSource.includes('function isHiddenPumpCanvasRowLabel'), 'Pump live panel lock should normalize route/vapor row labels before hiding them.');
 assert(runtimeSource.includes("upsertPumpCanvasRow(panel, 'Hydraulic NPSH'"), 'Pump canvas panel lock should add a stable Hydraulic NPSH status row when available.');
 assert(runtimeSource.includes("upsertPumpCanvasRow(panel, 'Backend Valid.'"), 'Pump canvas panel lock should add a stable backend validation row when available.');
+assert(publish.includes("['run', 'validate:route-trace-default-lock']"), 'Publish flow must run the route-trace/default canvas status lock before deploy.');
+assert(runtimeSource.includes('function normalizeHydraulicNpshStatusForMatrix'), 'Pump canvas panel lock should normalize Hydraulic NPSH into the approved matrix labels.');
+assert(runtimeSource.includes("return 'NPSHa Calculated';"), 'Pump canvas panel lock should preserve NPSHa-only status when Manual NPSHr is blank.');
+assert(runtimeSource.includes("return 'Cavitation Risk';"), 'Pump canvas panel lock should preserve cavitation risk as a canonical status.');
+assert(runtimeSource.includes("return 'Warning';"), 'Pump canvas panel lock should preserve suction-vapor warning as a canonical status.');
+assert(runtimeSource.includes("return 'OK';"), 'Pump canvas panel lock should normalize legacy Safe/pass values to OK.');
 assert(runtimeSource.includes('const SINK_CANVAS_HIDDEN_ROW_LABELS = new Set(['), 'SNK canvas panel lock should use the locked hidden-row allowlist.');
 assert(runtimeSource.includes("'Flow Demand'"), 'SNK canvas panel lock should hide the old Flow Demand display row.');
 assert(runtimeSource.includes("'Outlet Flow'"), 'SNK canvas panel lock should hide the old Outlet Flow display row.');
@@ -559,7 +566,7 @@ try {
   };
   global.buildPumpLiveParameterRows = () => [
     { type: 'section', label: 'Status' },
-    { label: 'Hydraulic NPSH', value: 'Safe' },
+    { label: 'Hydraulic NPSH', value: 'OK' },
     { type: 'section', label: 'Suction' },
     { label: 'Flow', value: '39.700' },
     { label: 'Basis Vapor Press.', value: '0.702' },
@@ -596,7 +603,7 @@ try {
     canonicalBuilderRows.slice(0, 3),
     [
       { type: 'section', label: 'STATUS' },
-      { label: 'Hydraulic NPSH', value: 'Safe' },
+      { label: 'Hydraulic NPSH', value: 'OK' },
       { label: 'Backend Valid.', value: 'Connected' }
     ],
     'Pump row-builder wrapper should render Hydraulic NPSH and Backend Valid. before route-trace cleanup sweeps.'
@@ -670,7 +677,7 @@ try {
   assert.deepEqual(
     valuesByLabelIn(canonicalPumpPanel, '.pump-live-param-row', '.pump-live-param-label', '.pump-live-param-value'),
     {
-      'Hydraulic NPSH': 'Safe',
+      'Hydraulic NPSH': 'OK',
       'Backend Valid.': 'Connected',
       Flow: '39.680 m3/h',
       'Suction Press.': '2.155',
@@ -734,11 +741,11 @@ try {
 }
 
 assert(
-  index.includes('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260706-npshr-blank1'),
+  index.includes('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260706-status-matrix-lock1'),
   'Index must load the route trace audit runtime with the default-lock cache key.'
 );
 assert(
-  manifest.includes('Route audit cache key: engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260706-npshr-blank1'),
+  manifest.includes('Route audit cache key: engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260706-status-matrix-lock1'),
   'Manifest must document the route trace default-lock cache key.'
 );
 

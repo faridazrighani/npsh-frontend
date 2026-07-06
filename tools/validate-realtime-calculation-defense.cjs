@@ -375,7 +375,7 @@ assert(
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
-  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260706-pump-edit-fast-lane2')
+  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260706-pump-edit-status-matrix1')
     < index.indexOf('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1'),
   'Pump edit fast lane must load before realtime calculation defense.'
 );

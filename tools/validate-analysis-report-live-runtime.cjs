@@ -10,8 +10,8 @@ const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const CASE_FILE = path.join(FRONTEND_ROOT, "journals", "simulasi_1", "simulasi_performansi_pompa_air_umpan_tangki_deaerator.untirta");
 const LOGO_FILE = path.join(FRONTEND_ROOT, "png", "untirta-universitas-sultanagengtirtayasa880x870.png");
-const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260703-snk-reference-pressure1";
-const VERSION = "2026.06-analysis-report-live17-head-power-audit";
+const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260706-status-matrix-lock1";
+const VERSION = "2026.07-analysis-report-live18-status-matrix";
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
 function assert(condition, message) {
@@ -282,6 +282,9 @@ assert(!runtime.includes("Pump - Elevation / Nozzle Elevations"), "Runtime must 
 assert(runtime.includes("Pump - NPSHa"), "Runtime must include pump NPSHa metric mapping.");
 assert(runtime.includes("Pump - Maximum Allowable NPSHr"), "Runtime must include maximum allowable NPSHr metric mapping.");
 assert(runtime.includes("calculatedNpshStatus"), "Runtime must derive hydraulic NPSH status when stale backend status says Input Required.");
+assert(runtime.includes("normalizeHydraulicStatusForMatrix"), "Runtime must normalize Hydraulic NPSH status labels to the canonical matrix.");
+assert(runtime.includes("return 'OK';"), "Runtime must map satisfied Hydraulic NPSH/Safe values to canonical OK.");
+assert(runtime.includes("return 'NPSHa Calculated';"), "Runtime must preserve NPSHa-only status when Manual NPSHr is not provided.");
 assert(runtime.includes("NPSHr,max"), "Runtime must document the maximum allowable NPSHr concept in report metric mapping.");
 assert(runtime.includes("Outlet Readout - Boundary Abs. Pressure"), "Runtime must include outlet boundary readout mapping.");
 assert(!runtime.includes("innerHTML ="), "Runtime must not replace table/report layout through innerHTML.");

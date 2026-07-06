@@ -1,5 +1,5 @@
 (function registerEngineeringRouteTraceAudit(root) {
-  const VERSION = '2026.07-route-trace-audit-v41';
+  const VERSION = '2026.07-route-trace-audit-v42';
   const PANEL_ID = 'engineeringRouteTraceAuditPanel';
   const PANEL_BODY_ID = 'engineeringRouteTraceAuditPanelBody';
   const MENU_BUTTON_ID = 'menu-tools-route-trace-audit';
@@ -2169,6 +2169,17 @@
     return raw;
   }
 
+  function normalizeHydraulicNpshStatusForMatrix(...values) {
+    const raw = firstMeaningfulStatusValue(...values);
+    if (!raw) return '';
+    if (/incomplete|input\s*required|unknown|not\s*connected|incomplete\s*network|incomplete\s*calculation/i.test(raw)) return 'Incomplete';
+    if (/cavitation|npsh\s*risk|risk|unsafe|fail/i.test(raw)) return 'Cavitation Risk';
+    if (/warning|review|near\s*vapor/i.test(raw)) return 'Warning';
+    if (/not\s*provided|npshr\s*not\s*provided|manual\s*npshr|npsha\s*calculated/i.test(raw)) return 'NPSHa Calculated';
+    if (/safe|ok|pass/i.test(raw)) return 'OK';
+    return raw;
+  }
+
   function pumpCanonicalStatusValues(pump = {}, pumpId = '') {
     const modelRef = model();
     const resolvedPumpId = pumpId || nodeIdForModelNode(pump, 'pump');
@@ -2185,7 +2196,7 @@
       || evaluation.calculationTrace?.interpretation
       || {};
     const manualNpshr = pumpManualNpshrValue(pump);
-    const hydraulicNpshStatus = firstMeaningfulStatusValue(
+    const hydraulicNpshStatus = normalizeHydraulicNpshStatusForMatrix(
       results.hydraulicNpshStatus,
       results.cavitationStatus,
       evaluation.hydraulicStatus,
