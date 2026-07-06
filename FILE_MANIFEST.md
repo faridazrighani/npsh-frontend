@@ -147,11 +147,11 @@ Source temperature runtime cache key: engineering-source-temperature-runtime.js?
 Source volumetric-only runtime cache key: engineering-source-volumetric-only-runtime.js?v=20260706-source-snk-flow-sync1
 Fluid Basis phase chart runtime cache key: engineering-fluid-basis-phase-chart-runtime.js?v=20260706-fluid-phase-chart2
 Decimal display runtime cache key: engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2
-Live parameter stable runtime cache key: engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260702-object-status-clean1
+Live parameter stable runtime cache key: engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260706-fast-preview-preserve1
 Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=20260626-head-power-audit1
 Local trace fallback runtime cache key: engineering-local-trace-fallback-runtime.js?v=20260628-manual-npshr1
-Pipe canvas hydraulic label runtime cache key: engineering-pipe-canvas-hydraulic-label-runtime-20260628-pfv-canvas-anchor1.js?v=20260706-pfv-static-pressure-clean1
-Canvas fast preview runtime cache key: engineering-canvas-fast-preview-runtime.js?v=20260706-canvas-fast-preview5
+Pipe canvas hydraulic label runtime cache key: engineering-pipe-canvas-hydraulic-label-runtime-20260628-pfv-canvas-anchor1.js?v=20260706-pfv-fast-preview-inherit1
+Canvas fast preview runtime cache key: engineering-canvas-fast-preview-runtime.js?v=20260706-canvas-fast-preview17
 Pipe source confidence map runtime cache key: engineering-pipe-source-confidence-map-runtime.js?v=20260630-pipe-properties-live1
 Pump nozzle simplify runtime cache key: engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5
 Analysis Report live runtime cache key: engineering-analysis-report-live-runtime.js?v=20260703-snk-reference-pressure1

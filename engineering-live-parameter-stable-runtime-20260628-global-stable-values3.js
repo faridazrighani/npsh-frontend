@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const VERSION = "2026.07-live-parameter-stable6";
+  const VERSION = "2026.07-live-parameter-stable7";
   const OBJECT_SELECTOR = ".pfd-object";
   const PANEL_SELECTOR = ".pump-live-params, .tank-live-params, .source-live-params, .sink-live-params";
   const ROW_SELECTOR = ".pump-live-param-row, .tank-live-param-row, .source-live-param-row, .sink-live-param-row";
@@ -54,6 +54,14 @@
     "Head Res.",
     "Max Elev."
   ]);
+  const FAST_PREVIEW_PROTECTED_PUMP_ROWS = new Set([
+    "Hydraulic NPSH",
+    "NPSH Available",
+    "NPSH Required",
+    "NPSH Margin",
+    "NPSH Ratio"
+  ]);
+  const FAST_PREVIEW_PRESERVE_MS = 2400;
 
   const registry = new Map();
   const detachedPanels = new Map();
@@ -339,6 +347,30 @@
     return nowMs() < busyUntil;
   }
 
+  function fastPreviewVersion() {
+    return normalizeText(root.EngineeringCanvasFastPreviewRuntime?.version || root.__engineeringCanvasFastPreviewRuntimeVersion);
+  }
+
+  function isFastPreviewInputReason() {
+    const reason = normalizeText(root.document?.documentElement?.dataset?.canvasFastPreviewReason).toLowerCase();
+    return !!reason
+      && /input|dependency|scheduled|autosolve/.test(reason)
+      && !/complete|current/.test(reason);
+  }
+
+  function shouldPreserveFastPreviewPumpRow(panel, label) {
+    if (!panel?.classList?.contains("pump-live-params")) return false;
+    if (!FAST_PREVIEW_PROTECTED_PUMP_ROWS.has(label)) return false;
+    const version = fastPreviewVersion();
+    if (!version) return false;
+    const object = panel.closest?.(".pfd-object");
+    if (panel.dataset?.canvasFastPreview !== version && object?.dataset?.canvasFastPreview !== version) return false;
+    if (!isFastPreviewInputReason()) return false;
+    const stampedAt = Number.parseInt(root.document?.documentElement?.dataset?.canvasFastPreviewAt || "0", 10);
+    if (!Number.isFinite(stampedAt) || stampedAt <= 0 || Date.now() - stampedAt > FAST_PREVIEW_PRESERVE_MS) return false;
+    return true;
+  }
+
   function isCanvasClearInProgress() {
     return !!root[CLEAR_IN_PROGRESS_FLAG];
   }
@@ -520,6 +552,10 @@
     sourceRows.forEach((sourceRow, label) => {
       const targetRow = targetRows.get(label);
       if (!targetRow) return;
+      if (shouldPreserveFastPreviewPumpRow(target, label)) {
+        targetRow.dataset.liveParameterStableFastPreviewPreserved = VERSION;
+        return;
+      }
       const sourceValue = normalizeText(valueElement(sourceRow)?.textContent);
       const sourceUnit = normalizeText(unitElement(sourceRow)?.textContent);
       changed += setTextIfChanged(valueElement(targetRow), sourceValue, { skipTransientPlaceholder });

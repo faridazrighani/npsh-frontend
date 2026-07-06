@@ -700,9 +700,9 @@
     'engineering-npsh-margin-runtime.js?v=20260622-local-live-sync1',
     'engineering-src-canvas-parameter-runtime.js?v=20260702-object-status-clean1',
     'engineering-source-volumetric-only-runtime.js?v=20260706-source-snk-flow-sync1',
-    'engineering-canvas-fast-preview-runtime.js?v=20260706-canvas-fast-preview5',
+    'engineering-canvas-fast-preview-runtime.js?v=20260706-canvas-fast-preview17',
     'engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2',
-    'engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260702-object-status-clean1',
+    'engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260706-fast-preview-preserve1',
     'engineering-canvas-clear-reset-guard.js?v=20260629-canvas-clear-reset1',
     'engineering-performance-refresh-governor.js?v=20260629-live-evidence1',
     'engineering-pump-edit-fast-lane.js?v=20260706-pump-edit-fast-lane2',
@@ -720,8 +720,8 @@
     'engineering-source-temperature-runtime.js?v=20260706-fluid-temperature-global1',
     'engineering-parameter-task-runtime.js?v=20260626-head-power-audit1',
     'engineering-local-trace-fallback-runtime.js?v=20260628-manual-npshr1',
-    'engineering-pipe-canvas-hydraulic-label-runtime-20260628-pfv-canvas-anchor1.js?v=20260706-pfv-static-pressure-clean1',
-    'engineering-canvas-fast-preview-runtime.js?v=20260706-canvas-fast-preview5',
+    'engineering-pipe-canvas-hydraulic-label-runtime-20260628-pfv-canvas-anchor1.js?v=20260706-pfv-fast-preview-inherit1',
+    'engineering-canvas-fast-preview-runtime.js?v=20260706-canvas-fast-preview17',
     'engineering-pipe-source-confidence-map-runtime.js?v=20260630-pipe-properties-live1',
     'engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5',
     'engineering-bilingual-improvements.js?v=20260703-source-defense-refresh1',
@@ -747,10 +747,10 @@
   const initialCanvasHydrationScripts = [
     ...realtimeScripts,
     ...statusScripts,
-    'engineering-pipe-canvas-hydraulic-label-runtime-20260628-pfv-canvas-anchor1.js?v=20260706-pfv-static-pressure-clean1',
+    'engineering-pipe-canvas-hydraulic-label-runtime-20260628-pfv-canvas-anchor1.js?v=20260706-pfv-fast-preview-inherit1',
     'engineering-browser-issues-runtime.js?v=20260620-orphan-label-cleanup1',
     'engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260706-npshr-blank1',
-    'engineering-canvas-fast-preview-runtime.js?v=20260706-canvas-fast-preview5'
+    'engineering-canvas-fast-preview-runtime.js?v=20260706-canvas-fast-preview17'
   ];
   const taskWindow = document.getElementById('taskWindow');
   const syncInitialTaskSheet = () => taskWindow?.classList.toggle('task-window-mobile-sheet', window.matchMedia('(max-width: 639px)').matches);

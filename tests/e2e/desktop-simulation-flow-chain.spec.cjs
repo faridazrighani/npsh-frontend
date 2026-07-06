@@ -1420,7 +1420,7 @@ test('Canvas Pump/Pipe/SNK readouts fast-preview before backend final after Flui
   });
 
   await waitForNpshApp(page);
-  await page.waitForFunction(() => window.EngineeringCanvasFastPreviewRuntime?.version === '2026.07-canvas-fast-preview5', null, { timeout: 15000 });
+  await page.waitForFunction(() => window.EngineeringCanvasFastPreviewRuntime?.version === '2026.07-canvas-fast-preview17', null, { timeout: 15000 });
   await loadProject(page, caseData);
 
   const baseline = await runProtectedSolve(page, caseData);
@@ -1468,7 +1468,7 @@ test('Canvas Pump/Pipe/SNK readouts fast-preview before backend final after Flui
         normalize(candidate.querySelector('.pump-live-param-label')?.textContent) === 'NPSH Available'
       ));
       const value = normalize(row?.querySelector('.pump-live-param-value, strong')?.textContent);
-      if (value && value !== previousValue && panel?.dataset?.canvasFastPreview === '2026.07-canvas-fast-preview5') {
+      if (value && value !== previousValue && panel?.dataset?.canvasFastPreview === '2026.07-canvas-fast-preview17') {
         window.__canvasFastPreviewObservedElapsedMs = performance.now() - window.__canvasFastPreviewE2EStart;
         return;
       }
@@ -1497,8 +1497,8 @@ test('Canvas Pump/Pipe/SNK readouts fast-preview before backend final after Flui
     ));
     const value = normalize(row?.querySelector('.pump-live-param-value, strong')?.textContent);
     if (!value || value === previousValue) return false;
-    if (window.EngineeringCanvasFastPreviewRuntime?.version !== '2026.07-canvas-fast-preview5') return false;
-    if (document.documentElement.dataset.canvasFastPreviewRuntime !== '2026.07-canvas-fast-preview5') return false;
+    if (window.EngineeringCanvasFastPreviewRuntime?.version !== '2026.07-canvas-fast-preview17') return false;
+    if (document.documentElement.dataset.canvasFastPreviewRuntime !== '2026.07-canvas-fast-preview17') return false;
     return {
       elapsedMs: performance.now() - (window.__canvasFastPreviewE2EStart || performance.now()),
       observedElapsedMs: window.__canvasFastPreviewObservedElapsedMs,
@@ -1506,8 +1506,8 @@ test('Canvas Pump/Pipe/SNK readouts fast-preview before backend final after Flui
       previousValue,
       panelPreviewVersion: panel.dataset.canvasFastPreview || '',
       reason: document.documentElement.dataset.canvasFastPreviewReason || '',
-      pipePreviewCount: document.querySelectorAll('#svg-lines .pipe-hydraulic-label[data-canvas-fast-preview="2026.07-canvas-fast-preview5"]').length,
-      sinkPreviewCount: document.querySelectorAll('.sink-live-params[data-canvas-fast-preview="2026.07-canvas-fast-preview5"]').length
+      pipePreviewCount: document.querySelectorAll('#svg-lines .pipe-hydraulic-label[data-canvas-fast-preview="2026.07-canvas-fast-preview17"]').length,
+      sinkPreviewCount: document.querySelectorAll('.sink-live-params[data-canvas-fast-preview="2026.07-canvas-fast-preview17"]').length
     };
   }, {
     pumpId: caseData.pumpId,
@@ -1516,7 +1516,7 @@ test('Canvas Pump/Pipe/SNK readouts fast-preview before backend final after Flui
   const preview = await previewHandle.jsonValue();
 
   expect(preview.observedElapsedMs ?? preview.elapsedMs).toBeLessThan(900);
-  expect(preview.panelPreviewVersion).toBe('2026.07-canvas-fast-preview5');
+  expect(preview.panelPreviewVersion).toBe('2026.07-canvas-fast-preview17');
   expect(preview.pipePreviewCount).toBeGreaterThan(0);
   expect(preview.sinkPreviewCount).toBeGreaterThan(0);
 
@@ -1578,12 +1578,12 @@ test('Pump canvas keeps NPSHr and margin blank during Fluid Basis preview when M
   };
 
   await waitForNpshApp(page);
-  await page.waitForFunction(() => window.EngineeringCanvasFastPreviewRuntime?.version === '2026.07-canvas-fast-preview5', null, { timeout: 15000 });
+  await page.waitForFunction(() => window.EngineeringCanvasFastPreviewRuntime?.version === '2026.07-canvas-fast-preview17', null, { timeout: 15000 });
   await loadProject(page, noManualCase);
   await runProtectedSolve(page, noManualCase);
 
   const isDash = (row) => /^-(?:\s+m)?$/.test(String(row?.value || '').trim());
-  await expect.poll(async () => readPumpCanvasRow(page, caseData.pumpId, 'NPSH Required'), { timeout: 10000 }).toMatchObject({ runtimeVersion: '2026.07-canvas-fast-preview5' });
+  await expect.poll(async () => readPumpCanvasRow(page, caseData.pumpId, 'NPSH Required'), { timeout: 10000 }).toMatchObject({ runtimeVersion: '2026.07-canvas-fast-preview17' });
   expect(isDash(await readPumpCanvasRow(page, caseData.pumpId, 'NPSH Required'))).toBe(true);
   expect(isDash(await readPumpCanvasRow(page, caseData.pumpId, 'NPSH Margin'))).toBe(true);
   expect(isDash(await readPumpCanvasRow(page, caseData.pumpId, 'NPSH Ratio'))).toBe(true);
@@ -1610,7 +1610,7 @@ test('Pump canvas keeps NPSHr and margin blank during Fluid Basis preview when M
         || normalize(object?.textContent).includes(pumpId)
         || document.querySelectorAll('.pump-live-params').length === 1;
     }) || null;
-    return panel?.dataset?.canvasFastPreview === '2026.07-canvas-fast-preview5';
+    return panel?.dataset?.canvasFastPreview === '2026.07-canvas-fast-preview17';
   }, caseData.pumpId, { timeout: 1500 });
 
   const previewRequired = await readPumpCanvasRow(page, caseData.pumpId, 'NPSH Required');

@@ -11,7 +11,7 @@ const RUNTIME_FILE = path.join(FRONTEND_ROOT, "engineering-pipe-canvas-hydraulic
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
-const CACHE_KEY = "engineering-pipe-canvas-hydraulic-label-runtime-20260628-pfv-canvas-anchor1.js?v=20260706-pfv-static-pressure-clean1";
+const CACHE_KEY = "engineering-pipe-canvas-hydraulic-label-runtime-20260628-pfv-canvas-anchor1.js?v=20260706-pfv-fast-preview-inherit1";
 const VERSION = "2026.07-pipe-canvas-static-pressure-clean1";
 const P_PAIR_KEY = "P stat.";
 const REMOVED_SCOPE_LABEL = ["d", "P", " loss"].join("");
@@ -98,6 +98,9 @@ assert(runtime.includes("pipeHydraulicLabelGeometryRestored"), "Runtime must mar
 assert(runtime.includes("pipeHydraulicLabelGeometryHeld"), "Runtime must hold geometry signatures until the busy window settles.");
 assert(runtime.includes('attributeFilter: ["transform", "class"]'), "Runtime must watch PFV transform/class mutations without observing noisy global attributes.");
 assert(runtime.includes("updateExistingLabelText"), "Runtime must update PFV label values in place instead of rebuilding every row.");
+assert(runtime.includes("activeCanvasFastPreviewVersion"), "Runtime must detect active canvas fast-preview state.");
+assert(runtime.includes("inheritCanvasFastPreviewStamp"), "Runtime must inherit canvas fast-preview stamps when PFV labels are rebuilt.");
+assert(runtime.includes('group.setAttribute("data-canvas-fast-preview", version)'), "Runtime must stamp rebuilt SVG PFV labels for fast-preview readiness.");
 assert(runtime.includes("pipeHydraulicLabelRenderedTransform"), "Runtime must track rendered transforms separately from source pipe geometry.");
 assert(runtime.includes("initialRefreshDone"), "Runtime install loop must not refresh PFV labels on every retry tick.");
 assert(runtime.includes('"npsh:linked-views-refreshed"'), "Runtime must refresh PFV labels after linked evidence refresh.");

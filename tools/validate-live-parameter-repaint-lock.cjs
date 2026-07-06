@@ -14,7 +14,7 @@ const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
 
 const LOCK_CACHE_KEY = "engineering-live-parameter-repaint-lock.css?v=20260702-object-status-clean1";
-const STABLE_RUNTIME_CACHE_KEY = "engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260702-object-status-clean1";
+const STABLE_RUNTIME_CACHE_KEY = "engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260706-fast-preview-preserve1";
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");
@@ -104,7 +104,7 @@ assert(
 );
 
 assert(!/rgba\(/i.test(lockCss), "Repaint-lock CSS must use opaque backgrounds; rgba backgrounds can reveal grid repaint.");
-assert(stableRuntime.includes('const VERSION = "2026.07-live-parameter-stable6"'), "Stable runtime must keep the global live parameter value-update version.");
+assert(stableRuntime.includes('const VERSION = "2026.07-live-parameter-stable7"'), "Stable runtime must keep the global live parameter value-update version.");
 assert(stableRuntime.includes("syncMatchingRows"), "Stable runtime must update matching row values in place.");
 assert(stableRuntime.includes("stabilizePanelFromReplacement"), "Stable runtime must preserve panel shells when the app renderer supplies replacements.");
 assert(stableRuntime.includes("shouldAllowStructureReplacement"), "Stable runtime must still allow intentional row-structure changes outside solve/drag lifecycle.");
@@ -133,6 +133,9 @@ assert(stableRuntime.includes("liveParameterStableAttributesFlushed"), "Stable r
 assert(stableRuntime.includes('attributeFilter: ["style", "class"]'), "Stable runtime must watch style/class mutations without observing noisy global attributes.");
 assert(stableRuntime.includes("skipTransientPlaceholder"), "Stable runtime must not overwrite visible values with transient solver placeholders.");
 assert(stableRuntime.includes("setTextIfChanged(valueElement(targetRow)"), "Stable runtime must patch numeric value text without rebuilding panel rows.");
+assert(stableRuntime.includes("FAST_PREVIEW_PROTECTED_PUMP_ROWS"), "Stable runtime must preserve fast-preview pump rows during active input.");
+assert(stableRuntime.includes("shouldPreserveFastPreviewPumpRow"), "Stable runtime must guard NPSH preview rows from stale replacement panels.");
+assert(stableRuntime.includes("liveParameterStableFastPreviewPreserved"), "Stable runtime must annotate preserved fast-preview rows for audit/debugging.");
 assert(stableRuntime.includes("npsh:calculation-applying-results"), "Stable runtime must understand solver lifecycle events.");
 assert(stableRuntime.includes("npsh:realtime-autosolve-start"), "Stable runtime must treat realtime autosolve start as a busy window.");
 assert(stableRuntime.includes("npsh:realtime-autosolve-scheduled"), "Stable runtime must protect live panels while autosolve is queued.");

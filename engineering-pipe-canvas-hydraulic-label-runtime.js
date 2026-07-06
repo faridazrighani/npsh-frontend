@@ -370,6 +370,24 @@
     });
   }
 
+  function activeCanvasFastPreviewVersion() {
+    const version = root.EngineeringCanvasFastPreviewRuntime?.version
+      || root.__engineeringCanvasFastPreviewRuntimeVersion
+      || document?.documentElement?.dataset?.canvasFastPreviewRuntime
+      || "";
+    const reason = String(document?.documentElement?.dataset?.canvasFastPreviewReason || "");
+    if (!version || /complete|current/i.test(reason)) return "";
+    return version;
+  }
+
+  function inheritCanvasFastPreviewStamp(group) {
+    const version = activeCanvasFastPreviewVersion();
+    if (!version || !group?.setAttribute) return false;
+    group.setAttribute("data-canvas-fast-preview", version);
+    if (group.dataset) group.dataset.canvasFastPreview = version;
+    return true;
+  }
+
   function currentLabelSourceTransform(group) {
     const transform = group?.getAttribute?.("transform") || "";
     const rendered = group?.dataset?.pipeHydraulicLabelRenderedTransform || "";
@@ -601,6 +619,7 @@
     group.dataset.pipeHydraulicLabel = "true";
     group.dataset.pipeHydraulicLabelVersion = VERSION;
     group.dataset.pipeHydraulicLabelSignature = data.signature;
+    inheritCanvasFastPreviewStamp(group);
     if (!holdGeometry) group.dataset.pipeHydraulicLabelGeometrySignature = geometrySignature;
     group.setAttribute("role", "img");
     group.setAttribute("aria-label", data.title);

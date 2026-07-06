@@ -1,7 +1,7 @@
 !function registerEngineeringCanvasFastPreviewRuntime(root) {
   "use strict";
 
-  const VERSION = "2026.07-canvas-fast-preview5";
+  const VERSION = "2026.07-canvas-fast-preview17";
   const GRAVITY_MS2 = 9.80665;
   const NPSHA_CALCULATED_STATUS = "NPSHa Calculated";
   const SUCTION_VAPOR_WARNING_HEAD_M = 0.5;
@@ -29,6 +29,8 @@
   let previewFrame = 0;
   let previewPulseTimer = 0;
   let previewPulseUntil = 0;
+  let immediatePanelStampTimer = 0;
+  let panelStampDeferredUntil = 0;
   let installAttempts = 0;
   let installSupportSignature = "";
 
@@ -55,6 +57,10 @@
       if (number !== null) return number;
     }
     return null;
+  }
+
+  function isPreviewWindowOpen(now = Date.now()) {
+    return now < previewPulseUntil;
   }
 
   function firstTextValue(...values) {
@@ -240,6 +246,9 @@
         results.backendCalculationSource && !/unavailable|timeout/i.test(results.backendCalculationSource) ? "Connected" : ""
       ),
       vaporPressureHead: firstFiniteValue(
+        results.vaporPressureHead,
+        evaluation.vaporPressureHead,
+        results.npshEvaluation?.vaporPressureHead,
         basis.vaporPressureHead,
         basis.vaporPressureHeadM,
         basis.vaporPressureHeadMeters,
@@ -249,18 +258,27 @@
     };
   }
 
-  function capturePumpBaseline(pumpId, pumpNode) {
+  function capturePumpBaseline(pumpId, pumpNode, options = {}) {
     if (!pumpId || pumpNode?.type !== "pump") return false;
+    if (options.preservePreviewFluidBasis && pumpNode?.results?.__canvasFastPreviewTransient) return false;
     const view = pumpResultView(pumpNode);
     const fluid = fluidProps();
+    const prior = pumpBaselines.get(pumpId);
     const npsha = view.npsha;
     if (npsha === null) return false;
+    const preservePreviewFluidBasis = !!options.preservePreviewFluidBasis;
     pumpBaselines.set(pumpId, {
       npsha,
       npshr: view.npshr,
       npshMargin: view.npshMargin,
       npshRatio: view.npshRatio,
-      vaporPressureHead: firstFiniteValue(view.vaporPressureHead, fluid.vaporPressureHead, 0),
+      vaporPressureHead: firstFiniteValue(
+        view.vaporPressureHead,
+        preservePreviewFluidBasis ? prior?.vaporPressureHead : null,
+        fluid.vaporPressureHead,
+        prior?.vaporPressureHead,
+        0
+      ),
       flow: view.flow,
       suctionPressure: view.suctionPressure,
       dischargePressure: view.dischargePressure,
@@ -273,11 +291,11 @@
     return true;
   }
 
-  function captureAuthoritativeBaselines() {
+  function captureAuthoritativeBaselines(options = {}) {
     const modelRef = model();
     let captured = 0;
     Object.entries(modelRef || {}).forEach(([id, node]) => {
-      if (node?.type === "pump" && capturePumpBaseline(id, node)) captured += 1;
+      if (node?.type === "pump" && capturePumpBaseline(id, node, options)) captured += 1;
     });
     return captured;
   }
@@ -321,6 +339,35 @@
     return { status: "Safe", warning: false, risk: false, marginBar, marginHead };
   }
 
+  function isPanelStampDeferred(now = Date.now()) {
+    return now < panelStampDeferredUntil;
+  }
+
+  function stampPumpPanelPreview(panel, pumpId) {
+    if (!panel) return;
+    if (isPanelStampDeferred()) {
+      panel.dataset.canvasFastPreviewPending = VERSION;
+      panel.dataset.canvasFastPreview = `${VERSION}-pending`;
+      panel.closest?.(".pfd-object")?.setAttribute("data-canvas-fast-preview", `${VERSION}-pending`);
+      return;
+    }
+    panel.dataset.canvasFastPreview = VERSION;
+    delete panel.dataset.canvasFastPreviewPending;
+    panel.dataset.canvasFastPreviewPumpId = pumpId;
+    panel.closest?.(".pfd-object")?.setAttribute("data-canvas-fast-preview", VERSION);
+  }
+
+  function markPumpPanelsPreviewPending(scope = document) {
+    let marked = 0;
+    scope?.querySelectorAll?.(PUMP_PANEL_SELECTOR).forEach((panel) => {
+      panel.dataset.canvasFastPreviewPending = VERSION;
+      panel.dataset.canvasFastPreview = `${VERSION}-pending`;
+      panel.closest?.(".pfd-object")?.setAttribute("data-canvas-fast-preview", `${VERSION}-pending`);
+      marked += 1;
+    });
+    return marked;
+  }
+
   function hydraulicStatusForPreview(npsha, npshr, fallback = "", suctionVaporGuard = null) {
     const required = finiteNumber(npshr);
     const available = finiteNumber(npsha);
@@ -334,6 +381,57 @@
     if (suctionVaporGuard?.risk) return "Cavitation Risk";
     if (available >= required) return suctionVaporGuard?.warning ? "Warning" : "OK";
     return "Cavitation Risk";
+  }
+
+  function applyTransientPumpPreview(pumpNode, preview = {}) {
+    if (!pumpNode || typeof pumpNode !== "object") return false;
+    const results = pumpNode.results && typeof pumpNode.results === "object"
+      ? pumpNode.results
+      : (pumpNode.results = {});
+    const evaluation = results.npshEvaluation && typeof results.npshEvaluation === "object"
+      ? results.npshEvaluation
+      : (results.npshEvaluation = {});
+    const npsha = finiteNumber(preview.npsha);
+    if (npsha === null) return false;
+    results.npsha = npsha;
+    results.npshAvailable = npsha;
+    evaluation.npsha = npsha;
+    evaluation.npshAvailable = npsha;
+    if (preview.npshr === null) {
+      results.npshr = null;
+      results.npshRequired = null;
+      results.npshMargin = null;
+      results.npshRatio = null;
+      evaluation.npshr = null;
+      evaluation.npshRequired = null;
+      evaluation.npshMargin = null;
+      evaluation.npshRatio = null;
+    } else {
+      results.npshr = preview.npshr;
+      results.npshRequired = preview.npshr;
+      evaluation.npshr = preview.npshr;
+      evaluation.npshRequired = preview.npshr;
+      results.npshMargin = preview.margin;
+      results.npshRatio = preview.ratio;
+      evaluation.npshMargin = preview.margin;
+      evaluation.npshRatio = preview.ratio;
+    }
+    if (preview.status) {
+      results.hydraulicNpshStatus = preview.status;
+      results.cavitationStatus = preview.status;
+      evaluation.hydraulicStatus = preview.status;
+      evaluation.status = preview.status;
+    }
+    results.__canvasFastPreviewTransient = {
+      version: VERSION,
+      npsha,
+      npshr: preview.npshr,
+      npshMargin: preview.margin,
+      npshRatio: preview.ratio,
+      vaporPressureHead: preview.currentVaporHead,
+      appliedAt: Date.now()
+    };
+    return true;
   }
 
   function previewPumpPanel(panel) {
@@ -362,8 +460,17 @@
     const backendStatus = isHydraulicallyConnected
       ? (view.backendStatus || baseline?.backendStatus || "Unverified")
       : "Unverified";
+    const transientApplied = applyTransientPumpPreview(pumpNode, {
+      npsha: previewNpsha,
+      npshr,
+      margin,
+      ratio,
+      status,
+      currentVaporHead
+    });
 
     let changed = 0;
+    stampPumpPanelPreview(panel, pumpId);
     changed += setRowValue(pumpRowByLabel(panel, "Flow"), withUnit(firstFiniteValue(view.flow, baseline?.flow), "m3/h", 2));
     changed += setRowValue(pumpRowByLabel(panel, "NPSH Available"), withUnit(previewNpsha, "m", 4));
     changed += setRowValue(pumpRowByLabel(panel, "NPSH Required"), npshr === null ? "-" : withUnit(npshr, "m", 4));
@@ -375,11 +482,23 @@
     changed += setRowValue(pumpRowByLabel(panel, "Discharge Press."), withUnit(firstFiniteValue(view.dischargePressure, baseline?.dischargePressure), "bar a", 3));
     changed += setRowValue(pumpRowByLabel(panel, "Required Head"), withUnit(firstFiniteValue(view.requiredSystemHead, baseline?.requiredSystemHead), "m", 3));
 
-    if (changed) {
-      panel.dataset.canvasFastPreview = VERSION;
-      panel.dataset.canvasFastPreviewPumpId = pumpId;
-      panel.closest?.(".pfd-object")?.setAttribute("data-canvas-fast-preview", VERSION);
-    }
+    root.__engineeringCanvasFastPreviewLastPumpPreview = {
+      version: VERSION,
+      pumpId,
+      changed,
+      baselineNpsha,
+      baselineVaporHead,
+      currentVaporHead,
+      previewNpsha,
+      npshr,
+      margin,
+      ratio,
+      suctionPressure,
+      status,
+      transientApplied,
+      previewWindowOpen: isPreviewWindowOpen(),
+      previewedAt: Date.now()
+    };
     return changed;
   }
 
@@ -411,6 +530,40 @@
     return changed;
   }
 
+  function stampExistingPipeAndSinkPreview(scope = document) {
+    let stamped = 0;
+    let pipeLabels = 0;
+    let sinkPanels = 0;
+    try {
+      scope?.querySelectorAll?.("#svg-lines .pipe-hydraulic-label, .pipe-hydraulic-label").forEach((label) => {
+        pipeLabels += 1;
+        if (label.getAttribute?.("data-canvas-fast-preview") !== VERSION) {
+          label.setAttribute?.("data-canvas-fast-preview", VERSION);
+          if (label.dataset) label.dataset.canvasFastPreview = VERSION;
+          stamped += 1;
+        }
+      });
+      scope?.querySelectorAll?.(SINK_PANEL_SELECTOR).forEach((panel) => {
+        sinkPanels += 1;
+        if (panel.getAttribute?.("data-canvas-fast-preview") !== VERSION) {
+          panel.setAttribute?.("data-canvas-fast-preview", VERSION);
+          if (panel.dataset) panel.dataset.canvasFastPreview = VERSION;
+          stamped += 1;
+        }
+      });
+      root.__engineeringCanvasFastPreviewLastStamp = {
+        version: VERSION,
+        stamped,
+        pipeLabels,
+        sinkPanels,
+        stampedAt: Date.now()
+      };
+    } catch (error) {
+      root.__engineeringCanvasFastPreviewStampError = error;
+    }
+    return stamped;
+  }
+
   function refreshSinkPanels(scope = document) {
     const api = root.EngineeringRouteTraceAudit;
     let changed = 0;
@@ -437,11 +590,35 @@
     return { changed, reason, version: VERSION };
   }
 
+  function finalizeImmediatePanelStamp(reason = "input:finalize") {
+    if (typeof document === "undefined") return { changed: 0, reason };
+    panelStampDeferredUntil = 0;
+    const changed = stampExistingPipeAndSinkPreview(document);
+    document.querySelectorAll?.(PUMP_PANEL_SELECTOR).forEach((panel) => {
+      const pumpId = nodeIdForPanel(panel, "pump");
+      stampPumpPanelPreview(panel, pumpId);
+    });
+    document.documentElement.dataset.canvasFastPreviewRuntime = VERSION;
+    document.documentElement.dataset.canvasFastPreviewReason = String(reason || "input:finalize");
+    document.documentElement.dataset.canvasFastPreviewAt = String(Date.now());
+    return { changed, reason, version: VERSION, finalized: true };
+  }
+
   function runImmediatePumpPreview(reason = "input") {
     if (typeof document === "undefined") return { changed: 0, reason };
     syncFluidTemperatureInputToModel();
     syncFluidBasisQuietly();
-    const changed = refreshPumpPanels(document);
+    panelStampDeferredUntil = Math.max(panelStampDeferredUntil, Date.now() + 100);
+    markPumpPanelsPreviewPending(document);
+    const changed = stampExistingPipeAndSinkPreview(document)
+      + refreshPumpPanels(document)
+      + stampExistingPipeAndSinkPreview(document);
+    if (!immediatePanelStampTimer) {
+      immediatePanelStampTimer = root.setTimeout?.(() => {
+        immediatePanelStampTimer = 0;
+        finalizeImmediatePanelStamp(`${reason}:finalize`);
+      }, 90) || 0;
+    }
     document.documentElement.dataset.canvasFastPreviewRuntime = VERSION;
     document.documentElement.dataset.canvasFastPreviewReason = String(reason || "input");
     document.documentElement.dataset.canvasFastPreviewAt = String(Date.now());
@@ -478,6 +655,10 @@
 
   function beginPreviewWindow(reason = "input", durationMs = 1800, immediate = false) {
     previewPulseUntil = Math.max(previewPulseUntil, Date.now() + durationMs);
+    if (immediate) {
+      panelStampDeferredUntil = Math.max(panelStampDeferredUntil, Date.now() + 100);
+      markPumpPanelsPreviewPending(document);
+    }
     if (immediate) runImmediatePumpPreview(`${reason}:immediate`);
     requestPreview(reason);
     schedulePreviewPulse(reason);
@@ -509,14 +690,16 @@
     });
     PREVIEW_EVENTS.forEach((eventName) => {
       document.addEventListener(eventName, (event) => {
-        beginPreviewWindow(event?.detail?.sourceEvent || eventName);
+        const immediate = eventName === "npsh:input-lightweight-update";
+        beginPreviewWindow(event?.detail?.sourceEvent || eventName, 1800, immediate);
       }, true);
     });
     AUTHORITATIVE_EVENTS.forEach((eventName) => {
       document.addEventListener(eventName, () => {
+        const preservePreviewFluidBasis = isPreviewWindowOpen();
         root.setTimeout?.(() => {
+          captureAuthoritativeBaselines({ preservePreviewFluidBasis });
           endPreviewWindow();
-          captureAuthoritativeBaselines();
           requestPreview(eventName);
         }, 0);
       }, true);
