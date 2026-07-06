@@ -1,6 +1,6 @@
 {
   "schemaVersion": "local-live-sync-manifest.v1",
-  "generatedAt": "2026-07-06T17:20:32.420Z",
+  "generatedAt": "2026-07-06T17:35:07.994Z",
   "purpose": "Keeps the local preview server auditable against the deployed npsh.virsim.id package.",
   "status": "synced",
   "syncChecks": {
@@ -16,15 +16,15 @@
     "frontendRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-frontend",
     "apiRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-api",
     "serverUrl": "http://127.0.0.1:4174/",
-    "frontendCommit": "4cf1489047d4f9c1c82354316084a8a825a6847f",
-    "frontendOriginMain": "4cf1489047d4f9c1c82354316084a8a825a6847f",
-    "apiCommit": "9ca55d618068792b7857cc4c8e1aa63f2ad5ae79",
-    "apiOriginMain": "9ca55d618068792b7857cc4c8e1aa63f2ad5ae79",
+    "frontendCommit": "536ddbf3aee577b39a96826860170390cf7f2208",
+    "frontendOriginMain": "536ddbf3aee577b39a96826860170390cf7f2208",
+    "apiCommit": "10749b1e8a84d2d88778191bf46950489cc2950a",
+    "apiOriginMain": "10749b1e8a84d2d88778191bf46950489cc2950a",
     "releaseIntegrity": {
       "schemaVersion": "release-integrity.v1",
-      "rootFingerprint": "81d8fb1d10ce1fa2d5fda7682ab16ff9759257949a714ce1ab0b83875c07cc2b",
-      "fileCount": 425,
-      "generatedAt": "2026-07-06T15:36:34.547Z"
+      "rootFingerprint": "30b608f19d1e88167e5dab15e5bd1724f09eea3d0ef17bc4baa992b4ce669e01",
+      "fileCount": 427,
+      "generatedAt": "2026-07-06T17:31:01.324Z"
     },
     "index": {
       "path": "index.html",
@@ -641,7 +641,7 @@
     },
     "apiVersion": {
       "statusCode": 200,
-      "sha256": "c90bb8465ce2793818be09b45b9391cf585d7b49b485fdd35668234383dc94bf",
+      "sha256": "acd65ab31790b623c0712d274c1edb78554979060b71b9500f7a73796b924cbf",
       "payload": {
         "ok": true,
         "appName": "GhaniSIM1 NPSH",
@@ -790,7 +790,7 @@
             "parity.fingerprint"
           ]
         },
-        "generatedAt": "2026-07-06T17:18:47.803Z"
+        "generatedAt": "2026-07-06T17:33:27.470Z"
       }
     },
     "verifiedAssets": [
