@@ -1,7 +1,7 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
   const VERSION = 'engineering-pump-edit-fast-lane.v7';
-  const CACHE_KEY = '20260701-user-flow-npshr1';
+  const CACHE_KEY = '20260706-pump-edit-fast-lane2';
   const NPSHA_CALCULATED_STATUS = 'NPSHa Calculated';
   const PUMP_WINDOW_SELECTOR = [
     '.persistent-object-properties-task-window',

@@ -120,7 +120,7 @@ assert(source.includes('forceImmediate'), 'Governor must preserve an immediate r
 assert(
   index.includes('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260706-npshr-blank1')
     && index.includes('engineering-performance-refresh-governor.js?v=20260629-live-evidence1')
-    && index.includes('engineering-pump-edit-fast-lane.js?v=20260701-user-flow-npshr1')
+    && index.includes('engineering-pump-edit-fast-lane.js?v=20260706-pump-edit-fast-lane2')
     && index.includes('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1'),
   'index.html must keep route audit, governor, pump edit fast lane, and realtime defense cache-busted.'
 );
@@ -131,8 +131,8 @@ assert(bilingualSource.includes('REALTIME_FIRST_TEXT_KEYS'), 'Bilingual runtime 
 assert(bilingualSource.includes('REALTIME_FIRST_LEGACY_TEXT_OVERRIDES'), 'Bilingual runtime must normalize old Solve labels to realtime-first Validate labels.');
 assert(
   index.indexOf('engineering-performance-refresh-governor.js?v=20260629-live-evidence1')
-      < index.indexOf('engineering-pump-edit-fast-lane.js?v=20260701-user-flow-npshr1')
-    && index.indexOf('engineering-pump-edit-fast-lane.js?v=20260701-user-flow-npshr1')
+      < index.indexOf('engineering-pump-edit-fast-lane.js?v=20260706-pump-edit-fast-lane2')
+    && index.indexOf('engineering-pump-edit-fast-lane.js?v=20260706-pump-edit-fast-lane2')
       < index.indexOf('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1'),
   'Performance Refresh Governor and Pump edit fast lane must load before realtime defense starts scheduling linked view refreshes.'
 );
