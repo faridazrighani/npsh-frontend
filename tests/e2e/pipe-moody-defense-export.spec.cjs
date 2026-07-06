@@ -589,7 +589,7 @@ test('Pipe canvas hydraulic label does not flash during protected solver redraw'
 
   await page.waitForFunction(() => {
     return document.querySelectorAll('#svg-lines .pipe-hydraulic-label[data-pipe-id]').length >= 1
-      && window.EngineeringPipeCanvasHydraulicLabelRuntime?.version === '2026.07-pipe-canvas-static-pressure-clean1';
+      && window.EngineeringPipeCanvasHydraulicLabelRuntime?.version === '2026.07-pipe-canvas-loss-summary-clean1';
   }, null, { timeout: 10000 });
 
   await page.evaluate(() => {
@@ -610,8 +610,9 @@ test('Pipe canvas hydraulic label does not flash during protected solver redraw'
         const text = label.textContent || '';
         return !label.querySelector('.pipe-hydraulic-label-bg')
           || !label.querySelector('.pipe-hydraulic-label-value')
-          || !/P stat\./.test(text)
-          || !/h_m/.test(text);
+          || /P stat\./.test(text)
+          || !/Total K/.test(text)
+          || !/Total hL/.test(text);
       });
       if (!hydraulicLabels.length || visibleLegacyLabels.length || blankLabels.length || duplicatePipeIds.length) {
         window.__pipeHydraulicLabelFlashSamples.push({

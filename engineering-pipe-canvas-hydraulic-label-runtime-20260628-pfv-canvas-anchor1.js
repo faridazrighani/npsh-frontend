@@ -1,15 +1,15 @@
 !function(root) {
   "use strict";
 
-  const VERSION = "2026.07-pipe-canvas-label-five-decimals1";
+  const VERSION = "2026.07-pipe-canvas-loss-summary-clean1";
   const STYLE_ID = "engineeringPipeCanvasHydraulicLabelStyle";
   const SVG_NS = "http://www.w3.org/2000/svg";
   const LABEL_SELECTOR = "#svg-lines .pipe-delta-label[data-pipe-id]";
   const DISPLAY_DIGITS = 5;
   const BLOCK_WIDTH = 178;
-  const BLOCK_HEIGHT = 88;
-  const BLOCK_TOP = -96;
-  const ROW_TOP = -81;
+  const BLOCK_HEIGHT = 75;
+  const BLOCK_TOP = -83;
+  const ROW_TOP = -68;
   const ROW_GAP = 12.5;
   const KEY_X = -82;
   const VALUE_X = -34;
@@ -91,41 +91,16 @@
     return number === null ? "-" : number.toFixed(digits);
   }
 
-  function formatPressurePair(pin, pout) {
-    return `${formatFixed(pin)} \u2192 ${formatFixed(pout)} bar`;
-  }
-
   function formatVelocity(value) {
     return `${formatFixed(value)} m/s`;
   }
 
   function formatTotalK(value) {
-    return formatFixed(value);
+    return formatFixed(value, 3);
   }
 
   function formatHead(value) {
     return `${formatFixed(value)} m`;
-  }
-
-  function traceSourceValue(trace, patterns = []) {
-    const sourceMap = Array.isArray(trace?.sourceMap) ? trace.sourceMap : [];
-    for (const pattern of patterns) {
-      const entry = sourceMap.find((item) => pattern.test(String(item?.parameter || item?.label || "")));
-      const value = firstFiniteValue(entry?.value, entry?.rawValue, entry?.result);
-      if (value !== null) return value;
-    }
-    return null;
-  }
-
-  function tracePressureProfileValue(trace, key, fromEnd = false) {
-    const segments = Array.isArray(trace?.segments) ? trace.segments : [];
-    const ordered = fromEnd ? segments.slice().reverse() : segments;
-    for (const segment of ordered) {
-      const profile = segment?.profile || {};
-      const value = firstFiniteValue(profile[key], segment?.[key]);
-      if (value !== null) return value;
-    }
-    return null;
   }
 
   function getTrace(pipeId, pipe, flow) {
@@ -220,21 +195,6 @@
     const calculatedSegments = getCalculatedSegments(pipeId, pipe, flow);
     const totals = trace.totals || {};
 
-    const pin = firstFiniteValue(
-      results.inletPressure,
-      results.pin,
-      results.pressureIn,
-      traceSourceValue(trace, [/^inlet pressure$/i, /^pin$/i, /pipe.*in/i]),
-      tracePressureProfileValue(trace, "startPressure", false)
-    );
-    const pout = firstFiniteValue(
-      results.outletPressure,
-      results.pout,
-      results.pressureOut,
-      traceSourceValue(trace, [/^outlet pressure$/i, /^pout$/i, /pipe.*out/i]),
-      tracePressureProfileValue(trace, "endPressure", true)
-    );
-
     const majorLoss = firstFiniteValue(
       totals.majorLoss,
       results.majorLoss,
@@ -262,7 +222,6 @@
     const velocity = representativeVelocity({ pipe, flow, trace, calculatedSegments });
 
     const rows = [
-      { key: "P stat.", value: formatPressurePair(pin, pout), title: "Static endpoint pressure including elevation head" },
       { key: "v", value: formatVelocity(velocity), title: "Flow velocity" },
       { key: "Total K", value: formatTotalK(totalK), title: "Total loss coefficient" },
       { key: "Total hL", value: formatHead(totalLoss), title: "Total pipe/fitting/valve head loss" },
@@ -272,7 +231,6 @@
 
     const title = [
       `${pipe.name || pipeId} Pipe/Fitting/Valve`,
-      `Static endpoint P ${formatPressurePair(pin, pout)}`,
       `v ${formatVelocity(velocity)}`,
       `Total K ${formatTotalK(totalK)}`,
       `Total hL ${formatHead(totalLoss)}`,
