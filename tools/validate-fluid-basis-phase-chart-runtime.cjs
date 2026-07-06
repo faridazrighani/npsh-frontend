@@ -16,18 +16,22 @@ const runtimeSource = read(runtimePath);
 const indexHtml = read(indexPath);
 const manifest = read(manifestPath);
 const pkg = JSON.parse(read(packagePath));
-const cacheKey = 'engineering-fluid-basis-phase-chart-runtime.js?v=20260706-fluid-phase-chart1';
+const cacheKey = 'engineering-fluid-basis-phase-chart-runtime.js?v=20260706-fluid-phase-chart2';
 
-assert(runtimeSource.includes('2026.07-fluid-basis-phase-chart1'), 'runtime version must be present');
+assert(runtimeSource.includes('2026.07-fluid-basis-phase-chart2'), 'runtime version must be present');
 assert(runtimeSource.includes('EngineeringFluidBasisPhaseChartRuntime'), 'global runtime API must be exposed');
 assert(runtimeSource.includes('Pressure-enthalpy phase chart'), 'chart title must match the requested P-h chart placement');
-assert(runtimeSource.includes('SRC Calculated Abs. Pressure'), 'chart must label SRC Calculated Abs. Pressure as the pressure source');
+assert(runtimeSource.includes('Fluid Basis Vapor Pressure'), 'chart must label Fluid Basis Vapor Pressure as the pressure source');
+assert(!runtimeSource.includes('SRC Calculated Abs. Pressure'), 'chart must not label SRC Calculated Abs. Pressure as the pressure source');
 assert(runtimeSource.includes('readFluidTemperature'), 'runtime must read temperature from Fluid Basis');
-assert(runtimeSource.includes('readSourceAbsPressureBar'), 'runtime must read pressure from SRC');
-assert(runtimeSource.includes('getNodeAbsolutePressureBar'), 'runtime must use the app pressure-basis conversion helper');
+assert(runtimeSource.includes('readFluidChartPressure'), 'runtime must read chart pressure from Fluid Basis vapor pressure');
+assert(!runtimeSource.includes('readSourceAbsPressureBar'), 'runtime must not read pressure from SRC');
+assert(!runtimeSource.includes('getNodeAbsolutePressureBar'), 'runtime must not use SRC pressure-basis conversion helpers');
 assert(runtimeSource.includes('saturationPressureBar'), 'runtime must include the P_sat(T) calculation path');
 assert(runtimeSource.includes('MutationObserver'), 'runtime must self-heal after Fluid Basis task-window rerenders');
 assert(runtimeSource.includes('drawDiagram'), 'runtime must draw the SVG chart');
+assert(!runtimeSource.includes("input[data-key='pressure'][data-node]"), 'runtime must not listen to SRC pressure input changes');
+assert(!runtimeSource.includes("pressureInputBasis"), 'runtime must not listen to SRC pressure basis changes');
 assert(!/\bfetch\s*\(/.test(runtimeSource), 'phase chart runtime must not call network APIs');
 assert(!/\bupdateSimulation\s*\(/.test(runtimeSource), 'phase chart runtime must not trigger calculations');
 
@@ -66,16 +70,17 @@ globalThis.globalModel = {
 
 delete require.cache[require.resolve(runtimePath)];
 const runtime = require(runtimePath);
-assert.equal(runtime.version, '2026.07-fluid-basis-phase-chart1', 'runtime API version mismatch');
-assert.equal(runtime.cacheKey, '20260706-fluid-phase-chart1', 'runtime API cache key mismatch');
+assert.equal(runtime.version, '2026.07-fluid-basis-phase-chart2', 'runtime API version mismatch');
+assert.equal(runtime.cacheKey, '20260706-fluid-phase-chart2', 'runtime API cache key mismatch');
 
 const calculation = runtime.buildCalculation(globalThis.globalModel);
 assert.equal(calculation.temperatureC, 90, 'calculation must use Fluid Basis temperature');
-assert.equal(calculation.actualPressureBar, 2.024, 'calculation must use SRC Calculated Abs. Pressure');
+assert.equal(calculation.actualPressureBar, 0.701827, 'calculation must use Fluid Basis vapor pressure as chart pressure');
 assert.equal(calculation.psatBar, 0.701827, 'calculation must use Fluid Basis vapor pressure when available');
-assert.equal(calculation.sourceId, 'SRC-100', 'calculation must identify the SRC source id');
-assert(calculation.deltaPBar > 1.3, 'phase pressure difference should be positive for the sample point');
-assert.equal(calculation.statusTitle, 'Single-phase liquid region', 'sample point should classify as liquid-side condition');
+assert.equal(calculation.sourceId, 'FLUID', 'calculation must identify Fluid Basis as the pressure source');
+assert.equal(calculation.actualPressureSource, 'Fluid Basis vapor pressure', 'pressure source label must be Fluid Basis vapor pressure');
+assert(Math.abs(calculation.deltaPBar) < 1e-12, 'phase pressure difference should be zero at Fluid Basis vapor pressure');
+assert.equal(calculation.statusTitle, 'Saturated boundary', 'sample point should classify as the saturation boundary');
 assert(calculation.hMarker > 0 && calculation.hMarker < 2100, 'enthalpy marker must be a finite chart coordinate');
 assert(runtime.saturationPressureBar(90) > 0.69 && runtime.saturationPressureBar(90) < 0.72, 'IAPWS P_sat fallback should be correct near 90 deg C');
 
@@ -83,7 +88,7 @@ globalThis.globalModel['SRC-100'].results = {};
 globalThis.globalModel['SRC-100'].props.pressureInputBasis = 'Gauge';
 globalThis.globalModel['SRC-100'].props.pressure = 1;
 const gaugeCalculation = runtime.buildCalculation(globalThis.globalModel);
-assert(Math.abs(gaugeCalculation.actualPressureBar - 2.01325) < 1e-9, 'gauge SRC pressure must convert to absolute pressure');
+assert.equal(gaugeCalculation.actualPressureBar, 0.701827, 'SRC pressure edits must not change the Fluid Basis phase chart pressure');
 
 console.log(JSON.stringify({
   passed: true,

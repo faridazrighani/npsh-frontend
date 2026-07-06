@@ -1,12 +1,11 @@
 !function registerEngineeringFluidBasisPhaseChartRuntime(root) {
   "use strict";
 
-  const VERSION = "2026.07-fluid-basis-phase-chart1";
-  const CACHE_KEY = "20260706-fluid-phase-chart1";
+  const VERSION = "2026.07-fluid-basis-phase-chart2";
+  const CACHE_KEY = "20260706-fluid-phase-chart2";
   const STYLE_ID = "engineering-fluid-basis-phase-chart-style";
   const PANEL_SELECTOR = "[data-fluid-basis-phase-chart-panel='true']";
   const SVG_NS = "http://www.w3.org/2000/svg";
-  const ATM_PRESSURE_BAR = 1.01325;
   const CRITICAL_TEMPERATURE_C = 373.946;
   const CRITICAL_PRESSURE_BAR = 220.64;
   const CRITICAL_ENTHALPY_KJ_KG = 2087.5;
@@ -77,22 +76,6 @@
     return root.globalModel || root.__npshGlobalModel || {};
   }
 
-  function sourceEntries(model = runtimeModel()) {
-    return Object.entries(model || {}).filter(([, node]) => node?.type === "source");
-  }
-
-  function sourceSortKey([id]) {
-    const text = String(id || "");
-    const score = /^SRC[-_]/i.test(text) ? 0 : 1;
-    const number = finiteNumber(text, 99999);
-    return `${score}-${String(number).padStart(8, "0")}-${text}`;
-  }
-
-  function firstRouteSource(model = runtimeModel()) {
-    const entries = sourceEntries(model).sort((a, b) => sourceSortKey(a).localeCompare(sourceSortKey(b)));
-    return entries[0] || null;
-  }
-
   function readFluidTemperature(model = runtimeModel()) {
     if (typeof document !== "undefined") {
       const activeInput = document.querySelector("#fluid-task-temp, input.prop-input-field[data-node='FLUID'][data-key='temp'], input[data-node='FLUID'][data-key='temp']");
@@ -115,64 +98,12 @@
     };
   }
 
-  function readNestedNumber(object, paths = []) {
-    for (const path of paths) {
-      const parts = path.split(".");
-      let current = object;
-      for (const part of parts) current = current?.[part];
-      const number = finiteNumber(current, null);
-      if (number !== null) return number;
-    }
-    return null;
-  }
-
-  function readSourceAbsPressureBar(model = runtimeModel()) {
-    const entry = firstRouteSource(model);
-    if (!entry) return {
-      value: ATM_PRESSURE_BAR,
-      sourceId: "",
-      source: "Atmospheric fallback"
-    };
-    const [sourceId, sourceNode] = entry;
-    const resultValue = readNestedNumber(sourceNode, [
-      "results.calculationTrace.boundary.absolutePressureBar",
-      "results.boundary.absolutePressureBar",
-      "results.boundaryAudit.suction.pressureAbsBar",
-      "results.pressureAbsBar",
-      "results.absolutePressureBar",
-      "results.calculatedAbsPressure",
-      "results.calculatedPressure",
-      "results.staticPressure",
-      "results.pressure"
-    ]);
-    if (resultValue !== null && resultValue > 0) return {
-      value: resultValue,
-      sourceId,
-      source: "SRC Calculated Abs. Pressure"
-    };
-    const standardValue = typeof root.EngineeringStandards?.getNodeAbsolutePressureBar === "function"
-      ? finiteNumber(root.EngineeringStandards.getNodeAbsolutePressureBar(sourceNode, "pressure"), null)
-      : null;
-    if (standardValue !== null && standardValue > 0) return {
-      value: standardValue,
-      sourceId,
-      source: "SRC pressure basis conversion"
-    };
-    const props = sourceNode?.props || {};
-    const pressure = finiteNumber(props.pressure, null);
-    if (pressure !== null) {
-      const basis = String(props.pressureInputBasis || props.pressureBasis || "Absolute").toLowerCase();
-      const absolute = basis.includes("gauge") || /\bg\b/.test(basis) ? pressure + ATM_PRESSURE_BAR : pressure;
-      if (absolute > 0) return {
-        value: absolute,
-        sourceId,
-        source: "SRC pressure input"
-      };
-    }
+  function readFluidChartPressure(model = runtimeModel(), temperatureC = readFluidTemperature(model)) {
+    const vaporPressure = readFluidSaturationPressure(model, temperatureC);
     return {
-      value: ATM_PRESSURE_BAR,
-      sourceId,
-      source: "Atmospheric fallback"
+      value: vaporPressure.value,
+      sourceId: "FLUID",
+      source: vaporPressure.source
     };
   }
 
@@ -220,13 +151,13 @@
 
   function buildCalculation(model = runtimeModel()) {
     const temperatureC = readFluidTemperature(model);
-    const pAbs = readSourceAbsPressureBar(model);
+    const pAbs = readFluidChartPressure(model, temperatureC);
     const psat = readFluidSaturationPressure(model, temperatureC);
     const satVisual = saturationVisualPoint(temperatureC);
     const deltaP = pAbs.value - psat.value;
     const toleranceBar = Math.max(0.001, Math.abs(psat.value) * 0.005);
-    let statusTitle = "Single-phase liquid region";
-    let statusTone = "safe";
+    let statusTitle = "Saturated boundary";
+    let statusTone = "warning";
     if (temperatureC > 350) {
       statusTitle = "Near-critical chart range";
       statusTone = "warning";
@@ -234,8 +165,11 @@
     if (deltaP < -toleranceBar) {
       statusTitle = "Not stable as single-phase liquid";
       statusTone = "danger";
+    } else if (deltaP > toleranceBar) {
+      statusTitle = "Compressed / subcooled liquid";
+      statusTone = "safe";
     } else if (Math.abs(deltaP) <= toleranceBar) {
-      statusTitle = "Near saturated boundary";
+      statusTitle = "Saturated boundary";
       statusTone = "warning";
     }
     return {
@@ -518,7 +452,7 @@
       bg: "rgba(255,255,255,0.93)",
       stroke: "rgba(100,116,139,0.25)"
     });
-    drawTextBadge(overlay, right - 10, actualLabelY, `P_abs = ${fmt(calc.actualPressureBar, 4)} bar A`, {
+    drawTextBadge(overlay, right - 10, actualLabelY, `P_vap = ${fmt(calc.actualPressureBar, 4)} bar A`, {
       fill: "#0f172a",
       fontSize: 11,
       anchor: "end",
@@ -546,7 +480,7 @@
     const boxX = plot.margin.left + 14;
     const boxY = bottom - 52;
     overlay.appendChild(svgEl("rect", { x: boxX, y: boxY, width: 314, height: 38, rx: 10, fill: "#111827", opacity: 0.94 }));
-    overlay.appendChild(svgEl("text", { x: boxX + 12, y: boxY + 24, fill: "#ffffff", "font-size": 11.5, "font-weight": 700 }, `h marker ~= ${fmt(calc.hMarker, 2)} kJ/kg; P = ${fmt(calc.actualPressureBar, 4)} bar A`));
+    overlay.appendChild(svgEl("text", { x: boxX + 12, y: boxY + 24, fill: "#ffffff", "font-size": 11.5, "font-weight": 700 }, `h marker ~= ${fmt(calc.hMarker, 2)} kJ/kg; P_vap = ${fmt(calc.actualPressureBar, 4)} bar A`));
     svg.appendChild(overlay);
   }
 
@@ -694,7 +628,7 @@
       <h3>Pressure-enthalpy phase chart</h3>
       <div class="fluid-basis-phase-chart-meta" data-fluid-phase-meta="true">
         <div>Temperature<strong data-fluid-phase-temperature>-</strong></div>
-        <div>SRC Calculated Abs. Pressure<strong data-fluid-phase-pressure>-</strong></div>
+        <div>Fluid Basis Vapor Pressure<strong data-fluid-phase-pressure>-</strong></div>
         <div>Phase Status<strong data-fluid-phase-status>-</strong></div>
       </div>
       <div class="fluid-basis-phase-chart-wrap">
@@ -732,7 +666,7 @@
     panel.dataset.sourceId = calc.sourceId || "";
     panel.title = [
       `Temperature source: Fluid Basis`,
-      `Pressure source: ${calc.actualPressureSource}${calc.sourceId ? ` (${calc.sourceId})` : ""}`,
+      `Pressure source: ${calc.actualPressureSource}`,
       `P_sat source: ${calc.psatSource}`
     ].join("\n");
     drawDiagram(panel.querySelector("[data-fluid-phase-chart-svg]"), calc);
@@ -784,13 +718,13 @@
     document.documentElement.dataset.fluidBasisPhaseChartEvents = VERSION;
     document.addEventListener("input", (event) => {
       const target = event.target;
-      if (target?.matches?.("#fluid-task-temp, input[data-node='FLUID'][data-key='temp'], input[data-key='pressure'][data-node], select[data-key='pressureInputBasis'][data-node]")) {
+      if (target?.matches?.("#fluid-task-temp, input[data-node='FLUID'][data-key='temp'], input[data-node='FLUID'][data-key='vaporPressure']")) {
         scheduleRefresh(target.closest(".task-window, #taskWindow") || document, 40);
       }
     }, true);
     document.addEventListener("change", (event) => {
       const target = event.target;
-      if (target?.matches?.("#fluid-task-temp, input[data-node='FLUID'][data-key='temp'], input[data-key='pressure'][data-node], select[data-key='pressureInputBasis'][data-node]")) {
+      if (target?.matches?.("#fluid-task-temp, input[data-node='FLUID'][data-key='temp'], input[data-node='FLUID'][data-key='vaporPressure']")) {
         scheduleRefresh(target.closest(".task-window, #taskWindow") || document, 20);
       }
     }, true);
@@ -843,7 +777,7 @@
     buildCalculation,
     saturationPressureBar,
     saturationVisualPoint,
-    readSourceAbsPressureBar,
+    readFluidChartPressure,
     readFluidTemperature,
     readFluidSaturationPressure
   };
