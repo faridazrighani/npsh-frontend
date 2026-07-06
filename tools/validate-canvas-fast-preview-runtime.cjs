@@ -23,10 +23,10 @@ const index = read(indexPath);
 const manifest = read(manifestPath);
 const pkg = JSON.parse(read(packagePath));
 
-const cacheKey = 'engineering-canvas-fast-preview-runtime.js?v=20260706-canvas-fast-preview4';
+const cacheKey = 'engineering-canvas-fast-preview-runtime.js?v=20260706-canvas-fast-preview5';
 const cacheKeyCount = (index.match(new RegExp(cacheKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
 
-assert(runtime.includes('2026.07-canvas-fast-preview4'), 'runtime version is missing');
+assert(runtime.includes('2026.07-canvas-fast-preview5'), 'runtime version is missing');
 assert(runtime.includes('EngineeringCanvasFastPreviewRuntime'), 'global API is missing');
 assert(cacheKeyCount >= 2, 'runtime must load in feature and initial canvas hydration paths');
 assert(

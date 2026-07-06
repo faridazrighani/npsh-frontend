@@ -1,9 +1,11 @@
 !function registerEngineeringCanvasFastPreviewRuntime(root) {
   "use strict";
 
-  const VERSION = "2026.07-canvas-fast-preview4";
+  const VERSION = "2026.07-canvas-fast-preview5";
   const GRAVITY_MS2 = 9.80665;
   const NPSHA_CALCULATED_STATUS = "NPSHa Calculated";
+  const SUCTION_VAPOR_WARNING_HEAD_M = 0.5;
+  const SUCTION_VAPOR_WARNING_BAR = 0.05;
   const PUMP_PANEL_SELECTOR = ".pump-live-params";
   const SINK_PANEL_SELECTOR = ".sink-live-params";
   const CALCULATION_TARGET_SELECTOR = [
@@ -300,12 +302,38 @@
     return 1;
   }
 
-  function hydraulicStatusForPreview(npsha, npshr, fallback = "") {
+  function suctionVaporGuardForPreview(npsha, suctionPressureBarA, fluid = {}) {
+    const vaporPressureBarA = finiteNumber(fluid.vaporPressureBarA);
+    const density = firstFiniteValue(fluid.density, 1000);
+    const pressure = finiteNumber(suctionPressureBarA);
+    const marginBar = pressure !== null && vaporPressureBarA !== null ? pressure - vaporPressureBarA : null;
+    const marginHeadByPressure = marginBar !== null && density > 0
+      ? marginBar * 100000 / (density * GRAVITY_MS2)
+      : null;
+    const marginHead = firstFiniteValue(marginHeadByPressure, npsha);
+    if (marginBar === null && marginHead === null) return { status: "Unknown", warning: false, risk: false };
+    if ((marginBar !== null && marginBar <= 0) || (marginHead !== null && marginHead <= 0)) {
+      return { status: "Cavitation Risk", warning: true, risk: true, marginBar, marginHead };
+    }
+    if ((marginBar !== null && marginBar <= SUCTION_VAPOR_WARNING_BAR) || (marginHead !== null && marginHead <= SUCTION_VAPOR_WARNING_HEAD_M)) {
+      return { status: "Warning", warning: true, risk: false, marginBar, marginHead };
+    }
+    return { status: "Safe", warning: false, risk: false, marginBar, marginHead };
+  }
+
+  function hydraulicStatusForPreview(npsha, npshr, fallback = "", suctionVaporGuard = null) {
     const required = finiteNumber(npshr);
     const available = finiteNumber(npsha);
-    if (required === null || required <= 0) return available === null ? (fallback || "-") : NPSHA_CALCULATED_STATUS;
+    if (required === null || required <= 0) {
+      if (available === null) return fallback || "-";
+      if (suctionVaporGuard?.risk) return "Cavitation Risk";
+      if (suctionVaporGuard?.warning) return "Warning";
+      return NPSHA_CALCULATED_STATUS;
+    }
     if (available === null) return fallback || "-";
-    return available >= required ? "OK" : "Cavitation Risk";
+    if (suctionVaporGuard?.risk) return "Cavitation Risk";
+    if (available >= required) return suctionVaporGuard?.warning ? "Warning" : "OK";
+    return "Cavitation Risk";
   }
 
   function previewPumpPanel(panel) {
@@ -326,8 +354,10 @@
     const margin = previewNpsha === null || npshr === null ? null : previewNpsha - npshr;
     const ratio = previewNpsha === null || !npshr ? null : previewNpsha / npshr;
     const isHydraulicallyConnected = hasHydraulicConnectionForNode(pumpId);
+    const suctionPressure = firstFiniteValue(view.suctionPressure, baseline?.suctionPressure);
+    const suctionVaporGuard = suctionVaporGuardForPreview(previewNpsha, suctionPressure, fluid);
     const status = isHydraulicallyConnected
-      ? hydraulicStatusForPreview(previewNpsha, npshr, view.hydraulicStatus || baseline?.hydraulicStatus || "")
+      ? hydraulicStatusForPreview(previewNpsha, npshr, view.hydraulicStatus || baseline?.hydraulicStatus || "", suctionVaporGuard)
       : "Incomplete";
     const backendStatus = isHydraulicallyConnected
       ? (view.backendStatus || baseline?.backendStatus || "Unverified")
@@ -341,7 +371,7 @@
     changed += setRowValue(pumpRowByLabel(panel, "NPSH Ratio"), ratio === null ? "-" : fixed(ratio, 4));
     changed += setRowValue(pumpRowByLabel(panel, "Hydraulic NPSH"), status);
     changed += setRowValue(pumpRowByLabel(panel, "Backend Valid."), backendStatus);
-    changed += setRowValue(pumpRowByLabel(panel, "Suction Press."), withUnit(firstFiniteValue(view.suctionPressure, baseline?.suctionPressure), "bar a", 3));
+    changed += setRowValue(pumpRowByLabel(panel, "Suction Press."), withUnit(suctionPressure, "bar a", 3));
     changed += setRowValue(pumpRowByLabel(panel, "Discharge Press."), withUnit(firstFiniteValue(view.dischargePressure, baseline?.dischargePressure), "bar a", 3));
     changed += setRowValue(pumpRowByLabel(panel, "Required Head"), withUnit(firstFiniteValue(view.requiredSystemHead, baseline?.requiredSystemHead), "m", 3));
 
