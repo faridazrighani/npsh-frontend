@@ -293,7 +293,7 @@ assert(
   'Index must load the canonical pump runtime in the critical shell so Pump Datum - NPSHR uses current margin-basis defaults before the first pump click.'
 );
 assert(
-  index.indexOf('app.bundle.min.js?v=20260621-npsh-margin-options1')
+  index.indexOf('app.bundle.min.js?v=20260707-pipe-canvas-loss-label1')
     < index.indexOf('engineering-pump-performance-canonical-chart.js?v=20260628-manual-npshr1'),
   'Canonical pump runtime must load after the app bundle so it can override stale app-bundle pump handlers.'
 );

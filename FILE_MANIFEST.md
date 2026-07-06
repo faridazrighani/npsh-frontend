@@ -141,7 +141,7 @@ Release integrity guardrail:
 ```text
 node npsh-api/tools/release-integrity-audit.cjs
 app.bundle.min.js.map sourcesContent: absent
-App bundle cache key: app.bundle.min.js?v=20260621-npsh-margin-options1
+App bundle cache key: app.bundle.min.js?v=20260707-pipe-canvas-loss-label1
 Main style cache key: style.min.css?v=20260608-browser-issues1
 Bilingual terminology runtime cache key: engineering-bilingual-improvements.js?v=20260703-source-defense-refresh1
 Source canvas parameter runtime cache key: engineering-src-canvas-parameter-runtime.js?v=20260702-object-status-clean1
@@ -153,7 +153,7 @@ Decimal display runtime cache key: engineering-decimal-display-runtime.js?v=2026
 Live parameter stable runtime cache key: engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260706-fast-preview-preserve1
 Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=20260626-head-power-audit1
 Local trace fallback runtime cache key: engineering-local-trace-fallback-runtime.js?v=20260628-manual-npshr1
-Pipe canvas hydraulic label runtime cache key: engineering-pipe-canvas-hydraulic-label-runtime-20260628-pfv-canvas-anchor1.js?v=20260707-pfv-loss-summary-clean1
+Pipe canvas hydraulic label runtime cache key: engineering-pipe-canvas-hydraulic-label-runtime-20260707-pfv-loss-summary-clean1.js?v=20260707-pfv-loss-summary-clean1
 Canvas fast preview runtime cache key: engineering-canvas-fast-preview-runtime.js?v=20260706-canvas-fast-preview18
 Pipe source confidence map runtime cache key: engineering-pipe-source-confidence-map-runtime.js?v=20260630-pipe-properties-live1
 Pump nozzle simplify runtime cache key: engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5

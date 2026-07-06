@@ -24,7 +24,7 @@ assert(runtimeSource.includes('hardIncomplete'), 'hydraulic incomplete must over
 assert(runtimeSource.includes('syncAllPumpElements'), 'runtime must expose all-pump resync for validation and late render repair');
 assert(index.includes(cacheKey), 'index must load the cache-busted pump visual lock');
 assert(
-  index.indexOf(cacheKey) > index.indexOf('app.bundle.min.js?v=20260621-npsh-margin-options1'),
+  index.indexOf(cacheKey) > index.indexOf('app.bundle.min.js?v=20260707-pipe-canvas-loss-label1'),
   'pump visual lock must load after app.bundle.min.js so it can patch app status functions'
 );
 assert(

@@ -31,7 +31,7 @@ assert(
   'index.html must load the SRC connect context runtime with a fresh cache key.'
 );
 assert(
-  indexHtml.indexOf('app.bundle.min.js?v=20260621-npsh-margin-options1') <
+  indexHtml.indexOf('app.bundle.min.js?v=20260707-pipe-canvas-loss-label1') <
     indexHtml.indexOf('engineering-src-connect-context-runtime.js?v=20260706-src-connect-context1'),
   'SRC connect context runtime must load after the protected app bundle.'
 );

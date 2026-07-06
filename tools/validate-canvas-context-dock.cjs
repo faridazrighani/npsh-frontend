@@ -364,7 +364,7 @@ ribbonTools.forEach((tool) => {
   );
 });
 assert(
-  index.includes('app.bundle.min.js?v=20260621-npsh-margin-options1'),
+  index.includes('app.bundle.min.js?v=20260707-pipe-canvas-loss-label1'),
   'Index must load the core app bundle with the canvas properties policy cache key.'
 );
 assert(

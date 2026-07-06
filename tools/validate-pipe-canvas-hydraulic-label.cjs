@@ -11,7 +11,7 @@ const RUNTIME_FILE = path.join(FRONTEND_ROOT, "engineering-pipe-canvas-hydraulic
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
-const CACHE_KEY = "engineering-pipe-canvas-hydraulic-label-runtime-20260628-pfv-canvas-anchor1.js?v=20260707-pfv-loss-summary-clean1";
+const CACHE_KEY = "engineering-pipe-canvas-hydraulic-label-runtime-20260707-pfv-loss-summary-clean1.js?v=20260707-pfv-loss-summary-clean1";
 const VERSION = "2026.07-pipe-canvas-loss-summary-clean1";
 const REMOVED_STATIC_PRESSURE_LABEL = "P stat.";
 const REMOVED_SCOPE_LABEL = ["d", "P", " loss"].join("");
