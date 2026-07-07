@@ -28,7 +28,7 @@ const manifestSource = read(manifestPath);
 
 [
   'engineering-simulation-load-transaction-manager.v1',
-  '20260707-simulation-load-transaction2',
+  '20260707-simulation-load-transaction6',
   'AbortController',
   'beginTransaction',
   'abortPrevious',
@@ -46,18 +46,25 @@ const manifestSource = read(manifestPath);
   'patchResponseBodyMethod',
   'applySimulationStateAtomic',
   'openSimulationCaseSample',
+  'releaseRunCommandLocks',
+  'calculationBusy',
+  'closeLoadDropdowns',
+  'simulationLoadMenusClosedAt',
+  'EngineeringDropdownFocusGuardRuntime',
+  'SAMPLE_DIALOG_OPEN_TEXT',
+  'open-sample-case-confirmed',
   'simulation-case-6'
 ].forEach((needle) => assertIncludes(runtimeSource, needle, 'runtime'));
 
 assertIncludes(
   indexSource,
-  'engineering-simulation-load-transaction-manager.js?v=20260707-simulation-load-transaction2',
+  'engineering-simulation-load-transaction-manager.js?v=20260707-simulation-load-transaction6',
   'index.html'
 );
 
 const appIndex = indexSource.indexOf('app.bundle.min.js?v=20260707-pipe-canvas-loss-label1');
-const managerIndex = indexSource.indexOf('engineering-simulation-load-transaction-manager.js?v=20260707-simulation-load-transaction2');
-const readinessIndex = indexSource.indexOf('engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate8');
+const managerIndex = indexSource.indexOf('engineering-simulation-load-transaction-manager.js?v=20260707-simulation-load-transaction6');
+const readinessIndex = indexSource.indexOf('engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate9');
 assert(appIndex >= 0 && managerIndex > appIndex, 'simulation load transaction manager must load after app.bundle.min.js');
 assert(readinessIndex > managerIndex, 'open-file readiness gate must load after simulation load transaction manager');
 
@@ -71,7 +78,7 @@ assertIncludes(manifestSource, 'Simulation load transaction manager cache key', 
 
 const runtime = require(runtimePath);
 assert(runtime.version === 'engineering-simulation-load-transaction-manager.v1', 'runtime version mismatch');
-assert(runtime.cacheKey === '20260707-simulation-load-transaction2', 'runtime cache key mismatch');
+assert(runtime.cacheKey === '20260707-simulation-load-transaction6', 'runtime cache key mismatch');
 [
   'install',
   'beginTransaction',
@@ -84,7 +91,8 @@ assert(runtime.cacheKey === '20260707-simulation-load-transaction2', 'runtime ca
   'fail',
   'warmRuntime',
   'prefetchSimulationCases',
-  'cleanWorkspaceForLoad'
+  'cleanWorkspaceForLoad',
+  'releaseRunCommandLocks'
 ].forEach((name) => assert(typeof runtime[name] === 'function', `runtime API missing ${name}`));
 
 let aborted = false;

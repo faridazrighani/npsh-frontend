@@ -38,6 +38,18 @@ const REMOVED_PIPE_RESULT_KEYS = Object.freeze([
   'highPointLocationPercent'
 ]);
 
+const SUPPRESSED_PUMP_WARNING_PATTERNS = Object.freeze([
+  /\benvelope\s+scan\b/i,
+  /\boperating\s+envelope\b/i,
+  /\bcomplete\s+inputs?\b.*\b(design\s+flow|design\s+head|design\s+eff|bep|por|aor)\b/i,
+  /\bdesign\s+flow\b.*\bdesign\s+head\b.*\bdesign\s+eff/i,
+  /\bdesign\s+efficiency\b/i,
+  /\bbep\s+flow\b/i,
+  /\bpump\s+duty\s+sizing\b/i,
+  /\bpor\s+(min|max)\b/i,
+  /\baor\s+(min|max)\b/i
+]);
+
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
@@ -128,6 +140,44 @@ function firstFinite(...values) {
   return null;
 }
 
+function warningText(value) {
+  if (typeof value === 'string') return value;
+  if (!value || typeof value !== 'object') return '';
+  return [
+    value.message,
+    value.label,
+    value.title,
+    value.detail,
+    value.fullDetail,
+    value.field,
+    value.key,
+    value.id
+  ].filter(Boolean).join(' ');
+}
+
+function isSuppressedPumpWarning(value) {
+  const text = warningText(value);
+  return text && SUPPRESSED_PUMP_WARNING_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+function cleanPumpWarningArrays(target, audit, scope) {
+  if (!target || typeof target !== 'object') return;
+  if (Array.isArray(target)) {
+    target.forEach((item, index) => cleanPumpWarningArrays(item, audit, `${scope}[${index}]`));
+    return;
+  }
+  for (const [key, value] of Object.entries(target)) {
+    if (Array.isArray(value) && /^(warnings|validationWarnings)$/i.test(key)) {
+      const filtered = value.filter((warning) => !isSuppressedPumpWarning(warning));
+      if (filtered.length !== value.length) {
+        target[key] = filtered;
+        audit.changes.push(`removed deprecated pump envelope warnings from ${scope}.${key}`);
+      }
+    }
+    cleanPumpWarningArrays(target[key], audit, `${scope}.${key}`);
+  }
+}
+
 function curveNpshrAtActiveFlow(props = {}, results = {}) {
   const activeFlow = firstFinite(results.flow, results.npshEvaluation?.flow, props.designFlow);
   if (activeFlow === null || !Array.isArray(props.curveData)) return null;
@@ -141,6 +191,7 @@ function curveNpshrAtActiveFlow(props = {}, results = {}) {
 function cleanPumpNode(nodeId, node, audit) {
   const props = node.props || {};
   const results = node.results || {};
+  cleanPumpWarningArrays(node, audit, nodeId);
   if (firstFinite(props.manualNpshr) !== null) return;
 
   const manualNpshr = firstFinite(

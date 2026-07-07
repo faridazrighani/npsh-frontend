@@ -7,20 +7,21 @@
   'use strict';
 
   const VERSION = 'engineering-simulation-load-transaction-manager.v1';
-  const CACHE_KEY = '20260707-simulation-load-transaction2';
+  const CACHE_KEY = '20260707-simulation-load-transaction6';
   const ACTIVE_CLASS = 'npsh-simulation-load-transaction-active';
   const CASE_OPEN_SELECTOR = '[data-simulation-case-action="open"][data-simulation-case-id]';
+  const SAMPLE_DIALOG_OPEN_TEXT = /open\s+sample\s+case/i;
   const FILE_INPUT_SELECTOR = 'input[type="file"]';
   const SIMULATION_MANIFEST_URL = 'journals/simulation-cases.json';
   const SESSION_HEADER = 'X-NPSH-Load-Session';
-  const TRANSACTION_IDLE_COMPLETE_MS = 15000;
+  const TRANSACTION_IDLE_COMPLETE_MS = 7000;
   const FINAL_CLEANUP_DELAY_MS = 180;
   const WARM_CASE_IDS = ['simulation-case-1', 'simulation-case-4', 'simulation-case-6'];
   const WARM_RUNTIME_SOURCES = [
     'engineering-pipe-canvas-hydraulic-label-runtime-20260707-pfv-loss-summary-clean1.js?v=20260707-pfv-loss-summary-clean1',
     'engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260707-pump-panel-clean6',
     'engineering-pump-envelope-warning-cleanup-runtime.js?v=20260707-pump-envelope-warning-clean2',
-    'engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate8'
+    'engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate9'
   ];
   const EVENT_NAMES = {
     begin: 'npsh:simulation-load-transaction-begin',
@@ -53,6 +54,10 @@
 
   function cloneDetail(detail = {}) {
     return Object.assign({}, detail || {});
+  }
+
+  function normalizeText(value) {
+    return String(value || '').replace(/\s+/g, ' ').trim();
   }
 
   function dispatch(name, detail = {}) {
@@ -103,6 +108,92 @@
     if (session) session.idleTimer = 0;
   }
 
+  function runCommandElements() {
+    if (!hasDocument()) return [];
+    try {
+      return Array.from(document.querySelectorAll([
+        '#btn-solve',
+        '#menu-run-solve',
+        '#menu-refresh-calculations',
+        '[data-i18n-text="menu.runHydraulicNpshEvaluation"]',
+        '[data-i18n-text="menu.refreshCalculationsConnections"]'
+      ].join(',')));
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function closeLoadDropdowns(reason = 'simulation-load-settled') {
+    if (!hasDocument()) return false;
+    const active = document.activeElement;
+    let changed = false;
+    const guardedRelease = root.EngineeringDropdownFocusGuardRuntime?.releaseFocusBeforeHide;
+    Array.from(document.querySelectorAll('.dropdown-content, .dropdown-submenu-content, [role="menu"]')).forEach((element) => {
+      try {
+        guardedRelease?.(element);
+      } catch (error) {
+        // Dropdown focus cleanup is defensive only.
+      }
+      element.setAttribute?.('aria-hidden', 'true');
+      changed = true;
+    });
+    Array.from(document.querySelectorAll('.menu-dropdown.show, .dropdown-submenu.show-submenu')).forEach((element) => {
+      element.classList.remove('show', 'show-submenu');
+      changed = true;
+    });
+    Array.from(document.querySelectorAll('.dropdown-submenu-trigger[aria-expanded="true"], .menu-item[aria-expanded="true"]')).forEach((element) => {
+      element.setAttribute('aria-expanded', 'false');
+      changed = true;
+    });
+    if (active?.closest?.('.dropdown-content, .dropdown-submenu-content, .menu-dropdown')) {
+      try {
+        active.blur?.();
+      } catch (error) {
+        // Focus release should never block loading cleanup.
+      }
+    }
+    document.body.dataset.simulationLoadMenusClosedAt = wallTimeIso();
+    document.body.dataset.simulationLoadMenusClosedReason = reason;
+    return changed;
+  }
+
+  function releaseRunCommandLocks(reason = 'simulation-load-transaction-settled') {
+    const detail = {
+      calculationMode: 'sample-open',
+      reason,
+      sourceEvent: reason,
+      message: 'Simulation load transaction settled; Validate is ready.'
+    };
+    try {
+      root.EngineeringCalculationLifecycle?.releaseRunCommand?.(reason, detail);
+    } catch (error) {
+      // Lifecycle runtime is optional during early startup.
+    }
+    try {
+      root.EngineeringCalculationLifecycle?.setRunCommandBusy?.(false, {
+        status: 'current',
+        task: 'Current',
+        calculationMode: 'sample-open',
+        updatedAt: wallTimeIso()
+      });
+    } catch (error) {
+      // Direct DOM fallback below still releases the visible command.
+    }
+    runCommandElements().forEach((element) => {
+      const label = element.querySelector?.('.ribbon-label, [data-command-label], .menu-item-label');
+      if ('disabled' in element) element.disabled = false;
+      element.removeAttribute?.('disabled');
+      element.setAttribute?.('aria-busy', 'false');
+      element.setAttribute?.('aria-disabled', 'false');
+      element.dataset.calculationBusy = 'false';
+      if (label) {
+        label.textContent = element.dataset.calculationLifecycleOriginalLabel
+          || (element.id === 'btn-solve' ? 'Validate' : label.textContent || 'Validate');
+      }
+    });
+    return true;
+  }
+
   function abortSession(session, reason = 'superseded') {
     if (!session || session.status === 'aborted') return false;
     session.status = 'aborted';
@@ -125,6 +216,8 @@
       }
     });
     dispatch(EVENT_NAMES.abort, sessionSnapshot(session));
+    closeLoadDropdowns('simulation-load-transaction-abort');
+    releaseRunCommandLocks('simulation-load-transaction-abort');
     return true;
   }
 
@@ -212,8 +305,11 @@
       if (activeSession?.sessionId !== sessionId) return;
       runDisplayCleanup({ force: true });
       if (hasDocument()) document.body.classList.remove(ACTIVE_CLASS);
+      closeLoadDropdowns(detail.reason || 'simulation-load-transaction-complete');
     }, FINAL_CLEANUP_DELAY_MS);
     dispatch(EVENT_NAMES.complete, Object.assign(snapshot, cloneDetail(detail)));
+    closeLoadDropdowns(detail.reason || 'simulation-load-transaction-complete');
+    releaseRunCommandLocks(detail.reason || 'simulation-load-transaction-complete');
     return snapshot;
   }
 
@@ -228,6 +324,8 @@
     if (hasDocument()) document.body.classList.remove(ACTIVE_CLASS);
     const snapshot = sessionSnapshot(activeSession);
     dispatch(EVENT_NAMES.failed, snapshot);
+    closeLoadDropdowns('simulation-load-transaction-failed');
+    releaseRunCommandLocks('simulation-load-transaction-failed');
     return snapshot;
   }
 
@@ -403,7 +501,7 @@
       try {
         const result = original.apply(this, args);
         markApplied(session.sessionId, { appliedBy: 'applySimulationStateAtomic' });
-        root.setTimeout?.(() => complete(session.sessionId, { reason: 'project-state-applied' }), FINAL_CLEANUP_DELAY_MS);
+        complete(session.sessionId, { reason: 'project-state-applied' });
         return result;
       } catch (error) {
         fail(session.sessionId, error);
@@ -594,9 +692,19 @@
 
   function handleSimulationCaseOpen(event) {
     const target = event?.target?.closest?.(CASE_OPEN_SELECTOR);
-    if (!target || target.disabled || target.getAttribute('aria-disabled') === 'true') return false;
-    const caseId = target.dataset?.simulationCaseId || '';
-    beginTransaction('simulation-case', { caseId });
+    const dialogButton = event?.target?.closest?.('button');
+    const isDialogOpenButton = dialogButton
+      && SAMPLE_DIALOG_OPEN_TEXT.test(normalizeText(dialogButton.textContent))
+      && !!dialogButton.closest?.('[role="dialog"], .modal, .simulation-case-dialog, .sample-case-dialog');
+    const openTarget = target || (isDialogOpenButton ? dialogButton : null);
+    if (!openTarget || openTarget.disabled || openTarget.getAttribute('aria-disabled') === 'true') return false;
+    const caseId = target?.dataset?.simulationCaseId
+      || root.__engineeringCalculationUserIntent?.caseId
+      || '';
+    beginTransaction(isDialogOpenButton ? 'simulation-case-dialog-open' : 'simulation-case', {
+      caseId,
+      action: isDialogOpenButton ? 'open-sample-case-confirmed' : 'open-simulation-case-menu'
+    });
     return true;
   }
 
@@ -687,6 +795,7 @@
     current: () => sessionSnapshot(activeSession),
     complete,
     fail,
+    releaseRunCommandLocks,
     markApplied,
     cleanWorkspaceForLoad,
     runDisplayCleanup,

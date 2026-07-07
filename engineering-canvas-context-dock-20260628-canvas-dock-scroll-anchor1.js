@@ -10,7 +10,7 @@
   'use strict';
 
   const VERSION = 'engineering-canvas-context-dock.v4';
-  const CACHE_KEY = '20260629-live-evidence1';
+  const CACHE_KEY = '20260707-clear-keeps-fluid-basis1';
   const DOCK_ID = 'canvasContextDock';
   const STYLE_ID = 'canvas-context-dock-style';
   const STORAGE_KEY = 'npsh.canvasContextDock.expanded';
@@ -225,7 +225,7 @@
   }
 
   function isSuppressedAfterClear() {
-    return root.__npshCanvasClearEmpty === true && !hasCanvasEquipment();
+    return false;
   }
 
   function normalizeConnections(model, rootLike = root) {
@@ -1412,10 +1412,6 @@
     if (!documentRef) return null;
     const canvas = documentRef.getElementById('canvas');
     if (!canvas) return null;
-    if (isSuppressedAfterClear()) {
-      documentRef.getElementById(DOCK_ID)?.remove();
-      return null;
-    }
     if (root.__npshCanvasClearEmpty === true && hasCanvasEquipment()) {
       root.__npshCanvasClearEmpty = false;
     }

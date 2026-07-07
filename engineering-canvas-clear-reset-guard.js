@@ -1,7 +1,7 @@
 (function installCanvasClearResetGuard(root) {
   "use strict";
 
-  const VERSION = "2026.06-canvas-clear-reset-guard1";
+  const VERSION = "2026.07-canvas-clear-reset-guard2";
   const CLEAR_IN_PROGRESS_FLAG = "__npshCanvasClearInProgress";
   const CLEAR_EMPTY_FLAG = "__npshCanvasClearEmpty";
   const PATCH_FLAG = "__canvasClearResetGuard";
@@ -17,8 +17,6 @@
     ".source-canvas-parameter",
     ".sink-canvas-parameter",
     ".tank-canvas-parameter",
-    ".canvas-context-dock",
-    "#canvasContextDock",
     ".pipe-hydraulic-label",
     ".pipe-delta-label",
     ".route-trace-canvas-overlay",
@@ -144,8 +142,9 @@
       console.warn("Pipe label refresh after reset failed.", error);
     }
     try {
-      root.EngineeringCanvasContextDock?.syncDockViewportAnchor?.(null, canvas);
-      if (options.refreshDock !== false) root.EngineeringCanvasContextDock?.refresh?.();
+      const contextDock = root.CanvasContextDock || root.EngineeringCanvasContextDock;
+      contextDock?.syncDockViewportAnchor?.(null, canvas);
+      if (options.refreshDock !== false) contextDock?.refresh?.();
     } catch (error) {
       console.warn("Canvas context dock refresh after reset failed.", error);
     }
@@ -164,7 +163,7 @@
     root[CLEAR_EMPTY_FLAG] = true;
     removeCanvasArtifacts();
     resetCanvasWarningPanel({ hideWarnings: true });
-    resetCanvasView({ hideWarnings: true, refreshDock: false, skipConnections: true });
+    resetCanvasView({ hideWarnings: true, refreshDock: true, skipConnections: true });
     const documentRef = getDocument();
     try {
       documentRef?.dispatchEvent?.(
@@ -191,6 +190,7 @@
     if (success) {
       root[CLEAR_EMPTY_FLAG] = true;
       clearTransientCanvasArtifacts({ final: true, keepClearInProgress: true });
+      refreshCanvasOverlays({ skipConnections: true, refreshDock: true });
       scheduleRepeatedCleanup();
       root.setTimeout?.(() => {
         root[CLEAR_IN_PROGRESS_FLAG] = false;

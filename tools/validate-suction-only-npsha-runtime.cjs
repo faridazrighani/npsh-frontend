@@ -10,8 +10,8 @@ const indexPath = path.join(root, 'index.html');
 const runtime = fs.readFileSync(runtimePath, 'utf8');
 const indexHtml = fs.readFileSync(indexPath, 'utf8');
 
-assert.match(indexHtml, /engineering-suction-only-npsha-runtime\.js\?v=20260706-suction-only-status-matrix1/, 'index.html must load the suction-only NPSHa runtime with a fresh cache key.');
-assert.match(runtime, /const VERSION = "2026\.07-suction-only-npsha5-status-matrix"/, 'runtime version should match the cache key.');
+assert.match(indexHtml, /engineering-suction-only-npsha-runtime\.js\?v=20260707-suction-only-stale-discharge1/, 'index.html must load the suction-only NPSHa runtime with a fresh cache key.');
+assert.match(runtime, /const VERSION = "2026\.07-suction-only-npsha6-stale-discharge"/, 'runtime version should match the cache key.');
 assert.match(runtime, /runBackendProtectedPumpSimulation/, 'runtime must call the protected backend pump simulation.');
 assert.match(runtime, /Suction Only/, 'runtime must recognize the suction-only route status.');
 assert.match(runtime, /Downstream Required/, 'runtime must keep downstream required-head status separate.');
@@ -24,6 +24,8 @@ assert.match(runtime, /applyLocalSuctionOnlyFallback/, 'runtime must locally hyd
 assert.match(runtime, /pressureCalculated = true/, 'runtime must mark suction PFV as pressure-calculated for canvas and properties windows.');
 assert.match(runtime, /backendValidationStatus = "Connected"/, 'runtime must clear Calculating by marking backend validation Connected after usable NPSHa.');
 assert.match(runtime, /npsh:calculation-current/, 'runtime must publish a current lifecycle event after suction-only results.');
+assert.match(runtime, /isLiveHydraulicConnection/, 'runtime must ignore stale hydraulic connections after downstream objects are deleted.');
+assert.match(runtime, /downstreamHydraulicConnection\(model, pumpId\)/, 'downstream detection must be scoped to the live model.');
 assert.doesNotMatch(runtime, /interpolateNpshrFromCurve/, 'runtime must not interpolate NPSHr from curve data.');
 assert.doesNotMatch(runtime, /props\.designNpshr,\s*interpolate|interpolate.*npshr/i, 'runtime must not fall back to design/curve NPSHr.');
 
@@ -49,7 +51,23 @@ function createModel() {
     'P-100': {
       type: 'pump',
       props: { inputMode: 'Advanced', designFlow: 9.528, manualNpshr: 1, suctionElevation: 0 },
-      results: { status: 'Incomplete', hydraulicNpshStatus: 'Incomplete' }
+      results: {
+        status: 'Incomplete',
+        hydraulicNpshStatus: 'Incomplete',
+        routeCalculationStatus: 'Full Route',
+        requiredPumpHeadStatus: 'Calculated',
+        requiredSystemHead: 42,
+        pumpHead: 42,
+        dischargePressure: 2.5,
+        power: 1.2,
+        npshEvaluation: {
+          routeCalculationStatus: 'Full Route',
+          requiredPumpHeadStatus: 'Calculated',
+          requiredSystemHead: 42,
+          pumpHead: 42,
+          dischargePressure: 2.5
+        }
+      }
     }
   };
 }
@@ -61,7 +79,8 @@ async function runRuntimeSmoke() {
     globalModel: createModel(),
     __npshGlobalModel: null,
     connections: [
-      { from: 'SRC-100', to: 'P-100', pipeId: 'PIPE-1', connectionType: 'hydraulic' }
+      { from: 'SRC-100', to: 'P-100', pipeId: 'PIPE-1', connectionType: 'hydraulic' },
+      { from: 'P-100', to: 'SNK-100', pipeId: 'PIPE-2', connectionType: 'hydraulic' }
     ],
     setTimeout(callback) {
       timers.push(callback);
@@ -139,7 +158,7 @@ async function runRuntimeSmoke() {
 
   const api = windowMock.EngineeringSuctionOnlyNpshaRuntime;
   assert.ok(api, 'runtime API should be installed on window.');
-  assert.ok(api.isSuctionOnlyEligiblePump(windowMock.globalModel, 'P-100'), 'runtime should detect SRC -> PFV -> Pump suction-only route.');
+  assert.ok(api.isSuctionOnlyEligiblePump(windowMock.globalModel, 'P-100'), 'runtime should detect SRC -> PFV -> Pump suction-only route while ignoring stale deleted discharge connections.');
   await api.runRouteSolve('P-100');
 
   const pumpResults = windowMock.globalModel['P-100'].results;
@@ -148,6 +167,9 @@ async function runRuntimeSmoke() {
   assert.equal(pumpResults.requiredPumpHeadStatus, 'Downstream Required');
   assert.equal(pumpResults.backendValidationStatus, 'Connected');
   assert.equal(pumpResults.calculationFreshness, 'Current');
+  assert.equal(pumpResults.requiredSystemHead, null, 'suction-only route must clear stale downstream required head.');
+  assert.equal(pumpResults.dischargePressure, null, 'suction-only route must clear stale discharge pressure.');
+  assert.equal(pumpResults.npshEvaluation.requiredSystemHead, null, 'suction-only evaluation must clear stale downstream required head.');
   assert.equal(pipeResults.pressureCalculated, true);
   assert.equal(windowMock.pipeLabelRefreshed, true);
   assert.equal(windowMock.protectedUiRefreshed, true);
@@ -157,7 +179,8 @@ async function runRuntimeSmoke() {
     globalModel: createModel(),
     __npshGlobalModel: null,
     connections: [
-      { from: 'SRC-100', to: 'P-100', pipeId: 'PIPE-1', connectionType: 'hydraulic' }
+      { from: 'SRC-100', to: 'P-100', pipeId: 'PIPE-1', connectionType: 'hydraulic' },
+      { from: 'P-100', to: 'SNK-100', pipeId: 'PIPE-2', connectionType: 'hydraulic' }
     ],
     setTimeout(callback) {
       timers.push(callback);
@@ -231,6 +254,8 @@ async function runRuntimeSmoke() {
   assert.equal(fallbackMock.globalModel['P-100'].results.routeCalculationStatus, 'Suction Only');
   assert.equal(fallbackMock.globalModel['P-100'].results.backendValidationStatus, 'Connected');
   assert.equal(fallbackMock.globalModel['P-100'].results.calculationFreshness, 'Current');
+  assert.equal(fallbackMock.globalModel['P-100'].results.requiredSystemHead, null);
+  assert.equal(fallbackMock.globalModel['P-100'].results.dischargePressure, null);
   assert.equal(fallbackMock.globalModel['PIPE-1'].results.pressureCalculated, true);
 
   const localHydrationMock = {
@@ -238,7 +263,8 @@ async function runRuntimeSmoke() {
     globalModel: createModel(),
     __npshGlobalModel: null,
     connections: [
-      { from: 'SRC-100', to: 'P-100', pipeId: 'PIPE-1', connectionType: 'hydraulic' }
+      { from: 'SRC-100', to: 'P-100', pipeId: 'PIPE-1', connectionType: 'hydraulic' },
+      { from: 'P-100', to: 'SNK-100', pipeId: 'PIPE-2', connectionType: 'hydraulic' }
     ],
     setTimeout(callback) {
       timers.push(callback);
@@ -318,7 +344,7 @@ runRuntimeSmoke().then(() => {
   console.log(JSON.stringify({
     passed: true,
     runtime: path.basename(runtimePath),
-    cacheKey: '20260706-suction-only-status-matrix1',
+    cacheKey: '20260707-suction-only-stale-discharge1',
     smoke: 'SRC -> PFV -> Pump calculated'
   }, null, 2));
 }).catch((error) => {

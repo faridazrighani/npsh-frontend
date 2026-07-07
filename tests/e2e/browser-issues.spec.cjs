@@ -105,7 +105,7 @@ test('first load keeps About hidden and menu bar clickable', async ({ page }) =>
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => (
     typeof window.applySimulationStateAtomic === 'function'
-    && window.EngineeringCalculationLifecycle?.cacheKey === '20260618-calculation-lifecycle-refresh-release1'
+    && window.EngineeringCalculationLifecycle?.cacheKey === '20260707-sample-case-release1'
   ), null, { timeout: 30000 });
 
   await page.click('#menu-file');

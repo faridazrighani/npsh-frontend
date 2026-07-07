@@ -20,9 +20,10 @@ const manifest = fs.existsSync(MANIFEST_FILE) ? read(MANIFEST_FILE) : '';
 const runtime = require(RUNTIME_FILE);
 
 assert.strictEqual(runtime.version, 'engineering-calculation-progress-overlay.v1');
-assert.strictEqual(runtime.cacheKey, '20260617-calculation-progress-manual-only1');
+assert.strictEqual(runtime.cacheKey, '20260707-calculation-progress-stuck-hide1');
 assert.strictEqual(runtime.showDelayMs, 90, 'Overlay must use a short delay so visible calculations are not missed.');
 assert.strictEqual(runtime.currentHideDelayMs, 520, 'Overlay must auto-hide shortly after Current state.');
+assert.strictEqual(runtime.evidenceForceHideMs, 1500, 'Evidence refresh loops must have a hard force-hide timer.');
 assert.strictEqual(runtime.errorHideDelayMs, 3200, 'Error state must not remain permanently blocking.');
 assert.strictEqual(runtime.commandFallbackHideMs, 8000, 'Manual run command fallback must prevent a stuck overlay if no completion event arrives.');
 
@@ -40,17 +41,17 @@ assert.strictEqual(
 assert(
   indexHtml.includes('engineering-pump-edit-fast-lane.js?v=20260706-pump-edit-status-matrix1')
     && indexHtml.includes('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1')
-    && indexHtml.includes('engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1')
-    && indexHtml.includes('engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1'),
+    && indexHtml.includes('engineering-calculation-lifecycle-runtime.js?v=20260707-solver-release-watchdog3')
+    && indexHtml.includes('engineering-calculation-progress-overlay.js?v=20260707-calculation-progress-stuck-hide1'),
   'index.html must load pump fast lane, realtime defense, lifecycle runtime, and progress overlay.'
 );
 assert(
   indexHtml.indexOf('engineering-pump-edit-fast-lane.js?v=20260706-pump-edit-status-matrix1')
     < indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1')
     && indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1')
-      < indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1')
-    && indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1')
-      < indexHtml.indexOf('engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1'),
+      < indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260707-solver-release-watchdog3')
+    && indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260707-solver-release-watchdog3')
+      < indexHtml.indexOf('engineering-calculation-progress-overlay.js?v=20260707-calculation-progress-stuck-hide1'),
   'Pump fast lane, realtime defense, lifecycle runtime, and overlay runtime must be loaded in dependency order.'
 );
 
@@ -159,6 +160,9 @@ assert.deepStrictEqual(
   'Evidence phase must show Refreshing evidence active.'
 );
 assert(runtimeSource.includes("detail.status === 'refreshing-evidence' || phase === 'evidence'"), 'Evidence refresh lifecycle must auto-hide even when no later Current event arrives.');
+assert(runtimeSource.includes('ensureEvidenceForceHide'), 'Evidence refresh overlay must have a non-resetting force-hide guard.');
+assert(runtimeSource.includes('EVIDENCE_FORCE_HIDE_MS'), 'Evidence refresh overlay must expose a bounded force-hide timer.');
+assert(runtimeSource.includes('npsh:simulation-load-transaction-complete'), 'Overlay must hide when a simulation load transaction settles.');
 assert(runtimeSource.includes("mode === 'manual-solve' && (detail.status === 'applying-results' || phase === 'results')"), 'Manual Solve applying-results must auto-hide through the evidence step if no later Current event arrives.');
 assert(runtimeSource.includes("!isManualSolveMode(latestDetail)") && runtimeSource.includes("calculationMode: 'manual-solve'"), 'Linked-view evidence refresh must only render during manual Solve mode.');
 assert(runtimeSource.includes("showEvidence: false"), 'Sample-open and menu-browse hide paths must not turn Current into Refreshing evidence.');
@@ -175,7 +179,7 @@ assert(!showImmediateSource.includes('commandFallbackTimer = clearTimer(commandF
 
 if (manifest) {
   assert(manifest.includes('engineering-calculation-progress-overlay.js'), 'FILE_MANIFEST must mention the calculation progress overlay runtime.');
-  assert(manifest.includes('20260617-calculation-progress-manual-only1'), 'FILE_MANIFEST must mention the calculation progress overlay cache key.');
+  assert(manifest.includes('20260707-calculation-progress-stuck-hide1'), 'FILE_MANIFEST must mention the calculation progress overlay cache key.');
   assert(manifest.includes('validate:calculation-progress-overlay'), 'FILE_MANIFEST must mention the calculation progress overlay validator.');
 }
 

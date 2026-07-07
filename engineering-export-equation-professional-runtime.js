@@ -17,7 +17,7 @@
 })(typeof window !== "undefined" ? window : globalThis, function createExportEquationProfessionalRuntime(root) {
   "use strict";
 
-  const VERSION = "2026.07-pdf-equation-professional8";
+  const VERSION = "2026.07-pdf-equation-professional9";
   const MODE_LABEL = "Mode: Equation Professional";
   const LANGUAGE_LABEL = "Language: Professional English for Mechanical and Chemical Engineering";
   const LAYOUT_LABEL = "Layout: Compact";
@@ -28,6 +28,42 @@
   };
 
   let installed = false;
+
+  function pdfProgress() {
+    return root.EngineeringPdfExportProgressRuntime || null;
+  }
+
+  function publishPdfProgress(stepKey, detail = {}) {
+    try {
+      pdfProgress()?.update?.(stepKey, detail);
+    } catch (error) {
+      // Export progress is presentational only.
+    }
+  }
+
+  function startPdfProgress(detail = {}) {
+    try {
+      pdfProgress()?.start?.({ source: "pdf-export", ...detail });
+    } catch (error) {
+      // Export progress is presentational only.
+    }
+  }
+
+  function completePdfProgress(detail = {}) {
+    try {
+      pdfProgress()?.complete?.(detail);
+    } catch (error) {
+      // Export progress is presentational only.
+    }
+  }
+
+  function failPdfProgress(error) {
+    try {
+      pdfProgress()?.fail?.(error);
+    } catch (progressError) {
+      // Export progress is presentational only.
+    }
+  }
 
   const PROFESSIONAL_CSS = `
     html { color: #13293d; }
@@ -783,8 +819,10 @@
   }
 
   async function refreshActiveCalculationBeforeExport(options = {}) {
+    publishPdfProgress("read", { message: "Reading active simulation state" });
     const reportHint = options.reportHint || {};
     const topology = detectActiveTopology(reportHint);
+    publishPdfProgress("validate", { message: "Validating report topology" });
     if (!topology.pumpId) return false;
 
     if (topology.suctionOnly && root.EngineeringSuctionOnlyNpshaRuntime?.runRouteSolve) {
@@ -971,6 +1009,7 @@
   }
 
   function renderFluidPhaseChartDiscussion() {
+    publishPdfProgress("phase-chart", { message: "Rendering Fluid Basis phase chart" });
     try {
       const chartMarkup = root.EngineeringFluidBasisPhaseChartRuntime?.buildExportMarkup?.();
       if (chartMarkup) return chartMarkup;
@@ -1008,6 +1047,7 @@
   }
 
   function renderMoodyChartDiscussion(report) {
+    publishMoodyChartProgress(report);
     try {
       const chartMarkup = root.EngineeringPipeMoodyChartAudit?.buildExportMarkup?.(report);
       if (chartMarkup) return chartMarkup;
@@ -1058,6 +1098,33 @@
       return output.replace(fallbackPattern, `$1${chart}`);
     }
     return output;
+  }
+
+  function publishMoodyChartProgress(report) {
+    let traces = [];
+    try {
+      traces = root.EngineeringPipeMoodyChartAudit?.collectMoodyExportTraces?.(report) || [];
+    } catch (error) {
+      traces = [];
+    }
+    if (!Array.isArray(traces) || !traces.length) {
+      publishPdfProgress("moody", { message: "Rendering Moody chart evidence" });
+      return;
+    }
+    const count = traces.length;
+    traces.forEach((trace, index) => {
+      const pipeId = text(trace?.pipeId || trace?.name || `PIPE-${index + 1}`, `PIPE-${index + 1}`);
+      const spread = count > 1 ? Math.round(56 + ((index + 1) / count) * 8) : 60;
+      publishPdfProgress("moody", {
+        percent: spread,
+        pipeId,
+        pipeIndex: index + 1,
+        pipeCount: count,
+        message: count > 1
+          ? `Rendering Moody chart ${index + 1} of ${count}: ${pipeId}`
+          : `Rendering Moody chart evidence: ${pipeId}`
+      });
+    });
   }
 
   function isMoodyChartTitle(value) {
@@ -1191,6 +1258,7 @@
     output = injectMoodyChartDiscussion(output, report);
     output = removeLegacyMoodyChartDiscussion(output, report);
     output = removeInactiveTopologySections(output, report);
+    publishPdfProgress("equations", { message: "Formatting Equation Professional sections" });
     output = transformStepTables(output);
     output = professionalizeFormulaBlocks(output);
     return output;
@@ -1201,6 +1269,7 @@
       throw new Error("Scenario appendix HTML builder is not available.");
     }
     const forced = sanitizeReportForActiveTopology(forceEnglishReport(report));
+    publishPdfProgress("snapshot", { message: "Capturing model snapshot" });
     const html = original.buildScenarioAppendixHtml.call(root, forced, options);
     return professionalizeAppendixHtml(html, forced);
   }
@@ -1214,10 +1283,12 @@
       includePumpChart: false,
       ...(options || {})
     });
+    publishPdfProgress("validate", { message: "Validating report topology" });
     return sanitizeReportForActiveTopology(forceEnglishReport(data));
   }
 
   function writePrintWindow(printWindow, html) {
+    publishPdfProgress("finalizing", { message: "Finalizing report file" });
     printWindow.document.open();
     printWindow.document.write(html);
     printWindow.document.close();
@@ -1230,19 +1301,36 @@
 
   async function exportProfessionalPdf(options) {
     try {
+      startPdfProgress({ message: "Preparing professional engineering report" });
       const data = await collectProfessionalAppendixData(options);
+      publishPdfProgress("pages", { message: "Building PDF pages" });
       const html = buildProfessionalAppendixHtml(data, { autoPrint: true });
       const printWindow = root.open ? root.open("", "_blank") : null;
       if (!printWindow) {
         throw new Error("The browser blocked the PDF print window.");
       }
       writePrintWindow(printWindow, html);
+      completePdfProgress({ message: "PDF report completed" });
       return { ok: true, mode: "pdf-print", data };
     } catch (error) {
       console.error("Professional PDF appendix export failed.", error);
       if (typeof original.exportScenarioCalculationTraceToPdf === "function") {
-        return original.exportScenarioCalculationTraceToPdf.apply(root, arguments);
+        publishPdfProgress("finalizing", { message: "Opening fallback PDF export" });
+        try {
+          const fallback = original.exportScenarioCalculationTraceToPdf.apply(root, arguments);
+          if (fallback && typeof fallback.then === "function") {
+            const value = await fallback;
+            completePdfProgress({ message: "PDF report completed" });
+            return value;
+          }
+          completePdfProgress({ message: "PDF report completed" });
+          return fallback;
+        } catch (fallbackError) {
+          failPdfProgress(fallbackError);
+          throw fallbackError;
+        }
       }
+      failPdfProgress(error);
       throw error;
     }
   }

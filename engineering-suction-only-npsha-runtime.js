@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const VERSION = "2026.07-suction-only-npsha5-status-matrix";
+  const VERSION = "2026.07-suction-only-npsha6-stale-discharge";
   const SOLVE_DELAY_MS = 420;
   const RETRY_DELAY_MS = 900;
   const MAX_RETRIES = 8;
@@ -103,8 +103,18 @@
     }
   }
 
-  function hydraulicConnections() {
-    return runtimeConnections().filter((connection) => !connection?.connectionType || connection.connectionType === "hydraulic");
+  function connectionPipeIsLive(model, connection) {
+    const pipeId = text(connection?.pipeId);
+    return !pipeId || model?.[pipeId]?.type === "pipe";
+  }
+
+  function isLiveHydraulicConnection(model, connection) {
+    if (!connection || (connection.connectionType && connection.connectionType !== "hydraulic")) return false;
+    return !!(model?.[connection.from] && model?.[connection.to] && connectionPipeIsLive(model, connection));
+  }
+
+  function hydraulicConnections(model = runtimeModel()) {
+    return runtimeConnections().filter((connection) => isLiveHydraulicConnection(model, connection));
   }
 
   function nodeType(model, id) {
@@ -116,7 +126,7 @@
   }
 
   function incomingPumpRoute(model, pumpId) {
-    const allConnections = hydraulicConnections();
+    const allConnections = hydraulicConnections(model);
     const pumpConnections = allConnections.filter((connection) => connection?.to === pumpId);
     for (const connection of pumpConnections) {
       const directType = nodeType(model, connection.from);
@@ -141,8 +151,8 @@
     return null;
   }
 
-  function downstreamHydraulicConnection(pumpId) {
-    return hydraulicConnections().find((connection) => connection?.from === pumpId) || null;
+  function downstreamHydraulicConnection(model, pumpId) {
+    return hydraulicConnections(model).find((connection) => connection?.from === pumpId) || null;
   }
 
   function sourceFlow(source = {}) {
@@ -179,7 +189,7 @@
     const source = model[inlet.sourceId];
     const pipe = inlet.pipeId ? model[inlet.pipeId] : null;
     if (!source || !pipe || pipe.type !== "pipe") return null;
-    if (downstreamHydraulicConnection(pumpId)) return null;
+    if (downstreamHydraulicConnection(model, pumpId)) return null;
     const flow = pumpFlow(pump, source);
     if (!(flow > 0)) return null;
     return { pump, pumpId, source, sourceId: inlet.sourceId, pipe, pipeId: inlet.pipeId, flow };
@@ -247,12 +257,27 @@
     pumpResults.previousResultWasStale = false;
     pumpResults.backendCalculationSource = pumpResults.backendCalculationSource || "primary";
     pumpResults.backendCalculationAppliedAt = pumpResults.backendCalculationAppliedAt || now;
+    pumpResults.routeCalculationStatus = "Suction Only";
+    pumpResults.requiredPumpHeadStatus = "Downstream Required";
+    pumpResults.actualPumpHeadAvailable = false;
+    pumpResults.requiredSystemHead = null;
+    pumpResults.requiredSystemHeadRaw = null;
+    pumpResults.requiredSystemHeadPositive = null;
+    pumpResults.pumpHead = null;
+    pumpResults.head = null;
+    pumpResults.dischargePressure = null;
+    pumpResults.power = null;
 
     evaluation.backendValidationStatus = "Connected";
     evaluation.backendValidationMessage = reason;
     evaluation.calculationFreshness = "Current";
-    evaluation.routeCalculationStatus = evaluation.routeCalculationStatus || "Suction Only";
-    evaluation.requiredPumpHeadStatus = evaluation.requiredPumpHeadStatus || "Downstream Required";
+    evaluation.routeCalculationStatus = "Suction Only";
+    evaluation.requiredPumpHeadStatus = "Downstream Required";
+    evaluation.actualPumpHeadAvailable = false;
+    evaluation.requiredSystemHead = null;
+    evaluation.pumpHead = null;
+    evaluation.head = null;
+    evaluation.dischargePressure = null;
     pumpResults.npshEvaluation = evaluation;
 
     if (pumpResults.routeTrace && typeof pumpResults.routeTrace === "object") {
@@ -1150,12 +1175,23 @@
     if (firstFiniteValue(evaluation.npsha, pumpResults.npsha) === null) return false;
 
     pumpResults.routeCalculationStatus = "Suction Only";
-    pumpResults.requiredPumpHeadStatus = pumpResults.requiredPumpHeadStatus || "Downstream Required";
+    pumpResults.requiredPumpHeadStatus = "Downstream Required";
     pumpResults.suctionOnlyNpshaEvaluation = true;
     pumpResults.actualPumpHeadAvailable = false;
+    pumpResults.requiredSystemHead = null;
+    pumpResults.requiredSystemHeadRaw = null;
+    pumpResults.requiredSystemHeadPositive = null;
     pumpResults.pumpHead = null;
     pumpResults.head = null;
     pumpResults.dischargePressure = null;
+    pumpResults.power = null;
+    evaluation.routeCalculationStatus = "Suction Only";
+    evaluation.requiredPumpHeadStatus = "Downstream Required";
+    evaluation.actualPumpHeadAvailable = false;
+    evaluation.requiredSystemHead = null;
+    evaluation.pumpHead = null;
+    evaluation.head = null;
+    evaluation.dischargePressure = null;
     const fallbackHydraulicStatus = firstPositiveValue(route.pump?.props?.manualNpshr) !== null ? "OK" : "NPSHa Calculated";
     pumpResults.status = text(pumpResults.status) && !/incomplete|input required/i.test(pumpResults.status)
       ? pumpResults.status

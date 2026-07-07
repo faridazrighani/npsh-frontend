@@ -7,7 +7,7 @@
   'use strict';
 
   const VERSION = 'engineering-calculation-progress-overlay.v1';
-  const CACHE_KEY = '20260617-calculation-progress-manual-only1';
+  const CACHE_KEY = '20260707-calculation-progress-stuck-hide1';
   const STYLE_ID = 'engineeringCalculationProgressOverlayStyle';
   const OVERLAY_ID = 'engineeringCalculationProgressOverlay';
   const LIFECYCLE_EVENT = 'npsh:calculation-lifecycle';
@@ -16,6 +16,7 @@
   const ERROR_HIDE_DELAY_MS = 3200;
   const LONG_RUNNING_MS = 15000;
   const COMMAND_FALLBACK_HIDE_MS = 8000;
+  const EVIDENCE_FORCE_HIDE_MS = 1500;
   const RUN_COMMAND_SELECTOR = [
     '#btn-solve',
     '#menu-run-solve',
@@ -32,6 +33,7 @@
   let hideTimer = 0;
   let longRunningTimer = 0;
   let commandFallbackTimer = 0;
+  let evidenceForceHideTimer = 0;
   let ignoreEvidenceUntil = 0;
   let latestDetail = {};
 
@@ -274,6 +276,7 @@
     const overlay = renderOverlay({ phase, detail });
     if (!overlay) return false;
     overlay.dataset.visible = 'true';
+    if (phase === 'evidence') ensureEvidenceForceHide();
     return true;
   }
 
@@ -283,11 +286,21 @@
     hideTimer = clearTimer(hideTimer);
     longRunningTimer = clearTimer(longRunningTimer);
     commandFallbackTimer = clearTimer(commandFallbackTimer);
+    evidenceForceHideTimer = clearTimer(evidenceForceHideTimer);
     const overlay = hasDocument() ? document.getElementById(OVERLAY_ID) : null;
     if (overlay) {
       overlay.dataset.visible = 'false';
       overlay.dataset.state = 'idle';
     }
+    return true;
+  }
+
+  function ensureEvidenceForceHide() {
+    if (evidenceForceHideTimer) return true;
+    evidenceForceHideTimer = root.setTimeout?.(() => {
+      evidenceForceHideTimer = 0;
+      if (state === 'refreshing') hideOverlay();
+    }, EVIDENCE_FORCE_HIDE_MS) || 0;
     return true;
   }
 
@@ -351,6 +364,7 @@
     if (wasVisible && state === 'calculating' && showEvidence) {
       state = 'refreshing';
       showOverlay('evidence', { ...latestDetail, calculationMode: 'manual-solve' });
+      ensureEvidenceForceHide();
     } else if (!wasVisible) {
       hideOverlay();
       return true;
@@ -449,6 +463,10 @@
     return scheduleHide(CURRENT_HIDE_DELAY_MS, { showEvidence: isManualSolveMode(latestDetail) });
   }
 
+  function handleLoadSettled() {
+    return hideOverlay();
+  }
+
   function handleStale(event) {
     const detail = eventDetail(event);
     const text = detailText(detail);
@@ -536,6 +554,11 @@
     document.addEventListener('npsh:realtime-autosolve-complete', handleCurrent);
     document.addEventListener('npsh:calculation-stale', handleStale);
     document.addEventListener('npsh:realtime-autosolve-error', handleError);
+    document.addEventListener('npsh:simulation-load-transaction-complete', handleLoadSettled);
+    document.addEventListener('npsh:simulation-load-transaction-abort', handleLoadSettled);
+    document.addEventListener('npsh:simulation-load-transaction-failed', handleLoadSettled);
+    document.addEventListener('npsh:simulation-load-transaction-stale-result', handleLoadSettled);
+    document.addEventListener('npsh:open-file-readiness', handleLoadSettled);
     return true;
   }
 
@@ -550,6 +573,11 @@
     document.removeEventListener('npsh:realtime-autosolve-complete', handleCurrent);
     document.removeEventListener('npsh:calculation-stale', handleStale);
     document.removeEventListener('npsh:realtime-autosolve-error', handleError);
+    document.removeEventListener('npsh:simulation-load-transaction-complete', handleLoadSettled);
+    document.removeEventListener('npsh:simulation-load-transaction-abort', handleLoadSettled);
+    document.removeEventListener('npsh:simulation-load-transaction-failed', handleLoadSettled);
+    document.removeEventListener('npsh:simulation-load-transaction-stale-result', handleLoadSettled);
+    document.removeEventListener('npsh:open-file-readiness', handleLoadSettled);
     installed = false;
     hideOverlay();
     return true;
@@ -562,6 +590,7 @@
     currentHideDelayMs: CURRENT_HIDE_DELAY_MS,
     errorHideDelayMs: ERROR_HIDE_DELAY_MS,
     commandFallbackHideMs: COMMAND_FALLBACK_HIDE_MS,
+    evidenceForceHideMs: EVIDENCE_FORCE_HIDE_MS,
     install,
     uninstall,
     showOverlay,

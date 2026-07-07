@@ -13,7 +13,8 @@ const guardPath = path.join(rootDir, "engineering-canvas-clear-reset-guard.js");
 const stableRuntimePath = path.join(rootDir, "engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js");
 const contextDockPath = path.join(rootDir, "engineering-canvas-context-dock-20260628-canvas-dock-scroll-anchor1.js");
 
-const cacheKey = "engineering-canvas-clear-reset-guard.js?v=20260629-canvas-clear-reset1";
+const cacheKey = "engineering-canvas-clear-reset-guard.js?v=20260707-clear-keeps-fluid-basis1";
+const dockCacheKey = "engineering-canvas-context-dock-20260628-canvas-dock-scroll-anchor1.js?v=20260707-clear-keeps-fluid-basis1";
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");
@@ -25,10 +26,12 @@ const guard = read(guardPath);
 const stableRuntime = read(stableRuntimePath);
 const contextDock = read(contextDockPath);
 const packageJson = JSON.parse(read(packagePath));
+const removableSelectorBlock = guard.match(/const REMOVABLE_CANVAS_SELECTORS = \[[\s\S]*?\];/)?.[0] || "";
 
 assert.ok(indexHtml.includes(cacheKey), "index.html must load the canvas clear/reset guard with the locked cache key.");
+assert.ok(indexHtml.includes(dockCacheKey), "index.html must load the canvas context dock with the clear-safe cache key.");
 assert.ok(
-  indexHtml.indexOf("engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260702-object-status-clean1") <
+  indexHtml.indexOf("engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js") <
     indexHtml.indexOf(cacheKey),
   "Canvas clear/reset guard must load after the live parameter stable runtime."
 );
@@ -52,13 +55,23 @@ assert.equal(
   "canvasWarningCount",
   "canvasConnectHint",
   "svg-lines",
-  "canvasContextDock",
+  "CanvasContextDock",
   "pipe-hydraulic-label",
   "pipe-delta-label",
   "scheduleRepeatedCleanup"
 ].forEach((token) => {
   assert.ok(guard.includes(token), `Canvas clear/reset guard must include ${token}.`);
 });
+
+assert.ok(
+  !removableSelectorBlock.includes("canvasContextDock") &&
+    !removableSelectorBlock.includes("canvas-context-dock"),
+  "Canvas clear/reset guard must never remove the Fluid Basis context dock."
+);
+assert.ok(
+  guard.includes("refreshDock: true"),
+  "Canvas clear/reset guard must refresh the Fluid Basis context dock after clearing transient artifacts."
+);
 
 assert.ok(
   stableRuntime.includes("__npshCanvasClearInProgress") &&
@@ -72,8 +85,13 @@ assert.ok(
 assert.ok(
   contextDock.includes("__npshCanvasClearEmpty") &&
     contextDock.includes("isSuppressedAfterClear") &&
-    contextDock.includes("hasCanvasEquipment"),
-  "Canvas context dock must suppress Fluid Basis dock after an empty clear until equipment exists."
+    contextDock.includes("hasCanvasEquipment") &&
+    contextDock.includes("return false;"),
+  "Canvas context dock must keep Fluid Basis visible after an empty clear."
+);
+assert.ok(
+  !contextDock.includes("documentRef.getElementById(DOCK_ID)?.remove()"),
+  "Canvas context dock must not remove itself after Clear Canvas."
 );
 
 console.log("Canvas clear/reset guard validation passed.");

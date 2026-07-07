@@ -7,12 +7,12 @@
   'use strict';
 
   const VERSION = 'engineering-open-file-readiness-gate.v7';
-  const CACHE_KEY = '20260707-open-file-readiness-gate8';
+  const CACHE_KEY = '20260707-open-file-readiness-gate9';
   const STYLE_ID = 'engineeringOpenFileReadinessGateStyle';
   const OVERLAY_ID = 'engineeringOpenFileReadinessGate';
   const ACTIVE_CLASS = 'npsh-open-file-readiness-active';
   const WARNING_CLASS = 'npsh-open-file-readiness-warning';
-  const MAX_WAIT_MS = 12000;
+  const MAX_WAIT_MS = 8200;
   const MIN_VISIBLE_MS = 720;
   const QUIET_MS = 180;
   const LOOP_MS = 90;
@@ -21,8 +21,8 @@
   const PIPE_HYDRAULIC_LABEL_SELECTOR = '#svg-lines .pipe-hydraulic-label[data-pipe-id]';
   const PIPE_LABEL_REFRESH_THROTTLE_MS = 360;
   const FINAL_CLEANUP_THROTTLE_MS = 640;
-  const STABLE_READY_EVIDENCE_MS = 520;
-  const POST_CLEANUP_READY_MS = 2400;
+  const STABLE_READY_EVIDENCE_MS = 280;
+  const POST_CLEANUP_READY_MS = 900;
   const PIPE_LABEL_RUNTIME_SRC = 'engineering-pipe-canvas-hydraulic-label-runtime-20260707-pfv-loss-summary-clean1.js?v=20260707-pfv-loss-summary-clean1';
   const ROUTE_TRACE_RUNTIME_SRC = 'engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260707-pump-panel-clean6';
   const DISABLED_DURING_OPEN_SELECTOR = [
@@ -608,6 +608,24 @@ body.${ACTIVE_CLASS} #canvas * {
     }
   }
 
+  function handleSimulationLoadSettled(event) {
+    if (!activeSession || activeSession.finishing) return;
+    const eventName = String(event?.type || '');
+    const isWarning = /abort|failed|stale/i.test(eventName);
+    activeSession.warning = activeSession.warning || isWarning;
+    activeSession.lastMutationAt = nowMs();
+    if (activeSession.phase !== 'finalizing') {
+      setPhase('updating', isWarning
+        ? 'Finalizing display after interrupted simulation load.'
+        : 'Applying loaded simulation state.');
+    }
+    const settleDelay = canvasHasLoadedModel() ? 120 : 360;
+    root.setTimeout?.(() => {
+      if (!activeSession || activeSession.finishing) return;
+      finishSession(isWarning ? 'warning' : 'ready');
+    }, settleDelay);
+  }
+
   function install() {
     if (installed || !hasDocument()) return false;
     installed = true;
@@ -621,6 +639,12 @@ body.${ACTIVE_CLASS} #canvas * {
       'npsh:realtime-autosolve-complete',
       'npsh:realtime-autosolve-error'
     ].forEach((eventName) => document.addEventListener(eventName, handleLifecycleEvent, true));
+    [
+      'npsh:simulation-load-transaction-complete',
+      'npsh:simulation-load-transaction-abort',
+      'npsh:simulation-load-transaction-failed',
+      'npsh:simulation-load-transaction-stale-result'
+    ].forEach((eventName) => document.addEventListener(eventName, handleSimulationLoadSettled, true));
     return true;
   }
 

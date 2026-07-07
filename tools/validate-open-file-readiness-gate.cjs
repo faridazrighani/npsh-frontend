@@ -22,8 +22,8 @@ const uploadReadiness = fs.existsSync(uploadReadinessPath) ? read(uploadReadines
 const runtime = require(runtimePath);
 
 assert.strictEqual(runtime.version, 'engineering-open-file-readiness-gate.v7');
-assert.strictEqual(runtime.cacheKey, '20260707-open-file-readiness-gate8');
-assert.strictEqual(runtime.maxWaitMs, 12000, 'Open-file gate must have a bounded fallback timeout.');
+assert.strictEqual(runtime.cacheKey, '20260707-open-file-readiness-gate9');
+assert.strictEqual(runtime.maxWaitMs, 8200, 'Open-file gate must have a bounded fallback timeout.');
 assert.strictEqual(runtime.minVisibleMs, 720, 'Open-file gate should stay visible long enough to mask initial canvas churn.');
 assert.strictEqual(runtime.quietMs, 180, 'Open-file gate should wait for a quiet canvas window before release.');
 assert.deepStrictEqual(
@@ -37,14 +37,14 @@ assert.strictEqual(
   'package.json must expose the open-file readiness gate validator.'
 );
 
-assert(indexHtml.includes('engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate8'), 'index.html must load the open-file readiness gate runtime.');
+assert(indexHtml.includes('engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate9'), 'index.html must load the open-file readiness gate runtime.');
 assert(
   indexHtml.indexOf('app.bundle.min.js?v=20260707-pipe-canvas-loss-label1')
-    < indexHtml.indexOf('engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate8'),
+    < indexHtml.indexOf('engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate9'),
   'Open-file gate should load after the app bundle.'
 );
 assert(
-  indexHtml.indexOf('engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate8')
+  indexHtml.indexOf('engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate9')
     < indexHtml.indexOf('engineering-model-snapshot-export-runtime.js?v=20260707-fluid-basis-workspace-snapshot11'),
   'Open-file gate should load early in the critical runtime pack.'
 );
@@ -78,6 +78,9 @@ assert(runtimeSource.includes('STABLE_READY_EVIDENCE_MS'), 'Open-file gate must 
 assert(runtimeSource.includes('firstReadyEvidenceAt'), 'Open-file gate must track sustained clean readiness before release.');
 assert(runtimeSource.includes('POST_CLEANUP_READY_MS'), 'Open-file gate must verify display readiness after forced cleanup before release.');
 assert(runtimeSource.includes('waitForPostCleanupReadiness'), 'Open-file gate must wait for post-cleanup pipe labels before showing the canvas.');
+assert(runtimeSource.includes('handleSimulationLoadSettled'), 'Open-file gate must release from transaction completion instead of waiting for stale timeouts.');
+assert(runtimeSource.includes('npsh:simulation-load-transaction-complete'), 'Open-file gate must listen for completed load transactions.');
+assert(runtimeSource.includes('Applying loaded simulation state'), 'Open-file gate must present a clear updating state when transaction data is applied.');
 assert(runtimeSource.includes('PIPE_HYDRAULIC_LABEL_SELECTOR'), 'Open-file gate must inspect pipe hydraulic labels before release.');
 assert(runtimeSource.includes('PIPE_LABEL_RUNTIME_SRC'), 'Open-file gate must directly load the pipe label runtime needed for file-open readiness.');
 assert(runtimeSource.includes('ROUTE_TRACE_RUNTIME_SRC'), 'Open-file gate must directly load the route cleanup runtime needed for file-open readiness.');
@@ -106,7 +109,7 @@ assert(runtimeSource.includes('document.body.classList.remove(ACTIVE_CLASS, WARN
 });
 
 if (manifest) {
-  assert(manifest.includes('Open file readiness gate cache key: engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate8'), 'FILE_MANIFEST must document the open-file readiness gate cache key.');
+  assert(manifest.includes('Open file readiness gate cache key: engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate9'), 'FILE_MANIFEST must document the open-file readiness gate cache key.');
   assert(manifest.includes('validate:open-file-readiness-gate'), 'FILE_MANIFEST must mention the open-file readiness gate validator.');
 }
 if (uploadReadiness) {
