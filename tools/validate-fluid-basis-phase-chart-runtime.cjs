@@ -16,11 +16,12 @@ const runtimeSource = read(runtimePath);
 const indexHtml = read(indexPath);
 const manifest = read(manifestPath);
 const pkg = JSON.parse(read(packagePath));
-const cacheKey = 'engineering-fluid-basis-phase-chart-runtime.js?v=20260706-fluid-phase-chart2';
+const cacheKey = 'engineering-fluid-basis-phase-chart-runtime.js?v=20260707-fluid-phase-chart3';
 
-assert(runtimeSource.includes('2026.07-fluid-basis-phase-chart2'), 'runtime version must be present');
+assert(runtimeSource.includes('2026.07-fluid-basis-phase-chart3'), 'runtime version must be present');
 assert(runtimeSource.includes('EngineeringFluidBasisPhaseChartRuntime'), 'global runtime API must be exposed');
 assert(runtimeSource.includes('Pressure-enthalpy phase chart'), 'chart title must match the requested P-h chart placement');
+assert(runtimeSource.includes('buildExportMarkup'), 'runtime must expose export markup for PDF Fluid Basis discussion');
 assert(runtimeSource.includes('Fluid Basis Vapor Pressure'), 'chart must label Fluid Basis Vapor Pressure as the pressure source');
 assert(!runtimeSource.includes('SRC Calculated Abs. Pressure'), 'chart must not label SRC Calculated Abs. Pressure as the pressure source');
 assert(runtimeSource.includes('readFluidTemperature'), 'runtime must read temperature from Fluid Basis');
@@ -70,8 +71,8 @@ globalThis.globalModel = {
 
 delete require.cache[require.resolve(runtimePath)];
 const runtime = require(runtimePath);
-assert.equal(runtime.version, '2026.07-fluid-basis-phase-chart2', 'runtime API version mismatch');
-assert.equal(runtime.cacheKey, '20260706-fluid-phase-chart2', 'runtime API cache key mismatch');
+assert.equal(runtime.version, '2026.07-fluid-basis-phase-chart3', 'runtime API version mismatch');
+assert.equal(runtime.cacheKey, '20260707-fluid-phase-chart3', 'runtime API cache key mismatch');
 
 const calculation = runtime.buildCalculation(globalThis.globalModel);
 assert.equal(calculation.temperatureC, 90, 'calculation must use Fluid Basis temperature');
@@ -83,6 +84,10 @@ assert(Math.abs(calculation.deltaPBar) < 1e-12, 'phase pressure difference shoul
 assert.equal(calculation.statusTitle, 'Saturated boundary', 'sample point should classify as the saturation boundary');
 assert(calculation.hMarker > 0 && calculation.hMarker < 2100, 'enthalpy marker must be a finite chart coordinate');
 assert(runtime.saturationPressureBar(90) > 0.69 && runtime.saturationPressureBar(90) < 0.72, 'IAPWS P_sat fallback should be correct near 90 deg C');
+const exportMarkup = runtime.buildExportMarkup(globalThis.globalModel);
+assert(exportMarkup.includes('Pressure-enthalpy phase chart'), 'export markup must include the chart title');
+assert(exportMarkup.includes('Temperature'), 'export markup must include chart metadata');
+assert(exportMarkup.includes('liquid, mixed-phase, or vapor'), 'export markup must explain phase-region visualization');
 
 globalThis.globalModel['SRC-100'].results = {};
 globalThis.globalModel['SRC-100'].props.pressureInputBasis = 'Gauge';

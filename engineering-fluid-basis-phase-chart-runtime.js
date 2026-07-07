@@ -1,8 +1,8 @@
 !function registerEngineeringFluidBasisPhaseChartRuntime(root) {
   "use strict";
 
-  const VERSION = "2026.07-fluid-basis-phase-chart2";
-  const CACHE_KEY = "20260706-fluid-phase-chart2";
+  const VERSION = "2026.07-fluid-basis-phase-chart3";
+  const CACHE_KEY = "20260707-fluid-phase-chart3";
   const STYLE_ID = "engineering-fluid-basis-phase-chart-style";
   const PANEL_SELECTOR = "[data-fluid-basis-phase-chart-panel='true']";
   const SVG_NS = "http://www.w3.org/2000/svg";
@@ -60,6 +60,15 @@
     const abs = Math.abs(number);
     if (abs > 0 && abs < 0.001) return number.toExponential(3);
     return number.toFixed(digits);
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   function runtimeModel() {
@@ -484,6 +493,47 @@
     svg.appendChild(overlay);
   }
 
+  function serializeSvg(svg) {
+    if (!svg) return "";
+    if (typeof XMLSerializer !== "undefined") {
+      return new XMLSerializer().serializeToString(svg);
+    }
+    return svg.outerHTML || "";
+  }
+
+  function buildExportMarkup(model = runtimeModel()) {
+    const calc = buildCalculation(model);
+    let svgMarkup = "";
+    if (typeof document !== "undefined") {
+      const svg = document.createElementNS(SVG_NS, "svg");
+      svg.setAttribute("class", "fluid-basis-phase-chart-svg");
+      svg.setAttribute("role", "img");
+      svg.setAttribute("aria-label", "Water pressure enthalpy phase chart");
+      drawDiagram(svg, calc);
+      svgMarkup = serializeSvg(svg);
+    }
+    return `
+      <section class="eqp-fluid-phase-chart-figure" data-export-note="pressure-enthalpy-phase-chart">
+        <h3>Pressure-enthalpy phase chart</h3>
+        <div class="fluid-basis-phase-chart-meta">
+          <div>Temperature<strong>${escapeHtml(`${fmt(calc.temperatureC, 3)} deg C`)}</strong></div>
+          <div>Fluid Basis Vapor Pressure<strong>${escapeHtml(`${fmt(calc.actualPressureBar, 4)} bar A`)}</strong></div>
+          <div>Phase Status<strong>${escapeHtml(calc.statusTitle)}</strong></div>
+        </div>
+        <div class="fluid-basis-phase-chart-wrap">
+          ${svgMarkup || `<p class="eqp-fluid-phase-chart-fallback">Pressure-enthalpy chart rendering is unavailable in this export context.</p>`}
+        </div>
+        <div class="fluid-basis-phase-chart-legend" aria-hidden="true">
+          <span><i class="legend-liquid"></i>Saturated liquid</span>
+          <span><i class="legend-vapor"></i>Saturated vapor</span>
+          <span><i class="legend-quality"></i>Quality lines</span>
+          <span><i class="legend-temperature"></i>Temperature curves</span>
+          <span><i class="legend-point"></i>Evaluated point</span>
+        </div>
+        <p class="eqp-fluid-phase-chart-caption">The P-h chart visualizes whether the selected process fluid is in the liquid, mixed-phase, or vapor region before it flows through the pumping system.</p>
+      </section>`;
+  }
+
   function installStyles() {
     if (typeof document === "undefined" || document.getElementById(STYLE_ID)) return;
     const style = document.createElement("style");
@@ -779,7 +829,9 @@
     saturationVisualPoint,
     readFluidChartPressure,
     readFluidTemperature,
-    readFluidSaturationPressure
+    readFluidSaturationPressure,
+    drawDiagram,
+    buildExportMarkup
   };
 
   root.EngineeringFluidBasisPhaseChartRuntime = api;

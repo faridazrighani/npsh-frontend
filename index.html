@@ -421,7 +421,6 @@
                     <button type="button" id="menu-file-export" class="dropdown-submenu-trigger" aria-haspopup="true" aria-expanded="false" data-i18n-text="menu.export">Export</button>
                     <div class="dropdown-submenu-content" id="dropdown-file-export">
                         <button type="button" id="menu-export-excel-trace" data-i18n-text="menu.exportExcelTrace">Excel Calculation Trace (.xlsx)</button>
-                        <button type="button" id="menu-export-appendix-docx" data-i18n-text="menu.exportAppendixDocx">Calculation Trace Appendix (.docx)</button>
                         <button type="button" id="menu-export-appendix-pdf" data-i18n-text="menu.exportAppendixPdf">Calculation Trace Appendix (.pdf)</button>
                     </div>
                 </div>
@@ -453,7 +452,6 @@
             <div class="dropdown-content dropdown-tools-menu" id="dropdown-tools">
                 <button type="button" id="menu-tools-fluid-basis" data-i18n-text="menu.fluidBasisUnitStandard">Fluid Basis &amp; Unit Standard</button>
                 <button type="button" id="menu-tools-export-excel" data-i18n-text="menu.exportExcelTrace">Excel Calculation Trace (.xlsx)</button>
-                <button type="button" id="menu-tools-export-appendix-docx" data-i18n-text="menu.exportAppendixDocx">Calculation Trace Appendix (.docx)</button>
                 <button type="button" id="menu-tools-export-appendix-pdf" data-i18n-text="menu.exportAppendixPdf">Calculation Trace Appendix (.pdf)</button>
                 <button type="button" id="menu-run-solve" class="dropdown-separated" data-i18n-text="menu.runHydraulicNpshEvaluation">Validate / Refresh Evidence</button>
                 <div class="dropdown-submenu dropdown-submenu-flyout">
@@ -691,8 +689,13 @@
   let stylePromise = null;
   const criticalScripts = [
     'app.bundle.min.js?v=20260707-pipe-canvas-loss-label1',
+    'engineering-simulation-load-transaction-manager.js?v=20260707-simulation-load-transaction1',
+    'engineering-pump-envelope-warning-cleanup-runtime.js?v=20260707-pump-envelope-warning-clean1',
+    'engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate7',
+    'engineering-model-snapshot-export-runtime.js?v=20260707-fluid-basis-workspace-snapshot10',
+    'engineering-export-equation-professional-runtime.js?v=20260707-pdf-equation-professional7',
     'engineering-src-connect-context-runtime.js?v=20260706-src-connect-context1',
-    'engineering-fluid-basis-phase-chart-runtime.js?v=20260706-fluid-phase-chart2',
+    'engineering-fluid-basis-phase-chart-runtime.js?v=20260707-fluid-phase-chart3',
     'engineering-pump-status-visual-lock.js?v=20260706-pump-incomplete-badge1',
     'engineering-pipe-properties-cleanup-runtime.js?v=20260706-pipe-hl-allow-clean1',
     'engineering-pump-performance-canonical-chart.js?v=20260628-manual-npshr1'
@@ -738,10 +741,10 @@
     'engineering-library-governance.js?v=20260530-pagespeed3',
     'engineering-caption-audit-overrides.js?v=20260630-pipe-properties-live1',
     'engineering-head-power-audit-guard.js?v=20260627-head-power-audit2',
-    'engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260706-status-matrix-lock1',
+    'engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260707-pump-panel-clean6',
     'engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3',
     'engineering-defense-export-package.js?v=20260702-source-boundary-clean1',
-    'engineering-pipe-moody-chart-audit.js?v=20260630-pipe-moody-audit-clean-unused-pipe-fields1',
+    'engineering-pipe-moody-chart-audit.js?v=20260707-pipe-moody-export-chart3',
     'engineering-pump-formula-defense-live-audit.js?v=20260706-status-matrix-lock1',
     'engineering-pump-performance-chart-audit.js?v=20260630-pipe-properties-live1'
   ];
@@ -750,7 +753,7 @@
     ...statusScripts,
     'engineering-pipe-canvas-hydraulic-label-runtime-20260707-pfv-loss-summary-clean1.js?v=20260707-pfv-loss-summary-clean1',
     'engineering-browser-issues-runtime.js?v=20260620-orphan-label-cleanup1',
-    'engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260706-status-matrix-lock1',
+    'engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260707-pump-panel-clean6',
     'engineering-canvas-fast-preview-runtime.js?v=20260706-canvas-fast-preview18'
   ];
   const taskWindow = document.getElementById('taskWindow');

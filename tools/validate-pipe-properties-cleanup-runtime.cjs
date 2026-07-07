@@ -76,7 +76,7 @@ assert(
 );
 assert(
   indexHtml.indexOf(CLEANUP_RUNTIME_URL)
-    < indexHtml.indexOf('engineering-pipe-moody-chart-audit.js?v=20260630-pipe-moody-audit-clean-unused-pipe-fields1'),
+    < indexHtml.indexOf('engineering-pipe-moody-chart-audit.js?v=20260707-pipe-moody-export-chart3'),
   'Cleanup runtime must load before the diagnostic Moody cleanup fallback.'
 );
 assert(

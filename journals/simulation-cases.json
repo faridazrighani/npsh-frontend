@@ -107,13 +107,7 @@
         "id": "Evaluasi pompa air panas P-2941A"
       },
       "sampleFile": "journals/simulasi_6/Evaluasi_Pompa_Sentrifugal_P-2941A_sebagai_Pompa_Air_Panas.untirta",
-      "analysisReport": "journals/analysis-reports/simulasi-6-analysis.json",
-      "disabled": true,
-      "disabledReason": "Temporarily disabled - journal data incomplete.",
-      "disabledReasonI18n": {
-        "en": "Temporarily disabled - journal data incomplete.",
-        "id": "Sementara dinonaktifkan - data jurnal belum lengkap."
-      }
+      "analysisReport": "journals/analysis-reports/simulasi-6-analysis.json"
     }
   ]
 }

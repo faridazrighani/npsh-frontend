@@ -23,9 +23,15 @@ Checks passed:
 - Unbundled toolbar source files and Windows `desktop.ini` noise were moved out of the public package.
 - Live parameter repaint-lock validation passed and must stay part of the frontend validation set.
 - Pipe/Fitting/Valve canvas hydraulic label validation passed and must stay part of the frontend validation set.
+- Pump envelope warning cleanup validation passed and must stay part of the frontend validation set; pump performance/envelope/BEP/design-duty warnings are sanitized from pump results and the canvas Warnings panel while hydraulic NPSH warnings remain visible.
 - Pipe Formula Defense source-confidence map validation passed and must stay part of the frontend validation set.
 - Formula Defense UI compact/reference-width responsive/resizable layout and academic pipe trace content validation passed and must stay part of the frontend validation set.
-- Export canvas snapshot fallback is locked to stay silent during normal XLSX/DOCX/PDF export.
+- Export canvas snapshot fallback is locked to stay silent during normal XLSX/PDF export.
+- Fluid Basis workspace Model Snapshot export validation passed and must stay part of Menu -> File -> Export validation; PDF Model Snapshot starts from the visible Fluid Basis/Route dock and continues into the native/original canvas capture so live Pipe/Fitting/Valve parameter labels remain included.
+- Export equation professional PDF-only validation passed and must stay part of Menu -> File -> Export PDF validation; PDF data is refreshed/sanitized against the active topology so reduced suction-only routes do not leak stale discharge/SNK report steps, PDF Fluid Basis includes the Pressure-enthalpy phase chart SVG discussion, PDF Moody Chart replaces the old native image/table with the compact Log-Log Moody Chart friction-factor visual and fixed segment-card copy columns, Pump Performance Chart/Curve content is removed, Excel remains on its separate original path, and DOCX is hidden from the menu.
+- Open-file readiness gate validation passed and must stay part of Menu -> File -> Open validation; `.untirta` files keep the canvas hidden until reading, validation, hydraulic result application, pipe/fitting/valve labels, and pump-panel cleanup are ready.
+- Simulation Cases 6 is enabled and locked as the P-2941A hot-water pump validation fixture; its `.untirta` payload is synchronized from Papah-sim-6, migrated to the current Pipe Properties layout, and mirrored consistently for frontend/API public paths.
+- Simulation Load Transaction Manager validation passed and must stay part of Menu -> File -> Open and Simulation Case validation; every file/case load gets a session token, stale file/fetch/body reads are abort-guarded, selected runtime/case assets are warm-cached, and transient warning/route-trace UI is cleaned before the next model is applied.
 
 Important dependency:
 

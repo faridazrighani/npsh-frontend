@@ -13,7 +13,7 @@ const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 const publish = fs.readFileSync(path.join(rootDir, 'tools', 'publish-local-live.cjs'), 'utf8');
 
-assert.equal(runtime.version, '2026.07-route-trace-audit-v42', 'Route trace audit runtime should expose the locked canvas object-card stability version.');
+assert.equal(runtime.version, '2026.07-route-trace-audit-v48', 'Route trace audit runtime should expose the locked canvas object-card stability version.');
 assert.equal(typeof runtime.openRouteAuditPanel, 'function', 'Dedicated route audit panel should remain available.');
 assert.equal(typeof runtime.pruneDefaultCanvasRouteTraceOverlays, 'function', 'Canvas route trace overlay pruning should be exposed for audit tests.');
 assert.equal(typeof runtime.pruneDefaultPumpRouteTraceRows, 'function', 'Pump route trace row pruning should be exposed for audit tests.');
@@ -37,6 +37,7 @@ assert(runtimeSource.includes("'NPSH Vapor Press.'"), 'Pump live panel lock shou
 assert(runtimeSource.includes("'Vapor Press. Used'"), 'Pump live panel lock should hide Vapor Press. Used rows.');
 assert(runtimeSource.includes('function isHiddenPumpCanvasSectionText'), 'Pump live panel lock should remove ROUTE TRACE sections with info/help suffixes.');
 assert(runtimeSource.includes('function isHiddenPumpCanvasRowLabel'), 'Pump live panel lock should normalize route/vapor row labels before hiding them.');
+assert(runtimeSource.includes('function dedupePumpCanvasPanelRows'), 'Pump live panel lock should remove duplicated STATUS sections and duplicated status rows.');
 assert(runtimeSource.includes("upsertPumpCanvasRow(panel, 'Hydraulic NPSH'"), 'Pump canvas panel lock should add a stable Hydraulic NPSH status row when available.');
 assert(runtimeSource.includes("upsertPumpCanvasRow(panel, 'Backend Valid.'"), 'Pump canvas panel lock should add a stable backend validation row when available.');
 assert(publish.includes("['run', 'validate:route-trace-default-lock']"), 'Publish flow must run the route-trace/default canvas status lock before deploy.');
@@ -109,6 +110,18 @@ assert(runtimeSource.includes('function patchCanvasOverlayRenderHooks'), 'Canvas
 assert(runtimeSource.includes("'drawConnections'"), 'Canvas overlay lock should hook drawConnections redraws.');
 assert(runtimeSource.includes("'updateSimulation'"), 'Canvas overlay lock should hook updateSimulation redraws.');
 assert(runtimeSource.includes('function startDefaultCanvasRouteTraceRetryLoop'), 'Canvas overlay lock should retry while delayed overlays settle.');
+assert(runtimeSource.includes('const CANVAS_INTERACTION_PRUNE_DELAYS = [0, 60, 180, 420, 900, 1500, 2300, 3200];'), 'Canvas interaction cleanup should sweep immediately and after delayed click-driven panel repaints.');
+assert(runtimeSource.includes('function installCanvasInteractionPanelCleanup'), 'Canvas clicks after opening a file should reinstall the pump-panel cleanup sweep.');
+assert(runtimeSource.includes("['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click'].forEach"), 'Canvas interaction cleanup should cover pointer and mouse click paths.');
+assert(runtimeSource.includes('root.addEventListener?.(eventName, handler, true);'), 'Canvas interaction cleanup should listen at window capture phase before document-level event blockers.');
+assert(runtimeSource.includes("const handledEvents = typeof WeakSet === 'function' ? new WeakSet() : null;"), 'Canvas interaction cleanup should avoid duplicate window/document sweeps for the same click event.');
+assert(runtimeSource.includes('let canvasOverlayImmediatePruneActive = false;'), 'Canvas mutation cleanup should use a re-entrancy guard for immediate pre-paint pruning.');
+assert(runtimeSource.includes('function runImmediateDefaultCanvasRouteTracePrune'), 'Canvas mutation cleanup should prune live panels immediately before the next browser frame.');
+assert(runtimeSource.includes('function immediateCanvasPruneScopeForMutation'), 'Canvas mutation cleanup should target only the changed live panel to avoid file-open churn.');
+assert(runtimeSource.includes('function hasImmediateDirtyPumpPanelContent'), 'Immediate canvas cleanup should only run when a changed panel actually contains dirty route/duplicate rows.');
+assert(runtimeSource.includes('const immediateScopes = new Set();'), 'Hydraulic canvas mutations should collect targeted immediate cleanup scopes.');
+assert(runtimeSource.includes('if (hasImmediateDirtyPumpPanelContent(scope)) runImmediateDefaultCanvasRouteTracePrune(scope);'), 'Hydraulic canvas mutations should trigger targeted immediate cleanup only for dirty panels.');
+assert(runtimeSource.includes('canvasInteractionPanelCleanup'), 'Install status should report the canvas interaction panel cleanup guard.');
 assert(runtimeSource.includes('let canvasOverlayPrunePending = false;'), 'Canvas overlay pruning should coalesce mutation bursts to avoid UI lockups while loading .untirta files.');
 assert(runtimeSource.includes("if (valueElement && valueElement.textContent !== existingValue)"), 'SNK Sink Flow/P abs/Elev./Head updates should avoid writing identical text on every observer pass.');
 assert(runtimeSource.includes("if (element.dataset.routeTraceDefaultLock !== 'hidden-default')"), 'Canvas overlay lock metadata should be idempotent to avoid observer self-trigger loops.');
@@ -158,6 +171,7 @@ class FakeElement {
     this.style = {};
     this.classList = new FakeClassList(this);
     this.rect = { left: 0, top: 0, width: 260, height: 76 };
+    this.eventListeners = {};
   }
 
   appendChild(child) {
@@ -180,7 +194,15 @@ class FakeElement {
     this.parentElement = null;
   }
 
-  addEventListener() {}
+  addEventListener(eventName, handler) {
+    if (!this.eventListeners[eventName]) this.eventListeners[eventName] = [];
+    this.eventListeners[eventName].push(handler);
+  }
+
+  dispatchEvent(event) {
+    const payload = { target: this, ...event };
+    (this.eventListeners[payload.type] || []).forEach((handler) => handler(payload));
+  }
 
   setAttribute(name, value) {
     this.attributes[name] = String(value);
@@ -417,6 +439,12 @@ try {
   const canonicalPumpPanel = new FakeElement('div');
   canonicalPumpPanel.classList.add('pump-live-params');
   canonicalPumpPanel.dataset.nodeId = 'P-CANON';
+  canonicalPumpPanel.appendChild(section('STATUS i'));
+  canonicalPumpPanel.appendChild(row('Hydraulic NPSH', 'OK'));
+  canonicalPumpPanel.appendChild(row('Backend Valid.', 'Connected'));
+  canonicalPumpPanel.appendChild(section('STATUS i'));
+  canonicalPumpPanel.appendChild(row('Hydraulic NPSH', 'OK'));
+  canonicalPumpPanel.appendChild(row('Backend Valid.', 'Connected'));
   canonicalPumpPanel.appendChild(section('SUCTION'));
   canonicalPumpPanel.appendChild(row('Flow', '39.700'));
   canonicalPumpPanel.appendChild(row('Suction Press.', '2.155'));
@@ -690,10 +718,41 @@ try {
     },
     'Canonical pump canvas values should remain stable from file open through delayed route-trace cleanup.'
   );
+
+  const clickRepaintPumpPanel = new FakeElement('div');
+  clickRepaintPumpPanel.classList.add('pump-live-params');
+  clickRepaintPumpPanel.dataset.nodeId = 'P-CANON';
+  clickRepaintPumpPanel.appendChild(section('STATUS i'));
+  clickRepaintPumpPanel.appendChild(row('Hydraulic NPSH', 'OK'));
+  clickRepaintPumpPanel.appendChild(row('Backend Valid.', 'Connected'));
+  clickRepaintPumpPanel.appendChild(section('STATUS i'));
+  clickRepaintPumpPanel.appendChild(row('Hydraulic NPSH', 'OK'));
+  clickRepaintPumpPanel.appendChild(row('Backend Valid.', 'Connected'));
+  clickRepaintPumpPanel.appendChild(section('SUCTION i'));
+  clickRepaintPumpPanel.appendChild(row('Flow', '39.700'));
+  clickRepaintPumpPanel.appendChild(row('NPSH Vapor Press.', '0.702'));
+  clickRepaintPumpPanel.appendChild(section('DISCHARGE i'));
+  clickRepaintPumpPanel.appendChild(row('Pump Head', '37.664'));
+  clickRepaintPumpPanel.appendChild(section('ROUTE TRACE i'));
+  clickRepaintPumpPanel.appendChild(row('Route', 'Fluid Basis -> SRC-100 -> PIPE-1 -> P-100 -> PIPE-2 -> SNK-100'));
+  clickRepaintPumpPanel.appendChild(row('Suction Loss', '0.014 / 0.001'));
+  clickRepaintPumpPanel.appendChild(row('Disch. Loss', '0.282 / 0.027'));
+  canvas.appendChild(clickRepaintPumpPanel);
+  fakeDocument.dispatchEvent({ type: 'click', target: canvas });
+  assert.deepEqual(
+    sectionsIn(clickRepaintPumpPanel),
+    ['STATUS', 'SUCTION', 'DISCHARGE'],
+    'Open-file canvas clicks should immediately clean duplicate STATUS and ROUTE TRACE sections created by delayed pump-panel repaint.'
+  );
+  assert.deepEqual(
+    labelsIn(clickRepaintPumpPanel),
+    ['Hydraulic NPSH', 'Backend Valid.', 'Flow', 'Required Head'],
+    'Open-file canvas clicks should remove route/loss/vapor rows from newly repainted pump panels.'
+  );
   assert.deepEqual(
     sectionsIn(legacyPumpPanel),
-    ['Suction', 'Discharge'],
-    'Legacy loaded pump panels should keep SUCTION/DISCHARGE sections and remove Route Trace section.'
+    ['SUCTION', 'DISCHARGE'],
+    'Legacy loaded pump panels should normalize SUCTION/DISCHARGE sections and remove Route Trace section.'
   );
   assert.deepEqual(
     labelsIn(legacySinkPanel, '.sink-live-param-row', '.sink-live-param-label'),
@@ -741,11 +800,11 @@ try {
 }
 
 assert(
-  index.includes('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260706-status-matrix-lock1'),
+  index.includes('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260707-pump-panel-clean6'),
   'Index must load the route trace audit runtime with the default-lock cache key.'
 );
 assert(
-  manifest.includes('Route audit cache key: engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260706-status-matrix-lock1'),
+  manifest.includes('Route audit cache key: engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260707-pump-panel-clean6'),
   'Manifest must document the route trace default-lock cache key.'
 );
 

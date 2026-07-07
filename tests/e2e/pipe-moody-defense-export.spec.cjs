@@ -146,7 +146,7 @@ async function waitForNpshApp(page) {
     && typeof window.updateSimulation === 'function'
     && window.EngineeringDefenseExportPackage?.schemaVersion === 'defense-export-package.v1'
     && window.EngineeringPipePropertiesCleanupRuntime?.version === 'engineering-pipe-properties-cleanup-runtime.v1'
-    && window.EngineeringPipeMoodyChartAudit?.version === 'engineering-pipe-moody-chart-audit.v7'
+    && window.EngineeringPipeMoodyChartAudit?.version === 'engineering-pipe-moody-chart-audit.v8'
     && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v13'
     && window.__npshRouteTraceAuditInstalled?.fetchSimulation
     && window.__npshRouteTraceAuditInstalled?.primaryResultApplier

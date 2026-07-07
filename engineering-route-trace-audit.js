@@ -1,5 +1,5 @@
 (function registerEngineeringRouteTraceAudit(root) {
-  const VERSION = '2026.07-route-trace-audit-v42';
+  const VERSION = '2026.07-route-trace-audit-v48';
   const PANEL_ID = 'engineeringRouteTraceAuditPanel';
   const PANEL_BODY_ID = 'engineeringRouteTraceAuditPanelBody';
   const MENU_BUTTON_ID = 'menu-tools-route-trace-audit';
@@ -21,6 +21,7 @@
     'npsh:realtime-autosolve-complete'
   ];
   const SOLVER_CANVAS_LAYOUT_SWEEP_DELAYS = [120, 720];
+  const CANVAS_INTERACTION_PRUNE_DELAYS = [0, 60, 180, 420, 900, 1500, 2300, 3200];
   const CANVAS_PRUNE_MIN_INTERVAL_MS = 140;
   const PUMP_CANVAS_HIDDEN_ROW_LABELS = new Set([
     'Route',
@@ -88,6 +89,7 @@
   let canvasOverlayPrunePending = false;
   let canvasOverlayPruneScope = null;
   let canvasOverlayLastPruneMs = 0;
+  let canvasOverlayImmediatePruneActive = false;
   let canvasOverlayRetryTimer = null;
   let canvasOverlayRetryCount = 0;
   const canvasOverlayWrappedFunctions = new Set();
@@ -99,6 +101,7 @@
   let sinkPropertyChangeRefreshInstalled = false;
   let renderSidebarSinkCleanupWrapped = null;
   let solverCanvasLayoutListenersInstalled = false;
+  let canvasInteractionPanelCleanupInstalled = false;
   let pumpLiveParameterRowBuilderWrapped = null;
   let sinkLiveParameterRowBuilderWrapped = null;
   let canonicalLiveParameterRowBuilderTimer = null;
@@ -367,9 +370,11 @@
           removed += 1;
         }
       });
+      removed += dedupePumpCanvasPanelRows(panel);
       removed += ensurePumpStatusCanvasRows(panel);
       removed += syncPumpCanvasFlowRow(panel);
       removed += normalizePumpHeadReadoutLabel(panel);
+      removed += dedupePumpCanvasPanelRows(panel);
       removed += syncPumpObjectTooltip(panel);
     });
     return removed;
@@ -2042,6 +2047,42 @@
     return text;
   }
 
+  function dedupePumpCanvasPanelRows(panel) {
+    if (!panel?.querySelectorAll) return 0;
+    let removed = 0;
+    const seenSections = new Set();
+    panel.querySelectorAll('.pump-live-param-section').forEach((section) => {
+      const label = canonicalPumpCanvasSectionLabel(section.textContent);
+      if (!label || !['STATUS', 'SUCTION', 'DISCHARGE'].includes(label)) return;
+      if (seenSections.has(label)) {
+        section.remove();
+        removed += 1;
+        return;
+      }
+      seenSections.add(label);
+      if (normalizeText(section.textContent) !== label) section.textContent = label;
+    });
+
+    const seenRows = new Set();
+    panel.querySelectorAll('.pump-live-param-row').forEach((row) => {
+      const label = normalizedReadoutLabel(row.querySelector?.('.pump-live-param-label')?.textContent);
+      if (!label) return;
+      if (isHiddenPumpCanvasRowLabel(label)) {
+        row.remove();
+        removed += 1;
+        return;
+      }
+      if (!['Hydraulic NPSH', 'Backend Valid.'].includes(label)) return;
+      if (seenRows.has(label)) {
+        row.remove();
+        removed += 1;
+        return;
+      }
+      seenRows.add(label);
+    });
+    return removed;
+  }
+
   function pumpPanelSectionByLabel(panel, label) {
     if (!panel?.querySelectorAll) return null;
     const target = canonicalPumpCanvasSectionLabel(label);
@@ -3163,6 +3204,62 @@
     }, finalDelayMs);
   }
 
+  function runImmediateDefaultCanvasRouteTracePrune(scope) {
+    if (typeof document === 'undefined' || canvasOverlayImmediatePruneActive) return [];
+    canvasOverlayImmediatePruneActive = true;
+    try {
+      const canvas = scope || document.getElementById('canvas') || document;
+      patchCanonicalLiveParameterRowBuilders();
+      return pruneDefaultCanvasRouteTraceOverlays(canvas);
+    } finally {
+      canvasOverlayImmediatePruneActive = false;
+    }
+  }
+
+  function immediateCanvasPruneScopeForMutation(mutation) {
+    if (!mutation) return null;
+    const panelSelector = '.pump-live-params, .sink-live-params';
+    if (mutation.type === 'childList') {
+      const addedNodes = Array.from(mutation.addedNodes || []);
+      for (const node of addedNodes) {
+        if (node?.nodeType !== 1) continue;
+        const panel = node.matches?.(panelSelector)
+          ? node
+          : node.querySelector?.(panelSelector);
+        if (panel) return panel;
+        const parentPanel = node.parentElement?.closest?.(panelSelector);
+        if (parentPanel) return parentPanel;
+        if (hasRouteTraceCanvasText(node)) return node;
+      }
+      return mutation.target?.closest?.(panelSelector) || null;
+    }
+    const element = mutationElement(mutation);
+    return element?.closest?.(panelSelector) || (hasRouteTraceCanvasText(element) ? element : null);
+  }
+
+  function hasImmediateDirtyPumpPanelContent(scope) {
+    if (!scope?.querySelectorAll) return false;
+    const panel = scope.matches?.('.pump-live-params') ? scope : scope.querySelector?.('.pump-live-params');
+    if (!panel) return hasRouteTraceCanvasText(scope);
+    if (Array.from(panel.querySelectorAll('.pump-live-param-section')).some((section) => isHiddenPumpCanvasSectionText(section.textContent))) return true;
+    if (Array.from(panel.querySelectorAll('.pump-live-param-row')).some((row) => isHiddenPumpCanvasRowLabel(row.querySelector?.('.pump-live-param-label')?.textContent))) return true;
+    const seenSections = new Set();
+    for (const section of panel.querySelectorAll('.pump-live-param-section')) {
+      const label = canonicalPumpCanvasSectionLabel(section.textContent);
+      if (!['STATUS', 'SUCTION', 'DISCHARGE'].includes(label)) continue;
+      if (seenSections.has(label)) return true;
+      seenSections.add(label);
+    }
+    const seenRows = new Set();
+    for (const row of panel.querySelectorAll('.pump-live-param-row')) {
+      const label = normalizedReadoutLabel(row.querySelector?.('.pump-live-param-label')?.textContent);
+      if (!['Hydraulic NPSH', 'Backend Valid.'].includes(label)) continue;
+      if (seenRows.has(label)) return true;
+      seenRows.add(label);
+    }
+    return false;
+  }
+
   function runSolverCanvasLayoutStabilization(scope, options = {}) {
     if (typeof document === 'undefined') return 0;
     const refreshPipeLabels = options.refreshPipeLabels !== false;
@@ -3314,6 +3411,38 @@
     return true;
   }
 
+  function isCanvasInteractionTarget(target) {
+    const element = target?.nodeType === 1 ? target : target?.parentElement;
+    return Boolean(element?.closest?.('#canvas, .pfd-canvas'));
+  }
+
+  function installCanvasInteractionPanelCleanup() {
+    if (typeof document === 'undefined' || canvasInteractionPanelCleanupInstalled) return false;
+    canvasInteractionPanelCleanupInstalled = true;
+    const handledEvents = typeof WeakSet === 'function' ? new WeakSet() : null;
+    const handler = (event) => {
+      if (handledEvents?.has(event)) return;
+      handledEvents?.add(event);
+      if (!isCanvasInteractionTarget(event.target)) return;
+      const canvas = document.getElementById('canvas') || document;
+      patchCanonicalLiveParameterRowBuilders();
+      CANVAS_INTERACTION_PRUNE_DELAYS.forEach((delayMs) => {
+        root.setTimeout?.(() => {
+          patchCanonicalLiveParameterRowBuilders();
+          pruneDefaultCanvasRouteTraceOverlays(canvas);
+          if (typeof root.refreshPipeCanvasHydraulicLabels === 'function') {
+            root.refreshPipeCanvasHydraulicLabels(document);
+          }
+        }, delayMs);
+      });
+    };
+    ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click'].forEach((eventName) => {
+      root.addEventListener?.(eventName, handler, true);
+      document.addEventListener(eventName, handler, true);
+    });
+    return true;
+  }
+
   function watchDefaultCanvasRouteTraceOverlays() {
     if (
       typeof document === 'undefined'
@@ -3326,14 +3455,23 @@
       let shouldSyncTooltips = false;
       const overlayUnlocked = isRouteTraceCanvasOverlayUnlocked();
       let shouldPruneCanvas = false;
+      const immediateScopes = new Set();
       for (const mutation of mutations) {
         if (isHydraulicCanvasMutation(mutation)) {
           shouldPruneCanvas = !overlayUnlocked;
           shouldSyncTooltips = true;
+          const immediateScope = immediateCanvasPruneScopeForMutation(mutation);
+          if (immediateScope) immediateScopes.add(immediateScope);
         }
       }
-      if (shouldSyncTooltips) scheduleRouteObjectTooltipSync(document.getElementById('canvas') || document, 120);
-      if (shouldPruneCanvas) scheduleDefaultCanvasRouteTracePrune(document.getElementById('canvas') || document, 80);
+      const canvas = document.getElementById('canvas') || document;
+      if (shouldSyncTooltips) scheduleRouteObjectTooltipSync(canvas, 120);
+      if (shouldPruneCanvas) {
+        immediateScopes.forEach((scope) => {
+          if (hasImmediateDirtyPumpPanelContent(scope)) runImmediateDefaultCanvasRouteTracePrune(scope);
+        });
+        scheduleDefaultCanvasRouteTracePrune(canvas, 80);
+      }
     });
     const start = () => {
       const canvas = document.getElementById('canvas');
@@ -3751,6 +3889,7 @@
     const sinkPropertyChangeRefresh = installSinkPropertyChangeRefresh();
     const sinkFlowDemandReferenceBoundaryHead = patchSinkFlowDemandReferenceBoundaryHead();
     const solverCanvasLayoutStability = installSolverCanvasLayoutStabilityListeners();
+    const canvasInteractionPanelCleanup = installCanvasInteractionPanelCleanup();
     const canonicalLiveParameterRowBuilders = startCanonicalLiveParameterRowBuilderRetryLoop();
     const installed = {
       payloadBuilder,
@@ -3761,6 +3900,7 @@
       sinkFlowDemandReferenceBoundaryHead,
       renderSidebarSinkCleanup,
       solverCanvasLayoutStability,
+      canvasInteractionPanelCleanup,
       canonicalLiveParameterRowBuilders,
       canvasOverlayRenderHooks: patchedCanvasOverlayHooks,
       routePanel: typeof document !== 'undefined' && !!document.getElementById(PANEL_ID),
@@ -3777,6 +3917,7 @@
       || sinkFlowDemandReferenceBoundaryHead
       || renderSidebarSinkCleanup
       || solverCanvasLayoutStability
+      || canvasInteractionPanelCleanup
       || canonicalLiveParameterRowBuilders
       || patchedCanvasOverlayHooks.length > 0;
     if (!routeTraceInstallRefreshDone || newInstallActivity) {

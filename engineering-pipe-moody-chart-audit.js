@@ -1,6 +1,6 @@
 (function registerEngineeringPipeMoodyChartAudit(root) {
-  const VERSION = 'engineering-pipe-moody-chart-audit.v7';
-  const CACHE_KEY = '20260630-pipe-moody-audit-clean-unused-pipe-fields1';
+  const VERSION = 'engineering-pipe-moody-chart-audit.v8';
+  const CACHE_KEY = '20260707-pipe-moody-export-chart3';
   const PANEL_ID = 'engineeringPipeMoodyChartPanel';
   const BODY_ID = 'engineeringPipeMoodyChartPanelBody';
   const REMOVED_PIPE_PROPERTY_KEYS = [
@@ -152,6 +152,522 @@
     return points
       .map((point) => `${scale.x(point.reynolds).toFixed(1)},${scale.y(point.frictionFactor).toFixed(1)}`)
       .join(' ');
+  }
+
+  function formatDecimal(value, digits = 4, fallback = '-') {
+    const parsed = number(value, null);
+    return parsed === null ? fallback : parsed.toFixed(digits).replace(/\.?0+$/, '');
+  }
+
+  function formatScientific(value, mantissaDigits = 3, fallback = '-') {
+    const parsed = number(value, null);
+    if (parsed === null || parsed <= 0) return fallback;
+    const exponent = Math.floor(Math.log(parsed) / Math.LN10);
+    const mantissa = parsed / Math.pow(10, exponent);
+    return `${mantissa.toFixed(mantissaDigits)}e${exponent >= 0 ? '+' : ''}${exponent}`;
+  }
+
+  function formatReynolds(value) {
+    const parsed = number(value, null);
+    if (parsed === null) return '-';
+    return parsed >= 10000 ? formatScientific(parsed, 3) : formatDecimal(parsed, 0);
+  }
+
+  function formatFriction(value) {
+    const parsed = number(value, null);
+    if (parsed === null) return '-';
+    return parsed < 0.01 ? parsed.toFixed(5) : parsed.toFixed(5).replace(/0+$/, '').replace(/\.$/, '');
+  }
+
+  function formatRelRoughness(value) {
+    const parsed = number(value, null);
+    if (parsed === null) return '-';
+    if (parsed > 0 && parsed < 0.0001) return formatScientific(parsed, 4);
+    return parsed.toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+  }
+
+  function classifyRegime(reynolds) {
+    const re = number(reynolds, null);
+    if (re === null) return 'Unverified';
+    if (re < 2300) return 'Laminar';
+    if (re < 4000) return 'Transition';
+    return 'Turbulent';
+  }
+
+  function markerRegime(marker = {}) {
+    return marker.regime || marker.flowRegime || marker.flow_regime || classifyRegime(marker.reynolds);
+  }
+
+  function markerName(marker = {}, index = 0) {
+    return marker.name || marker.segmentName || marker.label || `Segment ${index + 1}`;
+  }
+
+  function traceFromPipeNode(pipeId, node) {
+    if (!node || typeof node !== 'object') return null;
+    const trace = node.results?.calculationTrace || node.calculationTrace || node.trace || null;
+    if (trace?.moody) {
+      return {
+        pipeId: pipeId || node.id || '',
+        pipeName: node.name || pipeId || node.id || 'Pipe',
+        trace
+      };
+    }
+    if (node.moody) {
+      return {
+        pipeId: pipeId || node.id || '',
+        pipeName: node.name || pipeId || node.id || 'Pipe',
+        trace: { moody: node.moody }
+      };
+    }
+    return null;
+  }
+
+  function pushCandidateTrace(candidates, candidate) {
+    if (!candidate?.trace?.moody) return;
+    const markerCount = Array.isArray(candidate.trace.moody.markers) ? candidate.trace.moody.markers.length : 0;
+    const signature = [
+      candidate.pipeId || '',
+      candidate.pipeName || '',
+      markerCount,
+      candidate.trace.moody.note || ''
+    ].join('|');
+    if (candidates.some((item) => item.signature === signature)) return;
+    candidates.push({ ...candidate, markerCount, signature });
+  }
+
+  function collectMoodyTraceCandidates(report, options = {}) {
+    const candidates = [];
+    const models = [
+      activeModel(),
+      root.__npshGlobalModel,
+      root.globalModel,
+      report?.model,
+      report?.sourceData?.model,
+      report?.sourceData?.project?.model,
+      report?.project?.model,
+      report?.nodeResults
+    ].filter((model, index, list) => model && list.indexOf(model) === index);
+
+    models.forEach((model) => {
+      Object.entries(model || {}).forEach(([pipeId, node]) => {
+        if (options.pipeId && pipeId !== options.pipeId) return;
+        pushCandidateTrace(candidates, traceFromPipeNode(pipeId, node));
+      });
+    });
+
+    const seen = typeof WeakSet === 'function' ? new WeakSet() : null;
+    function visit(value, path = []) {
+      if (!value || typeof value !== 'object') return;
+      if (seen) {
+        if (seen.has(value)) return;
+        seen.add(value);
+      }
+      if (Array.isArray(value)) {
+        value.forEach((item, index) => visit(item, path.concat(String(index))));
+        return;
+      }
+      const pipeId = value.id || value.pipeId || path.slice(-1)[0] || '';
+      if (!options.pipeId || pipeId === options.pipeId) {
+        pushCandidateTrace(candidates, traceFromPipeNode(pipeId, value));
+      }
+      Object.keys(value).forEach((key) => visit(value[key], path.concat(key)));
+    }
+    visit(report, []);
+
+    return candidates.sort((left, right) => right.markerCount - left.markerCount);
+  }
+
+  function resolveMoodyExportTrace(report, options = {}) {
+    return collectMoodyExportTraces(report, options)[0] || {
+      pipeId: '',
+      pipeName: 'Pipe',
+      trace: { moody: {} },
+      markerCount: 0
+    };
+  }
+
+  function pushUniquePipeId(list, pipeId) {
+    const normalized = String(pipeId || '').trim();
+    if (!normalized || list.includes(normalized)) return;
+    list.push(normalized);
+  }
+
+  function moodyConnectionSources(report) {
+    const sources = [];
+    try {
+      if (typeof connections !== 'undefined' && Array.isArray(connections)) sources.push(connections);
+    } catch (error) {
+      // Some bundles expose connections only through the root object or report payload.
+    }
+    [
+      root.connections,
+      root.__npshConnections,
+      report?.connections,
+      report?.sourceData?.connections,
+      report?.sourceData?.project?.connections,
+      report?.project?.connections
+    ].forEach((value) => {
+      if (Array.isArray(value) && !sources.includes(value)) sources.push(value);
+    });
+    return sources;
+  }
+
+  function collectPipeIdsFromRows(rows, output) {
+    if (!Array.isArray(rows)) return;
+    rows.forEach((row) => {
+      pushUniquePipeId(output, row?.pipeId || row?.objectId || row?.id);
+    });
+  }
+
+  function collectPipeIdsFromPathText(pathText, output, report) {
+    const textValue = String(pathText || '').trim();
+    if (!textValue) return;
+    const models = [
+      activeModel(),
+      root.__npshGlobalModel,
+      root.globalModel,
+      report?.model,
+      report?.sourceData?.model,
+      report?.sourceData?.project?.model,
+      report?.project?.model,
+      report?.nodeResults
+    ].filter(Boolean);
+    textValue.split(/\s*->\s*|\s*>\s*/).forEach((token) => {
+      const id = String(token || '').trim();
+      if (!id) return;
+      const isPipe = models.some((model) => model?.[id]?.type === 'pipe') || /^PIPE[-_\s]?\d+/i.test(id);
+      if (isPipe) pushUniquePipeId(output, id);
+    });
+  }
+
+  function collectMoodyPipeOrder(report, options = {}) {
+    const explicitOrder = [];
+    pushUniquePipeId(explicitOrder, options.pipeId);
+    (Array.isArray(options.pipeIds) ? options.pipeIds : []).forEach((pipeId) => pushUniquePipeId(explicitOrder, pipeId));
+
+    moodyConnectionSources(report).forEach((connectionsList) => {
+      connectionsList
+        .filter((connection) => !connection?.connectionType || connection.connectionType === 'hydraulic')
+        .forEach((connection) => pushUniquePipeId(explicitOrder, connection?.pipeId || connection?.pipe || connection?.objectId));
+    });
+    collectPipeIdsFromRows(report?.routeRows, explicitOrder);
+    collectPipeIdsFromRows(report?.moody?.rows, explicitOrder);
+    collectPipeIdsFromRows(report?.sourceData?.routeRows, explicitOrder);
+    collectPipeIdsFromRows(report?.sourceData?.primary?.routeRows, explicitOrder);
+    collectPipeIdsFromPathText(report?.sourceData?.primary?.trace?.path?.text, explicitOrder, report);
+    collectPipeIdsFromPathText(report?.pump?.calculationTrace?.path?.text, explicitOrder, report);
+    collectPipeIdsFromPathText(report?.path?.text, explicitOrder, report);
+
+    if (explicitOrder.length) return explicitOrder;
+
+    const fallbackOrder = [];
+    [
+      activeModel(),
+      root.__npshGlobalModel,
+      root.globalModel,
+      report?.model,
+      report?.sourceData?.model,
+      report?.sourceData?.project?.model,
+      report?.project?.model,
+      report?.nodeResults
+    ].filter(Boolean).forEach((model) => {
+      Object.entries(model || {}).forEach(([pipeId, node]) => {
+        if (node?.type === 'pipe') pushUniquePipeId(fallbackOrder, pipeId);
+      });
+    });
+    return fallbackOrder;
+  }
+
+  function pipeNodeFromSources(pipeId, report) {
+    return [
+      activeModel(),
+      root.__npshGlobalModel,
+      root.globalModel,
+      report?.model,
+      report?.sourceData?.model,
+      report?.sourceData?.project?.model,
+      report?.project?.model,
+      report?.nodeResults
+    ].filter(Boolean).map((model) => model?.[pipeId]).find((node) => node && typeof node === 'object') || null;
+  }
+
+  function placeholderMoodyCandidate(pipeId, report) {
+    const normalized = String(pipeId || '').trim();
+    if (!normalized) return null;
+    const node = pipeNodeFromSources(normalized, report);
+    return {
+      pipeId: normalized,
+      pipeName: node?.name || normalized,
+      trace: { moody: {} },
+      markerCount: 0,
+      signature: `placeholder|${normalized}`
+    };
+  }
+
+  function collectMoodyExportTraces(report, options = {}) {
+    const candidates = collectMoodyTraceCandidates(report, options);
+    const bestByPipe = new Map();
+    candidates.forEach((candidate) => {
+      const key = candidate.pipeId || candidate.pipeName || candidate.signature || `pipe-${bestByPipe.size + 1}`;
+      const existing = bestByPipe.get(key);
+      if (!existing || candidate.markerCount > existing.markerCount) {
+        bestByPipe.set(key, candidate);
+      }
+    });
+
+    const orderedPipeIds = collectMoodyPipeOrder(report, options);
+    const output = [];
+    const used = new Set();
+    const append = (candidate) => {
+      if (!candidate) return;
+      const key = candidate.pipeId || candidate.pipeName || candidate.signature;
+      if (key && used.has(key)) return;
+      if (key) used.add(key);
+      output.push(candidate);
+    };
+
+    orderedPipeIds.forEach((pipeId) => append(bestByPipe.get(pipeId) || placeholderMoodyCandidate(pipeId, report)));
+    if (!orderedPipeIds.length) {
+      Array.from(bestByPipe.values()).forEach(append);
+    }
+
+    return output.length ? output : [{
+      pipeId: '',
+      pipeName: 'Pipe',
+      trace: { moody: {} },
+      markerCount: 0,
+      signature: 'empty'
+    }];
+  }
+
+  function exportAxisScale(moody = {}) {
+    const xMin = number(moody.xMin, 1e3);
+    const xMax = number(moody.xMax, 1e8);
+    const yMin = number(moody.yMin, 0.008);
+    const yMax = number(moody.yMax, 0.12);
+    const plot = { left: 88, top: 38, width: 770, height: 282 };
+    return {
+      plot,
+      xMin,
+      xMax,
+      yMin,
+      yMax,
+      x(value) {
+        const ratio = (log10(value) - log10(xMin)) / Math.max(log10(xMax) - log10(xMin), 1e-9);
+        return plot.left + clamp(ratio, 0, 1) * plot.width;
+      },
+      y(value) {
+        const ratio = (log10(yMax) - log10(value)) / Math.max(log10(yMax) - log10(yMin), 1e-9);
+        return plot.top + clamp(ratio, 0, 1) * plot.height;
+      }
+    };
+  }
+
+  function sampleLogRange(min, max, count) {
+    return Array.from({ length: count }, (_, index) => {
+      const ratio = count <= 1 ? 0 : index / (count - 1);
+      return Math.pow(10, log10(min) + ratio * (log10(max) - log10(min)));
+    });
+  }
+
+  function swameeJainFrictionFactor(reynolds, relRoughness) {
+    const re = Math.max(number(reynolds, 0), 1);
+    if (re < 2300) return 64 / re;
+    const rough = Math.max(number(relRoughness, 0), 0);
+    const term = rough / 3.7 + 5.74 / Math.pow(re, 0.9);
+    return 0.25 / Math.pow(log10(term), 2);
+  }
+
+  function defaultLaminarCurve() {
+    return {
+      label: 'Laminar Darcy relation',
+      points: sampleLogRange(1000, 2300, 24).map((reynolds) => ({
+        reynolds,
+        frictionFactor: 64 / reynolds
+      }))
+    };
+  }
+
+  function defaultMoodyCurves() {
+    return [
+      { label: 'smooth pipe', relRoughness: 0, stroke: '#2563eb' },
+      { label: 'eps/D 1.0000e-5', relRoughness: 0.00001, stroke: '#0ea5e9' },
+      { label: 'eps/D 5.0000e-5', relRoughness: 0.00005, stroke: '#64748b' },
+      { label: 'eps/D 0.0001', relRoughness: 0.0001, stroke: '#b45309' },
+      { label: 'eps/D 0.0005', relRoughness: 0.0005, stroke: '#3f7d20' },
+      { label: 'eps/D 0.001', relRoughness: 0.001, stroke: '#e11d48' },
+      { label: 'eps/D 0.005', relRoughness: 0.005, stroke: '#7c3aed' }
+    ].map((curve) => ({
+      ...curve,
+      points: sampleLogRange(4000, 1e8, 80).map((reynolds) => ({
+        reynolds,
+        frictionFactor: swameeJainFrictionFactor(reynolds, curve.relRoughness)
+      }))
+    }));
+  }
+
+  function curvePointsForExport(curve, scale) {
+    return (curve?.points || [])
+      .filter((point) => number(point.reynolds, null) !== null && number(point.frictionFactor, null) !== null)
+      .map((point) => `${scale.x(point.reynolds).toFixed(1)},${scale.y(point.frictionFactor).toFixed(1)}`)
+      .join(' ');
+  }
+
+  function exportCurveStroke(curve, index) {
+    return curve?.stroke || curve?.color || ['#173f5f', '#2563eb', '#0ea5e9', '#64748b', '#b45309', '#3f7d20', '#e11d48', '#7c3aed'][index % 8];
+  }
+
+  function buildMoodyExportSvg(moody = {}, markers = []) {
+    const scale = exportAxisScale(moody);
+    const xTicks = [1e3, 1e4, 1e5, 1e6, 1e7, 1e8];
+    const yTicks = [0.01, 0.02, 0.03, 0.05, 0.08, 0.1];
+    const laminarCurve = Array.isArray(moody.laminarCurve?.points) && moody.laminarCurve.points.length
+      ? moody.laminarCurve
+      : defaultLaminarCurve();
+    const turbulentCurves = Array.isArray(moody.curves) && moody.curves.length
+      ? moody.curves
+      : defaultMoodyCurves();
+    const curveLines = [laminarCurve, ...turbulentCurves].filter((curve) => curvePointsForExport(curve, scale));
+    const markerPositions = normalizeMarkers(markers).map((marker, index) => {
+      const x = scale.x(marker.reynolds) + marker.visualOffset.dx;
+      const y = scale.y(marker.frictionFactor) + marker.visualOffset.dy;
+      return {
+        ...marker,
+        name: markerName(marker, index),
+        regime: markerRegime(marker),
+        x,
+        y
+      };
+    });
+    const primary = markerPositions[0] || null;
+    const minorGrid = xTicks.slice(0, -1).flatMap((tick) => (
+      [2, 3, 4, 5, 6, 7, 8, 9].map((factor) => tick * factor)
+    )).filter((tick) => tick >= scale.xMin && tick <= scale.xMax);
+    const transitionX1 = scale.x(2300);
+    const transitionX2 = scale.x(4000);
+    const bottom = scale.plot.top + scale.plot.height;
+    const right = scale.plot.left + scale.plot.width;
+
+    return `
+      <svg class="eqp-moody-chart-svg" viewBox="0 0 960 390" role="img" aria-label="Log-log Moody chart friction factor check">
+        <rect x="0" y="0" width="960" height="390" rx="8" fill="#ffffff"></rect>
+        <rect x="${scale.plot.left}" y="${scale.plot.top}" width="${scale.plot.width}" height="${scale.plot.height}" fill="#f8fbff" stroke="#cbd9e6"></rect>
+        <rect x="${transitionX1.toFixed(1)}" y="${scale.plot.top}" width="${Math.max(transitionX2 - transitionX1, 1).toFixed(1)}" height="${scale.plot.height}" fill="#fde68a" opacity="0.48"></rect>
+        ${minorGrid.map((tick) => `<line x1="${scale.x(tick).toFixed(1)}" y1="${scale.plot.top}" x2="${scale.x(tick).toFixed(1)}" y2="${bottom}" stroke="#e9f1f8" stroke-width="1"></line>`).join('')}
+        ${xTicks.map((tick) => `<line x1="${scale.x(tick).toFixed(1)}" y1="${scale.plot.top}" x2="${scale.x(tick).toFixed(1)}" y2="${bottom}" stroke="#d7e5f0" stroke-width="1"></line>`).join('')}
+        ${yTicks.map((tick) => `<line x1="${scale.plot.left}" y1="${scale.y(tick).toFixed(1)}" x2="${right}" y2="${scale.y(tick).toFixed(1)}" stroke="#d7e5f0" stroke-width="1"></line>`).join('')}
+        <line x1="${scale.plot.left}" y1="${bottom}" x2="${right}" y2="${bottom}" stroke="#24435b" stroke-width="1.2"></line>
+        <line x1="${scale.plot.left}" y1="${scale.plot.top}" x2="${scale.plot.left}" y2="${bottom}" stroke="#24435b" stroke-width="1.2"></line>
+        ${xTicks.map((tick) => `<text x="${scale.x(tick).toFixed(1)}" y="${(bottom + 26).toFixed(1)}" text-anchor="middle" class="eqp-moody-tick">${formatScientific(tick, 0)}</text>`).join('')}
+        ${yTicks.map((tick) => `<text x="${(scale.plot.left - 16).toFixed(1)}" y="${(scale.y(tick) + 4).toFixed(1)}" text-anchor="end" class="eqp-moody-tick">${formatDecimal(tick, tick < 0.1 ? 3 : 1)}</text>`).join('')}
+        <text x="${(scale.plot.left + scale.plot.width / 2).toFixed(1)}" y="374" text-anchor="middle" class="eqp-moody-axis-label">Reynolds Number (log scale)</text>
+        <text x="26" y="${(scale.plot.top + scale.plot.height / 2).toFixed(1)}" text-anchor="middle" transform="rotate(-90 26 ${(scale.plot.top + scale.plot.height / 2).toFixed(1)})" class="eqp-moody-axis-label">Darcy f (log scale)</text>
+        <text x="${(scale.plot.left + 32).toFixed(1)}" y="${(scale.plot.top + 26).toFixed(1)}" class="eqp-moody-region-label">Laminar</text>
+        <text x="${((transitionX1 + transitionX2) / 2).toFixed(1)}" y="${(scale.plot.top + 136).toFixed(1)}" text-anchor="middle" transform="rotate(-90 ${((transitionX1 + transitionX2) / 2).toFixed(1)} ${(scale.plot.top + 136).toFixed(1)})" class="eqp-moody-transition-label">Transition</text>
+        <text x="${(scale.plot.left + scale.plot.width * 0.56).toFixed(1)}" y="${(scale.plot.top + 25).toFixed(1)}" text-anchor="middle" class="eqp-moody-region-label">Turbulent</text>
+        ${curveLines.map((curve, index) => `<polyline points="${curvePointsForExport(curve, scale)}" fill="none" stroke="${exportCurveStroke(curve, index)}" stroke-width="${index === 0 ? '3' : '1.25'}" opacity="${index === 0 ? '0.95' : '0.58'}"><title>${escapeText(curve.label || 'Moody curve')}</title></polyline>`).join('')}
+        ${primary ? `
+          <line x1="${primary.x.toFixed(1)}" y1="${primary.y.toFixed(1)}" x2="${primary.x.toFixed(1)}" y2="${bottom}" stroke="#24435b" stroke-width="1" stroke-dasharray="5 5"></line>
+          <line x1="${scale.plot.left}" y1="${primary.y.toFixed(1)}" x2="${primary.x.toFixed(1)}" y2="${primary.y.toFixed(1)}" stroke="#24435b" stroke-width="1" stroke-dasharray="5 5"></line>
+        ` : ''}
+        ${markerPositions.map((marker, index) => `
+          <g class="eqp-moody-marker-group">
+            <circle cx="${marker.x.toFixed(1)}" cy="${marker.y.toFixed(1)}" r="${marker.overlapCount > 1 ? '9' : '8'}" fill="#f8fafc" stroke="#8aa2b5" stroke-width="5" opacity="0.92"></circle>
+            <circle cx="${marker.x.toFixed(1)}" cy="${marker.y.toFixed(1)}" r="5" fill="${['#e11d48', '#2563eb', '#059669', '#d97706', '#7c3aed', '#0f766e'][index % 6]}" stroke="#ffffff" stroke-width="1.5">
+              <title>${escapeText(`${marker.name}: Re ${formatReynolds(marker.reynolds)}, eps/D ${formatRelRoughness(marker.relRoughness)}, f ${formatFriction(marker.frictionFactor)}, ${marker.regime}`)}</title>
+            </circle>
+          </g>
+        `).join('')}
+      </svg>
+    `;
+  }
+
+  function renderMoodyMetric(label, value) {
+    return `<div class="eqp-moody-metric"><span>${escapeText(label)}</span><strong>${escapeText(value)}</strong></div>`;
+  }
+
+  function renderMoodySegmentCard(marker, index) {
+    const name = markerName(marker, index);
+    return `
+      <div class="eqp-moody-segment-card">
+        <span class="eqp-moody-segment-index">${index + 1}</span>
+        <div class="eqp-moody-segment-copy">
+          <strong>${escapeText(name)}</strong>
+          <small>
+            <span>Re ${escapeText(formatReynolds(marker.reynolds))}</span>
+            <span>eps/D ${escapeText(formatRelRoughness(marker.relRoughness))}</span>
+            <span>f ${escapeText(formatFriction(marker.frictionFactor))}</span>
+            <span>${escapeText(markerRegime(marker))}</span>
+          </small>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderMoodyExportFigure(resolved, figureIndex = 0, figureCount = 1) {
+    const moody = resolved.trace?.moody || {};
+    const markers = normalizeMarkers(Array.isArray(moody.markers) ? moody.markers : []);
+    const primary = markers[0] || {};
+    const primaryRegime = markerRegime(primary);
+    const segmentCards = markers.length
+      ? markers.slice(0, 6).map(renderMoodySegmentCard).join('')
+      : '<div class="eqp-moody-segment-card eqp-moody-empty-card"><div class="eqp-moody-segment-copy"><strong>No solved pipe Moody data is available.</strong><small><span>Run the hydraulic calculation, then export the PDF again to populate Re, eps/D, Darcy f, and regime.</span></small></div></div>';
+    const pipeLabel = [resolved.pipeName, resolved.pipeId && resolved.pipeId !== resolved.pipeName ? resolved.pipeId : '']
+      .filter(Boolean)
+      .join(' / ') || 'Pipe';
+    const chartTitle = pipeLabel === 'Pipe' ? 'Log-Log Moody Chart' : `Log-Log Moody Chart - ${pipeLabel}`;
+
+    return `
+      <article class="eqp-moody-chart-figure" data-pipe-id="${escapeText(resolved.pipeId || '')}" data-pipe-order="${figureIndex + 1}" data-pipe-chart-count="${figureCount}">
+        <div class="eqp-moody-topline">
+          <div class="eqp-moody-title-badge">
+            <span>FRICTION FACTOR AUDIT</span>
+            <strong>${escapeText(chartTitle)}</strong>
+          </div>
+          <div class="eqp-moody-metrics">
+            ${renderMoodyMetric('Primary Re', formatReynolds(primary.reynolds))}
+            ${renderMoodyMetric('Darcy f', formatFriction(primary.frictionFactor))}
+            ${renderMoodyMetric('eps/D', formatRelRoughness(primary.relRoughness))}
+            ${renderMoodyMetric('Regime', primaryRegime)}
+          </div>
+        </div>
+        <div class="eqp-moody-chip-row">
+          <span>Log-log scale</span>
+          <span>Darcy friction factor</span>
+          <span>Relative roughness families</span>
+          <span>Pipe: ${escapeText(pipeLabel)}</span>
+        </div>
+        <div class="eqp-moody-chart-wrap">
+          ${buildMoodyExportSvg(moody, markers)}
+        </div>
+        <div class="eqp-moody-formula-block">
+          <div class="formula">f_D = 64 / Re</div>
+        </div>
+        <div class="eqp-moody-segment-grid">
+          ${segmentCards}
+        </div>
+        <p class="eqp-moody-note">Darcy friction factor chart. Fanning friction factor equals Darcy f / 4.</p>
+        <div class="eqp-moody-legend">
+          <span><i style="background:#173f5f"></i>Laminar Darcy relation</span>
+          <span><i style="background:#2563eb"></i>smooth pipe</span>
+          <span><i style="background:#0ea5e9"></i>eps/D 1.0000e-5</span>
+          <span><i style="background:#64748b"></i>eps/D 5.0000e-5</span>
+          <span><i style="background:#b45309"></i>eps/D 0.0001</span>
+          <span><i style="background:#3f7d20"></i>eps/D 0.0005</span>
+          <span><i style="background:#e11d48"></i>eps/D 0.001</span>
+          <span><i style="background:#7c3aed"></i>eps/D 0.005</span>
+        </div>
+      </article>
+    `;
+  }
+
+  function buildExportMarkup(report, options = {}) {
+    const traces = collectMoodyExportTraces(report, options);
+    return `
+      <section class="eqp-moody-chart-pack" data-export-note="moody-friction-factor-chart" data-chart-count="${traces.length}">
+        ${traces.map((resolved, index) => renderMoodyExportFigure(resolved, index, traces.length)).join('')}
+      </section>
+    `;
   }
 
   function renderMoodyChart(container, trace, options = {}) {
@@ -481,6 +997,9 @@
     version: VERSION,
     cacheKey: CACHE_KEY,
     renderMoodyChart,
+    buildExportMarkup,
+    collectMoodyExportTraces,
+    collectMoodyPipeOrder,
     openMoodyChartPanel,
     refreshRemovedPipePropertyFields,
     refreshRemovedPipeSegmentColumns,
