@@ -1,6 +1,6 @@
 {
   "schemaVersion": "local-live-sync-manifest.v1",
-  "generatedAt": "2026-07-07T19:04:13.468Z",
+  "generatedAt": "2026-07-07T19:04:55.543Z",
   "purpose": "Keeps the local preview server auditable against the deployed npsh.virsim.id package.",
   "status": "synced",
   "syncChecks": {
@@ -16,8 +16,8 @@
     "frontendRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-frontend",
     "apiRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-api",
     "serverUrl": "http://127.0.0.1:4174/",
-    "frontendCommit": "4117b286f6a5936eafc7d459d1d35f517c908414",
-    "frontendOriginMain": "4117b286f6a5936eafc7d459d1d35f517c908414",
+    "frontendCommit": "d8ba6eb3ffb1e979a742b2e3cfa639a3f22bb639",
+    "frontendOriginMain": "d8ba6eb3ffb1e979a742b2e3cfa639a3f22bb639",
     "apiCommit": "ca5304fa90b2b24b091601ec9a06512ebb492496",
     "apiOriginMain": "ca5304fa90b2b24b091601ec9a06512ebb492496",
     "releaseIntegrity": {
@@ -737,7 +737,7 @@
     },
     "apiVersion": {
       "statusCode": 200,
-      "sha256": "037aa072088dcb3149d1e11ffb9317f63411244df87201d63ea29f40da34450f",
+      "sha256": "727ae38c051f5d1253b37feabfbaef603669f6a5ed8bbbba28a2fb0dd59d589f",
       "payload": {
         "ok": true,
         "appName": "GhaniSIM1 NPSH",
@@ -886,7 +886,7 @@
             "parity.fingerprint"
           ]
         },
-        "generatedAt": "2026-07-07T19:04:09.079Z"
+        "generatedAt": "2026-07-07T19:04:53.093Z"
       }
     },
     "verifiedAssets": [
