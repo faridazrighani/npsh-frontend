@@ -17,7 +17,7 @@
 })(typeof window !== "undefined" ? window : globalThis, function createExportEquationProfessionalRuntime(root) {
   "use strict";
 
-  const VERSION = "2026.07-pdf-equation-professional7";
+  const VERSION = "2026.07-pdf-equation-professional8";
   const MODE_LABEL = "Mode: Equation Professional";
   const LANGUAGE_LABEL = "Language: Professional English for Mechanical and Chemical Engineering";
   const LAYOUT_LABEL = "Layout: Compact";

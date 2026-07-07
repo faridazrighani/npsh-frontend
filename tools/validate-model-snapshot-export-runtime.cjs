@@ -13,9 +13,9 @@ const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
 
-const CACHE_KEY = "engineering-model-snapshot-export-runtime.js?v=20260707-fluid-basis-workspace-snapshot10";
+const CACHE_KEY = "engineering-model-snapshot-export-runtime.js?v=20260707-fluid-basis-workspace-snapshot11";
 const APP_BUNDLE_KEY = "app.bundle.min.js?v=20260707-pipe-canvas-loss-label1";
-const VERSION = "2026.07-fluid-basis-workspace-snapshot10";
+const VERSION = "2026.07-fluid-basis-workspace-snapshot11";
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");

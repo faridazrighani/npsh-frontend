@@ -22,21 +22,21 @@ const uploadReadiness = fs.existsSync(uploadReadinessPath) ? read(uploadReadines
 const runtime = require(runtimePath);
 
 assert.strictEqual(runtime.version, '2026.07-pump-envelope-warning-cleanup1');
-assert.strictEqual(runtime.cacheKey, '20260707-pump-envelope-warning-clean1');
+assert.strictEqual(runtime.cacheKey, '20260707-pump-envelope-warning-clean2');
 assert.strictEqual(
   packageJson.scripts?.['validate:pump-envelope-warning-cleanup'],
   'node tools/validate-pump-envelope-warning-cleanup-runtime.cjs',
   'package.json must expose the pump envelope warning cleanup validator.'
 );
 
-const scriptSrc = 'engineering-pump-envelope-warning-cleanup-runtime.js?v=20260707-pump-envelope-warning-clean1';
+const scriptSrc = 'engineering-pump-envelope-warning-cleanup-runtime.js?v=20260707-pump-envelope-warning-clean2';
 assert(indexHtml.includes(scriptSrc), 'index.html must load the pump envelope warning cleanup runtime.');
 assert(
   indexHtml.indexOf('app.bundle.min.js?v=20260707-pipe-canvas-loss-label1') < indexHtml.indexOf(scriptSrc),
   'Pump envelope warning cleanup should load after the protected app bundle.'
 );
 assert(
-  indexHtml.indexOf(scriptSrc) < indexHtml.indexOf('engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate7'),
+  indexHtml.indexOf(scriptSrc) < indexHtml.indexOf('engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate8'),
   'Pump envelope warning cleanup should run before open-file readiness checks.'
 );
 

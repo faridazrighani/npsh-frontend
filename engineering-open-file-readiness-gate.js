@@ -7,7 +7,7 @@
   'use strict';
 
   const VERSION = 'engineering-open-file-readiness-gate.v7';
-  const CACHE_KEY = '20260707-open-file-readiness-gate7';
+  const CACHE_KEY = '20260707-open-file-readiness-gate8';
   const STYLE_ID = 'engineeringOpenFileReadinessGateStyle';
   const OVERLAY_ID = 'engineeringOpenFileReadinessGate';
   const ACTIVE_CLASS = 'npsh-open-file-readiness-active';

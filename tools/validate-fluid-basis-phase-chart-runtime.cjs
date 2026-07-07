@@ -16,7 +16,7 @@ const runtimeSource = read(runtimePath);
 const indexHtml = read(indexPath);
 const manifest = read(manifestPath);
 const pkg = JSON.parse(read(packagePath));
-const cacheKey = 'engineering-fluid-basis-phase-chart-runtime.js?v=20260707-fluid-phase-chart3';
+const cacheKey = 'engineering-fluid-basis-phase-chart-runtime.js?v=20260707-fluid-phase-chart4';
 
 assert(runtimeSource.includes('2026.07-fluid-basis-phase-chart3'), 'runtime version must be present');
 assert(runtimeSource.includes('EngineeringFluidBasisPhaseChartRuntime'), 'global runtime API must be exposed');
@@ -72,7 +72,7 @@ globalThis.globalModel = {
 delete require.cache[require.resolve(runtimePath)];
 const runtime = require(runtimePath);
 assert.equal(runtime.version, '2026.07-fluid-basis-phase-chart3', 'runtime API version mismatch');
-assert.equal(runtime.cacheKey, '20260707-fluid-phase-chart3', 'runtime API cache key mismatch');
+assert.equal(runtime.cacheKey, '20260707-fluid-phase-chart4', 'runtime API cache key mismatch');
 
 const calculation = runtime.buildCalculation(globalThis.globalModel);
 assert.equal(calculation.temperatureC, 90, 'calculation must use Fluid Basis temperature');

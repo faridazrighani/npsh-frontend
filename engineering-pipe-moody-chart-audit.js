@@ -1,6 +1,6 @@
 (function registerEngineeringPipeMoodyChartAudit(root) {
   const VERSION = 'engineering-pipe-moody-chart-audit.v8';
-  const CACHE_KEY = '20260707-pipe-moody-export-chart3';
+  const CACHE_KEY = '20260707-pipe-moody-export-chart4';
   const PANEL_ID = 'engineeringPipeMoodyChartPanel';
   const BODY_ID = 'engineeringPipeMoodyChartPanelBody';
   const REMOVED_PIPE_PROPERTY_KEYS = [

@@ -28,7 +28,7 @@ const manifestSource = read(manifestPath);
 
 [
   'engineering-simulation-load-transaction-manager.v1',
-  '20260707-simulation-load-transaction1',
+  '20260707-simulation-load-transaction2',
   'AbortController',
   'beginTransaction',
   'abortPrevious',
@@ -51,13 +51,13 @@ const manifestSource = read(manifestPath);
 
 assertIncludes(
   indexSource,
-  'engineering-simulation-load-transaction-manager.js?v=20260707-simulation-load-transaction1',
+  'engineering-simulation-load-transaction-manager.js?v=20260707-simulation-load-transaction2',
   'index.html'
 );
 
 const appIndex = indexSource.indexOf('app.bundle.min.js?v=20260707-pipe-canvas-loss-label1');
-const managerIndex = indexSource.indexOf('engineering-simulation-load-transaction-manager.js?v=20260707-simulation-load-transaction1');
-const readinessIndex = indexSource.indexOf('engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate7');
+const managerIndex = indexSource.indexOf('engineering-simulation-load-transaction-manager.js?v=20260707-simulation-load-transaction2');
+const readinessIndex = indexSource.indexOf('engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate8');
 assert(appIndex >= 0 && managerIndex > appIndex, 'simulation load transaction manager must load after app.bundle.min.js');
 assert(readinessIndex > managerIndex, 'open-file readiness gate must load after simulation load transaction manager');
 
@@ -71,7 +71,7 @@ assertIncludes(manifestSource, 'Simulation load transaction manager cache key', 
 
 const runtime = require(runtimePath);
 assert(runtime.version === 'engineering-simulation-load-transaction-manager.v1', 'runtime version mismatch');
-assert(runtime.cacheKey === '20260707-simulation-load-transaction1', 'runtime cache key mismatch');
+assert(runtime.cacheKey === '20260707-simulation-load-transaction2', 'runtime cache key mismatch');
 [
   'install',
   'beginTransaction',

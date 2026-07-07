@@ -14,11 +14,11 @@ const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
 
-const CACHE_KEY = "engineering-export-equation-professional-runtime.js?v=20260707-pdf-equation-professional7";
-const MOODY_CACHE_KEY = "engineering-pipe-moody-chart-audit.js?v=20260707-pipe-moody-export-chart3";
-const SNAPSHOT_KEY = "engineering-model-snapshot-export-runtime.js?v=20260707-fluid-basis-workspace-snapshot10";
+const CACHE_KEY = "engineering-export-equation-professional-runtime.js?v=20260707-pdf-equation-professional8";
+const MOODY_CACHE_KEY = "engineering-pipe-moody-chart-audit.js?v=20260707-pipe-moody-export-chart4";
+const SNAPSHOT_KEY = "engineering-model-snapshot-export-runtime.js?v=20260707-fluid-basis-workspace-snapshot11";
 const APP_BUNDLE_KEY = "app.bundle.min.js?v=20260707-pipe-canvas-loss-label1";
-const VERSION = "2026.07-pdf-equation-professional7";
+const VERSION = "2026.07-pdf-equation-professional8";
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");
@@ -226,7 +226,7 @@ try {
   const multiPipeTraces = moodyApi.collectMoodyExportTraces({});
   const multiPipeMarkup = moodyApi.buildExportMarkup({});
   assert.equal(moodyApi.version, "engineering-pipe-moody-chart-audit.v8", "Moody runtime API version must be updated.");
-  assert.equal(moodyApi.cacheKey, "20260707-pipe-moody-export-chart3", "Moody runtime cache key must be updated.");
+  assert.equal(moodyApi.cacheKey, "20260707-pipe-moody-export-chart4", "Moody runtime cache key must be updated.");
   assert.deepEqual(multiPipeTraces.map(trace => trace.pipeId), ["PIPE-1", "PIPE-2"], "Moody export traces must follow active PIPE-1 then PIPE-2 route order.");
   assert.equal((multiPipeMarkup.match(/class="eqp-moody-chart-figure"/g) || []).length, 2, "Moody export markup must render one chart figure for each active pipe.");
   assert(multiPipeMarkup.includes('data-chart-count="2"'), "Moody export markup must report the active pipe chart count.");

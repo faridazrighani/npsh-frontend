@@ -2,7 +2,7 @@
   "use strict";
 
   const VERSION = "2026.07-fluid-basis-phase-chart3";
-  const CACHE_KEY = "20260707-fluid-phase-chart3";
+  const CACHE_KEY = "20260707-fluid-phase-chart4";
   const STYLE_ID = "engineering-fluid-basis-phase-chart-style";
   const PANEL_SELECTOR = "[data-fluid-basis-phase-chart-panel='true']";
   const SVG_NS = "http://www.w3.org/2000/svg";

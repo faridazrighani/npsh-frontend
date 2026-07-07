@@ -7,7 +7,7 @@
   'use strict';
 
   const VERSION = '2026.07-pump-envelope-warning-cleanup1';
-  const CACHE_KEY = '20260707-pump-envelope-warning-clean1';
+  const CACHE_KEY = '20260707-pump-envelope-warning-clean2';
   const PANEL_ID = 'canvasWarningPanel';
   const LIST_ID = 'canvasWarningList';
   const COUNT_ID = 'canvasWarningCount';

@@ -7,7 +7,7 @@
   'use strict';
 
   const VERSION = 'engineering-simulation-load-transaction-manager.v1';
-  const CACHE_KEY = '20260707-simulation-load-transaction1';
+  const CACHE_KEY = '20260707-simulation-load-transaction2';
   const ACTIVE_CLASS = 'npsh-simulation-load-transaction-active';
   const CASE_OPEN_SELECTOR = '[data-simulation-case-action="open"][data-simulation-case-id]';
   const FILE_INPUT_SELECTOR = 'input[type="file"]';
@@ -19,8 +19,8 @@
   const WARM_RUNTIME_SOURCES = [
     'engineering-pipe-canvas-hydraulic-label-runtime-20260707-pfv-loss-summary-clean1.js?v=20260707-pfv-loss-summary-clean1',
     'engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260707-pump-panel-clean6',
-    'engineering-pump-envelope-warning-cleanup-runtime.js?v=20260707-pump-envelope-warning-clean1',
-    'engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate7'
+    'engineering-pump-envelope-warning-cleanup-runtime.js?v=20260707-pump-envelope-warning-clean2',
+    'engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate8'
   ];
   const EVENT_NAMES = {
     begin: 'npsh:simulation-load-transaction-begin',

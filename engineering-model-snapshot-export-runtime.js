@@ -16,7 +16,7 @@
 })(typeof window !== "undefined" ? window : globalThis, function createModelSnapshotExportRuntime(root) {
   "use strict";
 
-  const VERSION = "2026.07-fluid-basis-workspace-snapshot10";
+  const VERSION = "2026.07-fluid-basis-workspace-snapshot11";
   const SNAPSHOT_WIDTH = 1280;
   const SNAPSHOT_HEIGHT = 690;
   const COLORS = Object.freeze({

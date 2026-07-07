@@ -155,14 +155,14 @@ Source canvas parameter runtime cache key: engineering-src-canvas-parameter-runt
 Source temperature runtime cache key: engineering-source-temperature-runtime.js?v=20260706-fluid-temperature-global1
 Source volumetric-only runtime cache key: engineering-source-volumetric-only-runtime.js?v=20260706-source-snk-flow-sync1
 SRC connect context runtime cache key: engineering-src-connect-context-runtime.js?v=20260706-src-connect-context1
-Fluid Basis phase chart runtime cache key: engineering-fluid-basis-phase-chart-runtime.js?v=20260707-fluid-phase-chart3
+Fluid Basis phase chart runtime cache key: engineering-fluid-basis-phase-chart-runtime.js?v=20260707-fluid-phase-chart4
 Decimal display runtime cache key: engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2
 Live parameter stable runtime cache key: engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260706-fast-preview-preserve1
 Parameter Task runtime cache key: engineering-parameter-task-runtime.js?v=20260626-head-power-audit1
 Local trace fallback runtime cache key: engineering-local-trace-fallback-runtime.js?v=20260628-manual-npshr1
 Pipe canvas hydraulic label runtime cache key: engineering-pipe-canvas-hydraulic-label-runtime-20260707-pfv-loss-summary-clean1.js?v=20260707-pfv-loss-summary-clean1
-Model snapshot export runtime cache key: engineering-model-snapshot-export-runtime.js?v=20260707-fluid-basis-workspace-snapshot10
-Export equation professional runtime cache key: engineering-export-equation-professional-runtime.js?v=20260707-pdf-equation-professional7
+Model snapshot export runtime cache key: engineering-model-snapshot-export-runtime.js?v=20260707-fluid-basis-workspace-snapshot11
+Export equation professional runtime cache key: engineering-export-equation-professional-runtime.js?v=20260707-pdf-equation-professional8
 Canvas fast preview runtime cache key: engineering-canvas-fast-preview-runtime.js?v=20260706-canvas-fast-preview18
 Pipe source confidence map runtime cache key: engineering-pipe-source-confidence-map-runtime.js?v=20260630-pipe-properties-live1
 Pump nozzle simplify runtime cache key: engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5
@@ -170,14 +170,14 @@ Analysis Report live runtime cache key: engineering-analysis-report-live-runtime
 Head Power Audit Guard cache key: engineering-head-power-audit-guard.js?v=20260627-head-power-audit2
 Route audit cache key: engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260707-pump-panel-clean6
 Simulation case integrity guard cache key: engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3
-Simulation load transaction manager cache key: engineering-simulation-load-transaction-manager.js?v=20260707-simulation-load-transaction1
+Simulation load transaction manager cache key: engineering-simulation-load-transaction-manager.js?v=20260707-simulation-load-transaction2
 Performance refresh governor cache key: engineering-performance-refresh-governor.js?v=20260629-live-evidence1
 Pump edit fast lane cache key: engineering-pump-edit-fast-lane.js?v=20260706-pump-edit-status-matrix1
 Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1
 Suction-only NPSHa runtime cache key: engineering-suction-only-npsha-runtime.js?v=20260706-suction-only-status-matrix1
 Calculation lifecycle runtime cache key: engineering-calculation-lifecycle-runtime.js?v=20260618-calculation-lifecycle-refresh-release1
 Calculation progress overlay cache key: engineering-calculation-progress-overlay.js?v=20260617-calculation-progress-manual-only1
-Open file readiness gate cache key: engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate7
+Open file readiness gate cache key: engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate8
 Browser issues runtime cache key: engineering-browser-issues-runtime.js?v=20260620-orphan-label-cleanup1
 Pipe Properties cleanup runtime cache key: engineering-pipe-properties-cleanup-runtime.js?v=20260706-pipe-hl-allow-clean1
 Pipe Segments file runtime cache key: engineering-pipe-segments-file-runtime.js?v=20260630-pipe-properties-cleanup1
@@ -188,7 +188,7 @@ Canvas clear/reset guard cache key: engineering-canvas-clear-reset-guard.js?v=20
 Canvas context dock load placement: post-shell no-click canvas visual hydration pack plus status script fallback; not a synchronous first-paint script tag
 Initial app load placement: Fluid Basis setup prompt is first in body DOM order for LCP; critical CSS reserves the Fluid Basis LCP card and Validate/Solve ribbon label metrics to prevent first-load CLS; shell JS auto-loads on idle; full main CSS, live parameter repaint lock, realtime/status scripts, PFV hydraulic labels, browser cleanup, and route-trace canvas layout cleanup hydrate automatically after shell load so canvas panels normalize without pointer/key input; remaining support scripts stay support-lazy, with first pointer/key activation still acting as an accelerator; Google Auth/GSI is support-lazy and not part of the first render path
 Defense export cache key: engineering-defense-export-package.js?v=20260702-source-boundary-clean1
-Pipe Moody chart audit cache key: engineering-pipe-moody-chart-audit.js?v=20260707-pipe-moody-export-chart3
+Pipe Moody chart audit cache key: engineering-pipe-moody-chart-audit.js?v=20260707-pipe-moody-export-chart4
 Runtime API config: same-origin /api/simulate
 NPSH margin runtime cache key: engineering-npsh-margin-runtime.js?v=20260622-local-live-sync1
 NPSH margin runtime load placement: deferred realtimeScripts path before Pump NPSH Acceptance runtime; no synchronous first-load script tag; no-click initial canvas hydration now starts the visual runtime pack after shell load so Fluid Basis and canvas panels normalize without a canvas click
@@ -196,7 +196,7 @@ Pump readiness visibility cache key: engineering-pump-readiness-visibility-runti
 Pump readiness visibility load placement: support-lazy feature script for developer panel hiding, not critical first-paint script
 Pump status visual lock cache key: engineering-pump-status-visual-lock.js?v=20260706-pump-incomplete-badge1
 Pump status visual lock load placement: critical shell immediately after app.bundle.min.js, so freshly dragged pumps render Incomplete before later task-window/property guards run
-Pump envelope warning cleanup cache key: engineering-pump-envelope-warning-cleanup-runtime.js?v=20260707-pump-envelope-warning-clean1
+Pump envelope warning cleanup cache key: engineering-pump-envelope-warning-cleanup-runtime.js?v=20260707-pump-envelope-warning-clean2
 Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260706-status-matrix-lock1
 Pump performance chart audit cache key: engineering-pump-performance-chart-audit.js?v=20260630-pipe-properties-live1
 Pump performance canonical chart cache key: engineering-pump-performance-canonical-chart.js?v=20260628-manual-npshr1
