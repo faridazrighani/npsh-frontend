@@ -1,6 +1,6 @@
 (function registerEngineeringPipeMoodyChartAudit(root) {
-  const VERSION = 'engineering-pipe-moody-chart-audit.v8';
-  const CACHE_KEY = '20260707-pipe-moody-export-chart4';
+  const VERSION = 'engineering-pipe-moody-chart-audit.v9';
+  const CACHE_KEY = '20260708-pipe-moody-export-chart5';
   const PANEL_ID = 'engineeringPipeMoodyChartPanel';
   const BODY_ID = 'engineeringPipeMoodyChartPanelBody';
   const REMOVED_PIPE_PROPERTY_KEYS = [
@@ -340,6 +340,41 @@
     });
   }
 
+  function pipeOrderModels(report) {
+    return [
+      activeModel(),
+      root.__npshGlobalModel,
+      root.globalModel,
+      report?.model,
+      report?.sourceData?.model,
+      report?.sourceData?.project?.model,
+      report?.project?.model,
+      report?.nodeResults
+    ].filter(Boolean);
+  }
+
+  function pipeNodeFromSources(pipeId, report) {
+    return pipeOrderModels(report).map((model) => model?.[pipeId]).find((node) => node && typeof node === 'object') || null;
+  }
+
+  function isPipeObjectId(pipeId, report) {
+    const normalized = String(pipeId || '').trim();
+    if (!normalized) return false;
+    const node = pipeNodeFromSources(normalized, report);
+    if (node) return node.type === 'pipe';
+    return /^PIPE[-_\s]?\d+$/i.test(normalized);
+  }
+
+  function hasSolvedMoodyMarkers(candidate) {
+    return Array.isArray(candidate?.trace?.moody?.markers) && candidate.trace.moody.markers.length > 0;
+  }
+
+  function isExportableMoodyCandidate(candidate, report) {
+    if (!candidate?.trace?.moody) return false;
+    if (!isPipeObjectId(candidate.pipeId, report)) return false;
+    return hasSolvedMoodyMarkers(candidate);
+  }
+
   function collectMoodyPipeOrder(report, options = {}) {
     const explicitOrder = [];
     pushUniquePipeId(explicitOrder, options.pipeId);
@@ -358,37 +393,16 @@
     collectPipeIdsFromPathText(report?.pump?.calculationTrace?.path?.text, explicitOrder, report);
     collectPipeIdsFromPathText(report?.path?.text, explicitOrder, report);
 
-    if (explicitOrder.length) return explicitOrder;
+    const validExplicitOrder = explicitOrder.filter((pipeId) => isPipeObjectId(pipeId, report));
+    if (validExplicitOrder.length) return validExplicitOrder;
 
     const fallbackOrder = [];
-    [
-      activeModel(),
-      root.__npshGlobalModel,
-      root.globalModel,
-      report?.model,
-      report?.sourceData?.model,
-      report?.sourceData?.project?.model,
-      report?.project?.model,
-      report?.nodeResults
-    ].filter(Boolean).forEach((model) => {
+    pipeOrderModels(report).forEach((model) => {
       Object.entries(model || {}).forEach(([pipeId, node]) => {
         if (node?.type === 'pipe') pushUniquePipeId(fallbackOrder, pipeId);
       });
     });
     return fallbackOrder;
-  }
-
-  function pipeNodeFromSources(pipeId, report) {
-    return [
-      activeModel(),
-      root.__npshGlobalModel,
-      root.globalModel,
-      report?.model,
-      report?.sourceData?.model,
-      report?.sourceData?.project?.model,
-      report?.project?.model,
-      report?.nodeResults
-    ].filter(Boolean).map((model) => model?.[pipeId]).find((node) => node && typeof node === 'object') || null;
   }
 
   function placeholderMoodyCandidate(pipeId, report) {
@@ -405,7 +419,8 @@
   }
 
   function collectMoodyExportTraces(report, options = {}) {
-    const candidates = collectMoodyTraceCandidates(report, options);
+    const candidates = collectMoodyTraceCandidates(report, options)
+      .filter((candidate) => isExportableMoodyCandidate(candidate, report));
     const bestByPipe = new Map();
     candidates.forEach((candidate) => {
       const key = candidate.pipeId || candidate.pipeName || candidate.signature || `pipe-${bestByPipe.size + 1}`;
@@ -426,7 +441,7 @@
       output.push(candidate);
     };
 
-    orderedPipeIds.forEach((pipeId) => append(bestByPipe.get(pipeId) || placeholderMoodyCandidate(pipeId, report)));
+    orderedPipeIds.forEach((pipeId) => append(bestByPipe.get(pipeId)));
     if (!orderedPipeIds.length) {
       Array.from(bestByPipe.values()).forEach(append);
     }

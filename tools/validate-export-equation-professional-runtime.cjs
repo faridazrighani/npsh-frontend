@@ -15,7 +15,7 @@ const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
 
 const CACHE_KEY = "engineering-export-equation-professional-runtime.js?v=20260707-pdf-equation-professional9";
-const MOODY_CACHE_KEY = "engineering-pipe-moody-chart-audit.js?v=20260707-pipe-moody-export-chart4";
+const MOODY_CACHE_KEY = "engineering-pipe-moody-chart-audit.js?v=20260708-pipe-moody-export-chart5";
 const SNAPSHOT_KEY = "engineering-model-snapshot-export-runtime.js?v=20260707-fluid-basis-workspace-snapshot11";
 const APP_BUNDLE_KEY = "app.bundle.min.js?v=20260707-pipe-canvas-loss-label1";
 const VERSION = "2026.07-pdf-equation-professional9";
@@ -225,13 +225,32 @@ try {
   const moodyApi = require(MOODY_RUNTIME_FILE);
   const multiPipeTraces = moodyApi.collectMoodyExportTraces({});
   const multiPipeMarkup = moodyApi.buildExportMarkup({});
-  assert.equal(moodyApi.version, "engineering-pipe-moody-chart-audit.v8", "Moody runtime API version must be updated.");
-  assert.equal(moodyApi.cacheKey, "20260707-pipe-moody-export-chart4", "Moody runtime cache key must be updated.");
+  const noisyReport = {
+    moody: {
+      rows: [
+        { pipeId: "PIPE-1" },
+        { pipeId: "PIPE-2" },
+        { pipeId: "SRC-100 -> PIPE-1 -> P-100" }
+      ]
+    },
+    sourceData: {
+      primary: {
+        trace: {
+          path: { text: "Fluid Basis -> SRC-100 -> PIPE-1 -> P-100 -> PIPE-2 -> SNK-100" }
+        }
+      }
+    }
+  };
+  const noisyMarkup = moodyApi.buildExportMarkup(noisyReport);
+  assert.equal(moodyApi.version, "engineering-pipe-moody-chart-audit.v9", "Moody runtime API version must be updated.");
+  assert.equal(moodyApi.cacheKey, "20260708-pipe-moody-export-chart5", "Moody runtime cache key must be updated.");
   assert.deepEqual(multiPipeTraces.map(trace => trace.pipeId), ["PIPE-1", "PIPE-2"], "Moody export traces must follow active PIPE-1 then PIPE-2 route order.");
   assert.equal((multiPipeMarkup.match(/class="eqp-moody-chart-figure"/g) || []).length, 2, "Moody export markup must render one chart figure for each active pipe.");
   assert(multiPipeMarkup.includes('data-chart-count="2"'), "Moody export markup must report the active pipe chart count.");
   assert(multiPipeMarkup.indexOf('data-pipe-id="PIPE-1"') < multiPipeMarkup.indexOf('data-pipe-id="PIPE-2"'), "PIPE-1 chart must appear before PIPE-2 chart.");
   assert(multiPipeMarkup.includes("Log-Log Moody Chart - PIPE-2"), "PIPE-2 Moody chart title must be visible in the PDF markup.");
+  assert.equal((noisyMarkup.match(/class="eqp-moody-chart-figure"/g) || []).length, 2, "Route-level Moody rows must not create an extra third chart.");
+  assert(!noisyMarkup.includes("SRC-100 -&gt; PIPE-1 -&gt; P-100"), "Route-level Moody chart labels must be filtered out.");
 } finally {
   global.globalModel = previousGlobalModel;
   global.connections = previousConnections;

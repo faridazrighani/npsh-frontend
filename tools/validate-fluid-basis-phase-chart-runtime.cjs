@@ -16,9 +16,9 @@ const runtimeSource = read(runtimePath);
 const indexHtml = read(indexPath);
 const manifest = read(manifestPath);
 const pkg = JSON.parse(read(packagePath));
-const cacheKey = 'engineering-fluid-basis-phase-chart-runtime.js?v=20260707-fluid-phase-chart4';
+const cacheKey = 'engineering-fluid-basis-phase-chart-runtime.js?v=20260708-fluid-phase-chart-if97-1';
 
-assert(runtimeSource.includes('2026.07-fluid-basis-phase-chart3'), 'runtime version must be present');
+assert(runtimeSource.includes('2026.07-fluid-basis-phase-chart4'), 'runtime version must be present');
 assert(runtimeSource.includes('EngineeringFluidBasisPhaseChartRuntime'), 'global runtime API must be exposed');
 assert(runtimeSource.includes('Pressure-enthalpy phase chart'), 'chart title must match the requested P-h chart placement');
 assert(runtimeSource.includes('buildExportMarkup'), 'runtime must expose export markup for PDF Fluid Basis discussion');
@@ -29,6 +29,10 @@ assert(runtimeSource.includes('readFluidChartPressure'), 'runtime must read char
 assert(!runtimeSource.includes('readSourceAbsPressureBar'), 'runtime must not read pressure from SRC');
 assert(!runtimeSource.includes('getNodeAbsolutePressureBar'), 'runtime must not use SRC pressure-basis conversion helpers');
 assert(runtimeSource.includes('saturationPressureBar'), 'runtime must include the P_sat(T) calculation path');
+assert(runtimeSource.includes('region1Liquid'), 'runtime must include IF97 Region 1 liquid enthalpy for proportional isotherms');
+assert(runtimeSource.includes('region2Vapor'), 'runtime must include IF97 Region 2 vapor enthalpy for proportional isotherms');
+assert(runtimeSource.includes('buildIsothermPixels'), 'runtime must build temperature curves from liquid/two-phase/vapor P-h data');
+assert(runtimeSource.includes('pathFromPixelSegments'), 'runtime must draw split isotherm paths without distorted jumps');
 assert(runtimeSource.includes('MutationObserver'), 'runtime must self-heal after Fluid Basis task-window rerenders');
 assert(runtimeSource.includes('drawDiagram'), 'runtime must draw the SVG chart');
 assert(!runtimeSource.includes("input[data-key='pressure'][data-node]"), 'runtime must not listen to SRC pressure input changes');
@@ -71,8 +75,8 @@ globalThis.globalModel = {
 
 delete require.cache[require.resolve(runtimePath)];
 const runtime = require(runtimePath);
-assert.equal(runtime.version, '2026.07-fluid-basis-phase-chart3', 'runtime API version mismatch');
-assert.equal(runtime.cacheKey, '20260707-fluid-phase-chart4', 'runtime API cache key mismatch');
+assert.equal(runtime.version, '2026.07-fluid-basis-phase-chart4', 'runtime API version mismatch');
+assert.equal(runtime.cacheKey, '20260708-fluid-phase-chart-if97-1', 'runtime API cache key mismatch');
 
 const calculation = runtime.buildCalculation(globalThis.globalModel);
 assert.equal(calculation.temperatureC, 90, 'calculation must use Fluid Basis temperature');
@@ -84,6 +88,14 @@ assert(Math.abs(calculation.deltaPBar) < 1e-12, 'phase pressure difference shoul
 assert.equal(calculation.statusTitle, 'Saturated boundary', 'sample point should classify as the saturation boundary');
 assert(calculation.hMarker > 0 && calculation.hMarker < 2100, 'enthalpy marker must be a finite chart coordinate');
 assert(runtime.saturationPressureBar(90) > 0.69 && runtime.saturationPressureBar(90) < 0.72, 'IAPWS P_sat fallback should be correct near 90 deg C');
+const sat90 = runtime.saturationPropsFromTC(90);
+assert(sat90.hf > 370 && sat90.hf < 380, 'IF97 saturated liquid enthalpy must be realistic near 90 deg C');
+assert(sat90.hg > 2600 && sat90.hg < 2700, 'IF97 saturated vapor enthalpy must be realistic near 90 deg C');
+const isotherm100 = runtime.buildIsothermPixels(100);
+assert(isotherm100.length > 80, 'temperature curve must include liquid, two-phase, and vapor-side points');
+assert(isotherm100.some((point) => point.phase === 'liquid'), 'temperature curve must include compressed/subcooled liquid points');
+assert(isotherm100.some((point) => point.phase === 'two-phase'), 'temperature curve must include horizontal saturated two-phase points');
+assert(isotherm100.some((point) => point.phase === 'vapor'), 'temperature curve must include superheated vapor-side points');
 const exportMarkup = runtime.buildExportMarkup(globalThis.globalModel);
 assert(exportMarkup.includes('Pressure-enthalpy phase chart'), 'export markup must include the chart title');
 assert(exportMarkup.includes('Temperature'), 'export markup must include chart metadata');

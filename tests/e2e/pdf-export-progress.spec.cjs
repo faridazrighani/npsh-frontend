@@ -152,7 +152,7 @@ async function waitForNpshApp(page) {
     && typeof window.updateSimulation === 'function'
     && window.EngineeringPdfExportProgressRuntime?.version === 'engineering-pdf-export-progress.v1'
     && window.EngineeringExportEquationProfessionalRuntime?.version === '2026.07-pdf-equation-professional9'
-    && window.EngineeringPipeMoodyChartAudit?.version === 'engineering-pipe-moody-chart-audit.v8'
+    && window.EngineeringPipeMoodyChartAudit?.version === 'engineering-pipe-moody-chart-audit.v9'
   ), null, { timeout: 30000 });
 }
 
@@ -263,7 +263,7 @@ test('Menu File Export PDF shows compact progress and keeps report content curre
   expect(result.htmlContains.pressureEnthalpy).toBe(true);
   expect(result.htmlContains.moodyChart).toBe(true);
   expect(result.htmlContains.pipe2Moody).toBe(true);
-  expect(result.htmlContains.moodyChartCount).toBeGreaterThanOrEqual(2);
+  expect(result.htmlContains.moodyChartCount).toBe(2);
   expect(result.htmlContains.pumpPerformanceCurve).toBe(false);
   expect(result.overlay.state).toBe('complete');
   expect(result.overlay.percent).toBe('100%');
