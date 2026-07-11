@@ -37,7 +37,7 @@ assert(
 );
 assert(
   indexHtml.indexOf('engineering-src-connect-context-runtime.js?v=20260706-src-connect-context1') <
-    indexHtml.indexOf('engineering-source-volumetric-only-runtime.js?v=20260706-source-snk-flow-sync1'),
+    indexHtml.indexOf('engineering-source-volumetric-only-runtime.js?v=20260711-src-input-flash-lock1'),
   'SRC connect context runtime must load before deferred source cleanup bridges.'
 );
 

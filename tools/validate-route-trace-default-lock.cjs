@@ -13,7 +13,7 @@ const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 const publish = fs.readFileSync(path.join(rootDir, 'tools', 'publish-local-live.cjs'), 'utf8');
 
-assert.equal(runtime.version, '2026.07-route-trace-audit-v48', 'Route trace audit runtime should expose the locked canvas object-card stability version.');
+assert.equal(runtime.version, '2026.07-route-trace-audit-v52-sink-input-stability', 'Route trace audit runtime should expose the SNK input-stability canvas version.');
 assert.equal(typeof runtime.openRouteAuditPanel, 'function', 'Dedicated route audit panel should remain available.');
 assert.equal(typeof runtime.pruneDefaultCanvasRouteTraceOverlays, 'function', 'Canvas route trace overlay pruning should be exposed for audit tests.');
 assert.equal(typeof runtime.pruneDefaultPumpRouteTraceRows, 'function', 'Pump route trace row pruning should be exposed for audit tests.');
@@ -42,7 +42,11 @@ assert(runtimeSource.includes("upsertPumpCanvasRow(panel, 'Hydraulic NPSH'"), 'P
 assert(runtimeSource.includes("upsertPumpCanvasRow(panel, 'Backend Valid.'"), 'Pump canvas panel lock should add a stable backend validation row when available.');
 assert(publish.includes("['run', 'validate:route-trace-default-lock']"), 'Publish flow must run the route-trace/default canvas status lock before deploy.');
 assert(runtimeSource.includes('function normalizeHydraulicNpshStatusForMatrix'), 'Pump canvas panel lock should normalize Hydraulic NPSH into the approved matrix labels.');
-assert(runtimeSource.includes("return 'NPSHa Calculated';"), 'Pump canvas panel lock should preserve NPSHa-only status when Manual NPSHr is blank.');
+assert(runtimeSource.includes('isSuctionBoundaryType'), 'Route trace pump route lock must classify valid suction boundaries before showing downstream duty.');
+assert(runtimeSource.includes('function orientHydraulicConnection'), 'Route trace must canonicalize reverse construction connections before resolving pump routes.');
+assert(runtimeSource.includes('isDischargeBoundaryType'), 'Route trace pump route lock must classify valid SNK discharge boundaries before showing downstream duty.');
+assert(runtimeSource.includes('route.suctionConnection && route.suctionPipe && route.suctionBoundary'), 'Route trace downstream duty must require a complete live suction route.');
+assert(runtimeSource.includes("return 'NPSHr Not Provided';"), 'Pump canvas panel lock should expose the canonical missing-NPSHr status when Manual NPSHr is blank.');
 assert(runtimeSource.includes("return 'Cavitation Risk';"), 'Pump canvas panel lock should preserve cavitation risk as a canonical status.');
 assert(runtimeSource.includes("return 'Warning';"), 'Pump canvas panel lock should preserve suction-vapor warning as a canonical status.');
 assert(runtimeSource.includes("return 'OK';"), 'Pump canvas panel lock should normalize legacy Safe/pass values to OK.');
@@ -526,6 +530,7 @@ try {
     'P-CANON': {
       type: 'pump',
       name: 'P-CANON',
+      props: { manualNpshr: 4 },
       results: {
         flow: 39.7,
         npshEvaluation: { flow: 39.7 },
@@ -641,6 +646,18 @@ try {
     { label: 'Flow', value: '39.680', unit: 'm3/h', title: 'Route duty flow synchronized with the connected SRC/SNK boundary flow.' },
     'Pump row-builder wrapper should synchronize Flow with the connected SRC/SNK boundary duty flow before canvas render.'
   );
+  const canonicalConnections = global.connections;
+  global.connections = [
+    { from: 'P-CANON', to: 'SRC-CANON', pipeId: 'PIPE-SUC-CANON', connectionType: 'hydraulic', hydraulicReversed: true },
+    { from: 'P-CANON', to: 'SNK-CANON', pipeId: 'PIPE-DIS-CANON', connectionType: 'hydraulic' }
+  ];
+  const reversedSuctionRows = global.buildPumpLiveParameterRows(global.globalModel['P-CANON']);
+  assert.deepEqual(
+    reversedSuctionRows.find((row) => row.label === 'Required Head'),
+    { label: 'Required Head', value: '37.664', unit: 'm', title: 'Route-required head from the solved hydraulic system.' },
+    'Reverse construction order must resolve to the same complete hydraulic route and preserve current downstream duty.'
+  );
+  global.connections = canonicalConnections;
   assert.deepEqual(
     global.buildSinkLiveParameterRows().map((row) => row.label),
     ['Mode', 'Sink Flow', 'Sink P abs'],
@@ -676,10 +693,10 @@ try {
     {
       'Hydraulic NPSH': 'Incomplete',
       'Backend Valid.': 'Unverified',
-      'Required Head': '37.664 m',
-      'Discharge Press.': '5.722'
+      'Required Head': '-',
+      'Discharge Press.': '-'
     },
-    'Route-only pump canvas panels should backfill blank Required Head from the model/system-head trace and avoid claiming backend validity when disconnected.'
+    'Route-only pump canvas panels should keep Required Head and Discharge Press blank and avoid claiming backend validity when disconnected.'
   );
   assert.deepEqual(
     sectionsIn(canonicalPumpPanel),
@@ -800,11 +817,11 @@ try {
 }
 
 assert(
-  index.includes('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260707-pump-panel-clean6'),
+  index.includes('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260711-sink-input-stability1'),
   'Index must load the route trace audit runtime with the default-lock cache key.'
 );
 assert(
-  manifest.includes('Route audit cache key: engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260707-pump-panel-clean6'),
+  manifest.includes('Route audit cache key: engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260711-sink-input-stability1'),
   'Manifest must document the route trace default-lock cache key.'
 );
 

@@ -118,29 +118,29 @@ assert(source.includes('forceImmediate'), 'Governor must preserve an immediate r
 });
 
 assert(
-  index.includes('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260707-pump-panel-clean6')
+  index.includes('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260711-sink-input-stability1')
     && index.includes('engineering-performance-refresh-governor.js?v=20260629-live-evidence1')
-    && index.includes('engineering-pump-edit-fast-lane.js?v=20260706-pump-edit-status-matrix1')
-    && index.includes('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1'),
+    && index.includes('engineering-pump-edit-fast-lane.js?v=20260710-pump-edit-manual-npshr-local1')
+    && index.includes('engineering-realtime-calculation-defense.js?v=20260711-src-task-window-flash-lock1'),
   'index.html must keep route audit, governor, pump edit fast lane, and realtime defense cache-busted.'
 );
-assert(index.includes('engineering-bilingual-improvements.js?v=20260703-source-defense-refresh1'), 'index.html must cache-bust the realtime-first bilingual runtime.');
+assert(index.includes('engineering-bilingual-improvements.js?v=20260711-src-input-flash-lock1'), 'index.html must cache-bust the realtime-first bilingual runtime.');
 assert(bilingualSource.includes('__NPSH_USE_LEGACY_BILINGUAL_AUTOSOLVE__ !== true'), 'Bilingual legacy autosolve bridge must be opt-in so realtime defense remains the only default autosolve owner.');
 assert(bilingualSource.includes('disabled-by-realtime-defense'), 'Bilingual runtime must mark the legacy autosolve bridge as disabled by realtime defense.');
 assert(bilingualSource.includes('REALTIME_FIRST_TEXT_KEYS'), 'Bilingual runtime must prune stale i18n entries for realtime-first labels.');
 assert(bilingualSource.includes('REALTIME_FIRST_LEGACY_TEXT_OVERRIDES'), 'Bilingual runtime must normalize old Solve labels to realtime-first Validate labels.');
 assert(
   index.indexOf('engineering-performance-refresh-governor.js?v=20260629-live-evidence1')
-      < index.indexOf('engineering-pump-edit-fast-lane.js?v=20260706-pump-edit-status-matrix1')
-    && index.indexOf('engineering-pump-edit-fast-lane.js?v=20260706-pump-edit-status-matrix1')
-      < index.indexOf('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1'),
+      < index.indexOf('engineering-pump-edit-fast-lane.js?v=20260710-pump-edit-manual-npshr-local1')
+    && index.indexOf('engineering-pump-edit-fast-lane.js?v=20260710-pump-edit-manual-npshr-local1')
+      < index.indexOf('engineering-realtime-calculation-defense.js?v=20260711-src-task-window-flash-lock1'),
   'Performance Refresh Governor and Pump edit fast lane must load before realtime defense starts scheduling linked view refreshes.'
 );
 assert(
-  index.indexOf('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260707-pump-panel-clean6')
+  index.indexOf('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260711-sink-input-stability1')
     > index.indexOf('const diagnosticScripts = [')
-    && index.indexOf('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260707-pump-panel-clean6')
-      > index.indexOf('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1'),
+    && index.indexOf('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260711-sink-input-stability1')
+      > index.indexOf('engineering-realtime-calculation-defense.js?v=20260711-src-task-window-flash-lock1'),
   'Route trace audit must remain deferred with diagnostic scripts so PageSpeed critical-path work stays calculation-only.'
 );
 assert.equal(

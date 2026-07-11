@@ -638,9 +638,9 @@
         if (typeof document === 'undefined') return;
         const scope = root?.querySelectorAll ? root : document;
         scope.querySelectorAll('.object-task-field-row[data-prop-key="temperatureMode"]').forEach((row) => {
-            row.hidden = true;
-            row.setAttribute('aria-hidden', 'true');
-            row.style.display = 'none';
+            if (!row.hidden) row.hidden = true;
+            if (row.getAttribute('aria-hidden') !== 'true') row.setAttribute('aria-hidden', 'true');
+            if (row.style.display !== 'none') row.style.display = 'none';
         });
         scope.querySelectorAll('select.prop-input-field[data-key="temperatureMode"]').forEach((select) => {
             if (select.value !== SOURCE_TEMP_MODE_FLUID_BASIS) {
@@ -779,7 +779,7 @@
         installSourceFluidBasisOnlyUiGuard,
         installFluidBasisTemperatureSyncGuard,
         sourceCustomTemperatureUiEnabled: SOURCE_CUSTOM_TEMPERATURE_UI_ENABLED,
-        version: '20260706-fluid-basis-temperature-global-sync-v1'
+        version: '20260711-fluid-basis-temperature-src-flash-lock-v2'
     };
     installSourceTemperatureStabilityGuard();
     installSourceFluidBasisOnlyUiGuard();

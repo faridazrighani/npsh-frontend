@@ -25,15 +25,15 @@ const manifest = read(manifestPath);
 const pkg = JSON.parse(read(packagePath));
 const publish = read(publishPath);
 
-const cacheKey = 'engineering-canvas-fast-preview-runtime.js?v=20260706-canvas-fast-preview18';
+const cacheKey = 'engineering-canvas-fast-preview-runtime.js?v=20260710-canvas-fast-preview21';
 const cacheKeyCount = (index.match(new RegExp(cacheKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
 
-assert(runtime.includes('2026.07-canvas-fast-preview18'), 'runtime version is missing');
+assert(runtime.includes('2026.07-canvas-fast-preview21'), 'runtime version is missing');
 assert(runtime.includes('EngineeringCanvasFastPreviewRuntime'), 'global API is missing');
 assert(cacheKeyCount >= 2, 'runtime must load in feature and initial canvas hydration paths');
 assert(
   index.indexOf(cacheKey) >= 0
-    && index.indexOf(cacheKey) < index.indexOf('engineering-source-temperature-runtime.js?v=20260706-fluid-temperature-global1'),
+    && index.indexOf(cacheKey) < index.indexOf('engineering-source-temperature-runtime.js?v=20260711-src-input-flash-lock1'),
   'fast preview runtime must load before Source Temperature runtime so input previews are not delayed by autosolve handlers'
 );
 assert(manifest.includes('engineering-canvas-fast-preview-runtime.js public-safe'), 'manifest inventory entry is missing');
@@ -83,6 +83,10 @@ assert(/if \(immediate\) runImmediatePumpPreview/.test(runtime), 'Immediate inpu
 assert(/setRowValue\([^)]*NPSH Available/s.test(runtime), 'pump NPSHa row repaint is missing');
 assert(runtime.includes('function optionalManualNpshr'), 'fast preview must distinguish blank Manual NPSHr from explicit zero.');
 assert(runtime.includes('const propsNpshr = optionalManualNpshr(props.manualNpshr);'), 'fast preview NPSHr source must be Manual NPSHr only.');
+assert(runtime.includes('function isSuctionBoundaryType'), 'fast preview must classify valid SRC/tank/vessel suction boundaries before showing downstream duty.');
+assert(runtime.includes('function isDischargeBoundaryType'), 'fast preview must require a valid SNK discharge boundary before showing downstream duty.');
+assert(runtime.includes('connectionTo(connection) === pumpId') && runtime.includes('isSuctionBoundaryType(nodeType(modelRef, connectionFrom(connection)))'), 'fast preview downstream duty must require a live suction route into the pump.');
+assert(runtime.includes('connectionFrom(connection) === pumpId') && runtime.includes('isDischargeBoundaryType(nodeType(modelRef, connectionTo(connection)))'), 'fast preview downstream duty must require a live pump-to-SNK discharge route.');
 assert(!runtime.includes('props.designNpshr') || !/propsNpshr[\s\S]{0,220}designNpshr/.test(runtime), 'fast preview must not fall back to legacy designNpshr for NPSHr display.');
 assert(runtime.includes('npshMargin: propsNpshr === null ? null'), 'fast preview must keep NPSH margin blank without Manual NPSHr.');
 assert(runtime.includes('results.vaporPressureHead'), 'fast preview must use the last authoritative pump vaporPressureHead as its baseline.');
@@ -95,8 +99,11 @@ assert(runtime.includes('eventName === "npsh:input-lightweight-update"'), 'light
 assert(/beginPreviewWindow\(event\?\.detail\?\.sourceEvent \|\| eventName,\s*1800,\s*immediate\)/.test(runtime), 'preview events must pass the immediate flag through beginPreviewWindow.');
 assert(runtime.includes('function applyTransientPumpPreview'), 'fast preview must publish transient pump result values so renderer rebuilds cannot restore stale NPSHa rows.');
 assert(runtime.includes('__canvasFastPreviewTransient'), 'transient pump preview results must be tagged for audit and baseline guards.');
+assert(runtime.includes('function isManualNpshrFastLaneActive'), 'fast preview must detect Manual NPSHr-only local previews.');
+assert(runtime.includes('writeNpsha: !manualNpshrPreviewOnly'), 'Manual NPSHr-only previews must not write transient NPSHa into pump results.');
+assert(runtime.includes('if (preview.writeNpsha !== false)'), 'transient pump preview must guard model writes to NPSHa.');
 assert(runtime.includes('options.preservePreviewFluidBasis && pumpNode?.results?.__canvasFastPreviewTransient'), 'baseline capture must not treat transient preview values as authoritative results.');
-assert(runtime.includes('return "NPSHa Calculated";') || runtime.includes('return NPSHA_CALCULATED_STATUS;'), 'fast preview must keep NPSHa-only pumps in the NPSHa Calculated status.');
+assert(runtime.includes('return "NPSHr Not Provided";') || runtime.includes('return NPSHR_NOT_PROVIDED_STATUS;'), 'fast preview must keep blank Manual NPSHr pumps in the canonical NPSHr Not Provided status.');
 assert(runtime.includes('return "Cavitation Risk";'), 'fast preview must keep cavitation-risk status canonical.');
 assert(runtime.includes('return "Warning";'), 'fast preview must keep warning status canonical.');
 assert(runtime.includes('return "OK";'), 'fast preview must keep satisfied Manual NPSHr comparison canonical as OK.');

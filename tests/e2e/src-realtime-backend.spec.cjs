@@ -56,9 +56,10 @@ function baseProject() {
         elevation: 0,
         temperatureMode: 'Use Fluid Basis',
         temp: 25,
-        flowInputMode: 'Solve from Network',
-        flow: 0,
-        massFlow: 0
+        flowInputMode: 'Volumetric Flow',
+        flow: 50,
+        volumetricFlow: 50,
+        massFlow: 49852.35
       }
     },
     'PIPE-S': createPipe('Suction pipe', 8, 0.08, 1),
@@ -67,7 +68,7 @@ function baseProject() {
       name: 'P',
       props: {
         inputMode: 'Basic',
-        npshrSourceMode: 'Estimated',
+        npshrSourceMode: 'Manual',
         curveDataSource: 'Engineering Fit',
         npshAssessmentMode: 'Screening',
         npshMarginBasis: 'User Defined',
@@ -76,6 +77,7 @@ function baseProject() {
         designHead: 35,
         designEfficiency: 70,
         designNpshr: 3,
+        manualNpshr: 3,
         porMinPercent: 70,
         porMaxPercent: 120,
         aorMinPercent: 50,
@@ -134,7 +136,7 @@ async function waitForNpshApp(page) {
   await page.waitForFunction(() => (
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.updateSimulation === 'function'
-    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v13'
+    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v18-src-task-window-flash-lock'
     && window.__npshRouteTraceAuditInstalled?.payloadBuilder
     && window.__npshRouteTraceAuditInstalled?.fetchSimulation
     && window.__npshRouteTraceAuditInstalled?.primaryResultApplier
@@ -343,16 +345,18 @@ test('SRC elevation, pressure, and temperature changes refresh protected backend
   expect(Number(changedPayload?.model?.SRC?.props?.pressure)).toBe(SOURCE_BOUNDARY_CHANGE.pressure);
   expect(changedPayload?.model?.SRC?.props?.temperatureMode).toBe('Custom');
   expect(Number(changedPayload?.model?.SRC?.props?.temp)).toBe(SOURCE_BOUNDARY_CHANGE.temperature);
+  expect(Number(changedPayload?.model?.SRC?.props?.flow)).toBe(50);
 
   expect(changed.calculationId).not.toBe(baseline.calculationId);
   expect(changed.dependencyManifest.dependencyFingerprint).not.toBe(baseline.dependencyManifest.dependencyFingerprint);
   expect(changed.dependencyManifest.priorResultStale).toBe(true);
   expect(requiredPumpHead(changed)).not.toBe(requiredPumpHead(baseline));
-  expect(Number(changed.results.flow)).not.toBe(Number(baseline.results.flow));
+  expect(Number.isFinite(Number(changed.results.flow))).toBe(true);
+  expect(Number(changed.results.flow)).toBe(Number(baseline.results.flow));
   expect(changed.routeTraceFingerprint).not.toBe(baseline.routeTraceFingerprint);
   expect(changed.results.npsha).not.toBe(baseline.results.npsha);
   expect(changed.results.npshr).toBe(baseline.results.npshr);
-  expect(changed.results.npshMargin).toBe(baseline.results.npshMargin);
+  expect(changed.results.npshMargin).not.toBe(baseline.results.npshMargin);
 
   const changedSrcStep = srcTraceStep(changed);
   expect(changedSrcStep.directNpshImpact).toBe(true);

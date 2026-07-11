@@ -49,9 +49,10 @@ function baseProject({ sinkElevation = 0, sinkPressure = 1.01325 } = {}) {
         pressureEnergyBasis: 'Static Pressure',
         elevation: 0,
         temperatureMode: 'Use Fluid Basis',
-        flowInputMode: 'Solve from Network',
-        flow: 0,
-        massFlow: 0
+        flowInputMode: 'Volumetric Flow',
+        flow: 50,
+        volumetricFlow: 50,
+        massFlow: 49852.35
       }
     },
     'PIPE-S': createPipe('Suction pipe', 8, 0.08, 1),
@@ -60,7 +61,7 @@ function baseProject({ sinkElevation = 0, sinkPressure = 1.01325 } = {}) {
       name: 'P',
       props: {
         inputMode: 'Basic',
-        npshrSourceMode: 'Estimated',
+        npshrSourceMode: 'Manual',
         curveDataSource: 'Engineering Fit',
         npshAssessmentMode: 'Screening',
         npshMarginBasis: 'User Defined',
@@ -69,6 +70,7 @@ function baseProject({ sinkElevation = 0, sinkPressure = 1.01325 } = {}) {
         designHead: 35,
         designEfficiency: 70,
         designNpshr: 3,
+        manualNpshr: 3,
         porMinPercent: 70,
         porMaxPercent: 120,
         aorMinPercent: 50,
@@ -123,7 +125,7 @@ async function waitForNpshApp(page) {
   await page.waitForFunction(() => (
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.updateSimulation === 'function'
-    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v13'
+    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v18-src-task-window-flash-lock'
     && window.__npshRouteTraceAuditInstalled?.payloadBuilder
     && window.__npshRouteTraceAuditInstalled?.fetchSimulation
     && window.__npshRouteTraceAuditInstalled?.primaryResultApplier
@@ -338,7 +340,7 @@ test('SINK elevation and pressure changes refresh protected backend trace in the
   expect(changed.dependencyManifest.dependencyFingerprint).not.toBe(baseline.dependencyManifest.dependencyFingerprint);
   expect(changed.dependencyManifest.priorResultStale).toBe(true);
   expect(systemHead(changed)).toBeGreaterThan(systemHead(baseline));
-  expect(Number(changed.results.flow)).toBeLessThan(Number(baseline.results.flow));
+  expect(Number(changed.results.flow)).toBeCloseTo(Number(baseline.results.flow), 6);
   expect(changed.routeTraceFingerprint).not.toBe(baseline.routeTraceFingerprint);
 
   const sinkStep = changed.routeTrace.steps.find((step) => step.type === 'sink');

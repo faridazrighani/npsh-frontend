@@ -1,12 +1,14 @@
 (function installCanvasClearResetGuard(root) {
   "use strict";
 
-  const VERSION = "2026.07-canvas-clear-reset-guard2";
+  const VERSION = "2026.07-canvas-clear-reset-guard3";
+  const CACHE_KEY = "20260709-clear-canvas-browser-reload1";
   const CLEAR_IN_PROGRESS_FLAG = "__npshCanvasClearInProgress";
   const CLEAR_EMPTY_FLAG = "__npshCanvasClearEmpty";
   const PATCH_FLAG = "__canvasClearResetGuard";
   const INSTALL_RETRY_LIMIT = 80;
   const INSTALL_RETRY_MS = 80;
+  const CLEAN_RELOAD_MENU_IDS = ["menu-clear-file", "menu-clear"];
 
   const REMOVABLE_CANVAS_SELECTORS = [
     ".pfd-object",
@@ -253,14 +255,57 @@
     return true;
   }
 
+  function requestCleanWorkspaceReload(event, sourceId = "") {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    event?.stopImmediatePropagation?.();
+    try {
+      root.sessionStorage?.setItem?.(
+        "__npshCleanWorkspaceReload",
+        JSON.stringify({
+          version: VERSION,
+          cacheKey: CACHE_KEY,
+          sourceId,
+          requestedAt: new Date().toISOString()
+        })
+      );
+    } catch (_) {
+      // Reload must still work when storage is blocked.
+    }
+    try {
+      root.location?.reload?.();
+    } catch (_) {
+      root.location.href = root.location.href;
+    }
+    return true;
+  }
+
+  function getCleanReloadMenuIdFromEvent(event) {
+    const target = event?.target;
+    if (!target || typeof target.closest !== "function") return "";
+    const menuItem = target.closest("#menu-clear-file, #menu-clear");
+    const id = menuItem?.id || "";
+    return CLEAN_RELOAD_MENU_IDS.includes(id) ? id : "";
+  }
+
+  function handleCleanReloadMenuClick(event) {
+    const sourceId = getCleanReloadMenuIdFromEvent(event);
+    if (!sourceId) return false;
+    return requestCleanWorkspaceReload(event, sourceId);
+  }
+
   function bindMenuFallbacks() {
     const documentRef = getDocument();
     if (!documentRef || documentRef.documentElement?.dataset.canvasClearResetGuardBound === VERSION) return;
     documentRef.documentElement.dataset.canvasClearResetGuardBound = VERSION;
+    documentRef.addEventListener("click", handleCleanReloadMenuClick, true);
     documentRef.getElementById("menu-view-reset-canvas")?.addEventListener("click", () => {
       [0, 80, 180].forEach((delay) => root.setTimeout?.(() => resetCanvasView(), delay));
     });
-    ["menu-clear-file", "menu-clear"].forEach((id) => {
+    CLEAN_RELOAD_MENU_IDS.forEach((id) => {
+      documentRef.getElementById(id)?.addEventListener("click", (event) => {
+        requestCleanWorkspaceReload(event, id);
+      }, true);
       documentRef.getElementById(id)?.addEventListener("click", () => {
         root.setTimeout?.(() => {
           if (root[CLEAR_EMPTY_FLAG] === true) {
@@ -284,8 +329,12 @@
 
   const api = {
     version: VERSION,
+    cacheKey: CACHE_KEY,
+    cleanReloadMenuIds: CLEAN_RELOAD_MENU_IDS.slice(),
     clearTransientCanvasArtifacts,
     resetCanvasView,
+    handleCleanReloadMenuClick,
+    requestCleanWorkspaceReload,
     install
   };
 

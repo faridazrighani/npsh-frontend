@@ -14,7 +14,7 @@ const manifest = fs.readFileSync(manifestPath, 'utf8');
 const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
 
 const cacheKey = 'engineering-pump-status-visual-lock.js?v=20260706-pump-incomplete-badge1';
-const pipeCleanupCacheKey = 'engineering-pipe-properties-cleanup-runtime.js?v=20260706-pipe-hl-allow-clean1';
+const pipeCleanupCacheKey = 'engineering-pipe-properties-cleanup-runtime.js?v=20260711-pipe-breakdown-decimals1';
 
 assert(runtimeSource.includes('2026.07-pump-status-visual-lock2'), 'runtime version is missing');
 assert(runtimeSource.includes('NpshPumpStatusVisualLock'), 'runtime global API is missing');
@@ -76,7 +76,7 @@ assert.equal(
 );
 
 const npshaOnlyPump = pump({
-  hydraulicNpshStatus: 'NPSHa Calculated',
+  hydraulicNpshStatus: 'NPSHr Not Provided',
   backendValidationStatus: 'Connected',
   cavitationStatus: 'Safe',
   npsha: 9.9289,
@@ -86,7 +86,7 @@ setRuntimeState({ 'P-100': npshaOnlyPump }, [{ from: 'SRC-100', to: 'P-100', con
 assert.equal(
   runtime.resolvePumpOperatingVisualStatus(npshaOnlyPump, 'P-100'),
   'warning',
-  'NPSHa-only route without NPSHr must display Warning/NPSHa Calculated, not Safe'
+  'NPSHa-only route without NPSHr must display Warning/NPSHr Not Provided, not Safe'
 );
 
 const safePump = pump({

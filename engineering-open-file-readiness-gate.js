@@ -6,8 +6,8 @@
 })((root) => {
   'use strict';
 
-  const VERSION = 'engineering-open-file-readiness-gate.v7';
-  const CACHE_KEY = '20260707-open-file-readiness-gate9';
+  const VERSION = 'engineering-open-file-readiness-gate.v9-hard-release';
+  const CACHE_KEY = '20260711-open-file-hard-release1';
   const STYLE_ID = 'engineeringOpenFileReadinessGateStyle';
   const OVERLAY_ID = 'engineeringOpenFileReadinessGate';
   const ACTIVE_CLASS = 'npsh-open-file-readiness-active';
@@ -23,8 +23,9 @@
   const FINAL_CLEANUP_THROTTLE_MS = 640;
   const STABLE_READY_EVIDENCE_MS = 280;
   const POST_CLEANUP_READY_MS = 900;
-  const PIPE_LABEL_RUNTIME_SRC = 'engineering-pipe-canvas-hydraulic-label-runtime-20260707-pfv-loss-summary-clean1.js?v=20260707-pfv-loss-summary-clean1';
-  const ROUTE_TRACE_RUNTIME_SRC = 'engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260707-pump-panel-clean6';
+  const HARD_RELEASE_MS = MAX_WAIT_MS + POST_CLEANUP_READY_MS + 600;
+  const PIPE_LABEL_RUNTIME_SRC = 'engineering-pipe-canvas-hydraulic-label-runtime-20260707-pfv-loss-summary-clean1.js?v=20260711-reynolds-darcy-flash-lock1';
+  const ROUTE_TRACE_RUNTIME_SRC = 'engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260711-sink-input-stability1';
   const DISABLED_DURING_OPEN_SELECTOR = [
     '#btn-solve',
     '#menu-run-solve',
@@ -47,6 +48,7 @@
   let activeSession = null;
   let observer = null;
   let loopTimer = 0;
+  let hardReleaseTimer = 0;
   let disabledElements = [];
   let lastRuntimeRequestAt = 0;
   const readinessScriptPromises = new Map();
@@ -478,6 +480,31 @@ body.${ACTIVE_CLASS} #canvas * {
     return canvasIsDisplayClean() && pipeHydraulicLabelsReady();
   }
 
+  function releaseSession(session, status = 'ready') {
+    if (!session || activeSession !== session) return false;
+    observer?.disconnect?.();
+    observer = null;
+    activeSession = null;
+    loopTimer = clearTimer(loopTimer);
+    hardReleaseTimer = clearTimer(hardReleaseTimer);
+    restoreOpenSensitiveControls();
+    document.body.classList.remove(ACTIVE_CLASS, WARNING_CLASS);
+    const overlay = document.getElementById(OVERLAY_ID);
+    if (overlay) {
+      overlay.dataset.visible = 'false';
+      overlay.dataset.state = status;
+    }
+    return true;
+  }
+
+  function settledLoadTransactionStatus() {
+    const transaction = root.EngineeringSimulationLoadTransaction?.current?.();
+    const status = String(transaction?.status || '').toLowerCase();
+    if (status === 'completed') return 'ready';
+    if (status === 'failed' || status === 'aborted') return 'warning';
+    return '';
+  }
+
   async function finishSession(status = 'ready') {
     if (!activeSession || activeSession.finishing) return;
     activeSession.finishing = true;
@@ -500,24 +527,18 @@ body.${ACTIVE_CLASS} #canvas * {
     renderOverlay();
     dispatchGateEvent(status, { status });
     root.setTimeout?.(() => {
-      if (activeSession !== session) return;
-      observer?.disconnect?.();
-      observer = null;
-      activeSession = null;
-      loopTimer = clearTimer(loopTimer);
-      restoreOpenSensitiveControls();
-      document.body.classList.remove(ACTIVE_CLASS, WARNING_CLASS);
-      const overlay = document.getElementById(OVERLAY_ID);
-      if (overlay) {
-        overlay.dataset.visible = 'false';
-        overlay.dataset.state = status;
-      }
+      releaseSession(session, status);
     }, 80);
   }
 
   function readinessLoop() {
     if (!activeSession) return;
     const elapsed = nowMs() - activeSession.startedAt;
+    const transactionStatus = settledLoadTransactionStatus();
+    if (transactionStatus && canvasHasLoadedModel()) {
+      finishSession(transactionStatus);
+      return;
+    }
     if (elapsed > MAX_WAIT_MS) {
       activeSession.warning = true;
       finishSession('warning');
@@ -561,6 +582,7 @@ body.${ACTIVE_CLASS} #canvas * {
     ensureOverlay();
     observer?.disconnect?.();
     loopTimer = clearTimer(loopTimer);
+    hardReleaseTimer = clearTimer(hardReleaseTimer);
     restoreOpenSensitiveControls();
     const startedAt = nowMs();
     activeSession = {
@@ -584,6 +606,14 @@ body.${ACTIVE_CLASS} #canvas * {
     requestReadinessRuntimes();
     dispatchGateEvent('reading');
     loopTimer = root.setTimeout?.(readinessLoop, LOOP_MS) || 0;
+    const session = activeSession;
+    hardReleaseTimer = root.setTimeout?.(() => {
+      if (activeSession !== session) return;
+      session.warning = true;
+      runFinalCleanup({ force: true });
+      dispatchGateEvent('warning', { status: 'warning', reason: 'hard-readiness-release' });
+      releaseSession(session, 'warning');
+    }, HARD_RELEASE_MS) || 0;
     return activeSession;
   }
 
@@ -657,12 +687,15 @@ body.${ACTIVE_CLASS} #canvas * {
     version: VERSION,
     cacheKey: CACHE_KEY,
     maxWaitMs: MAX_WAIT_MS,
+    hardReleaseMs: HARD_RELEASE_MS,
     minVisibleMs: MIN_VISIBLE_MS,
     quietMs: QUIET_MS,
     steps: STEPS.map((step) => ({ ...step })),
     install,
     beginOpenGate,
     finishSession,
+    releaseSession,
+    settledLoadTransactionStatus,
     canvasIsDisplayClean,
     pipeHydraulicLabelsReady,
     getModelPipeIds,

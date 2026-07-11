@@ -17,7 +17,7 @@ const runtimeSource = read(RUNTIME_FILE);
 const indexHtml = read(INDEX_FILE);
 const packageJson = JSON.parse(read(PACKAGE_FILE));
 const manifest = fs.existsSync(MANIFEST_FILE) ? read(MANIFEST_FILE) : '';
-const CLEANUP_CACHE_KEY = '20260706-pipe-hl-allow-clean1';
+const CLEANUP_CACHE_KEY = '20260711-pipe-breakdown-decimals1';
 const CLEANUP_RUNTIME_URL = `engineering-pipe-properties-cleanup-runtime.js?v=${CLEANUP_CACHE_KEY}`;
 const SEGMENTS_RUNTIME_URL = 'engineering-pipe-segments-file-runtime.js?v=20260630-pipe-properties-cleanup1';
 
@@ -30,12 +30,16 @@ sandbox.globalThis = sandbox;
 
 const runtime = require(RUNTIME_FILE);
 
-assert.strictEqual(runtime.version, 'engineering-pipe-properties-cleanup-runtime.v1');
+assert.strictEqual(runtime.version, 'engineering-pipe-properties-cleanup-runtime.v2-breakdown-decimals');
 assert.strictEqual(runtime.cacheKey, CLEANUP_CACHE_KEY);
 assert.strictEqual(typeof runtime.clean, 'function', 'Cleanup runtime must expose a synchronous clean() API.');
 assert.strictEqual(typeof runtime.scheduleClean, 'function', 'Cleanup runtime must expose a scheduled cleanup API.');
 assert.strictEqual(typeof runtime.rememberStableState, 'function', 'Cleanup runtime must expose Pipe Properties state capture.');
 assert.strictEqual(typeof runtime.restoreStableState, 'function', 'Cleanup runtime must expose Pipe Properties state restore.');
+assert.strictEqual(runtime.formatFixedMetric(0.05, 3), '0.050', 'Total K must retain exactly three decimal places.');
+assert.strictEqual(runtime.formatFixedMetric(2.227, 5, 'm'), '2.22700 m', 'Major hL must retain exactly five decimal places.');
+assert.strictEqual(runtime.formatFixedMetric(0.032, 5, 'm'), '0.03200 m', 'Minor hL must retain exactly five decimal places.');
+assert.strictEqual(runtime.formatFixedMetric(2.259, 5, 'm'), '2.25900 m', 'Total hL must retain exactly five decimal places.');
 assert.deepStrictEqual(
   runtime.removedSegmentLabels,
   ['z in (m)', 'z out (m)', 'hL Allow (m)'],

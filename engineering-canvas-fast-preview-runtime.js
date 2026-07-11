@@ -1,9 +1,9 @@
 !function registerEngineeringCanvasFastPreviewRuntime(root) {
   "use strict";
 
-  const VERSION = "2026.07-canvas-fast-preview18";
+  const VERSION = "2026.07-canvas-fast-preview21";
   const GRAVITY_MS2 = 9.80665;
-  const NPSHA_CALCULATED_STATUS = "NPSHa Calculated";
+  const NPSHR_NOT_PROVIDED_STATUS = "NPSHr Not Provided";
   const SUCTION_VAPOR_WARNING_HEAD_M = 0.5;
   const SUCTION_VAPOR_WARNING_BAR = 0.05;
   const PUMP_PANEL_SELECTOR = ".pump-live-params";
@@ -88,7 +88,7 @@
     if (/incomplete|input\s*required|unknown|not\s*connected|incomplete\s*network|incomplete\s*calculation/i.test(raw)) return "Incomplete";
     if (/cavitation|npsh\s*risk|risk|unsafe|fail/i.test(raw)) return "Cavitation Risk";
     if (/warning|review|near\s*vapor/i.test(raw)) return "Warning";
-    if (/not\s*provided|npshr\s*not\s*provided|manual\s*npshr|npsha\s*calculated/i.test(raw)) return NPSHA_CALCULATED_STATUS;
+    if (/not\s*provided|npshr\s*not\s*provided|manual\s*npshr|npsha\s*calculated/i.test(raw)) return NPSHR_NOT_PROVIDED_STATUS;
     if (/safe|ok|pass/i.test(raw)) return "OK";
     return raw;
   }
@@ -217,6 +217,34 @@
     return normalizeText(connection.to || connection.target || connection.toNode || connection.rawTo || connection.end || connection.targetId);
   }
 
+  function connectionPipeId(connection = {}) {
+    return normalizeText(connection.pipeId || connection.pipe || connection.lineId || connection.linkId || connection.edgeId);
+  }
+
+  function nodeType(modelRef, nodeId) {
+    return normalizeText(modelRef?.[nodeId]?.type).toLowerCase();
+  }
+
+  function isSuctionBoundaryType(type) {
+    return type === "source" || type === "tank" || type === "verticalvessel" || type === "horizontalvessel" || type === "separator";
+  }
+
+  function isDischargeBoundaryType(type) {
+    return type === "sink";
+  }
+
+  function nodeIdForModelNode(node, type = "") {
+    const modelRef = model();
+    const matches = Object.entries(modelRef || {}).filter(([, candidate]) => (
+      candidate === node || (
+        candidate?.type === (type || candidate?.type)
+        && node?.name
+        && candidate?.name === node.name
+      )
+    ));
+    return matches.length === 1 ? matches[0][0] : "";
+  }
+
   function hasHydraulicConnectionForNode(nodeId, modelRef = model()) {
     if (!nodeId) return false;
     return connectionList(modelRef).some((connection) => (
@@ -225,13 +253,34 @@
     ));
   }
 
+  function hasCompletePumpDischargeRoute(pumpId, modelRef = model()) {
+    if (!pumpId) return false;
+    const suctionConnection = connectionList(modelRef).find((connection) => (
+      isHydraulicConnection(connection)
+      && connectionTo(connection) === pumpId
+      && isSuctionBoundaryType(nodeType(modelRef, connectionFrom(connection)))
+      && modelRef?.[connectionPipeId(connection)]?.type === "pipe"
+    ));
+    const dischargeConnection = connectionList(modelRef).find((connection) => (
+      isHydraulicConnection(connection)
+      && connectionFrom(connection) === pumpId
+      && isDischargeBoundaryType(nodeType(modelRef, connectionTo(connection)))
+      && modelRef?.[connectionPipeId(connection)]?.type === "pipe"
+    ));
+    const dischargePipe = modelRef?.[connectionPipeId(dischargeConnection || {})];
+    const dischargeBoundary = modelRef?.[connectionTo(dischargeConnection || {})];
+    return !!(suctionConnection && dischargeConnection && dischargePipe && dischargeBoundary);
+  }
+
   function pumpResultView(pump = {}) {
     const results = pump.results || {};
     const evaluation = results.npshEvaluation || {};
     const trace = results.calculationTrace || evaluation.calculationTrace || {};
     const basis = trace.basis || {};
     const props = pump.props || {};
+    const pumpId = nodeIdForModelNode(pump, "pump");
     const propsNpshr = optionalManualNpshr(props.manualNpshr);
+    const downstreamDutyAvailable = propsNpshr !== null && hasCompletePumpDischargeRoute(pumpId);
     const resultNpshr = propsNpshr === null
       ? null
       : firstFiniteValue(results.npshr, results.npshRequired, evaluation.npshr, evaluation.npshRequired);
@@ -242,17 +291,21 @@
       npshMargin: propsNpshr === null ? null : firstFiniteValue(results.npshMargin, evaluation.npshMargin),
       npshRatio: propsNpshr === null ? null : firstFiniteValue(results.npshRatio, evaluation.npshRatio),
       suctionPressure: firstFiniteValue(results.suctionPressure, evaluation.suctionPressure, trace.boundary?.suctionPressure),
-      dischargePressure: firstFiniteValue(results.dischargePressure, evaluation.dischargePressure, trace.boundary?.dischargePressure),
+      dischargePressure: !downstreamDutyAvailable
+        ? null
+        : firstFiniteValue(results.dischargePressure, evaluation.dischargePressure, trace.boundary?.dischargePressure),
       pumpHead: firstFiniteValue(results.pumpHead, results.head, evaluation.pumpHead, evaluation.head),
-      requiredSystemHead: firstFiniteValue(
-        results.requiredSystemHeadRaw,
-        evaluation.requiredSystemHeadRaw,
-        trace.systemHead?.requiredHeadRaw,
-        results.requiredSystemHead,
-        evaluation.requiredSystemHead,
-        trace.systemHead?.requiredHead,
-        results.systemHead?.requiredHead
-      ),
+      requiredSystemHead: !downstreamDutyAvailable
+        ? null
+        : firstFiniteValue(
+          results.requiredSystemHeadRaw,
+          evaluation.requiredSystemHeadRaw,
+          trace.systemHead?.requiredHeadRaw,
+          results.requiredSystemHead,
+          evaluation.requiredSystemHead,
+          trace.systemHead?.requiredHead,
+          results.systemHead?.requiredHead
+        ),
       hydraulicStatus: firstTextValue(
         results.hydraulicNpshStatus,
         results.cavitationStatus,
@@ -394,16 +447,24 @@
     const required = finiteNumber(npshr);
     const available = finiteNumber(npsha);
     const normalizedFallback = normalizeHydraulicNpshStatusForMatrix(fallback);
-    if (required === null || required <= 0) {
+    if (required === null) {
       if (available === null) return normalizedFallback || "-";
       if (suctionVaporGuard?.risk) return "Cavitation Risk";
       if (suctionVaporGuard?.warning) return "Warning";
-      return NPSHA_CALCULATED_STATUS;
+      return NPSHR_NOT_PROVIDED_STATUS;
     }
     if (available === null) return normalizedFallback || "-";
     if (suctionVaporGuard?.risk) return "Cavitation Risk";
     if (available >= required) return suctionVaporGuard?.warning ? "Warning" : "OK";
     return "Cavitation Risk";
+  }
+
+  function isManualNpshrFastLaneActive(pumpId = "") {
+    const state = root.__engineeringPumpEditFastLane || {};
+    if (state.field !== "manualNpshr" && state.field !== "npshr") return false;
+    if (Number(state.activeUntil || 0) && Date.now() > Number(state.activeUntil || 0)) return false;
+    if (state.pumpId && pumpId && state.pumpId !== pumpId) return false;
+    return true;
   }
 
   function applyTransientPumpPreview(pumpNode, preview = {}) {
@@ -416,10 +477,12 @@
       : (results.npshEvaluation = {});
     const npsha = finiteNumber(preview.npsha);
     if (npsha === null) return false;
-    results.npsha = npsha;
-    results.npshAvailable = npsha;
-    evaluation.npsha = npsha;
-    evaluation.npshAvailable = npsha;
+    if (preview.writeNpsha !== false) {
+      results.npsha = npsha;
+      results.npshAvailable = npsha;
+      evaluation.npsha = npsha;
+      evaluation.npshAvailable = npsha;
+    }
     if (preview.npshr === null) {
       results.npshr = null;
       results.npshRequired = null;
@@ -464,18 +527,28 @@
     const view = pumpResultView(pumpNode);
     const fluid = fluidProps();
     const baseline = pumpBaselines.get(pumpId);
+    const manualNpshrPreviewOnly = isManualNpshrFastLaneActive(pumpId);
     const baselineNpsha = firstFiniteValue(baseline?.npsha, view.npsha);
     const baselineVaporHead = firstFiniteValue(baseline?.vaporPressureHead, view.vaporPressureHead, fluid.vaporPressureHead, 0);
     const currentVaporHead = firstFiniteValue(fluid.vaporPressureHead, baselineVaporHead, 0);
-    const previewNpsha = baselineNpsha === null
+    const previewNpsha = manualNpshrPreviewOnly
+      ? firstFiniteValue(view.npsha, baseline?.npsha)
+      : baselineNpsha === null
       ? view.npsha
       : baselineNpsha + baselineVaporHead - currentVaporHead;
-    const npshrRaw = firstFiniteValue(view.npshr, baseline?.npshr);
+    const npshrRaw = view.npshr;
     const npshr = npshrRaw === null ? null : nonNegativeOrZero(npshrRaw);
     const margin = previewNpsha === null || npshr === null ? null : previewNpsha - npshr;
     const ratio = previewNpsha === null || !npshr ? null : previewNpsha / npshr;
     const isHydraulicallyConnected = hasHydraulicConnectionForNode(pumpId);
+    const downstreamDutyAvailable = npshr !== null && hasCompletePumpDischargeRoute(pumpId);
     const suctionPressure = firstFiniteValue(view.suctionPressure, baseline?.suctionPressure);
+    const dischargePressure = downstreamDutyAvailable
+      ? firstFiniteValue(view.dischargePressure, baseline?.dischargePressure)
+      : null;
+    const requiredSystemHead = downstreamDutyAvailable
+      ? firstFiniteValue(view.requiredSystemHead, baseline?.requiredSystemHead)
+      : null;
     const suctionVaporGuard = suctionVaporGuardForPreview(previewNpsha, suctionPressure, fluid);
     const status = isHydraulicallyConnected
       ? hydraulicStatusForPreview(previewNpsha, npshr, view.hydraulicStatus || baseline?.hydraulicStatus || "", suctionVaporGuard)
@@ -489,7 +562,8 @@
       margin,
       ratio,
       status,
-      currentVaporHead
+      currentVaporHead,
+      writeNpsha: !manualNpshrPreviewOnly
     });
 
     let changed = 0;
@@ -502,8 +576,8 @@
     changed += setRowValue(pumpRowByLabel(panel, "Hydraulic NPSH"), status);
     changed += setRowValue(pumpRowByLabel(panel, "Backend Valid."), backendStatus);
     changed += setRowValue(pumpRowByLabel(panel, "Suction Press."), withUnit(suctionPressure, "bar a", 3));
-    changed += setRowValue(pumpRowByLabel(panel, "Discharge Press."), withUnit(firstFiniteValue(view.dischargePressure, baseline?.dischargePressure), "bar a", 3));
-    changed += setRowValue(pumpRowByLabel(panel, "Required Head"), withUnit(firstFiniteValue(view.requiredSystemHead, baseline?.requiredSystemHead), "m", 3));
+    changed += setRowValue(pumpRowByLabel(panel, "Discharge Press."), withUnit(dischargePressure, "bar a", 3));
+    changed += setRowValue(pumpRowByLabel(panel, "Required Head"), withUnit(requiredSystemHead, "m", 3));
 
     root.__engineeringCanvasFastPreviewLastPumpPreview = {
       version: VERSION,
@@ -519,6 +593,7 @@
       suctionPressure,
       status,
       transientApplied,
+      manualNpshrPreviewOnly,
       previewWindowOpen: isPreviewWindowOpen(),
       previewedAt: Date.now()
     };

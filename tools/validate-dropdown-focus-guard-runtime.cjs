@@ -37,7 +37,7 @@ assert(
   "Dropdown focus guard must load before the protected app bundle."
 );
 assert(
-  indexHtml.indexOf(cacheKey) < indexHtml.indexOf("engineering-simulation-load-transaction-manager.js?v=20260707-simulation-load-transaction6"),
+  indexHtml.indexOf(cacheKey) < indexHtml.indexOf("engineering-simulation-load-transaction-manager.js?v=20260711-simulation-load-visual-wrapper-lock1"),
   "Dropdown focus guard must load before runtime bridges that interact with menus."
 );
 assert(manifest.includes("engineering-dropdown-focus-guard-runtime.js"), "FILE_MANIFEST must mention the dropdown focus guard runtime.");

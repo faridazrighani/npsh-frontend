@@ -10,8 +10,8 @@ const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const CASE_FILE = path.join(FRONTEND_ROOT, "journals", "simulasi_1", "simulasi_performansi_pompa_air_umpan_tangki_deaerator.untirta");
 const LOGO_FILE = path.join(FRONTEND_ROOT, "png", "untirta-universitas-sultanagengtirtayasa880x870.png");
-const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260706-status-matrix-lock1";
-const VERSION = "2026.07-analysis-report-live18-status-matrix";
+const CACHE_KEY = "engineering-analysis-report-live-runtime.js?v=20260711-analysis-update-wrapper-lock1";
+const VERSION = "2026.07-analysis-report-live21-update-wrapper-lock";
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
 function assert(condition, message) {
@@ -234,6 +234,10 @@ const api = loadRuntime(runtime, project.model);
 assert(index.includes(CACHE_KEY), "index.html must load the cache-busted Analysis Report live runtime.");
 assert(runtime.includes(`const VERSION = '${VERSION}'`), "Analysis Report live runtime version must match the cache key.");
 assert(runtime.includes("collectLiveMetrics"), "Runtime must collect live model metrics.");
+assert(runtime.includes("firstExplicitNumber"), "Runtime must preserve explicit backend nulls before using fallback values.");
+assert(runtime.includes("isSuctionBoundaryType"), "Runtime must classify valid suction boundary endpoints before trusting downstream duty.");
+assert(runtime.includes("isDischargeBoundaryType"), "Runtime must classify SNK endpoints before trusting downstream duty.");
+assert(runtime.includes("const downstreamDutyAvailable = routeIntegrity?.complete === true;"), "Runtime must gate report downstream duty from complete route integrity.");
 assert(runtime.includes("__npshLastBackendSimulationResponse"), "Runtime must be able to read latest backend response context.");
 assert(runtime.includes("MutationObserver"), "Runtime must refresh when report windows are inserted.");
 assert(runtime.includes("patchUpdateSimulation"), "Runtime must hook updateSimulation for realtime calculation refreshes.");
@@ -284,7 +288,7 @@ assert(runtime.includes("Pump - Maximum Allowable NPSHr"), "Runtime must include
 assert(runtime.includes("calculatedNpshStatus"), "Runtime must derive hydraulic NPSH status when stale backend status says Input Required.");
 assert(runtime.includes("normalizeHydraulicStatusForMatrix"), "Runtime must normalize Hydraulic NPSH status labels to the canonical matrix.");
 assert(runtime.includes("return 'OK';"), "Runtime must map satisfied Hydraulic NPSH/Safe values to canonical OK.");
-assert(runtime.includes("return 'NPSHa Calculated';"), "Runtime must preserve NPSHa-only status when Manual NPSHr is not provided.");
+assert(runtime.includes("return 'NPSHr Not Provided';"), "Runtime must preserve canonical missing-NPSHr status when Manual NPSHr is not provided.");
 assert(runtime.includes("NPSHr,max"), "Runtime must document the maximum allowable NPSHr concept in report metric mapping.");
 assert(runtime.includes("Outlet Readout - Boundary Abs. Pressure"), "Runtime must include outlet boundary readout mapping.");
 assert(!runtime.includes("innerHTML ="), "Runtime must not replace table/report layout through innerHTML.");
@@ -324,6 +328,87 @@ assert(metricText(metrics, "Pump - Pump head evaluated").includes("24 m"), "Pump
 assert(!metricText(metrics, "SNK - Reference pressure").toLowerCase().includes("ignored"), "SNK reference pressure must remain active when Flow Demand Boundary is active.");
 assert(metricText(metrics, "SNK - Reference pressure").includes("bar"), "SNK reference pressure must display a pressure value.");
 assert(metricText(metrics, "Outlet Readout - Vapor margin").includes("7.76"), "Outlet vapor margin must be recalculated from live pressure and Fluid Basis.");
+
+const blankDownstreamDutyProject = JSON.parse(JSON.stringify(project));
+const blankDownstreamPump = blankDownstreamDutyProject.model["P-100"];
+blankDownstreamPump.results = {
+  ...(blankDownstreamPump.results || {}),
+  actualPumpHeadAvailable: true,
+  actualPumpHead: 24,
+  pumpHeadAtFlow: 24,
+  head: 24,
+  requiredSystemHead: null,
+  dischargePressure: null,
+  requiredPumpHeadStatus: "Downstream Required",
+  routeCalculationStatus: "Suction Only",
+  npshEvaluation: {
+    ...(blankDownstreamPump.results?.npshEvaluation || {}),
+    actualPumpHeadAvailable: true,
+    actualPumpHead: 24,
+    pumpHead: 24,
+    requiredSystemHead: null,
+    dischargePressure: null,
+    requiredPumpHeadStatus: "Downstream Required",
+    routeCalculationStatus: "Suction Only"
+  }
+};
+const blankDownstreamMetrics = loadRuntime(runtime, blankDownstreamDutyProject.model).collectLiveMetrics();
+assert(!blankDownstreamMetrics.has("pump - required system head"), "Explicit null Required System Head must remain blank even when pump head is available.");
+assert(!blankDownstreamMetrics.has("pump - required head"), "Explicit null Required Head must remain blank even when pump head is available.");
+assert(!blankDownstreamMetrics.has("pump - discharge pressure"), "Explicit null Discharge Pressure must remain blank when downstream duty is unavailable.");
+
+const staleInvalidRouteProject = JSON.parse(JSON.stringify(project));
+const staleInvalidRoutePump = staleInvalidRouteProject.model["P-100"];
+staleInvalidRoutePump.results = {
+  ...(staleInvalidRoutePump.results || {}),
+  actualPumpHeadAvailable: true,
+  actualPumpHead: 24,
+  pumpHeadAtFlow: 24,
+  head: 24,
+  requiredSystemHead: 98.765,
+  dischargePressure: 8.765,
+  npshEvaluation: {
+    ...(staleInvalidRoutePump.results?.npshEvaluation || {}),
+    actualPumpHeadAvailable: true,
+    actualPumpHead: 24,
+    pumpHead: 24,
+    requiredSystemHead: 98.765,
+    dischargePressure: 8.765
+  }
+};
+staleInvalidRouteProject.model.connections = (staleInvalidRouteProject.model.connections || staleInvalidRouteProject.connections || []).map((connection) => (
+  connection.pipeId === "PIPE-1"
+    ? { ...connection, from: "P-100", to: "SRC-100", rawFrom: "P-100", rawTo: "SRC-100", hydraulicReversed: true }
+    : connection
+));
+const staleInvalidRouteMetrics = loadRuntime(runtime, staleInvalidRouteProject.model).collectLiveMetrics();
+assert(metricText(staleInvalidRouteMetrics, "Pump - NPSHa").includes("6.4656 m"), "Invalid downstream route must still preserve suction/NPSHa report values.");
+assert(!staleInvalidRouteMetrics.has("pump - required system head"), "Reversed suction route must blank stale Required System Head in Analysis Report.");
+assert(!staleInvalidRouteMetrics.has("pump - required head"), "Reversed suction route must blank stale Required Head in Analysis Report.");
+assert(!staleInvalidRouteMetrics.has("pump - discharge pressure"), "Reversed suction route must blank stale Discharge Pressure in Analysis Report.");
+assert(!staleInvalidRouteMetrics.has("pipe discharge - total head loss"), "Reversed suction route must not expose stale discharge pipe loss as a live report metric.");
+
+const staleReversedDischargeProject = JSON.parse(JSON.stringify(project));
+const staleReversedDischargePump = staleReversedDischargeProject.model["P-100"];
+staleReversedDischargePump.results = {
+  ...(staleReversedDischargePump.results || {}),
+  requiredSystemHead: 77.777,
+  dischargePressure: 7.777,
+  npshEvaluation: {
+    ...(staleReversedDischargePump.results?.npshEvaluation || {}),
+    requiredSystemHead: 77.777,
+    dischargePressure: 7.777
+  }
+};
+staleReversedDischargeProject.model.connections = (staleReversedDischargeProject.model.connections || staleReversedDischargeProject.connections || []).map((connection) => (
+  connection.pipeId === "PIPE-2"
+    ? { ...connection, from: "SNK-100", to: "P-100", rawFrom: "SNK-100", rawTo: "P-100", hydraulicReversed: true }
+    : connection
+));
+const staleReversedDischargeMetrics = loadRuntime(runtime, staleReversedDischargeProject.model).collectLiveMetrics();
+assert(metricText(staleReversedDischargeMetrics, "Pump - NPSHa").includes("6.4656 m"), "Reversed discharge route must keep suction/NPSHa available.");
+assert(!staleReversedDischargeMetrics.has("pump - required head"), "Reversed discharge route must blank stale Required Head in Analysis Report.");
+assert(!staleReversedDischargeMetrics.has("pump - discharge pressure"), "Reversed discharge route must blank stale Discharge Pressure in Analysis Report.");
 
 const routeOnlyDischargeLossProject = JSON.parse(JSON.stringify(project));
 const routeOnlyPump = routeOnlyDischargeLossProject.model["P-100"];

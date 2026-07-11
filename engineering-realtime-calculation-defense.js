@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-realtime-calculation-defense.v13';
+  const VERSION = 'engineering-realtime-calculation-defense.v18-src-task-window-flash-lock';
   const DEFAULT_SOURCE_FLOW_INPUT_MODE = 'Volumetric Flow';
   const AUTO_SOLVE_DEBOUNCE_MS = 240;
   const AUTO_SOLVE_CHANGE_DEBOUNCE_MS = 90;
@@ -62,6 +62,8 @@
   let autoSolveSequence = 0;
   let pendingAutoSolve = null;
   let activeAutoSolve = null;
+  let activeAutoSolveSequence = 0;
+  let updateSimulationPatchInstalled = false;
   let activeCalculationTransaction = null;
   let completedCalculationTransaction = null;
   let linkedViewRefreshFrame = 0;
@@ -366,6 +368,24 @@
     return null;
   }
 
+  function hasOwn(object, key) {
+    return !!object && typeof object === 'object' && Object.prototype.hasOwnProperty.call(object, key);
+  }
+
+  function explicitFiniteOrNull(object, key) {
+    if (!hasOwn(object, key)) return undefined;
+    return finiteNumber(object[key]);
+  }
+
+  function firstExplicitFinite(...fields) {
+    for (const field of fields) {
+      if (!field || field.length < 2) continue;
+      const value = explicitFiniteOrNull(field[0], field[1]);
+      if (value !== undefined) return value;
+    }
+    return undefined;
+  }
+
   function actualPumpHeadFromResults(results = {}, evaluation = {}) {
     if (evaluation.actualPumpHeadAvailable === false || results.actualPumpHeadAvailable === false) return null;
     if (evaluation.actualPumpHeadAvailable === true || results.actualPumpHeadAvailable === true) {
@@ -658,7 +678,13 @@
         const results = node.results || {};
         const evaluation = results.npshEvaluation || {};
         const actualPumpHead = actualPumpHeadFromResults(results, evaluation);
-        const requiredSystemHead = firstFinite(evaluation.requiredSystemHead, results.requiredSystemHead, results.systemHead?.requiredHead);
+        const explicitRequiredSystemHead = firstExplicitFinite(
+          [evaluation, 'requiredSystemHead'],
+          [results, 'requiredSystemHead']
+        );
+        const requiredSystemHead = explicitRequiredSystemHead !== undefined
+          ? explicitRequiredSystemHead
+          : firstFinite(results.systemHead?.requiredHead);
         pumps[id] = {
           id,
           flow: firstFinite(evaluation.flow, results.flow, results.fixedFlow),
@@ -850,6 +876,140 @@
     return root.__engineeringCalculationDefenseRealtimeState?.dependencyFingerprint || null;
   }
 
+  function firstPresent(...values) {
+    return values.find((value) => value !== undefined && value !== null && String(value).trim() !== '') ?? null;
+  }
+
+  function resultCalculationId(results = {}) {
+    if (!results || typeof results !== 'object') return null;
+    return firstPresent(
+      results.calculationAudit?.calculationId,
+      results.npshEvaluation?.calculationAudit?.calculationId,
+      results.npshEvaluation?.calculationId,
+      results.calculationId
+    );
+  }
+
+  function latestBackendResponsePayload(nodeId = '') {
+    const cached = root.__npshLastBackendSimulationResponse;
+    const response = cached?.response;
+    if (!response || typeof response !== 'object') return null;
+    const pumpId = cached.pumpId || response.pumpId || response.routeTrace?.pumpId || response.nodeId || '';
+    if (nodeId && pumpId && pumpId !== nodeId) {
+      const model = runtimeModel();
+      const affectedIds = new Set(calculationAffectedNodeIds(model, nodeId));
+      if (!affectedIds.has(pumpId)) return null;
+    }
+    return response;
+  }
+
+  function backendResultContext(nodeId = '') {
+    const model = runtimeModel();
+    const ids = calculationAffectedNodeIds(model, nodeId);
+    const pumpId = ids.find((id) => model[id]?.type === 'pump') || nodeId || ids[0] || '';
+    const results = model[pumpId]?.results || {};
+    const response = latestBackendResponsePayload(pumpId || nodeId) || {};
+    return {
+      pumpId,
+      results,
+      response,
+      calculationId: firstPresent(
+        resultCalculationId(results),
+        response.calculationId,
+        response.calculationAudit?.calculationId
+      ),
+      dependencyFingerprint: firstPresent(
+        resultDependencyFingerprint(results),
+        response.dependencyManifest?.dependencyFingerprint
+      ),
+      calculationDefenseStatus: firstPresent(
+        results.calculationDefenseContract?.status,
+        results.npshEvaluation?.calculationDefenseContract?.status,
+        response.calculationDefenseContract?.status
+      )
+    };
+  }
+
+  function isTransientBackendStatus(value) {
+    return /^(?:calculating|stale|pending|refreshing|in progress)$/i.test(String(value || '').trim());
+  }
+
+  function markResultObjectCurrent(results, payload = {}) {
+    if (!results || typeof results !== 'object') return false;
+    let changed = false;
+    const calculationId = firstPresent(payload.calculationId, payload.calculationAudit?.calculationId);
+    const dependencyFingerprint = payload.dependencyManifest?.dependencyFingerprint || null;
+
+    if (calculationId && !resultCalculationId(results)) {
+      results.calculationAudit = {
+        ...(results.calculationAudit || {}),
+        calculationId
+      };
+      changed = true;
+    }
+    if (payload.dependencyManifest && !results.dependencyManifest) {
+      results.dependencyManifest = payload.dependencyManifest;
+      changed = true;
+    } else if (dependencyFingerprint && !resultDependencyFingerprint(results)) {
+      results.dependencyManifest = {
+        ...(results.dependencyManifest || {}),
+        dependencyFingerprint
+      };
+      changed = true;
+    }
+    if (isTransientBackendStatus(results.backendValidationStatus)) {
+      results.backendValidationStatus = 'Connected';
+      changed = true;
+    }
+    if (!results.backendValidationMessage || isTransientBackendStatus(results.backendValidationMessage)) {
+      results.backendValidationMessage = 'Private backend returned usable hydraulic/NPSH results for the current route.';
+      changed = true;
+    }
+    if (String(results.calculationFreshness || '').trim() === 'Calculating') {
+      results.calculationFreshness = 'Current';
+      changed = true;
+    }
+    if (results.routeTrace && typeof results.routeTrace === 'object' && /calculating/i.test(String(results.routeTrace.lossFreshness || ''))) {
+      results.routeTrace.lossFreshness = 'Current from backend route trace';
+      changed = true;
+    }
+    if (results.actionReadinessBackend && typeof results.actionReadinessBackend === 'object' && isTransientBackendStatus(results.actionReadinessBackend.status)) {
+      results.actionReadinessBackend.status = 'Ready';
+      results.actionReadinessBackend.stale = false;
+      delete results.actionReadinessBackend.message;
+      changed = true;
+    }
+    if (results.backendActionReadiness && typeof results.backendActionReadiness === 'object' && isTransientBackendStatus(results.backendActionReadiness.status)) {
+      results.backendActionReadiness.status = 'Ready';
+      results.backendActionReadiness.stale = false;
+      delete results.backendActionReadiness.message;
+      changed = true;
+    }
+    if (results.npshEvaluation && typeof results.npshEvaluation === 'object') {
+      if (isTransientBackendStatus(results.npshEvaluation.backendValidationStatus)) {
+        results.npshEvaluation.backendValidationStatus = 'Connected';
+        changed = true;
+      }
+      if (String(results.npshEvaluation.calculationFreshness || '').trim() === 'Calculating') {
+        results.npshEvaluation.calculationFreshness = 'Current';
+        changed = true;
+      }
+    }
+    return changed;
+  }
+
+  function markCurrentResultObjects(nodeId = '', payload = {}) {
+    const model = runtimeModel();
+    let changed = 0;
+    calculationAffectedNodeIds(model, nodeId).forEach((id) => {
+      const node = model[id];
+      if (!node || typeof node !== 'object') return;
+      if (!node.results || typeof node.results !== 'object') node.results = {};
+      if (markResultObjectCurrent(node.results, payload)) changed += 1;
+    });
+    return changed;
+  }
+
   function buildCalculationRequestId(sequence) {
     const serial = Number.isFinite(Number(sequence)) ? Number(sequence) : autoSolveSequence;
     return `rt-${Date.now().toString(36)}-${serial}`;
@@ -1030,6 +1190,8 @@
     const activeApply = root.__engineeringRealtimeActiveBackendApply || {};
     const sequence = Number(payload.__engineeringRealtimeAutoSolveSequence || payload.sequence || activeApply.sequence || 0);
     const nodeId = payload.nodeId || activeApply.nodeId || '';
+    const context = backendResultContext(nodeId);
+    const response = context.response || {};
     if (sequence && isAutoSolveSuperseded(sequence)) {
       const superseded = markAutoSolveSuperseded(sequence, nodeId, payload.realtimeReason || 'superseded backend apply');
       return {
@@ -1038,8 +1200,24 @@
         supersededState: superseded
       };
     }
-    const calculationId = payload.calculationId || payload.calculationAudit?.calculationId || null;
-    const dependencyFingerprint = payload.dependencyManifest?.dependencyFingerprint || currentDependencyFingerprint(nodeId);
+    const calculationId = firstPresent(
+      payload.calculationId,
+      payload.calculationAudit?.calculationId,
+      context.calculationId,
+      response.calculationId,
+      response.calculationAudit?.calculationId,
+      root.__engineeringCalculationDefenseRealtimeState?.calculationId
+    );
+    const dependencyManifest = payload.dependencyManifest || context.results?.dependencyManifest || response.dependencyManifest || null;
+    const calculationDefenseContract = payload.calculationDefenseContract
+      || context.results?.calculationDefenseContract
+      || response.calculationDefenseContract
+      || null;
+    const dependencyFingerprint = firstPresent(
+      dependencyManifest?.dependencyFingerprint,
+      context.dependencyFingerprint,
+      currentDependencyFingerprint(nodeId)
+    );
     const requestId = payload.__engineeringRealtimeRequestId || payload.requestId || activeApply.requestId || activeCalculationTransaction?.requestId || null;
     const transactionSequence = sequence || activeCalculationTransaction?.sequence || null;
     const transaction = transactionSequence ? updateCalculationTransaction(transactionSequence, {
@@ -1049,12 +1227,22 @@
       calculationId,
       completedAt: new Date().toISOString()
     }) : null;
+    markCurrentResultObjects(context.pumpId || nodeId, {
+      ...response,
+      ...payload,
+      calculationId,
+      dependencyManifest: dependencyManifest || undefined,
+      calculationDefenseContract: calculationDefenseContract || undefined
+    });
+    if (root.__engineeringCalculationDefenseRealtimeAutoSolve?.sequence === transactionSequence) {
+      root.__engineeringCalculationDefenseRealtimeAutoSolve = null;
+    }
     root.__engineeringCalculationDefenseRealtimeState = {
       version: VERSION,
       status: 'Current',
       calculationId,
       dependencyFingerprint: dependencyFingerprint || null,
-      calculationDefenseStatus: payload.calculationDefenseContract?.status || null,
+      calculationDefenseStatus: calculationDefenseContract?.status || context.calculationDefenseStatus || null,
       calculationMode: payload.calculationMode || activeApply.calculationMode || currentCalculationMode() || '',
       requestId: requestId || transaction?.requestId || null,
       sequence: sequence || transaction?.sequence || null,
@@ -1190,6 +1378,17 @@
     return true;
   }
 
+  function shouldPreserveActiveSourceTaskWindow(nodeId = '') {
+    if (typeof document === 'undefined') return false;
+    const active = document.activeElement;
+    const key = String(active?.dataset?.key || active?.name || '').trim();
+    const activeNodeId = String(active?.dataset?.node || active?.dataset?.nodeId || '').trim();
+    const source = activeNodeId ? runtimeModel()?.[activeNodeId] : null;
+    if (source?.type !== 'source' || !['pressure', 'flow', 'elevation'].includes(key)) return false;
+    if (nodeId && activeNodeId !== String(nodeId)) return false;
+    return !!active.closest?.('.persistent-object-properties-task-window, #taskWindow[data-kind="object"], .task-window[data-kind="object"]');
+  }
+
   function autoSolveOptions(nodeId, reason, transactionOrSequence) {
     const transaction = transactionOrSequence && typeof transactionOrSequence === 'object' ? transactionOrSequence : null;
     const sequence = transaction ? transaction.sequence : transactionOrSequence;
@@ -1197,7 +1396,7 @@
       refreshReason: 'solve',
       trigger: 'solve',
       forceBackend: true,
-      renderSidebarAfter: true,
+      renderSidebarAfter: !shouldPreserveActiveSourceTaskWindow(nodeId),
       realtimeReason: reason,
       realtimeTrigger: 'realtime-input',
       calculationMode: 'realtime-input',
@@ -1209,8 +1408,14 @@
   }
 
   function patchUpdateSimulation() {
+    if (updateSimulationPatchInstalled || root.__engineeringRealtimeUpdateSimulationPatchInstalled) return false;
     const current = root.updateSimulation;
-    if (typeof current !== 'function' || current.__engineeringRealtimeCalculationDefenseUpdatePatched) return false;
+    if (typeof current !== 'function') return false;
+    if (current.__engineeringRealtimeCalculationDefenseUpdatePatched) {
+      updateSimulationPatchInstalled = true;
+      root.__engineeringRealtimeUpdateSimulationPatchInstalled = VERSION;
+      return false;
+    }
     const wrapped = function realtimeDefenseUpdateSimulationWrapper(...args) {
       normalizeSourceFlowInputDefaults();
       const options = args[0] && typeof args[0] === 'object' ? args[0] : {};
@@ -1234,9 +1439,19 @@
       const shouldRefreshAfterUpdate = !options.__engineeringRealtimeAutoSolve
         && !shouldBypassImmediateInputUpdate(options, nodeId)
         && hasRecentUserCalculationIntent(10000, ['manual-solve', 'sample-open']);
+      const shouldHealCurrentAfterUpdate = !!options.forceBackend
+        && !shouldBypassImmediateInputUpdate(options, nodeId);
       if (result && typeof result.then === 'function') {
         result.then((value) => {
           dispatchLifecycleApplying({ nodeId, reason: options.refreshReason || options.trigger || 'updateSimulation' });
+          if (shouldHealCurrentAfterUpdate) {
+            markCurrentFromBackend({
+              nodeId,
+              calculationMode: options.calculationMode || (options.__engineeringRealtimeAutoSolve ? 'realtime-input' : 'manual-solve'),
+              requestId: options.__engineeringRealtimeRequestId || options.requestId || null,
+              sequence: options.__engineeringRealtimeAutoSolveSequence || options.sequence || null
+            });
+          }
           if (shouldRefreshAfterUpdate) after();
           return value;
         }, (error) => {
@@ -1244,6 +1459,14 @@
           return error;
         });
       } else {
+        if (shouldHealCurrentAfterUpdate) {
+          root.setTimeout(() => markCurrentFromBackend({
+            nodeId,
+            calculationMode: options.calculationMode || (options.__engineeringRealtimeAutoSolve ? 'realtime-input' : 'manual-solve'),
+            requestId: options.__engineeringRealtimeRequestId || options.requestId || null,
+            sequence: options.__engineeringRealtimeAutoSolveSequence || options.sequence || null
+          }), 0);
+        }
         if (shouldRefreshAfterUpdate) root.setTimeout(after, 0);
       }
       return result;
@@ -1255,6 +1478,8 @@
       wrapped.__analysisReportLiveOriginal = current.__analysisReportLiveOriginal || current;
     }
     root.updateSimulation = wrapped;
+    updateSimulationPatchInstalled = true;
+    root.__engineeringRealtimeUpdateSimulationPatchInstalled = VERSION;
     return true;
   }
 
@@ -1262,8 +1487,21 @@
     if (isAutoSolveSuperseded(sequence)) {
       return Promise.resolve(null);
     }
+    if (activeAutoSolve) {
+      if (activeAutoSolveSequence === sequence) return activeAutoSolve;
+      const priorAutoSolve = activeAutoSolve;
+      return Promise.resolve(priorAutoSolve)
+        .catch(() => null)
+        .then(() => {
+          if (isAutoSolveSuperseded(sequence)) return null;
+          return runAutoSolve(sequence, nodeId, reason);
+        });
+    }
     autoSolveTimer = 0;
     pendingAutoSolve = null;
+    if (root.__engineeringCalculationDefenseRealtimeAutoSolve?.sequence === sequence) {
+      root.__engineeringCalculationDefenseRealtimeAutoSolve = null;
+    }
     patchUpdateSimulation();
     if (typeof root.updateSimulation !== 'function') {
       return Promise.resolve(null);
@@ -1298,7 +1536,8 @@
       sequence,
       requestId: transaction.requestId
     });
-    activeAutoSolve = Promise.resolve()
+    let solvePromise = null;
+    solvePromise = Promise.resolve()
       .then(() => root.updateSimulation(autoSolveOptions(resolvedNodeId, reason, transaction)))
       .then((result) => {
         if (isAutoSolveSuperseded(sequence)) {
@@ -1343,9 +1582,17 @@
         if (root.__engineeringRealtimeActiveBackendApply?.requestId === activeApply.requestId) {
           root.__engineeringRealtimeActiveBackendApply = null;
         }
-        if (sequence === autoSolveSequence) activeAutoSolve = null;
+        if (root.__engineeringCalculationDefenseRealtimeAutoSolve?.sequence === sequence) {
+          root.__engineeringCalculationDefenseRealtimeAutoSolve = null;
+        }
+        if (activeAutoSolve === solvePromise) {
+          activeAutoSolve = null;
+          activeAutoSolveSequence = 0;
+        }
       });
-    return activeAutoSolve;
+    activeAutoSolve = solvePromise;
+    activeAutoSolveSequence = sequence;
+    return solvePromise;
   }
 
   function requestAutoSolve(nodeId = '', reason = 'Input changed; backend recalculation scheduled.', options = {}) {
@@ -1500,6 +1747,19 @@
     const originalApplyBackend = root.applyBackendSimulationPrimaryResults;
     if (typeof originalApplyBackend === 'function' && !originalApplyBackend.__engineeringRealtimeCalculationDefensePatched) {
       root.applyBackendSimulationPrimaryResults = function realtimeDefenseApplyBackendWrapper(...args) {
+        const activeApply = root.__engineeringRealtimeActiveBackendApply || {};
+        const sequence = Number(activeApply.sequence || 0);
+        if (sequence && isAutoSolveSuperseded(sequence)) {
+          markAutoSolveSuperseded(sequence, activeApply.nodeId || '', activeApply.reason || 'stale backend result blocked before apply');
+          root.__engineeringRealtimeBlockedBackendApply = {
+            version: VERSION,
+            sequence,
+            requestId: activeApply.requestId || null,
+            latestSequence: autoSolveSequence,
+            blockedAt: new Date().toISOString()
+          };
+          return false;
+        }
         const result = originalApplyBackend.apply(this, args);
         markCurrentFromBackend(currentPayloadFromApplyArgs(args));
         return result;

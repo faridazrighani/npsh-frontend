@@ -1,18 +1,19 @@
 !function(root) {
   "use strict";
 
-  const VERSION = "2026.07-pipe-canvas-loss-summary-clean1";
+  const VERSION = "2026.07-pipe-canvas-reynolds-darcy2-flash-lock";
   const STYLE_ID = "engineeringPipeCanvasHydraulicLabelStyle";
   const SVG_NS = "http://www.w3.org/2000/svg";
   const LABEL_SELECTOR = "#svg-lines .pipe-delta-label[data-pipe-id]";
   const DISPLAY_DIGITS = 5;
   const BLOCK_WIDTH = 178;
-  const BLOCK_HEIGHT = 75;
-  const BLOCK_TOP = -83;
-  const ROW_TOP = -68;
+  const BLOCK_HEIGHT = 100;
+  const BLOCK_TOP = -108;
+  const ROW_TOP = -93;
   const ROW_GAP = 12.5;
   const KEY_X = -82;
   const VALUE_X = -34;
+  const VERTICAL_SIDE_OFFSET_Y = 46;
   const SOLVER_REFRESH_HOOKS = [
     "refreshBackendProtectedSimulationUi",
     "refreshBackendProtectedRealtimeTaskWindows",
@@ -51,6 +52,7 @@
   let canvasInteractionEventsInstalled = false;
   let installAttempts = 0;
   const solverRefreshWrappedFunctions = new Set();
+  const stableLabelDataByPipe = new Map();
   const CANVAS_INTERACTION_SETTLE_MS = 220;
   const SOLVER_REFRESH_DEBOUNCE_MS = 220;
   const PIPE_LABEL_BUSY_SETTLE_MS = 700;
@@ -103,6 +105,31 @@
     return `${formatFixed(value)} m`;
   }
 
+  function formatMoodyDecimal(value, digits = 4) {
+    const number = finiteNumber(value);
+    return number === null ? "-" : number.toFixed(digits).replace(/\.?0+$/, "");
+  }
+
+  function formatMoodyScientific(value, mantissaDigits = 3) {
+    const number = finiteNumber(value);
+    if (number === null || number <= 0) return "-";
+    const exponent = Math.floor(Math.log(number) / Math.LN10);
+    const mantissa = number / Math.pow(10, exponent);
+    return `${mantissa.toFixed(mantissaDigits)}e${exponent >= 0 ? "+" : ""}${exponent}`;
+  }
+
+  function formatReynolds(value) {
+    const number = finiteNumber(value);
+    if (number === null) return "-";
+    return number >= 10000 ? formatMoodyScientific(number, 3) : formatMoodyDecimal(number, 0);
+  }
+
+  function formatDarcyF(value) {
+    const number = finiteNumber(value);
+    if (number === null) return "-";
+    return number < 0.01 ? number.toFixed(5) : number.toFixed(5).replace(/0+$/, "").replace(/\.$/, "");
+  }
+
   function getTrace(pipeId, pipe, flow) {
     const results = pipe?.results || {};
     const existing = results.calculationTrace || null;
@@ -151,6 +178,16 @@
     return hasValue ? total : null;
   }
 
+  function selectBusySafeMetric(traceValue, segmentValue) {
+    const traceNumber = firstFiniteValue(traceValue);
+    const segmentNumber = firstFiniteValue(segmentValue);
+    if (!isPipeLabelBusy() || traceNumber === null || segmentNumber === null) {
+      return firstFiniteValue(traceNumber, segmentNumber);
+    }
+    const tolerance = Math.max(1e-9, Math.abs(segmentNumber) * 1e-6);
+    return Math.abs(traceNumber - segmentNumber) > tolerance ? segmentNumber : traceNumber;
+  }
+
   function fallbackVelocityFromProps(pipe, flow) {
     const flowNumber = firstFiniteValue(flow);
     const segments = Array.isArray(pipe?.props?.segments) ? pipe.props.segments : [];
@@ -194,39 +231,49 @@
     const trace = getTrace(pipeId, pipe, flow) || {};
     const calculatedSegments = getCalculatedSegments(pipeId, pipe, flow);
     const totals = trace.totals || {};
+    const calculatedMajorLoss = sumCalculatedSegmentValue(calculatedSegments, "majorLoss");
+    const calculatedMinorLoss = sumCalculatedSegmentValue(calculatedSegments, "minorLoss");
+    const calculatedTotalLoss = sumCalculatedSegmentValue(calculatedSegments, "totalLoss");
+    const calculatedTotalK = sumCalculatedSegmentValue(calculatedSegments, "minorLossK");
 
     const majorLoss = firstFiniteValue(
-      totals.majorLoss,
+      selectBusySafeMetric(totals.majorLoss, calculatedMajorLoss),
       results.majorLoss,
-      sumCalculatedSegmentValue(calculatedSegments, "majorLoss")
+      calculatedMajorLoss
     );
     const minorLoss = firstFiniteValue(
-      totals.minorLoss,
+      selectBusySafeMetric(totals.minorLoss, calculatedMinorLoss),
       results.minorLoss,
       results.fittingLoss,
-      sumCalculatedSegmentValue(calculatedSegments, "minorLoss")
+      calculatedMinorLoss
     );
     const totalLoss = firstFiniteValue(
-      totals.totalLoss,
+      selectBusySafeMetric(totals.totalLoss, calculatedTotalLoss),
       results.headLoss,
       results.totalLoss,
-      sumCalculatedSegmentValue(calculatedSegments, "totalLoss"),
+      calculatedTotalLoss,
       majorLoss !== null || minorLoss !== null ? (majorLoss || 0) + (minorLoss || 0) : null
     );
     const totalK = firstFiniteValue(
-      totals.totalK,
+      selectBusySafeMetric(totals.totalK, calculatedTotalK),
       results.totalK,
-      sumCalculatedSegmentValue(calculatedSegments, "minorLossK"),
+      calculatedTotalK,
       pipePropsTotalK(pipe)
     );
     const velocity = representativeVelocity({ pipe, flow, trace, calculatedSegments });
+    const primaryMoodyMarker = Array.isArray(trace?.moody?.markers) ? trace.moody.markers[0] : null;
+    const primarySegment = primaryMoodyMarker || calculatedSegments[0] || trace?.segments?.[0] || {};
+    const reynolds = firstFiniteValue(primarySegment.reynolds, primarySegment.reynoldsNumber);
+    const darcyF = firstFiniteValue(primarySegment.frictionFactor, primarySegment.darcyF);
 
     const rows = [
       { key: "v", value: formatVelocity(velocity), title: "Flow velocity" },
       { key: "Total K", value: formatTotalK(totalK), title: "Total loss coefficient" },
       { key: "Total hL", value: formatHead(totalLoss), title: "Total pipe/fitting/valve head loss" },
       { key: "Minor", value: formatHead(minorLoss), title: "Minor/local head loss" },
-      { key: "Major", value: formatHead(majorLoss), title: "Major/friction head loss" }
+      { key: "Major", value: formatHead(majorLoss), title: "Major/friction head loss" },
+      { key: "Reynolds", value: formatReynolds(reynolds), title: "Primary Reynolds number from Moody Chart / Friction Factor Check" },
+      { key: "Darcy f", value: formatDarcyF(darcyF), title: "Primary Darcy friction factor from Moody Chart / Friction Factor Check" }
     ];
 
     const title = [
@@ -235,7 +282,9 @@
       `Total K ${formatTotalK(totalK)}`,
       `Total hL ${formatHead(totalLoss)}`,
       `Minor loss ${formatHead(minorLoss)}`,
-      `Major loss ${formatHead(majorLoss)}`
+      `Major loss ${formatHead(majorLoss)}`,
+      `Reynolds ${formatReynolds(reynolds)}`,
+      `Darcy f ${formatDarcyF(darcyF)}`
     ].join(" | ");
 
     return {
@@ -437,7 +486,7 @@
     const side = Math.round(BLOCK_WIDTH / 2 + 42);
     const below = Math.round(Math.abs(BLOCK_TOP) + 18);
     const above = -14;
-    const mid = Math.round(Math.abs(BLOCK_TOP) - BLOCK_HEIGHT / 2);
+    const mid = VERTICAL_SIDE_OFFSET_Y;
     const candidates = vertical
       ? [
         ["right", side, mid],
@@ -569,10 +618,18 @@
 
   function renderLabelGroup(group) {
     const pipeId = group?.dataset?.pipeId || "";
-    const data = buildPipeHydraulicLabelData(pipeId);
+    const pipe = runtimeModel()?.[pipeId];
+    const computedData = buildPipeHydraulicLabelData(pipeId);
+    const cached = stableLabelDataByPipe.get(pipeId);
+    if (cached && cached.pipe !== pipe) stableLabelDataByPipe.delete(pipeId);
+    const currentCache = cached?.pipe === pipe ? cached : null;
+    const data = isPipeLabelBusy() && currentCache ? currentCache.data : computedData;
     if (!data) {
       if (group?.dataset?.pipeHydraulicLabelRestored === VERSION && group.parentNode) group.remove();
       return false;
+    }
+    if (!isPipeLabelBusy() && computedData) {
+      stableLabelDataByPipe.set(pipeId, { pipe, data: computedData });
     }
     const geometrySignature = labelGeometrySignature(group);
     const hasCurrentData = group.dataset.pipeHydraulicLabelVersion === VERSION
@@ -761,12 +818,41 @@
     document.head.appendChild(style);
   }
 
+  function captureHydraulicLabelNodes() {
+    if (typeof document === "undefined") return new Map();
+    return new Map(Array.from(document.querySelectorAll(LABEL_SELECTOR))
+      .filter((label) => label.classList?.contains("pipe-hydraulic-label") && label.dataset?.pipeId)
+      .map((label) => [label.dataset.pipeId, label]));
+  }
+
+  function retainHydraulicLabelNodes(previousLabels) {
+    if (!previousLabels?.size || typeof document === "undefined") return 0;
+    let retained = 0;
+    Array.from(document.querySelectorAll(LABEL_SELECTOR)).forEach((replacement) => {
+      const pipeId = replacement.dataset?.pipeId || "";
+      const previous = previousLabels.get(pipeId);
+      if (!previous || previous === replacement) return;
+      const sourceTransform = replacement.getAttribute("transform") || "";
+      const anchor = parseLabelTransform(sourceTransform);
+      previous.dataset.pipeHydraulicLabelSourceTransform = sourceTransform;
+      if (anchor.x !== null) previous.dataset.pipeHydraulicLabelAnchorX = String(anchor.x);
+      if (anchor.y !== null) previous.dataset.pipeHydraulicLabelAnchorY = String(anchor.y);
+      previous.dataset.pipeHydraulicLabelAngle = String(anchor.angle || 0);
+      previous.dataset.pipeHydraulicLabelGeometrySignature = "";
+      replacement.replaceWith(previous);
+      retained += 1;
+    });
+    return retained;
+  }
+
   function patchDrawConnections() {
     const original = root.drawConnections;
     if (typeof original !== "function" || original.__pipeCanvasHydraulicLabelPatched) return false;
     function patchedDrawConnections(...args) {
+      const previousLabels = captureHydraulicLabelNodes();
       markPipeLabelBusy();
       const result = original.apply(this, args);
+      retainHydraulicLabelNodes(previousLabels);
       runImmediateRefresh({ force: true });
       queueRefresh(0, { force: true });
       return result;
@@ -952,7 +1038,11 @@
     uprightLabelTransform,
     parseLabelTransform,
     smartLabelCandidates,
-    formatFixed
+    formatFixed,
+    formatReynolds,
+    formatDarcyF,
+    captureHydraulicLabelNodes,
+    retainHydraulicLabelNodes
   };
 
   root.EngineeringPipeCanvasHydraulicLabelRuntime = api;

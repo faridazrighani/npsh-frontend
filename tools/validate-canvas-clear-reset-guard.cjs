@@ -13,7 +13,7 @@ const guardPath = path.join(rootDir, "engineering-canvas-clear-reset-guard.js");
 const stableRuntimePath = path.join(rootDir, "engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js");
 const contextDockPath = path.join(rootDir, "engineering-canvas-context-dock-20260628-canvas-dock-scroll-anchor1.js");
 
-const cacheKey = "engineering-canvas-clear-reset-guard.js?v=20260707-clear-keeps-fluid-basis1";
+const cacheKey = "engineering-canvas-clear-reset-guard.js?v=20260709-clear-canvas-browser-reload1";
 const dockCacheKey = "engineering-canvas-context-dock-20260628-canvas-dock-scroll-anchor1.js?v=20260707-clear-keeps-fluid-basis1";
 
 function read(filePath) {
@@ -58,10 +58,26 @@ assert.equal(
   "CanvasContextDock",
   "pipe-hydraulic-label",
   "pipe-delta-label",
-  "scheduleRepeatedCleanup"
+  "scheduleRepeatedCleanup",
+  "CLEAN_RELOAD_MENU_IDS",
+  "handleCleanReloadMenuClick",
+  "requestCleanWorkspaceReload",
+  "__npshCleanWorkspaceReload",
+  'documentRef.addEventListener("click", handleCleanReloadMenuClick, true)',
+  "root.location?.reload?.()",
+  "stopImmediatePropagation"
 ].forEach((token) => {
   assert.ok(guard.includes(token), `Canvas clear/reset guard must include ${token}.`);
 });
+
+assert.ok(
+  guard.includes('const CACHE_KEY = "20260709-clear-canvas-browser-reload1"'),
+  "Canvas clear/reset guard must expose the clean workspace reload cache key."
+);
+assert.ok(
+  guard.includes('"menu-clear-file"') && guard.includes('"menu-clear"'),
+  "Canvas clear/reset guard must bind both File and Edit Clear Canvas commands."
+);
 
 assert.ok(
   !removableSelectorBlock.includes("canvasContextDock") &&

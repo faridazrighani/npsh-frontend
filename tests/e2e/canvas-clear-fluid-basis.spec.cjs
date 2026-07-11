@@ -2,11 +2,16 @@ const { test, expect } = require('@playwright/test');
 
 async function waitForNpshApp(page) {
   await page.goto('/');
+  await waitForNpshAppReady(page);
+}
+
+async function waitForNpshAppReady(page) {
   await page.keyboard.press('Escape');
   await page.evaluate(() => window.__npshLoadSupport?.());
   await page.waitForFunction(() => (
     typeof window.applySimulationStateAtomic === 'function'
-    && window.EngineeringCanvasClearResetGuard?.version === '2026.07-canvas-clear-reset-guard2'
+    && window.EngineeringCanvasClearResetGuard?.version === '2026.07-canvas-clear-reset-guard3'
+    && window.EngineeringCanvasClearResetGuard?.cacheKey === '20260709-clear-canvas-browser-reload1'
     && window.CanvasContextDock?.version === 'engineering-canvas-context-dock.v4'
     && window.CanvasContextDock?.cacheKey === '20260707-clear-keeps-fluid-basis1'
   ), null, { timeout: 30000 });
@@ -156,9 +161,24 @@ async function loadProjectWithFluidBasisDock(page) {
   ), null, { timeout: 15000 });
 }
 
-test('Edit Clear Canvas keeps Fluid Basis dock visible on an empty canvas', async ({ page }) => {
-  page.on('dialog', (dialog) => dialog.accept());
+async function clickClearMenuAndWaitForReload(page, menuId, commandId) {
+  await page.click(menuId);
+  await expect(page.locator(commandId)).toBeVisible();
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: 'load', timeout: 30000 }),
+    page.click(commandId)
+  ]);
+  await waitForNpshAppReady(page);
+  await page.waitForFunction(() => (
+    performance.getEntriesByType('navigation')?.[0]?.type === 'reload'
+  ), null, { timeout: 15000 });
+}
 
+for (const { label, menuId, commandId } of [
+  { label: 'Edit', menuId: '#menu-edit', commandId: '#menu-clear' },
+  { label: 'File', menuId: '#menu-file', commandId: '#menu-clear-file' }
+]) {
+  test(`${label} Clear Canvas clean reloads the workspace and restores Fluid Basis`, async ({ page }) => {
   await waitForNpshApp(page);
   await loadProjectWithFluidBasisDock(page);
 
@@ -166,16 +186,10 @@ test('Edit Clear Canvas keeps Fluid Basis dock visible on an empty canvas', asyn
   await expect(page.locator('#canvasContextDock')).toContainText('Fluid Basis');
   await expect(page.locator('#canvas .pfd-object')).toHaveCount(3);
 
-  await page.click('#menu-edit');
-  await expect(page.locator('#dropdown-edit')).toBeVisible();
-  await page.click('#menu-clear');
-  const confirmDialog = page.getByRole('dialog', { name: 'Clear Canvas' });
-  await expect(confirmDialog).toBeVisible();
-  await confirmDialog.getByRole('button', { name: 'Clear Canvas' }).click();
+  await clickClearMenuAndWaitForReload(page, menuId, commandId);
 
   await page.waitForFunction(() => (
-    window.__npshCanvasClearEmpty === true
-    && document.querySelectorAll('#canvas .pfd-object').length === 0
+    document.querySelectorAll('#canvas .pfd-object').length === 0
     && !!document.getElementById('canvasContextDock')
   ), null, { timeout: 15000 });
 
@@ -196,7 +210,6 @@ test('Edit Clear Canvas keeps Fluid Basis dock visible on an empty canvas', asyn
     };
   });
 
-  expect(state.clearEmpty).toBe(true);
   expect(state.objectCount).toBe(0);
   expect(state.dockExists).toBe(true);
   expect(state.dockParentId).toBe('canvas');
@@ -204,4 +217,5 @@ test('Edit Clear Canvas keeps Fluid Basis dock visible on an empty canvas', asyn
   expect(state.dockVisibility).not.toBe('hidden');
   expect(state.dockText).toContain('Fluid Basis');
   expect(state.routeTitles).toEqual(['Fluid Basis']);
-});
+  });
+}

@@ -473,7 +473,7 @@ globalThis.__npshGlobalModel['P-100'].results.flow = 50;
 globalThis.__npshGlobalModel['P-100'].results.head = 24;
 
 globalThis.__engineeringPumpEditFastLane = {
-  version: 'engineering-pump-edit-fast-lane.v8',
+  version: 'engineering-pump-edit-fast-lane.v11',
   mode: 'chart',
   field: 'designHead',
   pumpId: 'P-100',
@@ -585,7 +585,7 @@ assert.strictEqual(staleRebuiltChartModel.series.pumpHead[1].value, 33, 'Rebuilt
 assert.strictEqual(staleRebuiltChartModel.sourceAudit.frontendChartRebuilt, true, 'Rebuilt chart must retain audit evidence.');
 
 globalThis.__engineeringPumpEditFastLane = {
-  version: 'engineering-pump-edit-fast-lane.v8',
+  version: 'engineering-pump-edit-fast-lane.v11',
   mode: 'chart',
   field: 'designHead',
   pumpId: 'P-100',
@@ -632,7 +632,7 @@ setModel({
   }
 });
 globalThis.__engineeringPumpEditFastLane = {
-  version: 'engineering-pump-edit-fast-lane.v8',
+  version: 'engineering-pump-edit-fast-lane.v11',
   mode: 'chart',
   field: 'bepFlow',
   pumpId: 'P-100',

@@ -145,9 +145,9 @@ async function waitForNpshApp(page) {
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.updateSimulation === 'function'
     && window.EngineeringDefenseExportPackage?.schemaVersion === 'defense-export-package.v1'
-    && window.EngineeringPipePropertiesCleanupRuntime?.version === 'engineering-pipe-properties-cleanup-runtime.v1'
+    && window.EngineeringPipePropertiesCleanupRuntime?.version === 'engineering-pipe-properties-cleanup-runtime.v2-breakdown-decimals'
     && window.EngineeringPipeMoodyChartAudit?.version === 'engineering-pipe-moody-chart-audit.v9'
-    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v13'
+    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v18-src-task-window-flash-lock'
     && window.__npshRouteTraceAuditInstalled?.fetchSimulation
     && window.__npshRouteTraceAuditInstalled?.primaryResultApplier
   ), null, { timeout: 30000 });
@@ -589,8 +589,35 @@ test('Pipe canvas hydraulic label does not flash during protected solver redraw'
 
   await page.waitForFunction(() => {
     return document.querySelectorAll('#svg-lines .pipe-hydraulic-label[data-pipe-id]').length >= 1
-      && window.EngineeringPipeCanvasHydraulicLabelRuntime?.version === '2026.07-pipe-canvas-loss-summary-clean1';
+      && window.EngineeringPipeCanvasHydraulicLabelRuntime?.version === '2026.07-pipe-canvas-reynolds-darcy2-flash-lock';
   }, null, { timeout: 10000 });
+
+  const moodyCanvasRows = await page.evaluate(() => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const api = window.EngineeringPipeCanvasHydraulicLabelRuntime;
+    return Array.from(document.querySelectorAll('#svg-lines .pipe-hydraulic-label[data-pipe-id]')).map((label) => {
+      const pipeId = label.dataset.pipeId || '';
+      const keys = Array.from(label.querySelectorAll('.pipe-hydraulic-label-key')).map((node) => node.textContent.trim());
+      const values = Array.from(label.querySelectorAll('.pipe-hydraulic-label-value')).map((node) => node.textContent.trim());
+      const rows = Object.fromEntries(keys.map((key, index) => [key, values[index]]));
+      const marker = model[pipeId]?.results?.calculationTrace?.moody?.markers?.[0] || {};
+      return {
+        pipeId,
+        lastRows: keys.slice(-3),
+        reynolds: rows.Reynolds,
+        darcyF: rows['Darcy f'],
+        expectedReynolds: api.formatReynolds(marker.reynolds),
+        expectedDarcyF: api.formatDarcyF(marker.frictionFactor)
+      };
+    });
+  });
+
+  expect(moodyCanvasRows.length).toBeGreaterThan(0);
+  moodyCanvasRows.forEach((label) => {
+    expect(label.lastRows).toEqual(['Major', 'Reynolds', 'Darcy f']);
+    expect(label.reynolds).toBe(label.expectedReynolds);
+    expect(label.darcyF).toBe(label.expectedDarcyF);
+  });
 
   await page.evaluate(() => {
     const isVisible = (node) => {
@@ -612,7 +639,9 @@ test('Pipe canvas hydraulic label does not flash during protected solver redraw'
           || !label.querySelector('.pipe-hydraulic-label-value')
           || /P stat\./.test(text)
           || !/Total K/.test(text)
-          || !/Total hL/.test(text);
+          || !/Total hL/.test(text)
+          || !/Reynolds/.test(text)
+          || !/Darcy f/.test(text);
       });
       if (!hydraulicLabels.length || visibleLegacyLabels.length || blankLabels.length || duplicatePipeIds.length) {
         window.__pipeHydraulicLabelFlashSamples.push({
@@ -643,4 +672,114 @@ test('Pipe canvas hydraulic label does not flash during protected solver redraw'
     pipeCanvasHydraulicLabelNoFlashDuringSolveE2E: 'pass',
     flashSamples
   }, null, 2));
+});
+
+test('Pipe canvas hydraulic label stays stable during pipe edit and final-value refresh', async ({ page }, testInfo) => {
+  await waitForNpshApp(page);
+  await loadProject(page, baseProject());
+  const firstSolve = await runProtectedSolve(page);
+  await copyPipeNodeResultsIntoBrowser(page, firstSolve, ['PIPE-S', 'PIPE-D']);
+  await page.evaluate(() => {
+    window.drawConnections?.();
+    window.EngineeringPipeCanvasHydraulicLabelRuntime?.refresh?.(document);
+  });
+  await page.waitForSelector('#svg-lines .pipe-hydraulic-label[data-pipe-id="PIPE-D"]');
+  await page.evaluate(() => {
+    const expectedKeys = ['v', 'Total K', 'Total hL', 'Minor', 'Major', 'Reynolds', 'Darcy f'];
+    const readState = () => {
+      const labels = Array.from(document.querySelectorAll('#svg-lines .pipe-hydraulic-label[data-pipe-id]'));
+      return labels.map((label) => ({
+        pipeId: label.dataset.pipeId,
+        transform: label.getAttribute('transform'),
+        bgHeight: label.querySelector('.pipe-hydraulic-label-bg')?.getAttribute('height'),
+        keys: Array.from(label.querySelectorAll('.pipe-hydraulic-label-key')).map((node) => node.textContent.trim()),
+        values: Array.from(label.querySelectorAll('.pipe-hydraulic-label-value')).map((node) => node.textContent.trim())
+      }));
+    };
+    const labels = Array.from(document.querySelectorAll('#svg-lines .pipe-hydraulic-label[data-pipe-id]'));
+    window.__pipeLabelBaselineNodes = new Map(labels.map((label) => [label.dataset.pipeId, label]));
+    window.__pipeLabelBaselineState = readState();
+    window.__pipeLabelStabilityViolations = [];
+    const audit = (reason) => {
+      const current = Array.from(document.querySelectorAll('#svg-lines .pipe-hydraulic-label[data-pipe-id]'));
+      if (current.length !== window.__pipeLabelBaselineNodes.size) {
+        window.__pipeLabelStabilityViolations.push({ reason, issue: 'label-count', count: current.length });
+        return;
+      }
+      current.forEach((label) => {
+        const pipeId = label.dataset.pipeId || '';
+        const keys = Array.from(label.querySelectorAll('.pipe-hydraulic-label-key')).map((node) => node.textContent.trim());
+        const values = Array.from(label.querySelectorAll('.pipe-hydraulic-label-value')).map((node) => node.textContent.trim());
+        const baseline = window.__pipeLabelBaselineState.find((entry) => entry.pipeId === pipeId);
+        const issue = window.__pipeLabelBaselineNodes.get(pipeId) !== label
+          ? 'node-replaced'
+          : JSON.stringify(keys) !== JSON.stringify(expectedKeys)
+            ? 'row-structure'
+            : label.querySelector('.pipe-hydraulic-label-bg')?.getAttribute('height') !== '100'
+              ? 'background-height'
+              : label.getAttribute('transform') !== baseline?.transform
+                ? 'transform-shift'
+                : values.some((value) => !value || value === '-' || value.startsWith('- '))
+                  ? 'provisional-value'
+                  : null;
+        if (issue) window.__pipeLabelStabilityViolations.push({ reason, pipeId, issue, keys, values });
+      });
+    };
+    window.__pipeLabelStabilityObserver = new MutationObserver(() => audit('mutation'));
+    window.__pipeLabelStabilityObserver.observe(document.getElementById('svg-lines'), {
+      attributes: true,
+      childList: true,
+      characterData: true,
+      subtree: true
+    });
+    window.__pipeLabelStabilityTimer = setInterval(() => audit('timer'), 4);
+    audit('start');
+  });
+
+  await page.evaluate(() => {
+    window.currentSelectedNode = 'PIPE-D';
+    window.__npshExplicitObjectPropertiesOpenUntil = Date.now() + 10000;
+    window.openPipePropertiesTaskWindow?.('PIPE-D');
+    const taskWindow = document.querySelector('.persistent-object-properties-task-window[data-kind="pipe"][data-node-id="PIPE-D"]')
+      || document.querySelector('.persistent-object-properties-task-window[data-kind="pipe"]');
+    if (taskWindow) window.renderSidebar?.('PIPE-D', { taskWindow, skipDismissedGuard: true });
+    const lengthInput = taskWindow?.querySelector('[data-field="length"]');
+    if (lengthInput) {
+      lengthInput.value = '12';
+      lengthInput.dispatchEvent(new Event('input', { bubbles: true }));
+      lengthInput.dispatchEvent(new Event('change', { bubbles: true }));
+    } else {
+      window.__npshGlobalModel['PIPE-D'].props.segments[0].length = 12;
+    }
+  });
+  await runProtectedSolve(page, { previousCalculationId: firstSolve.calculationId });
+  await page.waitForTimeout(900);
+
+  const stability = await page.evaluate(() => {
+    clearInterval(window.__pipeLabelStabilityTimer);
+    window.__pipeLabelStabilityObserver.disconnect();
+    const finalLabels = Array.from(document.querySelectorAll('#svg-lines .pipe-hydraulic-label[data-pipe-id]'));
+    const readRows = (label) => {
+      const keys = Array.from(label.querySelectorAll('.pipe-hydraulic-label-key')).map((node) => node.textContent.trim());
+      const values = Array.from(label.querySelectorAll('.pipe-hydraulic-label-value')).map((node) => node.textContent.trim());
+      return Object.fromEntries(keys.map((key, index) => [key, values[index]]));
+    };
+    return {
+      violations: window.__pipeLabelStabilityViolations || [],
+      baseline: Object.fromEntries(window.__pipeLabelBaselineState.map((entry) => [entry.pipeId, Object.fromEntries(entry.keys.map((key, index) => [key, entry.values[index]]))])),
+      final: Object.fromEntries(finalLabels.map((label) => [label.dataset.pipeId, readRows(label)])),
+      sameNodes: finalLabels.every((label) => window.__pipeLabelBaselineNodes.get(label.dataset.pipeId) === label)
+    };
+  });
+
+  expect(stability.violations).toEqual([]);
+  expect(stability.sameNodes).toBe(true);
+  expect(stability.final['PIPE-D']['Major']).not.toBe(stability.baseline['PIPE-D']['Major']);
+  expect(stability.final['PIPE-D']['Total hL']).not.toBe(stability.baseline['PIPE-D']['Total hL']);
+  expect(stability.final['PIPE-D']['Reynolds']).toBe(stability.baseline['PIPE-D']['Reynolds']);
+  expect(stability.final['PIPE-D']['Darcy f']).toBe(stability.baseline['PIPE-D']['Darcy f']);
+
+  const screenshotPath = testInfo.outputPath('pipe-canvas-label-stable-after-edit.png');
+  await page.locator('#svg-lines').screenshot({ path: screenshotPath });
+  await testInfo.attach('stable pipe canvas labels after edit', { path: screenshotPath, contentType: 'image/png' });
 });

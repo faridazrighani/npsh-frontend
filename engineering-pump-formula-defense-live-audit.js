@@ -1,6 +1,6 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'pump-formula-defense-live-audit.v12';
+  const VERSION = 'pump-formula-defense-live-audit.v13-idempotent-refresh';
   const WINDOW_SELECTOR = '.pump-formula-defense-task-window';
   const BADGE_SELECTOR = '[data-pump-formula-defense-live-badges]';
   const SUMMARY_SELECTOR = '[data-pump-formula-defense-vendor-summary]';
@@ -38,6 +38,9 @@
   let windowRefreshTimer = null;
   let runtimeGuardTimer = null;
   let refreshingWindowContent = false;
+  let canvasPumpReadoutRefreshTimer = 0;
+  let localBackendSkipGuardInstalled = false;
+  const wrappedFunctionNames = new Set();
 
   function escapeHtml(value) {
     return String(value ?? '')
@@ -370,6 +373,7 @@
   function writeResultIfUseful(results, key, value, overwriteIncomplete = false) {
     if (!results || value === null || value === undefined || value === '') return false;
     const current = results[key];
+    if (Object.is(current, value)) return false;
     const empty = current === null || current === undefined || current === '';
     if (empty || overwriteIncomplete || isIncompleteStatus(current)) {
       results[key] = value;
@@ -505,16 +509,22 @@
   }
 
   function refreshCanvasPumpReadoutsIfNeeded(changed) {
-    if (!changed || typeof root.setTimeout !== 'function') return;
-    root.setTimeout(() => {
+    if (!changed || typeof root.setTimeout !== 'function') return false;
+    if (canvasPumpReadoutRefreshTimer) return true;
+    canvasPumpReadoutRefreshTimer = root.setTimeout(() => {
+      canvasPumpReadoutRefreshTimer = 0;
       try {
         if (typeof root.drawConnections === 'function') root.drawConnections();
-        if (typeof root.updateAllObjectOperatingStatusVisuals === 'function') root.updateAllObjectOperatingStatusVisuals();
-        if (typeof root.updateCanvasWarningPanel === 'function') root.updateCanvasWarningPanel();
+        if (typeof root.updateAllObjectOperatingStatusVisuals === 'function') {
+          root.updateAllObjectOperatingStatusVisuals();
+        } else if (typeof root.updateCanvasWarningPanel === 'function') {
+          root.updateCanvasWarningPanel();
+        }
       } catch (error) {
         console.warn(`${VERSION}: pump readout refresh failed.`, error);
       }
     }, 0);
+    return true;
   }
 
   function trimZeros(text) {
@@ -1457,6 +1467,8 @@
   }
 
   function wrapFunction(name, after, options = {}) {
+    const singleInstall = name === 'updateSimulation';
+    if (singleInstall && wrappedFunctionNames.has(name)) return false;
     const original = root[name];
     if (typeof original !== 'function' || original.__pumpFormulaDefenseLiveAuditVersion === VERSION) return false;
     function wrapped(...args) {
@@ -1484,10 +1496,12 @@
     wrapped.__pumpFormulaDefenseLiveAuditOriginal = original;
     copyRuntimePatchFlags(wrapped, original);
     root[name] = wrapped;
+    if (singleInstall) wrappedFunctionNames.add(name);
     return true;
   }
 
   function patchLocalBackendSkipGuard() {
+    if (localBackendSkipGuardInstalled) return false;
     const original = root.shouldSkipBackendSimulationFetch;
     if (typeof original !== 'function' || original.__pumpFormulaDefenseLiveAuditVersion === VERSION) return false;
     function patched(endpoint, options = {}) {
@@ -1498,6 +1512,7 @@
     patched.__pumpFormulaDefenseLiveAuditVersion = VERSION;
     patched.__pumpFormulaDefenseLiveAuditOriginal = original;
     root.shouldSkipBackendSimulationFetch = patched;
+    localBackendSkipGuardInstalled = true;
     return true;
   }
 

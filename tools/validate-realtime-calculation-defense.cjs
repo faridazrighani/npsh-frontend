@@ -87,7 +87,9 @@ globalThis.EngineeringPerformanceRefreshGovernor = {
     return true;
   }
 };
+let backendPrimaryApplies = 0;
 globalThis.applyBackendSimulationPrimaryResults = (pumpNode, backendResult, response) => {
+  backendPrimaryApplies += 1;
   pumpNode.results.calculationAudit = response.calculationAudit;
   pumpNode.results.dependencyManifest = response.dependencyManifest;
   pumpNode.results.calculationDefenseContract = response.calculationDefenseContract;
@@ -124,7 +126,7 @@ globalThis.EngineeringParameterTaskRuntime = {
 };
 
 const runtime = require(runtimePath);
-assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v13', 'Realtime defense runtime should expose v13.');
+assert.equal(runtime.version, 'engineering-realtime-calculation-defense.v18-src-task-window-flash-lock', 'Realtime defense runtime should expose the SRC task-window flash-lock version.');
 assert.equal(runtime.autosolvePolicy?.mode, 'realtime-autosolve-first', 'Realtime defense must declare realtime autosolve as the primary calculation policy.');
 assert.equal(runtime.autosolvePolicy?.manualCommandRole, 'validate-refresh-evidence', 'Manual command must be treated as evidence validation/refresh.');
 assert.equal(runtime.debounceForSourceEvent('input'), 240, 'Input debounce must keep numeric edits responsive.');
@@ -171,6 +173,28 @@ assert.equal(runtime.isCalculationField(fakeInput({ field: 'designFlow' })), fal
 assert.equal(runtime.isCalculationField(fakeInput({ field: 'curveData', inPumpCurveTable: true })), false, 'Pump curve table edits must not trigger route-only autosolve.');
 assert.equal(runtime.isCalculationField(fakeInput({ nodeId: 'SNK-100', field: 'pressure' })), true, 'SNK Reference Pressure must trigger autosolve as an active boundary input.');
 assert.equal(runtime.isCalculationField(fakeInput({ nodeId: 'SNK-100', field: 'demandFlow' })), true, 'SNK demandFlow must trigger autosolve while Flow Demand Boundary is active.');
+assert.equal(runtime.isCalculationField(fakeInput({ nodeId: 'SNK-100', field: 'elevation' })), true, 'SNK elevation must trigger downstream duty autosolve.');
+assert.equal(runtime.isCalculationField(fakeInput({ nodeId: 'SNK-100', field: 'pressureInputBasis' })), true, 'SNK pressure basis must trigger downstream duty autosolve.');
+assert.equal(
+  runtime.isCalculationInput(fakeInput({ nodeId: 'PIPE-1', field: 'segments[0].length', key: 'length', name: 'segments[0].length' })),
+  true,
+  'Pipe segment length edits from Pipe Object Properties must trigger protected autosolve.'
+);
+assert.equal(
+  runtime.isCalculationInput(fakeInput({ nodeId: 'PIPE-1', field: 'segments[0].diameter', key: 'diameter', name: 'segments[0].diameter' })),
+  true,
+  'Pipe segment diameter edits from Pipe Object Properties must trigger protected autosolve.'
+);
+assert.equal(
+  runtime.isCalculationInput(fakeInput({ nodeId: 'PIPE-1', field: 'segments[1].fittingK', key: 'fittingK', name: 'segments[1].fittingK' })),
+  true,
+  'Pipe fitting K edits from Pipe Object Properties must trigger protected autosolve.'
+);
+assert.equal(
+  runtime.isCalculationInput(fakeInput({ nodeId: 'PIPE-1', field: 'segments[1].fittingQuantity', key: 'fittingQuantity', name: 'segments[1].fittingQuantity' })),
+  true,
+  'Pipe fitting quantity edits from Pipe Object Properties must trigger protected autosolve.'
+);
 
 globalThis.__npshGlobalModel['SRC-NEW'] = { type: 'source', props: {} };
 assert.equal(runtime.normalizeSourceFlowInputDefaults(), 1, 'A new SRC without flow-input mode must be normalized once.');
@@ -184,6 +208,8 @@ assert(
 );
 assert(realtimeSource.includes('AUTO_SOLVE_DEBOUNCE_MS = 240'), 'Autosolve debounce must be realtime-first for responsive numeric typing.');
 assert(realtimeSource.includes('AUTO_SOLVE_CHANGE_DEBOUNCE_MS = 90'), 'Change-event autosolve debounce must be fast for selects and committed edits.');
+assert(realtimeSource.includes('function shouldPreserveActiveSourceTaskWindow'), 'Realtime defense must detect an actively edited SRC task window.');
+assert(realtimeSource.includes('renderSidebarAfter: !shouldPreserveActiveSourceTaskWindow(nodeId)'), 'SRC numeric autosolve must preserve the visible task-window DOM.');
 assert(realtimeSource.includes('realtime-autosolve-first'), 'Realtime defense must declare the realtime-autosolve-first policy.');
 assert(realtimeSource.includes('validate-refresh-evidence'), 'Realtime defense must document the manual command as validation/evidence refresh.');
 assert(realtimeSource.includes('npsh:realtime-autosolve-superseded'), 'Realtime defense must emit a superseded event for stale autosolve results.');
@@ -211,6 +237,15 @@ assert(realtimeSource.includes('manualNpshr'), 'Realtime defense must treat comp
 assert(realtimeSource.includes("calculationMode: 'realtime-input'"), 'Realtime defense events must explicitly identify realtime-input mode.');
 assert(realtimeSource.includes('publishCalculationStatusState'), 'Realtime defense must use a lightweight stale/calculating publisher before backend results are current.');
 assert(realtimeSource.includes('statusOnly: true'), 'Stale/calculating calculation-state events must avoid rebuilding full canonical trace rows.');
+assert(realtimeSource.includes('markCurrentResultObjects'), 'Realtime current completion must heal stale/calculating result objects.');
+assert(realtimeSource.includes('backendResultContext'), 'Realtime current completion must recover calculation ids from current backend results/cache.');
+assert(realtimeSource.includes('latestBackendResponsePayload'), 'Realtime current completion must use the cached successful backend response as a fallback.');
+assert(realtimeSource.includes('firstExplicitFinite'), 'Realtime canonical state must preserve explicit backend nulls before using fallback values.');
+assert(realtimeSource.includes('shouldHealCurrentAfterUpdate'), 'Manual forceBackend updateSimulation success must heal stale/calculating backend status.');
+assert(
+  realtimeSource.includes('!!options.forceBackend') && realtimeSource.includes("calculationMode: options.calculationMode || (options.__engineeringRealtimeAutoSolve ? 'realtime-input' : 'manual-solve')"),
+  'Manual forceBackend current healing must preserve calculation-mode metadata.'
+);
 
 const segmentRows = runtime.buildPipeSegmentRows('PIPE-1', globalThis.__npshGlobalModel['PIPE-1'], globalThis.__npshGlobalModel);
 assert.equal(segmentRows.length, 2, 'Canonical segment builder should keep one row per configured pipe segment.');
@@ -223,6 +258,15 @@ assert(Math.abs(segmentRows[1].minorLoss - 1.002259) < 0.0002, 'Canonical segmen
 const canonical = runtime.publishCanonicalCalculationState('unit-test', 'PIPE-1');
 assert.equal(canonical.pipes['PIPE-1'].segments.length, 2, 'Canonical calculation state should distribute pipe segment rows globally.');
 assert.equal(globalThis.__npshGlobalModel['PIPE-1'].results.calculationTrace.segmentRows.length, 2, 'Canonical pipe rows should be attached to the live pipe trace.');
+globalThis.__npshGlobalModel['P-100'].results.requiredSystemHead = null;
+globalThis.__npshGlobalModel['P-100'].results.systemHead = { requiredHead: 99 };
+globalThis.__npshGlobalModel['P-100'].results.npshEvaluation.requiredSystemHead = null;
+const canonicalBlankDuty = runtime.publishCanonicalCalculationState('explicit-null-required-head', 'P-100');
+assert.equal(
+  canonicalBlankDuty.pumps['P-100'].requiredSystemHead,
+  null,
+  'Canonical pump state must keep Required System Head blank when backend/result explicitly returns null.'
+);
 
 const state = runtime.markStale('P-100', 'Unit test input changed.');
 const results = globalThis.__npshGlobalModel['P-100'].results;
@@ -252,6 +296,35 @@ const current = runtime.markCurrentFromBackend({
 });
 assert.equal(current.status, 'Current', 'Backend refresh state should mark realtime defense current.');
 assert.equal(current.dependencyFingerprint, 'dep-1', 'Backend dependency fingerprint should be retained.');
+assert.equal(results.backendValidationStatus, 'Connected', 'Backend current healing should clear stale backend validation status.');
+assert.equal(results.npshEvaluation.backendValidationStatus, 'Connected', 'Backend current healing should clear stale NPSH evaluation status.');
+
+results.backendValidationStatus = 'Calculating';
+results.calculationFreshness = 'Calculating';
+results.npshEvaluation.backendValidationStatus = 'Calculating';
+results.npshEvaluation.calculationFreshness = 'Calculating';
+results.calculationAudit = { calculationId: 'calc-result-fallback' };
+results.dependencyManifest = { dependencyFingerprint: 'dep-result-fallback' };
+globalThis.__npshLastBackendSimulationResponse = {
+  response: {
+    pumpId: 'P-100',
+    calculationId: 'calc-cache-fallback',
+    dependencyManifest: { dependencyFingerprint: 'dep-cache-fallback' },
+    calculationDefenseContract: { status: 'Ready' }
+  }
+};
+const fallbackCurrent = runtime.markCurrentFromBackend({
+  nodeId: 'P-100',
+  calculationMode: 'realtime-input',
+  requestId: 'rt-unit-fallback'
+});
+assert.equal(fallbackCurrent.status, 'Current', 'Minimal realtime fallback should still mark Current.');
+assert.equal(fallbackCurrent.calculationId, 'calc-result-fallback', 'Minimal realtime fallback must recover calculation id from current pump results before cache fallback.');
+assert.equal(fallbackCurrent.dependencyFingerprint, 'dep-result-fallback', 'Minimal realtime fallback must recover dependency fingerprint from current pump results.');
+assert.equal(results.backendValidationStatus, 'Connected', 'Minimal realtime fallback must clear Calculating backend validation status.');
+assert.equal(results.calculationFreshness, 'Current', 'Minimal realtime fallback must clear Calculating result freshness.');
+assert.equal(results.npshEvaluation.backendValidationStatus, 'Connected', 'Minimal realtime fallback must clear Calculating evaluation status.');
+assert.equal(results.npshEvaluation.calculationFreshness, 'Current', 'Minimal realtime fallback must clear Calculating evaluation freshness.');
 
 runtime.install();
 const callsBeforeShieldedInput = updateSimulationCalls.length;
@@ -367,20 +440,56 @@ runtime.flushAutoSolve().then(async () => {
   assert.equal(dependencyCall.forceBackend, true, 'Dependency bridge autosolve must force the protected backend refresh.');
   assert.equal(dependencyCall.realtimeTrigger, 'realtime-input', 'Dependency bridge autosolve must keep realtime-input metadata.');
 
+  const applyCountBeforeRace = backendPrimaryApplies;
+  const deferredBySequence = new Map();
+  globalThis.updateSimulation = (options = {}) => new Promise((resolve) => {
+    const sequence = Number(options.__engineeringRealtimeAutoSolveSequence || 0);
+    deferredBySequence.set(sequence, () => {
+      globalThis.applyBackendSimulationPrimaryResults(globalThis.__npshGlobalModel['P-100'], { flow: 40 + sequence }, {
+        calculationAudit: { calculationId: `race-calc-${sequence}` },
+        dependencyManifest: { dependencyFingerprint: `race-dep-${sequence}` },
+        calculationDefenseContract: { status: 'Ready' }
+      });
+      resolve({ ok: true, sequence });
+    });
+  });
+  const waitForDeferred = async (sequence) => {
+    const deadline = Date.now() + 2000;
+    while (!deferredBySequence.has(sequence) && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    assert(deferredBySequence.has(sequence), `autosolve sequence ${sequence} should reach the delayed backend stub`);
+  };
+
+  const staleRequest = runtime.requestAutoSolve('P-100', 'Delayed stale input.', { delayMs: 0 });
+  const stalePromise = runtime.flushAutoSolve();
+  await waitForDeferred(staleRequest.sequence);
+  const currentRequest = runtime.requestAutoSolve('P-100', 'Newer input wins.', { delayMs: 0 });
+  const currentPromise = runtime.flushAutoSolve();
+  deferredBySequence.get(staleRequest.sequence)();
+  await stalePromise;
+  await waitForDeferred(currentRequest.sequence);
+  deferredBySequence.get(currentRequest.sequence)();
+  await currentPromise;
+
+  assert.equal(backendPrimaryApplies, applyCountBeforeRace + 1, 'only the newest delayed backend result may mutate the pump model');
+  assert.equal(globalThis.__engineeringRealtimeBlockedBackendApply?.sequence, staleRequest.sequence, 'the stale backend sequence must be recorded as blocked before apply');
+  assert.equal(globalThis.__npshGlobalModel['P-100'].results.calculationAudit.calculationId, `race-calc-${currentRequest.sequence}`, 'the newest backend result must remain authoritative');
+
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 const parameterRuntime = fs.readFileSync(parameterRuntimePath, 'utf8');
 assert(
-  index.includes('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1'),
+  index.includes('engineering-realtime-calculation-defense.js?v=20260711-src-task-window-flash-lock1'),
   'Index must load the realtime calculation defense runtime with cache key.'
 );
 assert(
-  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260706-pump-edit-status-matrix1')
-    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1'),
+  index.indexOf('engineering-pump-edit-fast-lane.js?v=20260710-pump-edit-manual-npshr-local1')
+    < index.indexOf('engineering-realtime-calculation-defense.js?v=20260711-src-task-window-flash-lock1'),
   'Pump edit fast lane must load before realtime calculation defense.'
 );
 assert(
-  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1'),
+  manifest.includes('Realtime calculation defense cache key: engineering-realtime-calculation-defense.js?v=20260711-src-task-window-flash-lock1'),
   'Manifest must document the realtime calculation defense cache key.'
 );
 assert(

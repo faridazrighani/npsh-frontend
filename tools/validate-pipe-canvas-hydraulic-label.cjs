@@ -11,8 +11,8 @@ const RUNTIME_FILE = path.join(FRONTEND_ROOT, "engineering-pipe-canvas-hydraulic
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
-const CACHE_KEY = "engineering-pipe-canvas-hydraulic-label-runtime-20260707-pfv-loss-summary-clean1.js?v=20260707-pfv-loss-summary-clean1";
-const VERSION = "2026.07-pipe-canvas-loss-summary-clean1";
+const CACHE_KEY = "engineering-pipe-canvas-hydraulic-label-runtime-20260707-pfv-loss-summary-clean1.js?v=20260711-reynolds-darcy-flash-lock1";
+const VERSION = "2026.07-pipe-canvas-reynolds-darcy2-flash-lock";
 const REMOVED_STATIC_PRESSURE_LABEL = "P stat.";
 const REMOVED_SCOPE_LABEL = ["d", "P", " loss"].join("");
 const REMOVED_FORMATTER_TOKEN = ["format", "Pressure", "Drop"].join("");
@@ -21,6 +21,8 @@ const TOTAL_K_KEY = "Total K";
 const TOTAL_HL_KEY = "Total hL";
 const MINOR_KEY = "Minor";
 const MAJOR_KEY = "Major";
+const REYNOLDS_KEY = "Reynolds";
+const DARCY_F_KEY = "Darcy f";
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");
@@ -63,10 +65,11 @@ assert(
 assert(runtime.includes(`const VERSION = "${VERSION}"`), "Runtime version must match the cache key.");
 assert(runtime.includes("DISPLAY_DIGITS = 5"), "Runtime must lock pipe canvas label head/velocity numbers to 5 decimals.");
 assert(runtime.includes("BLOCK_WIDTH = 178"), "Runtime must keep the canvas hydraulic label readable at pump-label font size.");
-assert(runtime.includes("BLOCK_HEIGHT = 75"), "Runtime must keep the five-row canvas hydraulic label compact at pump-label font size.");
-assert(runtime.includes("BLOCK_TOP = -83"), "Runtime must keep the five-row canvas hydraulic label anchored near the pipe without extra blank space.");
-assert(runtime.includes("ROW_TOP = -68"), "Runtime must align the five loss-summary rows inside the compact label.");
+assert(runtime.includes("BLOCK_HEIGHT = 100"), "Runtime must fit the seven-row canvas hydraulic label at pump-label font size.");
+assert(runtime.includes("BLOCK_TOP = -108"), "Runtime must expand the seven-row label upward while preserving its lower pipe anchor.");
+assert(runtime.includes("ROW_TOP = -93"), "Runtime must align the seven hydraulic rows inside the expanded label.");
 assert(runtime.includes("ROW_GAP = 12.5"), "Runtime must keep readable row spacing at pump-label font size.");
+assert(runtime.includes("VERTICAL_SIDE_OFFSET_Y = 46"), "Runtime must preserve the established vertical-pipe label anchor.");
 assert(runtime.includes("font-size: 10px"), "Runtime must keep pipe label text aligned with pump label size.");
 assert(runtime.includes("var(--font-main"), "Runtime must use the same font family source as pump object labels.");
 assert(runtime.includes(".pipe-delta-label:not(.pipe-hydraulic-label)"), "Runtime must suppress the legacy delta-P label before replacement.");
@@ -81,6 +84,8 @@ assert(runtime.includes('"Total K"'), "Runtime must render total K with the requ
 assert(runtime.includes('"Total hL"'), "Runtime must render total head loss with the requested full label.");
 assert(runtime.includes('"Minor"'), "Runtime must render minor loss with the requested label.");
 assert(runtime.includes('"Major"'), "Runtime must render major loss with the requested label.");
+assert(runtime.includes('"Reynolds"'), "Runtime must render Primary Reynolds below Major.");
+assert(runtime.includes('"Darcy f"'), "Runtime must render Primary Darcy friction factor below Reynolds.");
 assert(runtime.includes("MutationObserver"), "Runtime must observe SVG label insertions.");
 assert(runtime.includes("patchDrawConnections"), "Runtime must patch drawConnections refreshes.");
 assert(runtime.includes("patchUpdateSimulation"), "Runtime must patch updateSimulation refreshes.");
@@ -105,6 +110,11 @@ assert(runtime.includes("pipeHydraulicLabelGeometryRestored"), "Runtime must mar
 assert(runtime.includes("pipeHydraulicLabelGeometryHeld"), "Runtime must hold geometry signatures until the busy window settles.");
 assert(runtime.includes('attributeFilter: ["transform", "class"]'), "Runtime must watch PFV transform/class mutations without observing noisy global attributes.");
 assert(runtime.includes("updateExistingLabelText"), "Runtime must update PFV label values in place instead of rebuilding every row.");
+assert(runtime.includes("stableLabelDataByPipe"), "Runtime must retain the last stable PFV values while calculation results are provisional.");
+assert(runtime.includes("selectBusySafeMetric"), "Runtime must reject transient trace totals while a current segment result is already available.");
+assert(runtime.includes("captureHydraulicLabelNodes"), "Runtime must capture the existing PFV SVG nodes before connection redraw.");
+assert(runtime.includes("retainHydraulicLabelNodes"), "Runtime must retain PFV SVG node identity across connection redraws.");
+assert(runtime.includes("replacement.replaceWith(previous)"), "Runtime must replace transient rebuilt labels with the existing stable SVG node.");
 assert(runtime.includes("activeCanvasFastPreviewVersion"), "Runtime must detect active canvas fast-preview state.");
 assert(runtime.includes("inheritCanvasFastPreviewStamp"), "Runtime must inherit canvas fast-preview stamps when PFV labels are rebuilt.");
 assert(runtime.includes('group.setAttribute("data-canvas-fast-preview", version)'), "Runtime must stamp rebuilt SVG PFV labels for fast-preview readiness.");
@@ -140,7 +150,10 @@ const model = {
         },
         segments: [
           { velocity: 2.8 }
-        ]
+        ],
+        moody: {
+          markers: [{ reynolds: 212700, frictionFactor: 0.01713 }]
+        }
       }
     }
   }
@@ -149,6 +162,8 @@ const model = {
 const api = loadRuntime(runtime, model);
 assert(api?.version === VERSION, "Runtime API version must be exposed.");
 assert(typeof api.runImmediateRefresh === "function", "Runtime API must expose the synchronous no-flicker refresh helper.");
+assert(typeof api.captureHydraulicLabelNodes === "function", "Runtime API must expose PFV node capture for no-flash redraws.");
+assert(typeof api.retainHydraulicLabelNodes === "function", "Runtime API must expose PFV node retention for no-flash redraws.");
 assert(
   api.uprightLabelTransform("translate(118.5 92.25) rotate(-90.0)") === "translate(118.5 92.25)",
   "Runtime must strip rotation while preserving label anchor position."
@@ -172,6 +187,8 @@ assert(values[TOTAL_K_KEY] === "4.600", "Total K must be formatted with 3 decima
 assert(values[TOTAL_HL_KEY] === "4.80000 m", "Total hL must be formatted with 5 decimals and m.");
 assert(values[MINOR_KEY] === "1.60000 m", "Minor loss must be formatted with 5 decimals and m.");
 assert(values[MAJOR_KEY] === "3.20000 m", "Major loss must be formatted with 5 decimals and m.");
+assert(values[REYNOLDS_KEY] === "2.127e+5", "Reynolds must match Moody Chart Primary Re formatting.");
+assert(values[DARCY_F_KEY] === "0.01713", "Darcy f must match Moody Chart friction-factor formatting.");
 
 const emptyModel = {
   "PIPE-EMPTY": {
@@ -189,5 +206,7 @@ assert(emptyValues[TOTAL_K_KEY] === "-", "Missing total K must stay blank instea
 assert(emptyValues[TOTAL_HL_KEY] === "- m", "Missing total hL must stay blank instead of 0.00000 m.");
 assert(emptyValues[MINOR_KEY] === "- m", "Missing minor loss must stay blank instead of 0.00000 m.");
 assert(emptyValues[MAJOR_KEY] === "- m", "Missing major loss must stay blank instead of 0.00000 m.");
+assert(emptyValues[REYNOLDS_KEY] === "-", "Missing Reynolds must remain blank.");
+assert(emptyValues[DARCY_F_KEY] === "-", "Missing Darcy f must remain blank.");
 
 console.log("Pipe canvas hydraulic label validation passed.");

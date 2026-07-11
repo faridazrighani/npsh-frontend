@@ -4,6 +4,7 @@ const path = require('node:path');
 
 const rootDir = path.resolve(__dirname, '..');
 const runtimePath = path.join(rootDir, 'engineering-route-trace-audit.js');
+const inputStabilityRuntimePath = path.join(rootDir, 'engineering-sink-input-stability-runtime.js');
 const indexPath = path.join(rootDir, 'index.html');
 const manifestPath = path.join(rootDir, 'FILE_MANIFEST.md');
 
@@ -51,10 +52,11 @@ globalThis.globalModel = {
 delete require.cache[require.resolve(runtimePath)];
 const runtime = require(runtimePath);
 const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
+const inputStabilityRuntimeSource = fs.readFileSync(inputStabilityRuntimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 
-assert.equal(runtime.version, '2026.07-route-trace-audit-v48', 'Route trace runtime should expose the SNK editable four-field boundary layout version.');
+assert.equal(runtime.version, '2026.07-route-trace-audit-v52-sink-input-stability', 'Route trace runtime should expose the SNK input-stability boundary layout version.');
 assert.equal(typeof runtime.sinkCanonicalValues, 'function', 'SNK canonical value helper should be exported for audit completeness checks.');
 assert.equal(typeof runtime.sinkModeDisplayValue, 'function', 'SNK mode display helper should be exported for audit completeness checks.');
 assert.equal(typeof runtime.syncSinkPropertyWindowCanonicalReadouts, 'function', 'SNK properties readout sync should be exported for audit completeness checks.');
@@ -168,6 +170,13 @@ assert.equal(unknownCanonical.engineeringStatus, '', 'SNK canonical state should
 
 assert(runtimeSource.includes('if (!panel?.querySelectorAll) return null;'), 'SNK panel row lookup must be null-safe.');
 assert(runtimeSource.includes('function sinkBoundaryModeRaw'), 'Runtime should have an explicit selected SNK boundary mode resolver.');
+assert(runtimeSource.includes('EngineeringSinkInputStabilityRuntime?.previewForNode'), 'SNK canonical values must prefer the active user-input preview while backend results are pending.');
+assert(inputStabilityRuntimeSource.includes('EDIT_KEYS = new Set(["demandFlow", "pressure", "elevation"])'), 'SNK input fast lane must own all three compact numeric fields.');
+assert(inputStabilityRuntimeSource.includes('event.stopImmediatePropagation()'), 'SNK input fast lane must block competing legacy input listeners.');
+assert(inputStabilityRuntimeSource.includes('INPUT_IDLE_MS = 3000'), 'SNK input fast lane must debounce backend work until typing pauses.');
+assert(inputStabilityRuntimeSource.includes('function retainedTaskWindow'), 'SNK input fast lane must retain the active task-window DOM during backend refresh.');
+assert(inputStabilityRuntimeSource.includes('function patchRenderSidebar'), 'SNK input fast lane must guard renderSidebar from replacing active controls.');
+assert(inputStabilityRuntimeSource.includes('__engineeringRealtimeCalculationDefenseAllowSyntheticAutoSolve === true'), 'SNK input fast lane must preserve the explicit synthetic autosolve test bridge.');
 assert(runtimeSource.includes('function firstMeaningfulStatusValue'), 'Runtime should filter placeholder status values such as Unknown before canvas display.');
 assert(runtimeSource.includes("if (kind === 'free-outlet') return firstFiniteValue(tracePressureAbs, ATM_PRESSURE_BAR_A);"), 'Free Outlet pressure must not fall back to stale Flow Demand pressure.');
 assert(runtimeSource.includes('sinkHeadForSelectedSinkMode'), 'SNK head should be mode-aware instead of always using stale solved head first.');
@@ -239,8 +248,17 @@ assert(runtimeSource.includes('function syncSinkBoundaryModeOptions'), 'SNK Boun
 assert(!runtimeSource.includes('cloneNode'), 'SNK task window layout lock should not clone property rows.');
 assert(!runtimeSource.includes('sinkPropertyReadoutContainer'), 'SNK task window layout lock should not search for insertion containers.');
 assert(
-  index.includes('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260707-pump-panel-clean6'),
+  index.includes('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260711-sink-input-stability1'),
   'Index must load the route trace audit runtime with the SNK boundary mode lock cache key.'
+);
+assert(
+  index.indexOf('engineering-sink-input-stability-runtime.js?v=20260711-sink-input-stability1')
+    < index.indexOf('engineering-source-volumetric-only-runtime.js?v=20260711-src-input-flash-lock1'),
+  'SNK input stability runtime must install before legacy SRC/SNK flow synchronization listeners.'
+);
+assert(
+  manifest.includes('Sink input stability runtime cache key: engineering-sink-input-stability-runtime.js?v=20260711-sink-input-stability1'),
+  'Manifest must lock the SNK input stability cache key.'
 );
 assert(
   manifest.includes('SNK boundary mode canvas lock validation: npm run validate:sink-boundary-mode-canvas-lock'),

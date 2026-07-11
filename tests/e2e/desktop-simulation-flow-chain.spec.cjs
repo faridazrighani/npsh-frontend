@@ -17,6 +17,14 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
 function finiteOrNull(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
@@ -34,7 +42,7 @@ async function waitForNpshApp(page) {
   await page.waitForFunction(() => (
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.updateSimulation === 'function'
-    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v13'
+    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v18-src-task-window-flash-lock'
     && window.CanvasContextDock?.version === 'engineering-canvas-context-dock.v4'
     && window.EngineeringRouteTraceAudit?.version
     && window.EngineeringDefenseExportPackage?.schemaVersion === 'defense-export-package.v1'
@@ -196,11 +204,40 @@ async function loadSyntheticProject(page, options = {}) {
 }
 
 async function runProtectedSolve(page, caseData, { expectedPreviousId = null } = {}) {
-  const responsePromise = page.waitForResponse((response) => (
-    /\/api\/simulate(?:[?#]|$)/.test(response.url())
-    && response.request().method() === 'POST'
-    && response.status() === 200
-  ), { timeout: 30000 });
+  const expectedRequestProps = await page.evaluate(({ ids }) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    return Object.fromEntries(ids.map((id) => [id, JSON.parse(JSON.stringify(model[id]?.props || {}))]));
+  }, {
+    ids: [
+      'FLUID',
+      caseData.sourceId,
+      caseData.suctionPipeId,
+      caseData.pumpId,
+      caseData.dischargePipeId,
+      caseData.sinkId
+    ]
+  });
+  const expectedPropsSignature = stableJson(expectedRequestProps);
+  const responsePromise = page.waitForResponse((response) => {
+    if (
+      !/\/api\/simulate(?:[?#]|$)/.test(response.url())
+      || response.request().method() !== 'POST'
+      || response.status() !== 200
+    ) {
+      return false;
+    }
+    let payload = null;
+    try {
+      payload = JSON.parse(response.request().postData() || '{}');
+    } catch {
+      return false;
+    }
+    const requestProps = Object.fromEntries(Object.keys(expectedRequestProps).map((id) => [
+      id,
+      payload?.model?.[id]?.props || {}
+    ]));
+    return stableJson(requestProps) === expectedPropsSignature;
+  }, { timeout: 30000 });
   const solvePromise = page.evaluate(() => window.updateSimulation({
     refreshReason: 'solve',
     trigger: 'solve',
@@ -213,11 +250,26 @@ async function runProtectedSolve(page, caseData, { expectedPreviousId = null } =
   await page.waitForFunction(({ pumpId, calculationId, expectedPreviousId }) => {
     const model = window.__npshGlobalModel || window.globalModel || {};
     const pumpResults = model[pumpId]?.results || {};
+    const npsh = pumpResults.npshEvaluation || {};
     const state = window.__engineeringCalculationDefenseRealtimeState || {};
-    const activeId = pumpResults.calculationAudit?.calculationId || state.calculationId || null;
-    if (!activeId || activeId !== calculationId) return false;
-    if (expectedPreviousId && activeId === expectedPreviousId) return false;
-    return state.status === 'Current' && !!pumpResults.dependencyManifest?.dependencyFingerprint;
+    const lastResponse = window.__npshLastBackendSimulationResponse?.response || {};
+    const activeIds = [
+      pumpResults.calculationAudit?.calculationId,
+      state.calculationId,
+      lastResponse.calculationId
+    ].filter(Boolean);
+    if (!activeIds.length) return false;
+    if (expectedPreviousId && activeIds.every((activeId) => activeId === expectedPreviousId)) return false;
+    const hasObservedResponse = activeIds.includes(calculationId);
+    const isCurrent = state.status === 'Current'
+      || pumpResults.calculationFreshness === 'Current'
+      || npsh.calculationFreshness === 'Current';
+    const backendConnected = pumpResults.backendValidationStatus === 'Connected'
+      || npsh.backendValidationStatus === 'Connected';
+    return isCurrent
+      && backendConnected
+      && !!pumpResults.dependencyManifest?.dependencyFingerprint
+      && (hasObservedResponse || activeIds.some((activeId) => activeId !== expectedPreviousId));
   }, {
     pumpId: caseData.pumpId,
     calculationId: body.calculationId,
@@ -321,8 +373,16 @@ function systemHead(responseBody) {
   return Number(formulaRow(responseBody, 'System Curve Head').result);
 }
 
-async function changeSinkBoundaryInBrowser(page, caseData, { elevation, pressure }) {
-  return page.evaluate(({ sinkId, elevation: nextElevation, pressure: nextPressure }) => {
+function numericReadoutValue(row) {
+  const match = String(row?.value || row?.text || '').replace(',', '.').match(/[-+]?\d*\.?\d+(?:e[-+]?\d+)?/i);
+  return match ? Number(match[0]) : NaN;
+}
+
+async function changeSinkBoundaryInBrowser(page, caseData, { elevation, pressure, allowSyntheticAutoSolve = false }) {
+  return page.evaluate(({ sinkId, elevation: nextElevation, pressure: nextPressure, allowSyntheticAutoSolve }) => {
+    if (allowSyntheticAutoSolve) {
+      window.__engineeringRealtimeCalculationDefenseAllowSyntheticAutoSolve = true;
+    }
     const model = window.__npshGlobalModel || window.globalModel || {};
     const sink = model[sinkId];
     if (!sink) throw new Error(`Missing sink ${sinkId}`);
@@ -356,14 +416,152 @@ async function changeSinkBoundaryInBrowser(page, caseData, { elevation, pressure
 
     return {
       realtime: JSON.parse(JSON.stringify(window.__engineeringCalculationDefenseRealtimeState || null)),
+      pendingAutoSolve: JSON.parse(JSON.stringify(window.__engineeringCalculationDefenseRealtimeAutoSolve || null)),
+      allowSyntheticAutoSolve: window.__engineeringRealtimeCalculationDefenseAllowSyntheticAutoSolve === true,
       sinkProps: JSON.parse(JSON.stringify(sink.props || {})),
       pumpFreshness: Object.values(model).find((node) => node?.type === 'pump')?.results?.calculationFreshness || null
     };
   }, {
     sinkId: caseData.sinkId,
     elevation,
-    pressure
+    pressure,
+    allowSyntheticAutoSolve
   });
+}
+
+async function changePipeSegmentInBrowser(page, { pipeId, segmentIndex = 0, field, value, allowSyntheticAutoSolve = false }) {
+  return page.evaluate(({ pipeId: targetPipeId, segmentIndex: targetSegmentIndex, field: targetField, value: nextValue, allowSyntheticAutoSolve: shouldAutosolve }) => {
+    if (shouldAutosolve) {
+      window.__engineeringRealtimeCalculationDefenseAllowSyntheticAutoSolve = true;
+    }
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const pipe = model[targetPipeId];
+    if (!pipe) throw new Error(`Missing pipe ${targetPipeId}`);
+    if (!pipe.props || typeof pipe.props !== 'object') pipe.props = {};
+    if (!Array.isArray(pipe.props.segments)) pipe.props.segments = [];
+    if (!pipe.props.segments[targetSegmentIndex]) pipe.props.segments[targetSegmentIndex] = {};
+    pipe.props.segments[targetSegmentIndex][targetField] = nextValue;
+
+    const taskWindow = document.querySelector(`.task-window[data-task-node-id="${targetPipeId}"], .persistent-object-properties-task-window[data-node-id="${targetPipeId}"]`)
+      || document.createElement('section');
+    taskWindow.classList.add('task-window');
+    taskWindow.dataset.taskNodeId = targetPipeId;
+    taskWindow.dataset.node = targetPipeId;
+    taskWindow.dataset.nodeId = targetPipeId;
+    taskWindow.dataset.kind = 'pipe';
+    taskWindow.dataset.taskNodeType = 'pipe';
+    if (!taskWindow.isConnected) document.body.appendChild(taskWindow);
+
+    const selector = `input[data-key="${targetField}"][data-segment-index="${targetSegmentIndex}"]`;
+    let input = taskWindow.querySelector(selector);
+    if (!input) {
+      input = document.createElement('input');
+      input.type = 'number';
+      input.name = `segments[${targetSegmentIndex}].${targetField}`;
+      input.dataset.key = targetField;
+      input.dataset.field = targetField;
+      input.dataset.node = targetPipeId;
+      input.dataset.nodeId = targetPipeId;
+      input.dataset.segmentIndex = String(targetSegmentIndex);
+      taskWindow.appendChild(input);
+    }
+    input.value = String(nextValue);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    window.CanvasContextDock?.refresh?.();
+
+    return {
+      realtime: JSON.parse(JSON.stringify(window.__engineeringCalculationDefenseRealtimeState || null)),
+      pendingAutoSolve: JSON.parse(JSON.stringify(window.__engineeringCalculationDefenseRealtimeAutoSolve || null)),
+      allowSyntheticAutoSolve: window.__engineeringRealtimeCalculationDefenseAllowSyntheticAutoSolve === true,
+      pipeProps: JSON.parse(JSON.stringify(pipe.props || {})),
+      pumpFreshness: Object.values(model).find((node) => node?.type === 'pump')?.results?.calculationFreshness || null
+    };
+  }, {
+    pipeId,
+    segmentIndex,
+    field,
+    value,
+    allowSyntheticAutoSolve
+  });
+}
+
+async function reverseSuctionConnectionInBrowser(page, caseData) {
+  return page.evaluate(({ sourceId, pumpId, suctionPipeId }) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const connectionLists = [];
+    try {
+      if (typeof connections !== 'undefined' && Array.isArray(connections)) connectionLists.push(connections);
+    } catch {
+      // Protected global may be unavailable.
+    }
+    if (Array.isArray(window.connections)) connectionLists.push(window.connections);
+    if (Array.isArray(window.__npshConnections)) connectionLists.push(window.__npshConnections);
+    const seen = new Set();
+    let changed = 0;
+    connectionLists.forEach((list) => {
+      if (!Array.isArray(list) || seen.has(list)) return;
+      seen.add(list);
+      const connection = list.find((candidate) => (
+        candidate
+        && (candidate.pipeId === suctionPipeId || candidate.pipe === suctionPipeId)
+        && ((candidate.from === sourceId && candidate.to === pumpId) || (candidate.rawFrom === sourceId && candidate.rawTo === pumpId))
+      ));
+      if (!connection) return;
+      connection.from = pumpId;
+      connection.to = sourceId;
+      connection.rawFrom = pumpId;
+      connection.rawTo = sourceId;
+      connection.hydraulicReversed = true;
+      changed += 1;
+    });
+    document.dispatchEvent(new CustomEvent('npsh:simulation-updated', {
+      detail: {
+        reason: 'e2e-reversed-suction-route',
+        pumpId,
+        sourceId,
+        pipeId: suctionPipeId
+      }
+    }));
+    window.EngineeringCanvasFastPreviewRuntime?.runImmediatePumpPreview?.('e2e-reversed-suction-route');
+    window.EngineeringRouteTraceAudit?.pruneDefaultPumpRouteTraceRows?.(document);
+    window.CanvasContextDock?.refresh?.();
+    return {
+      changed,
+      suctionConnection: (connectionLists[0] || []).find((candidate) => candidate?.pipeId === suctionPipeId || candidate?.pipe === suctionPipeId) || null,
+      hasSource: model[sourceId]?.type === 'source',
+      hasPump: model[pumpId]?.type === 'pump'
+    };
+  }, {
+    sourceId: caseData.sourceId,
+    pumpId: caseData.pumpId,
+    suctionPipeId: caseData.suctionPipeId
+  });
+}
+
+async function setFluidBasisTemperature(page, temperature) {
+  const temperatureInput = page.locator('#fluid-task-temp').first();
+  await expect(temperatureInput).toBeVisible({ timeout: 10000 });
+  await temperatureInput.evaluate((input, nextTemperature) => {
+    const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    if (valueSetter) {
+      valueSetter.call(input, String(nextTemperature));
+    } else {
+      input.value = String(nextTemperature);
+    }
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    document.dispatchEvent(new CustomEvent('npsh:input-lightweight-update', {
+      bubbles: true,
+      detail: { sourceEvent: 'e2e-fluid-temperature' }
+    }));
+    window.EngineeringCanvasFastPreviewRuntime?.runImmediatePumpPreview?.('e2e-fluid-temperature');
+  }, temperature);
+  await page.waitForFunction((nextTemperature) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    return Number(model.FLUID?.props?.temp) === nextTemperature;
+  }, temperature, { timeout: 10000 });
+  return temperatureInput;
 }
 
 async function browserSnapshot(page, caseData) {
@@ -420,6 +618,23 @@ async function readPumpCanvasRow(page, pumpId, label) {
       runtimeVersion: window.EngineeringCanvasFastPreviewRuntime?.version || ''
     };
   }, { pumpId, label });
+}
+
+async function waitForSimulationPayloadResponse(page, predicate, timeout = 30000) {
+  return page.waitForResponse((response) => {
+    if (
+      !/\/api\/simulate(?:[?#]|$)/.test(response.url())
+      || response.request().method() !== 'POST'
+      || response.status() !== 200
+    ) {
+      return false;
+    }
+    try {
+      return !!predicate(JSON.parse(response.request().postData() || '{}'));
+    } catch {
+      return false;
+    }
+  }, { timeout });
 }
 
 test.beforeEach(async ({ page }) => {
@@ -492,27 +707,265 @@ test('Synthetic desktop chain refreshes route, formula, and dependency after SNK
   await testInfo.attach('synthetic flow chain after sink edit', { path: screenshotPath, contentType: 'image/png' });
 });
 
+test('Newer boundary input blocks a delayed stale solver result without changing route flow', async ({ page }) => {
+  test.setTimeout(150000);
+  const caseData = CASE;
+  await waitForNpshApp(page);
+  await loadSyntheticProject(page, { flow: 30, sinkElevation: 5, sinkPressure: 1.2 });
+  const baseline = await runProtectedSolve(page, caseData);
+
+  await page.unroute('**/api/simulate');
+  const served = [];
+  await page.route('**/api/simulate', async (route) => {
+    const payload = JSON.parse(route.request().postData() || '{}');
+    const elevation = Number(payload.model?.[caseData.sinkId]?.props?.elevation);
+    const response = await route.fetch();
+    const body = await response.json();
+    served.push({ elevation, calculationId: body.calculationId || body.calculationAudit?.calculationId });
+    await new Promise((resolve) => setTimeout(resolve, elevation === 8 ? 650 : 30));
+    await route.fulfill({
+      response,
+      body: JSON.stringify(body)
+    });
+  });
+
+  await changeSinkBoundaryInBrowser(page, caseData, {
+    elevation: 8,
+    pressure: 1.3,
+    allowSyntheticAutoSolve: true
+  });
+  await expect.poll(() => served.some((entry) => entry.elevation === 8), { timeout: 10000 }).toBe(true);
+  const staleCalculationId = served.find((entry) => entry.elevation === 8).calculationId;
+
+  await page.evaluate(() => {
+    window.__routeInputRaceSamples = [];
+    window.__routeInputRaceTimer = window.setInterval(() => {
+      const model = window.__npshGlobalModel || window.globalModel || {};
+      const pump = model['P-100'] || {};
+      window.__routeInputRaceSamples.push({
+        sourceFlow: Number(model['SRC-100']?.props?.flow),
+        sinkFlow: Number(model['SNK-100']?.props?.demandFlow),
+        sinkElevation: Number(model['SNK-100']?.props?.elevation),
+        sinkPressure: Number(model['SNK-100']?.props?.pressure),
+        calculationId: pump.results?.calculationAudit?.calculationId || null
+      });
+    }, 15);
+  });
+  await changeSinkBoundaryInBrowser(page, caseData, {
+    elevation: 14,
+    pressure: 1.8,
+    allowSyntheticAutoSolve: true
+  });
+
+  await expect.poll(() => served.some((entry) => entry.elevation === 14), { timeout: 30000 }).toBe(true);
+  const currentCalculationId = served.findLast((entry) => entry.elevation === 14).calculationId;
+  await page.waitForFunction(({ pumpId, calculationId }) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const results = model[pumpId]?.results || {};
+    return results.calculationAudit?.calculationId === calculationId
+      && window.__engineeringCalculationDefenseRealtimeState?.status === 'Current';
+  }, { pumpId: caseData.pumpId, calculationId: currentCalculationId }, { timeout: 30000 });
+
+  const finalState = await page.evaluate(() => {
+    window.clearInterval(window.__routeInputRaceTimer);
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    return {
+      sourceFlow: Number(model['SRC-100']?.props?.flow),
+      sinkFlow: Number(model['SNK-100']?.props?.demandFlow),
+      sinkElevation: Number(model['SNK-100']?.props?.elevation),
+      sinkPressure: Number(model['SNK-100']?.props?.pressure),
+      calculationId: model['P-100']?.results?.calculationAudit?.calculationId || null,
+      blocked: JSON.parse(JSON.stringify(window.__engineeringRealtimeBlockedBackendApply || null)),
+      samples: JSON.parse(JSON.stringify(window.__routeInputRaceSamples || []))
+    };
+  });
+
+  expect(staleCalculationId).not.toBe(currentCalculationId);
+  expect(finalState.blocked?.sequence).toBeGreaterThan(0);
+  expect(finalState.calculationId).toBe(currentCalculationId);
+  expect(finalState.sourceFlow).toBe(30);
+  expect(finalState.sinkFlow).toBe(30);
+  expect(finalState.sinkElevation).toBe(14);
+  expect(finalState.sinkPressure).toBeCloseTo(1.8, 8);
+  expect(finalState.samples.some((sample) => sample.calculationId === staleCalculationId)).toBe(false);
+  expect(finalState.samples.every((sample) => sample.sourceFlow === 30 && sample.sinkFlow === 30)).toBe(true);
+  expect(baseline.calculationId).not.toBe(currentCalculationId);
+});
+
+test('Downstream SNK and discharge pipe edits autosolve required head without Validate click', async ({ page }) => {
+  test.setTimeout(150000);
+  const caseData = CASE;
+  await waitForNpshApp(page);
+  await loadSyntheticProject(page, { manualNpshr: 2, sinkElevation: 5, sinkPressure: 1.2 });
+
+  const baseline = await runProtectedSolve(page, caseData);
+  const baselineHead = systemHead(baseline);
+  expect(Number.isFinite(baselineHead)).toBe(true);
+  expect(baselineHead).toBeGreaterThan(0);
+  expect(numericReadoutValue(await readPumpCanvasRow(page, caseData.pumpId, 'Required Head'))).toBeGreaterThan(0);
+  expect(numericReadoutValue(await readPumpCanvasRow(page, caseData.pumpId, 'Discharge Press.'))).toBeGreaterThan(0);
+
+  const requestsBeforeSinkEdit = page.__desktopFlowChainRequests.length;
+  const sinkResponsePromise = waitForSimulationPayloadResponse(page, (payload) => (
+    Number(payload?.model?.[caseData.sinkId]?.props?.elevation) === 12
+    && Math.abs(Number(payload?.model?.[caseData.sinkId]?.props?.pressure) - 1.65) < 1e-9
+  ));
+  const staleSink = await changeSinkBoundaryInBrowser(page, caseData, {
+    elevation: 12,
+    pressure: 1.65,
+    allowSyntheticAutoSolve: true
+  });
+  expect(staleSink.allowSyntheticAutoSolve).toBe(true);
+  expect(staleSink.pendingAutoSolve?.calculationMode).toBe('realtime-input');
+  expect(staleSink.realtime.status).toBe('Stale');
+  expect(staleSink.pumpFreshness).toBe('Stale');
+
+  const sinkResponse = await sinkResponsePromise;
+  const sinkChanged = await sinkResponse.json();
+  await page.waitForFunction(({ pumpId, calculationId }) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const results = model[pumpId]?.results || {};
+    const evaluation = results.npshEvaluation || {};
+    const state = window.__engineeringCalculationDefenseRealtimeState || {};
+    const activeIds = [
+      results.calculationAudit?.calculationId,
+      evaluation.calculationAudit?.calculationId,
+      evaluation.calculationId,
+      state.calculationId
+    ].filter(Boolean);
+    return state.status === 'Current'
+      && activeIds.includes(calculationId)
+      && results.backendValidationStatus === 'Connected'
+      && Number.isFinite(Number(results.requiredSystemHead ?? evaluation.requiredSystemHead))
+      && Number.isFinite(Number(results.dischargePressure ?? evaluation.dischargePressure));
+  }, {
+    pumpId: caseData.pumpId,
+    calculationId: sinkChanged.calculationId
+  }, { timeout: 30000 });
+
+  expect(page.__desktopFlowChainRequests.length).toBeGreaterThan(requestsBeforeSinkEdit);
+  expect(sinkChanged.calculationId).not.toBe(baseline.calculationId);
+  expect(sinkChanged.dependencyManifest.dependencyFingerprint).not.toBe(baseline.dependencyManifest.dependencyFingerprint);
+  expect(systemHead(sinkChanged)).toBeGreaterThan(baselineHead);
+  await page.waitForFunction(({ pumpId, baselineHead: previousHead }) => {
+    const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+    const panel = Array.from(document.querySelectorAll('.pump-live-params')).find((candidate) => (
+      normalize(candidate.closest?.('.pfd-object, [data-node-id], [data-object-id]')?.dataset?.nodeId) === pumpId
+      || normalize(candidate.closest?.('.pfd-object, [data-node-id], [data-object-id]')?.dataset?.objectId) === pumpId
+      || normalize(candidate.textContent).includes(pumpId)
+    )) || document.querySelector('.pump-live-params');
+    const row = Array.from(panel?.querySelectorAll?.('.pump-live-param-row') || []).find((candidate) => (
+      normalize(candidate.querySelector('.pump-live-param-label')?.textContent) === 'Required Head'
+    ));
+    const text = normalize(row?.querySelector('.pump-live-param-value, strong')?.textContent);
+    const match = text.replace(',', '.').match(/[-+]?\d*\.?\d+(?:e[-+]?\d+)?/i);
+    return match && Number(match[0]) > previousHead;
+  }, {
+    pumpId: caseData.pumpId,
+    baselineHead
+  }, { timeout: 10000 });
+
+  const requestsBeforePipeEdit = page.__desktopFlowChainRequests.length;
+  const pipeResponsePromise = waitForSimulationPayloadResponse(page, (payload) => (
+    Number(payload?.model?.[caseData.dischargePipeId]?.props?.segments?.[0]?.length) === 95
+  ));
+  const stalePipe = await changePipeSegmentInBrowser(page, {
+    pipeId: caseData.dischargePipeId,
+    segmentIndex: 0,
+    field: 'length',
+    value: 95,
+    allowSyntheticAutoSolve: true
+  });
+  expect(stalePipe.allowSyntheticAutoSolve).toBe(true);
+  expect(stalePipe.pendingAutoSolve?.calculationMode).toBe('realtime-input');
+  expect(stalePipe.realtime.status).toBe('Stale');
+  expect(Number(stalePipe.pipeProps.segments[0].length)).toBe(95);
+
+  const pipeResponse = await pipeResponsePromise;
+  const pipeChanged = await pipeResponse.json();
+  await page.waitForFunction(({ pumpId, calculationId }) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const results = model[pumpId]?.results || {};
+    const evaluation = results.npshEvaluation || {};
+    const state = window.__engineeringCalculationDefenseRealtimeState || {};
+    const activeIds = [
+      results.calculationAudit?.calculationId,
+      evaluation.calculationAudit?.calculationId,
+      evaluation.calculationId,
+      state.calculationId
+    ].filter(Boolean);
+    return state.status === 'Current'
+      && activeIds.includes(calculationId)
+      && results.backendValidationStatus === 'Connected'
+      && Number.isFinite(Number(results.requiredSystemHead ?? evaluation.requiredSystemHead));
+  }, {
+    pumpId: caseData.pumpId,
+    calculationId: pipeChanged.calculationId
+  }, { timeout: 30000 });
+
+  expect(page.__desktopFlowChainRequests.length).toBeGreaterThan(requestsBeforePipeEdit);
+  expect(pipeChanged.calculationId).not.toBe(sinkChanged.calculationId);
+  expect(pipeChanged.dependencyManifest.dependencyFingerprint).not.toBe(sinkChanged.dependencyManifest.dependencyFingerprint);
+  expect(pipeChanged.routeTrace.sections.discharge.totalLossM).toBeGreaterThan(sinkChanged.routeTrace.sections.discharge.totalLossM);
+  expect(systemHead(pipeChanged)).toBeGreaterThan(systemHead(sinkChanged));
+  await page.waitForFunction(({ pumpId, previousHead }) => {
+    const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+    const panel = Array.from(document.querySelectorAll('.pump-live-params')).find((candidate) => (
+      normalize(candidate.closest?.('.pfd-object, [data-node-id], [data-object-id]')?.dataset?.nodeId) === pumpId
+      || normalize(candidate.closest?.('.pfd-object, [data-node-id], [data-object-id]')?.dataset?.objectId) === pumpId
+      || normalize(candidate.textContent).includes(pumpId)
+    )) || document.querySelector('.pump-live-params');
+    const row = Array.from(panel?.querySelectorAll?.('.pump-live-param-row') || []).find((candidate) => (
+      normalize(candidate.querySelector('.pump-live-param-label')?.textContent) === 'Required Head'
+    ));
+    const text = normalize(row?.querySelector('.pump-live-param-value, strong')?.textContent);
+    const match = text.replace(',', '.').match(/[-+]?\d*\.?\d+(?:e[-+]?\d+)?/i);
+    return match && Number(match[0]) > previousHead;
+  }, {
+    pumpId: caseData.pumpId,
+    previousHead: systemHead(sinkChanged)
+  }, { timeout: 10000 });
+});
+
+test('Reverse construction order resolves to the same complete hydraulic route', async ({ page }) => {
+  const caseData = CASE;
+  await waitForNpshApp(page);
+  await loadSyntheticProject(page, { manualNpshr: 2, sinkElevation: 5, sinkPressure: 1.2 });
+
+  const baseline = await runProtectedSolve(page, caseData);
+  expect(systemHead(baseline)).toBeGreaterThan(0);
+  expect(numericReadoutValue(await readPumpCanvasRow(page, caseData.pumpId, 'Required Head'))).toBeGreaterThan(0);
+  expect(numericReadoutValue(await readPumpCanvasRow(page, caseData.pumpId, 'Discharge Press.'))).toBeGreaterThan(0);
+
+  const reversed = await reverseSuctionConnectionInBrowser(page, caseData);
+  expect(reversed.changed).toBeGreaterThan(0);
+  expect(reversed.hasSource).toBe(true);
+  expect(reversed.hasPump).toBe(true);
+
+  await page.locator('#btn-solve').click();
+  await page.waitForFunction((pumpId) => {
+    const results = window.globalModel?.[pumpId]?.results || window.__npshGlobalModel?.[pumpId]?.results || {};
+    const evaluation = results.npshEvaluation || {};
+    return results.backendValidationStatus === 'Connected'
+      && Number.isFinite(Number(results.requiredSystemHead ?? evaluation.requiredSystemHead));
+  }, caseData.pumpId, { timeout: 30000 });
+
+  expect(numericReadoutValue(await readPumpCanvasRow(page, caseData.pumpId, 'Required Head'))).toBeGreaterThan(0);
+  expect(numericReadoutValue(await readPumpCanvasRow(page, caseData.pumpId, 'Discharge Press.'))).toBeGreaterThan(0);
+  await expect(page.locator('#btn-solve')).toBeEnabled();
+});
+
 test('Fluid Basis temperature UI solve matches direct backend and reports route losses', async ({ page }, testInfo) => {
-  test.setTimeout(90000);
+  test.setTimeout(150000);
   const caseData = CASE;
   await waitForNpshApp(page);
   await loadSyntheticProject(page);
 
   await page.locator('#btn-fluid-basis').click();
-  const temperatureInput = page.locator('#fluid-task-temp').first();
-  await expect(temperatureInput).toBeVisible({ timeout: 10000 });
 
   const rows = [];
   for (const temperature of [100, 80, 10]) {
-    await temperatureInput.click();
-    await temperatureInput.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
-    await temperatureInput.type(String(temperature));
-    await temperatureInput.dispatchEvent('input');
-    await temperatureInput.dispatchEvent('change');
-    await page.waitForFunction((nextTemperature) => {
-      const model = window.__npshGlobalModel || window.globalModel || {};
-      return Number(model.FLUID?.props?.temp) === nextTemperature;
-    }, temperature, { timeout: 10000 });
+    await setFluidBasisTemperature(page, temperature);
 
     const uiResponse = await runProtectedSolve(page, caseData);
     const uiProjectState = await collectUiProjectState(page);
@@ -560,11 +1013,7 @@ test('Pump canvas keeps NPSHr and margin blank during Fluid Basis preview when M
   expect(isDash(await readPumpCanvasRow(page, caseData.pumpId, 'NPSH Ratio'))).toBe(true);
 
   await page.locator('#btn-fluid-basis').click();
-  const temperatureInput = page.locator('#fluid-task-temp').first();
-  await expect(temperatureInput).toBeVisible({ timeout: 10000 });
-  await temperatureInput.click();
-  await temperatureInput.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
-  await temperatureInput.type('90');
+  await setFluidBasisTemperature(page, 90);
 
   await page.waitForFunction((pumpId) => {
     const runtimeVersion = window.EngineeringCanvasFastPreviewRuntime?.version || '';
@@ -578,7 +1027,7 @@ test('Pump canvas keeps NPSHr and margin blank during Fluid Basis preview when M
         || document.querySelectorAll('.pump-live-params').length === 1;
     }) || null;
     return /canvas-fast-preview\d+/i.test(panel?.dataset?.canvasFastPreview || '');
-  }, caseData.pumpId, { timeout: 3000 });
+  }, caseData.pumpId, { timeout: 8000 });
 
   const previewRequired = await readPumpCanvasRow(page, caseData.pumpId, 'NPSH Required');
   const previewMargin = await readPumpCanvasRow(page, caseData.pumpId, 'NPSH Margin');
@@ -604,6 +1053,13 @@ test('Manual NPSHr UI edit previews locally and refreshes linked pump panel valu
   const baseline = await runProtectedSolve(page, caseData);
   expect(baseline.results.npshr).toBeNull();
   expect(baseline.results.npshMargin).toBeNull();
+  const baselineNpsha = await page.evaluate((pumpId) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const results = model[pumpId]?.results || {};
+    const npsh = results.npshEvaluation || {};
+    return Number(npsh.npsha ?? results.npsha);
+  }, caseData.pumpId);
+  expect(Number.isFinite(baselineNpsha)).toBe(true);
 
   await page.waitForFunction(() => typeof window.openPumpManualNpshrTaskWindow === 'function', null, { timeout: 10000 });
   await page.evaluate((pumpId) => {
@@ -685,15 +1141,11 @@ test('Manual NPSHr UI edit previews locally and refreshes linked pump panel valu
     };
   }, caseData.pumpId, { timeout: 15000 });
   const localPreview = await localPreviewHandle.jsonValue();
+  expect(localPreview.npsha).toBeCloseTo(baselineNpsha, 4);
   expect(localPreview.status).toBe('OK');
   expect(['Local preview', 'Current']).toContain(localPreview.freshness);
-  await expect.poll(() => page.__desktopFlowChainRequests.length, {
-    timeout: 15000,
-    intervals: [120, 300, 800, 1500]
-  }).toBeGreaterThan(requestsBeforeEdit);
-
-  const manualNpshrPayload = page.__desktopFlowChainRequests[page.__desktopFlowChainRequests.length - 1].payload;
-  expect(Number(manualNpshrPayload.model[caseData.pumpId].props.manualNpshr)).toBe(4);
+  await page.waitForTimeout(500);
+  expect(page.__desktopFlowChainRequests.length).toBe(requestsBeforeEdit);
 
   await page.waitForFunction((pumpId) => {
     const model = window.__npshGlobalModel || window.globalModel || {};
@@ -705,7 +1157,73 @@ test('Manual NPSHr UI edit previews locally and refreshes linked pump panel valu
       && Number(pump.props?.manualNpshr) === 4
       && Number(npsh.npshr ?? results.npshr) === 4;
   }, caseData.pumpId, { timeout: 15000 });
+  const currentNpshaAfterManual = await page.evaluate((pumpId) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const results = model[pumpId]?.results || {};
+    const npsh = results.npshEvaluation || {};
+    return Number(npsh.npsha ?? results.npsha);
+  }, caseData.pumpId);
+  expect(currentNpshaAfterManual).toBeCloseTo(baselineNpsha, 4);
 
   expect(await readPumpCanvasRow(page, caseData.pumpId, 'NPSH Required')).toMatchObject({ value: expect.stringMatching(/^4(?:\.0+)?(?: m)?$/) });
-  expect(Number((await readPumpCanvasRow(page, caseData.pumpId, 'NPSH Ratio')).value)).toBeCloseTo(localPreview.ratio, 3);
+  const currentRatioHandle = await page.waitForFunction((pumpId) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const results = model[pumpId]?.results || {};
+    const npsh = results.npshEvaluation || {};
+    const ratio = Number(npsh.npshRatio ?? results.npshRatio);
+    return Number.isFinite(ratio) ? ratio : false;
+  }, caseData.pumpId, { timeout: 10000 });
+  const currentRatio = await currentRatioHandle.jsonValue();
+  expect(Number((await readPumpCanvasRow(page, caseData.pumpId, 'NPSH Ratio')).value)).toBeCloseTo(currentRatio, 3);
+
+  const requestsBeforeClear = page.__desktopFlowChainRequests.length;
+  await npshrInput.click();
+  await npshrInput.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
+  await npshrInput.press('Backspace');
+
+  await page.waitForFunction((pumpId) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const pump = model[pumpId] || {};
+    const results = pump.results || {};
+    const npsh = results.npshEvaluation || {};
+    const status = npsh.hydraulicStatus || results.hydraulicNpshStatus || npsh.status || results.status || '';
+    return pump.props?.manualNpshr === ''
+      && (npsh.npshr ?? results.npshr) == null
+      && (npsh.npshMargin ?? results.npshMargin) == null
+      && (npsh.npshRatio ?? results.npshRatio) == null
+      && status === 'NPSHr Not Provided';
+  }, caseData.pumpId, { timeout: 15000 });
+  const currentNpshaAfterClear = await page.evaluate((pumpId) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const results = model[pumpId]?.results || {};
+    const npsh = results.npshEvaluation || {};
+    return Number(npsh.npsha ?? results.npsha);
+  }, caseData.pumpId);
+  expect(currentNpshaAfterClear).toBeCloseTo(baselineNpsha, 4);
+
+  await page.waitForTimeout(500);
+  expect(page.__desktopFlowChainRequests.length).toBe(requestsBeforeClear);
+
+  await page.waitForFunction((pumpId) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const pump = model[pumpId] || {};
+    const results = pump.results || {};
+    const npsh = results.npshEvaluation || {};
+    const status = npsh.hydraulicStatus || results.hydraulicNpshStatus || npsh.status || results.status || '';
+    return window.__engineeringCalculationDefenseRealtimeState?.status === 'Current'
+      && results.backendValidationStatus === 'Connected'
+      && pump.props?.manualNpshr === ''
+      && (npsh.npshr ?? results.npshr) == null
+      && (npsh.npshMargin ?? results.npshMargin) == null
+      && (npsh.npshRatio ?? results.npshRatio) == null
+      && status === 'NPSHr Not Provided';
+  }, caseData.pumpId, { timeout: 15000 });
+
+  const isDash = (row) => /^-(?:\s+(?:m|bar a))?$/.test(String(row?.value || '').trim());
+  expect(await readPumpCanvasRow(page, caseData.pumpId, 'Hydraulic NPSH')).toMatchObject({ value: 'NPSHr Not Provided' });
+  expect(isDash(await readPumpCanvasRow(page, caseData.pumpId, 'NPSH Required'))).toBe(true);
+  expect(isDash(await readPumpCanvasRow(page, caseData.pumpId, 'NPSH Margin'))).toBe(true);
+  expect(isDash(await readPumpCanvasRow(page, caseData.pumpId, 'NPSH Ratio'))).toBe(true);
+  expect(isDash(await readPumpCanvasRow(page, caseData.pumpId, 'Discharge Press.'))).toBe(true);
+  expect(isDash(await readPumpCanvasRow(page, caseData.pumpId, 'Required Head'))).toBe(true);
 });

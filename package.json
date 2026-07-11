@@ -52,6 +52,8 @@
     "validate:open-file-readiness-gate": "node tools/validate-open-file-readiness-gate.cjs",
     "validate:simulation-load-transaction-manager": "node tools/validate-simulation-load-transaction-manager.cjs",
     "validate:performance-refresh-governor": "node tools/validate-performance-refresh-governor.cjs",
+    "validate:performance-baseline": "node tools/validate-performance-baseline-runtime.cjs",
+    "validate:runtime-health-audit": "node tools/validate-runtime-health-audit.cjs",
     "validate:head-power-audit-guard": "node tools/validate-head-power-audit-guard.cjs",
     "validate:pump-edit-fast-lane": "node tools/validate-pump-edit-fast-lane.cjs",
     "validate:suction-only-npsha-runtime": "node tools/validate-suction-only-npsha-runtime.cjs",
@@ -73,8 +75,12 @@
     "test:e2e:pdf-export-progress": "playwright test tests/e2e/pdf-export-progress.spec.cjs",
     "test:e2e:excel-calculation-trace": "playwright test tests/e2e/excel-calculation-trace.spec.cjs",
     "test:e2e:canvas-clear-fluid-basis": "playwright test tests/e2e/canvas-clear-fluid-basis.spec.cjs",
+    "test:e2e:performance-baseline": "playwright test tests/e2e/performance-baseline-runtime.spec.cjs",
+    "test:e2e:runtime-health-audit": "playwright test tests/e2e/runtime-health-audit.spec.cjs",
     "test:e2e:simulation-cases-not-stuck": "playwright test tests/e2e/simulation-cases-not-stuck.spec.cjs",
     "test:e2e:simulation-case-discharge-delete": "playwright test tests/e2e/simulation-case-discharge-delete-suction-only.spec.cjs",
+    "test:e2e:src-boundary-data-no-flash": "playwright test tests/e2e/src-boundary-data-no-flash.spec.cjs",
+    "test:e2e:sink-input-stability": "playwright test tests/e2e/sink-object-properties-input-stability.spec.cjs",
     "test:e2e:simulation-load-burst": "playwright test tests/e2e/simulation-load-burst-reliability.spec.cjs"
   },
   "devDependencies": {

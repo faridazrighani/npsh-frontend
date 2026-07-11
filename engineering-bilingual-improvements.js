@@ -1,5 +1,5 @@
 (function registerEngineeringBilingualImprovements(root) {
-  const VERSION = '2026.05-bilingual-runtime-27';
+  const VERSION = '2026.05-bilingual-runtime-28-src-flash-lock';
   const SOURCE_ADVISOR_AUDIT_LOCK = 'source-advisor-hidden-v1';
   const SOURCE_ADVISOR_AUDIT_LOCK_REASON = 'src-window-simplified-for-academic-audit';
   const SOURCE_FORMULA_DEFENSE_PLACEMENT_LOCK = 'source-formula-defense-src-header-right-v1';
@@ -1654,11 +1654,15 @@
     const element = getSourceFieldElement(windowNode, key);
     if (!element) return false;
     if (element.textContent !== text) element.textContent = text;
-    if (element.dataset) element.dataset.sourceFluidBasisLayoutLock = SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK;
+    if (element.dataset && element.dataset.sourceFluidBasisLayoutLock !== SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK) {
+      element.dataset.sourceFluidBasisLayoutLock = SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK;
+    }
     const row = getSourceFieldRow(windowNode, key);
     if (row?.dataset) {
-      row.dataset.propKey = key;
-      row.dataset.sourceFluidBasisLayoutLock = SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK;
+      if (row.dataset.propKey !== key) row.dataset.propKey = key;
+      if (row.dataset.sourceFluidBasisLayoutLock !== SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK) {
+        row.dataset.sourceFluidBasisLayoutLock = SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK;
+      }
     }
     return true;
   }
@@ -1765,9 +1769,11 @@
     if (!root.document || !anchorRow?.parentNode) return null;
     const row = root.document.createElement(anchorRow.tagName?.toLowerCase() === 'tr' ? 'tr' : 'div');
     row.className = anchorRow.className || 'pipe-task-field-row object-task-field-row';
-    row.dataset.propKey = config.key;
-    row.dataset.sourceFluidBasisDerived = 'true';
-    row.dataset.sourceFluidBasisLayoutLock = SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK;
+    if (row.dataset.propKey !== config.key) row.dataset.propKey = config.key;
+    if (row.dataset.sourceFluidBasisDerived !== 'true') row.dataset.sourceFluidBasisDerived = 'true';
+    if (row.dataset.sourceFluidBasisLayoutLock !== SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK) {
+      row.dataset.sourceFluidBasisLayoutLock = SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK;
+    }
     const label = root.document.createElement(row.tagName.toLowerCase() === 'tr' ? 'td' : 'div');
     label.className = 'prop-label';
     const value = root.document.createElement(row.tagName.toLowerCase() === 'tr' ? 'td' : 'div');
@@ -1784,17 +1790,23 @@
     const language = getActiveRuntimeLanguage();
     const label = row.querySelector?.('.prop-label') || row.children?.[0];
     const value = row.querySelector?.('.prop-value, [data-key]') || row.children?.[1];
-    row.dataset.propKey = config.key;
-    row.dataset.sourceFluidBasisDerived = 'true';
-    row.dataset.sourceFluidBasisLayoutLock = SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK;
+    if (row.dataset.propKey !== config.key) row.dataset.propKey = config.key;
+    if (row.dataset.sourceFluidBasisDerived !== 'true') row.dataset.sourceFluidBasisDerived = 'true';
+    if (row.dataset.sourceFluidBasisLayoutLock !== SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK) {
+      row.dataset.sourceFluidBasisLayoutLock = SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK;
+    }
     if (label) {
       const nextLabel = language === 'id' ? config.labelId : config.labelEn;
       if (label.textContent !== nextLabel) label.textContent = nextLabel;
-      label.setAttribute?.('data-i18n-fallback', config.labelEn);
+      if (label.getAttribute?.('data-i18n-fallback') !== config.labelEn) {
+        label.setAttribute?.('data-i18n-fallback', config.labelEn);
+      }
     }
     if (value) {
-      value.dataset.key = config.key;
-      value.dataset.sourceFluidBasisLayoutLock = SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK;
+      if (value.dataset?.key !== config.key) value.dataset.key = config.key;
+      if (value.dataset?.sourceFluidBasisLayoutLock !== SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK) {
+        value.dataset.sourceFluidBasisLayoutLock = SOURCE_FLUID_BASIS_LINK_LAYOUT_LOCK;
+      }
       if (value.textContent !== valueText) value.textContent = valueText;
     }
   }

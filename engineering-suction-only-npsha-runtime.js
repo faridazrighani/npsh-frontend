@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const VERSION = "2026.07-suction-only-npsha6-stale-discharge";
+  const VERSION = "2026.07-suction-only-npsha12-route-direction-lock";
   const SOLVE_DELAY_MS = 420;
   const RETRY_DELAY_MS = 900;
   const MAX_RETRIES = 8;
@@ -42,6 +42,8 @@
   const stateByPump = new Map();
   let observer = null;
   let installAttempts = 0;
+  let validateBridgeInstalled = false;
+  let topologyBridgeInstalled = false;
 
   function runtimeModel() {
     try {
@@ -53,12 +55,26 @@
   }
 
   function runtimeConnections() {
+    const candidates = [];
     try {
-      if (typeof connections !== "undefined" && Array.isArray(connections)) return connections;
+      if (typeof connections !== "undefined" && Array.isArray(connections)) candidates.push(connections);
     } catch (error) {
       // Protected builds may keep connections behind runtime globals.
     }
-    return Array.isArray(root.connections) ? root.connections : [];
+    if (Array.isArray(root.__npshConnections)) candidates.push(root.__npshConnections);
+    if (Array.isArray(root.connections)) candidates.push(root.connections);
+    const model = runtimeModel();
+    if (Array.isArray(model?.connections)) candidates.push(model.connections);
+    if (Array.isArray(model?.__connections)) candidates.push(model.__connections);
+    try {
+      if (typeof root.getSimulationState === "function") {
+        const state = JSON.parse(root.getSimulationState());
+        if (Array.isArray(state?.connections)) candidates.push(state.connections);
+      }
+    } catch (error) {
+      // Serialized state is only a final compatibility source.
+    }
+    return candidates.find((candidate) => candidate.length > 0) || candidates[0] || [];
   }
 
   function numberOrNull(value) {
@@ -80,6 +96,13 @@
       if (number !== null && number > 0) return number;
     }
     return null;
+  }
+
+  function optionalManualNpshr(value) {
+    if (value === null || value === undefined || String(value).trim() === "") return null;
+    const number = numberOrNull(value);
+    if (number === null || number < 0) return 0;
+    return number;
   }
 
   function text(value) {
@@ -113,8 +136,40 @@
     return !!(model?.[connection.from] && model?.[connection.to] && connectionPipeIsLive(model, connection));
   }
 
+  function hydraulicPortRole(selector = "") {
+    const value = text(selector).toLowerCase();
+    if (value.includes("inlet")) return "inlet";
+    if (value.includes("outlet")) return "outlet";
+    return "";
+  }
+
+  function orientHydraulicConnection(model, connection) {
+    const fromType = nodeType(model, connection?.from);
+    const toType = nodeType(model, connection?.to);
+    const fromRole = hydraulicPortRole(connection?.fromPort);
+    const toRole = hydraulicPortRole(connection?.toPort);
+    const reversed = (fromRole === "inlet" && toRole === "outlet")
+      || fromType === "sink"
+      || toType === "source";
+    if (!reversed) return connection;
+    return {
+      ...connection,
+      from: connection.to,
+      fromPort: connection.toPort,
+      to: connection.from,
+      toPort: connection.fromPort,
+      rawFrom: connection.rawFrom || connection.from,
+      rawFromPort: connection.rawFromPort || connection.fromPort,
+      rawTo: connection.rawTo || connection.to,
+      rawToPort: connection.rawToPort || connection.toPort,
+      hydraulicReversed: true
+    };
+  }
+
   function hydraulicConnections(model = runtimeModel()) {
-    return runtimeConnections().filter((connection) => isLiveHydraulicConnection(model, connection));
+    return runtimeConnections()
+      .filter((connection) => isLiveHydraulicConnection(model, connection))
+      .map((connection) => orientHydraulicConnection(model, connection));
   }
 
   function nodeType(model, id) {
@@ -162,15 +217,15 @@
     const massFlow = firstPositiveValue(props.massFlow, props.massFlowKgH);
     const massFlowAsVolume = massFlow !== null && fluid.density > 0 ? massFlow / fluid.density : null;
     return firstPositiveValue(
-      results.flow,
-      results.evaluatedFlow,
-      results.outletFlow,
-      results.sourceFlow,
       props.flow,
       props.flowM3h,
       props.volumetricFlow,
       props.demandFlow,
-      massFlowAsVolume
+      massFlowAsVolume,
+      results.flow,
+      results.evaluatedFlow,
+      results.outletFlow,
+      results.sourceFlow
     ) ?? firstFiniteValue(results.flow, results.evaluatedFlow, props.flow, props.demandFlow, massFlowAsVolume);
   }
 
@@ -178,7 +233,15 @@
     const props = pump.props || {};
     const results = pump.results || {};
     const evaluation = results.npshEvaluation || {};
-    return firstFiniteValue(evaluation.flow, results.flow, results.fixedFlow, sourceFlow(source), props.designFlow, props.flow);
+    const candidates = [
+      evaluation.flow,
+      results.flow,
+      results.fixedFlow,
+      sourceFlow(source),
+      props.designFlow,
+      props.flow
+    ];
+    return firstPositiveValue(...candidates) ?? firstFiniteValue(...candidates);
   }
 
   function isSuctionOnlyEligiblePump(model, pumpId) {
@@ -199,12 +262,35 @@
     const results = pump.results || {};
     const evaluation = results.npshEvaluation || {};
     const pipeResults = pipe.results || {};
+    const solvedPumpFlow = firstFiniteValue(evaluation.flow, results.flow, results.fixedFlow);
+    const solvedPipeFlow = firstFiniteValue(pipeResults.flow, pipeResults.calculationTrace?.basis?.flowM3H);
     return (text(results.routeCalculationStatus) === "Suction Only"
       || text(evaluation.routeCalculationStatus) === "Suction Only"
       || results.suctionOnlyNpshaEvaluation === true
       || evaluation.suctionOnlyNpshaEvaluation === true)
       && firstFiniteValue(evaluation.npsha, results.npsha) !== null
-      && (pipeResults.pressureCalculated === true || firstFiniteValue(pipeResults.flow, pipeResults.calculationTrace?.basis?.flowM3H) !== null);
+      && solvedPumpFlow > 0
+      && solvedPipeFlow > 0;
+  }
+
+  function hasUsableSuctionOnlyResult(route) {
+    const pumpResults = route?.pump?.results || {};
+    const evaluation = pumpResults.npshEvaluation || {};
+    const pipeResults = route?.pipe?.results || {};
+    const expectedFlow = firstPositiveValue(route?.flow, pumpFlow(route?.pump, route?.source), sourceFlow(route?.source));
+    const solvedPumpFlow = firstFiniteValue(evaluation.flow, pumpResults.flow, pumpResults.fixedFlow);
+    const solvedPipeFlow = firstFiniteValue(pipeResults.flow, pipeResults.calculationTrace?.basis?.flowM3H);
+    const solvedNpsha = firstFiniteValue(evaluation.npsha, pumpResults.npsha);
+    if (solvedNpsha === null) return false;
+    if (!(expectedFlow > 0)) return false;
+    if (solvedPumpFlow === null || solvedPipeFlow === null) return false;
+    if (!(solvedPumpFlow > 0) || !(solvedPipeFlow > 0)) return false;
+    const flowTolerance = Math.max(0.001, Math.abs(expectedFlow) * 0.001);
+    if (Math.abs(solvedPumpFlow - expectedFlow) > flowTolerance) return false;
+    if (Math.abs(solvedPipeFlow - expectedFlow) > flowTolerance) return false;
+    const localReference = calculateLocalSuctionOnlyResult(route);
+    if (localReference && Math.abs(solvedNpsha - localReference.npsha) > 0.02) return false;
+    return true;
   }
 
   function suctionOnlyFingerprint(model, route) {
@@ -385,8 +471,8 @@
     };
     pumpResults.flow = firstFiniteValue(result.flow, pumpResults.flow);
     pumpResults.npsha = firstFiniteValue(result.npsha, pumpResults.npsha);
-    const manualNpshr = firstPositiveValue(refreshedRoute.pump?.props?.manualNpshr);
-    const resultNpshr = manualNpshr !== null ? firstPositiveValue(result.npshr, manualNpshr) : null;
+    const manualNpshr = optionalManualNpshr(refreshedRoute.pump?.props?.manualNpshr);
+    const resultNpshr = manualNpshr !== null ? firstFiniteValue(result.npshr, manualNpshr) : null;
     pumpResults.npshEvaluation.npshr = resultNpshr;
     pumpResults.npshEvaluation.npshRequired = resultNpshr;
     pumpResults.npshEvaluation.npshMargin = resultNpshr !== null ? firstFiniteValue(result.npshMargin) : null;
@@ -403,7 +489,7 @@
     pumpResults.vaporPressureHead = firstFiniteValue(result.vaporPressureHead, pumpResults.vaporPressureHead);
     pumpResults.routeCalculationStatus = result.routeCalculationStatus || pumpResults.routeCalculationStatus || "Suction Only";
     pumpResults.requiredPumpHeadStatus = result.requiredPumpHeadStatus || pumpResults.requiredPumpHeadStatus || "Downstream Required";
-    const fallbackHydraulicStatus = resultNpshr !== null ? "OK" : "NPSHa Calculated";
+    const fallbackHydraulicStatus = resultNpshr !== null ? "OK" : "NPSHr Not Provided";
     pumpResults.status = result.status || result.hydraulicStatus || pumpResults.status || fallbackHydraulicStatus;
     pumpResults.hydraulicNpshStatus = result.hydraulicStatus || result.status || pumpResults.hydraulicNpshStatus || fallbackHydraulicStatus;
     pumpResults.engineeringStatus = result.engineeringStatus || result.status || pumpResults.engineeringStatus || fallbackHydraulicStatus;
@@ -814,11 +900,11 @@
 
   function routeNpshr(route) {
     const props = route.pump?.props || {};
-    return firstPositiveValue(props.manualNpshr);
+    return optionalManualNpshr(props.manualNpshr);
   }
 
   function npshStatus(npsha, npshr, route) {
-    if (!(npshr > 0)) return { status: "NPSHa Calculated", margin: null, ratio: null };
+    if (npshr === null) return { status: "NPSHr Not Provided", margin: null, ratio: null };
     const margin = npsha - npshr;
     const ratio = npshr > 0 ? npsha / npshr : null;
     const minMargin = firstFiniteValue(route.pump?.props?.minNpshMargin, 0);
@@ -953,7 +1039,7 @@
   }
 
   function calculateLocalSuctionOnlyResult(route) {
-    const flow = firstPositiveValue(route.flow, pumpFlow(route.pump, route.source), sourceFlow(route.source));
+    const flow = firstFiniteValue(route.flow, pumpFlow(route.pump, route.source), sourceFlow(route.source));
     if (!(flow > 0)) return null;
     const fluid = fluidProps();
     const sourcePressureAbsBar = sourceAbsolutePressureBar(route.source);
@@ -1074,9 +1160,9 @@
   function applyLocalPumpResults(route, result) {
     const pumpResults = route.pump.results || (route.pump.results = {});
     const calculationTrace = buildLocalPumpTrace(route, result);
-    const npshrProvided = result.npshr > 0;
+    const npshrProvided = optionalManualNpshr(route.pump?.props?.manualNpshr) !== null;
     const status = result.status;
-    const statusForPanel = npshrProvided ? status : "NPSHa Calculated";
+    const statusForPanel = npshrProvided ? status : "NPSHr Not Provided";
     const evaluation = {
       ...(pumpResults.npshEvaluation || {}),
       status: statusForPanel,
@@ -1172,7 +1258,7 @@
     const pumpResults = route.pump.results || {};
     const evaluation = pumpResults.npshEvaluation || {};
     const pipeResults = route.pipe.results || {};
-    if (firstFiniteValue(evaluation.npsha, pumpResults.npsha) === null) return false;
+    if (!hasUsableSuctionOnlyResult(route)) return false;
 
     pumpResults.routeCalculationStatus = "Suction Only";
     pumpResults.requiredPumpHeadStatus = "Downstream Required";
@@ -1192,7 +1278,7 @@
     evaluation.pumpHead = null;
     evaluation.head = null;
     evaluation.dischargePressure = null;
-    const fallbackHydraulicStatus = firstPositiveValue(route.pump?.props?.manualNpshr) !== null ? "OK" : "NPSHa Calculated";
+    const fallbackHydraulicStatus = optionalManualNpshr(route.pump?.props?.manualNpshr) !== null ? "OK" : "NPSHr Not Provided";
     pumpResults.status = text(pumpResults.status) && !/incomplete|input required/i.test(pumpResults.status)
       ? pumpResults.status
       : (evaluation.status || evaluation.hydraulicStatus || fallbackHydraulicStatus);
@@ -1356,6 +1442,90 @@
     return queued;
   }
 
+  function suctionOnlyValidateTargets(model = runtimeModel()) {
+    return Object.keys(model || {})
+      .map((pumpId) => isSuctionOnlyEligiblePump(model, pumpId))
+      .filter(Boolean);
+  }
+
+  function isSuctionOnlyValidateCommand(target) {
+    return !!target?.closest?.(
+      '#btn-solve, #menu-run-solve, [data-i18n-text="menu.runHydraulicNpshEvaluation"]'
+    );
+  }
+
+  function handleSuctionOnlyValidate(event) {
+    if (!isSuctionOnlyValidateCommand(event?.target)) return false;
+    const routes = suctionOnlyValidateTargets();
+    if (!routes.length) return false;
+
+    event.preventDefault?.();
+    event.stopImmediatePropagation?.();
+    const pumpIds = routes.map((route) => route.pumpId);
+    const detail = {
+      calculationMode: "manual-solve",
+      nodeId: pumpIds[0] || "",
+      nodeIds: pumpIds,
+      reason: "Validate routed to the active suction-only hydraulic calculation."
+    };
+    root.EngineeringCalculationLifecycle?.markCalculationActivity?.("manual-command", detail);
+    root.EngineeringCalculationLifecycle?.publish?.("calculating", detail, {
+      calculationMode: "manual-solve",
+      sourceEvent: "suction-only-validate-router",
+      message: "Calculating suction-side hydraulics and NPSHa."
+    });
+
+    Promise.all(routes.map((route) => runRouteSolve(route.pumpId)))
+      .then((outcomes) => {
+        if (outcomes.every(Boolean)) {
+          root.EngineeringCalculationLifecycle?.publish?.("current", detail, {
+            calculationMode: "manual-solve",
+            sourceEvent: "suction-only-validate-complete",
+            message: "Suction-side hydraulics and NPSHa are current."
+          });
+          return;
+        }
+        root.EngineeringCalculationLifecycle?.publish?.("failed", detail, {
+          calculationMode: "manual-solve",
+          sourceEvent: "suction-only-validate-incomplete",
+          message: "Suction-side calculation did not return a usable current result."
+        });
+      })
+      .catch((error) => {
+        root.EngineeringCalculationLifecycle?.publish?.("failed", {
+          ...detail,
+          message: error?.message || "Suction-side calculation failed."
+        }, {
+          calculationMode: "manual-solve",
+          sourceEvent: "suction-only-validate-error"
+        });
+      });
+    return true;
+  }
+
+  function installSuctionOnlyValidateBridge() {
+    if (validateBridgeInstalled || typeof document === "undefined") return false;
+    document.addEventListener("click", handleSuctionOnlyValidate, true);
+    validateBridgeInstalled = true;
+    return true;
+  }
+
+  function scheduleTopologyScans(reason = "topology-input") {
+    [80, 420, 1100].forEach((delay) => {
+      root.setTimeout?.(() => scan(`${reason}-${delay}`), delay);
+    });
+  }
+
+  function installTopologyInputBridge() {
+    if (topologyBridgeInstalled || typeof document === "undefined") return false;
+    document.addEventListener("click", (event) => {
+      if (!event?.target?.closest?.(".port")) return;
+      scheduleTopologyScans("hydraulic-port-click");
+    }, true);
+    topologyBridgeInstalled = true;
+    return true;
+  }
+
   function patchPumpRows() {
     const original = root.buildPumpLiveParameterRows;
     if (typeof original !== "function" || original.__suctionOnlyNpshaPatched) return false;
@@ -1380,7 +1550,7 @@
       setRow(rows, "Flow", firstFiniteValue(evaluation.flow, results.flow), 1);
       setRow(rows, "Suction Press.", firstFiniteValue(evaluation.suctionPressureAbs, results.suctionPressure), 3);
       setRow(rows, "NPSH Available", firstFiniteValue(evaluation.npsha, results.npsha), 4);
-      setRow(rows, "NPSH Required", firstPositiveValue(pump?.props?.manualNpshr), 4);
+      setRow(rows, "NPSH Required", optionalManualNpshr(pump?.props?.manualNpshr), 4);
       setRow(rows, "NPSH Margin", firstFiniteValue(evaluation.npshMargin, results.npshMargin), 4, true);
       setRow(rows, "NPSH Ratio", firstFiniteValue(evaluation.npshRatio, results.npshRatio), 4);
       setRow(rows, "Pump Head", null, 1);
@@ -1430,13 +1600,15 @@
     const patchedRows = patchPumpRows();
     const events = installEventHooks();
     const domObserver = installObserver();
+    const validateBridge = installSuctionOnlyValidateBridge();
+    const topologyBridge = installTopologyInputBridge();
     scan("install");
     const ready = typeof root.runBackendProtectedPumpSimulation === "function"
       || installAttempts < MAX_RETRIES;
     if (ready && typeof root.runBackendProtectedPumpSimulation !== "function") {
       root.setTimeout?.(install, RETRY_DELAY_MS);
     }
-    return { version: VERSION, patchedRows, events, domObserver };
+    return { version: VERSION, patchedRows, events, domObserver, validateBridge, topologyBridge };
   }
 
   root.EngineeringSuctionOnlyNpshaRuntime = {
@@ -1444,7 +1616,8 @@
     install,
     scan,
     runRouteSolve,
-    isSuctionOnlyEligiblePump
+    isSuctionOnlyEligiblePump,
+    handleSuctionOnlyValidate
   };
 
   if (typeof document === "undefined") {

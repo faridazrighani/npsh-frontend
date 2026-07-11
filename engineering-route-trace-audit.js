@@ -1,5 +1,5 @@
 (function registerEngineeringRouteTraceAudit(root) {
-  const VERSION = '2026.07-route-trace-audit-v48';
+  const VERSION = '2026.07-route-trace-audit-v52-sink-input-stability';
   const PANEL_ID = 'engineeringRouteTraceAuditPanel';
   const PANEL_BODY_ID = 'engineeringRouteTraceAuditPanelBody';
   const MENU_BUTTON_ID = 'menu-tools-route-trace-audit';
@@ -273,7 +273,10 @@
   function canonicalPumpLiveParameterRows(rows, args = []) {
     if (!Array.isArray(rows)) return rows;
     const canonicalFlow = pumpCanonicalFlowForLiveRows(args[0]);
-    const requiredHead = pumpRequiredSystemHeadValue(args[0]);
+    const pumpId = nodeIdForModelNode(args[0], 'pump');
+    const downstreamDutyAvailable = pumpDownstreamDutyAvailable(args[0], pumpId);
+    const requiredHead = pumpRequiredSystemHeadValue(args[0], pumpId);
+    const dischargePressure = pumpDischargePressureValue(args[0], pumpId);
     const filteredRows = rows.filter((row) => {
       const label = normalizedReadoutLabel(row?.label ?? row?.title ?? '');
       if (isLiveParameterSectionRow(row)) return !isHiddenPumpCanvasSectionText(label);
@@ -288,6 +291,15 @@
           value: liveRowValue(requiredHead, row?.unit || row?.units || 'm'),
           unit: row?.unit || row?.units || 'm',
           title: row?.title || 'Route-required head from the solved hydraulic system.'
+        };
+      }
+      if (label === 'Discharge Press.') {
+        if (downstreamDutyAvailable && dischargePressure === null) return row;
+        return {
+          ...row,
+          value: liveRowValue(dischargePressure, row?.unit || row?.units || 'bar a'),
+          unit: row?.unit || row?.units || 'bar a',
+          title: row?.title || 'Pump discharge absolute pressure from the current downstream duty.'
         };
       }
       if (label !== 'Flow' || canonicalFlow === null) return row;
@@ -473,6 +485,34 @@
 
   function isHydraulicConnection(connection = {}) {
     return !connection.connectionType || String(connection.connectionType).toLowerCase() === 'hydraulic';
+  }
+
+  function hydraulicPortRole(selector = '') {
+    const value = normalizeText(selector).toLowerCase();
+    if (value.includes('inlet')) return 'inlet';
+    if (value.includes('outlet')) return 'outlet';
+    return '';
+  }
+
+  function orientHydraulicConnection(connection = {}, modelRef = model()) {
+    const fromType = normalizeText(modelRef?.[connectionFrom(connection)]?.type).toLowerCase();
+    const toType = normalizeText(modelRef?.[connectionTo(connection)]?.type).toLowerCase();
+    const reversed = (hydraulicPortRole(connection.fromPort) === 'inlet' && hydraulicPortRole(connection.toPort) === 'outlet')
+      || fromType === 'sink'
+      || toType === 'source';
+    if (!reversed) return connection;
+    return {
+      ...connection,
+      from: connectionTo(connection),
+      fromPort: connection.toPort,
+      to: connectionFrom(connection),
+      toPort: connection.fromPort,
+      rawFrom: connection.rawFrom || connectionFrom(connection),
+      rawFromPort: connection.rawFromPort || connection.fromPort,
+      rawTo: connection.rawTo || connectionTo(connection),
+      rawToPort: connection.rawToPort || connection.toPort,
+      hydraulicReversed: true
+    };
   }
 
   function nodeIdForModelNode(node, type = '') {
@@ -754,9 +794,11 @@
     const traceInput = results.calculationTrace?.inputBasis || {};
     const tracePumpImpact = results.calculationTrace?.pumpImpact || {};
     const props = node.props || {};
+    const inputPreview = root.EngineeringSinkInputStabilityRuntime?.previewForNode?.(node) || {};
     const mode = sinkBoundaryModeRaw(node);
     const pressureAbsBar = pressureAbsForSelectedSinkMode(node, mode);
     const elevation = firstFiniteValue(
+      inputPreview.elevation,
       results.elevation,
       results.sinkElevation,
       traceBoundary.elevation,
@@ -796,6 +838,7 @@
       elevation,
       sinkHead,
       sinkFlow: firstFiniteValue(
+        inputPreview.demandFlow,
         results.flow,
         results.outletFlow,
         results.sinkFlow,
@@ -934,9 +977,29 @@
   }
 
   function pumpRouteConnections(pumpId, modelRef = model()) {
-    const hydraulic = connectionList(modelRef).filter(isHydraulicConnection);
-    const suctionConnection = hydraulic.find((connection) => connectionTo(connection) === pumpId);
-    const dischargeConnection = hydraulic.find((connection) => connectionFrom(connection) === pumpId);
+    const hydraulic = connectionList(modelRef)
+      .filter(isHydraulicConnection)
+      .map((connection) => orientHydraulicConnection(connection, modelRef));
+    const nodeType = (nodeId) => normalizeText(modelRef?.[nodeId]?.type).toLowerCase();
+    const isSuctionBoundaryType = (type) => (
+      type === 'source'
+      || type === 'tank'
+      || type === 'verticalvessel'
+      || type === 'horizontalvessel'
+      || type === 'separator'
+    );
+    const isDischargeBoundaryType = (type) => type === 'sink';
+    const hasPipe = (connection) => modelRef[connectionPipeId(connection || {})]?.type === 'pipe';
+    const suctionConnection = hydraulic.find((connection) => (
+      connectionTo(connection) === pumpId
+      && isSuctionBoundaryType(nodeType(connectionFrom(connection)))
+      && hasPipe(connection)
+    ));
+    const dischargeConnection = hydraulic.find((connection) => (
+      connectionFrom(connection) === pumpId
+      && isDischargeBoundaryType(nodeType(connectionTo(connection)))
+      && hasPipe(connection)
+    ));
     return {
       suctionConnection,
       dischargeConnection,
@@ -1031,6 +1094,17 @@
     return Array.from(panel.querySelectorAll('.sink-live-param-row')).find((row) => (
       normalizeText(row.querySelector('.sink-live-param-label')?.textContent) === label
     )) || null;
+  }
+
+  function hasCompletePumpDischargeRoute(pumpId, modelRef = model()) {
+    if (!pumpId) return false;
+    const route = pumpRouteConnections(pumpId, modelRef);
+    return !!(route.suctionConnection && route.suctionPipe && route.suctionBoundary && route.dischargeConnection && route.dischargePipe && route.dischargeBoundary);
+  }
+
+  function pumpDownstreamDutyAvailable(pump = {}, pumpId = '') {
+    const resolvedPumpId = pumpId || nodeIdForModelNode(pump, 'pump');
+    return pumpManualNpshrValue(pump) !== null && hasCompletePumpDischargeRoute(resolvedPumpId);
   }
 
   function pruneDuplicateSinkCanvasRows(panel) {
@@ -2181,7 +2255,8 @@
     return value !== null && value >= 0 ? value : 0;
   }
 
-  function pumpRequiredSystemHeadValue(pump = {}) {
+  function pumpRequiredSystemHeadValue(pump = {}, pumpId = '') {
+    if (!pumpDownstreamDutyAvailable(pump, pumpId)) return null;
     const results = pump.results || {};
     const evaluation = results.npshEvaluation || {};
     const traceSystemHead = results.calculationTrace?.systemHead
@@ -2196,6 +2271,18 @@
       traceSystemHead.requiredHead,
       results.systemHead?.requiredHead,
       results.systemHead?.requiredHeadRaw
+    );
+  }
+
+  function pumpDischargePressureValue(pump = {}, pumpId = '') {
+    if (!pumpDownstreamDutyAvailable(pump, pumpId)) return null;
+    const results = pump.results || {};
+    const evaluation = results.npshEvaluation || {};
+    const trace = results.calculationTrace || evaluation.calculationTrace || {};
+    return firstFiniteValue(
+      results.dischargePressure,
+      evaluation.dischargePressure,
+      trace.boundary?.dischargePressure
     );
   }
 
@@ -2216,7 +2303,7 @@
     if (/incomplete|input\s*required|unknown|not\s*connected|incomplete\s*network|incomplete\s*calculation/i.test(raw)) return 'Incomplete';
     if (/cavitation|npsh\s*risk|risk|unsafe|fail/i.test(raw)) return 'Cavitation Risk';
     if (/warning|review|near\s*vapor/i.test(raw)) return 'Warning';
-    if (/not\s*provided|npshr\s*not\s*provided|manual\s*npshr|npsha\s*calculated/i.test(raw)) return 'NPSHa Calculated';
+    if (/not\s*provided|npshr\s*not\s*provided|manual\s*npshr|npsha\s*calculated/i.test(raw)) return 'NPSHr Not Provided';
     if (/safe|ok|pass/i.test(raw)) return 'OK';
     return raw;
   }
@@ -2244,7 +2331,7 @@
       evaluation.status,
       interpretation.hydraulicStatus,
       results.status
-    ) || (manualNpshr === null || manualNpshr <= 0 ? 'NPSHa Calculated' : 'Incomplete');
+    ) || (manualNpshr === null ? 'NPSHr Not Provided' : 'Incomplete');
     const backendValidationStatus = normalizeBackendValidationStatusForMatrix(
       results.backendValidationStatus,
       evaluation.backendValidationStatus,
@@ -2348,7 +2435,9 @@
     const modelRef = model();
     const pumpId = sourceIdForPumpPanel(panel, modelRef);
     const pump = modelRef[pumpId] || {};
-    const requiredHeadRaw = pumpRequiredSystemHeadValue(pump);
+    const downstreamDutyAvailable = pumpDownstreamDutyAvailable(pump, pumpId);
+    const requiredHeadRaw = pumpRequiredSystemHeadValue(pump, pumpId);
+    const dischargePressureRaw = pumpDischargePressureValue(pump, pumpId);
     let changed = 0;
     const pumpHeadRows = Array.from(panel?.querySelectorAll?.('.pump-live-param-row') || []).filter((row) => (
       normalizeText(row.querySelector?.('.pump-live-param-label')?.textContent) === 'Pump Head'
@@ -2388,6 +2477,15 @@
     if (requiredRow?.dataset) {
       requiredRow.dataset.routeTracePumpHeadLabelLock = VERSION;
       requiredRow.dataset.routeTracePumpHeadLabelMode = 'required-system-head-only';
+    }
+    const dischargeRow = pumpPanelRowByLabels(panel, ['Discharge Press.']);
+    const dischargeValueElement = dischargeRow?.querySelector?.('.pump-live-param-value, strong');
+    if (dischargeValueElement && (!downstreamDutyAvailable || dischargePressureRaw !== null)) {
+      const dischargeDisplayValue = valueForExistingPumpRow(dischargeRow, formatCanvasValue(dischargePressureRaw, 'bar a'));
+      if (setTextIfChanged(dischargeValueElement, dischargeDisplayValue)) changed += 1;
+    }
+    if (dischargeRow?.dataset) {
+      dischargeRow.dataset.routeTracePumpDownstreamDutyLock = VERSION;
     }
     return changed;
   }

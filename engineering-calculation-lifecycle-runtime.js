@@ -7,7 +7,7 @@
   'use strict';
 
   const VERSION = 'engineering-calculation-lifecycle.v1';
-  const CACHE_KEY = '20260707-solver-release-watchdog3';
+  const CACHE_KEY = '20260711-solver-always-calculates1';
   const LIFECYCLE_EVENT = 'npsh:calculation-lifecycle';
   const EVIDENCE_REFRESH_RELEASE_MS = 650;
   const SAMPLE_OPEN_RELEASE_MS = 900;
@@ -21,6 +21,7 @@
     '[data-i18n-text="menu.runHydraulicNpshEvaluation"]',
     '[data-i18n-text="menu.refreshCalculationsConnections"]'
   ].join(',');
+  const EXPLICIT_EVIDENCE_REFRESH_SELECTOR = '#menu-refresh-calculations';
   const SAMPLE_CASE_OPEN_SELECTOR = '[data-simulation-case-action="open"][data-simulation-case-id]';
   const SAMPLE_CASE_BROWSE_SELECTOR = '.simulation-case-menu-item:not(.simulation-case-menu-item-disabled), [data-simulation-case-id]:not([data-simulation-case-action])';
   const USER_CALCULATION_INTENT_SELECTOR = `${RUN_COMMAND_SELECTOR}, ${SAMPLE_CASE_OPEN_SELECTOR}, ${SAMPLE_CASE_BROWSE_SELECTOR}`;
@@ -225,14 +226,20 @@
     return transaction?.status === 'active' || !!readiness;
   }
 
-  function hasSolvedPumpResult() {
+  function hasCurrentVerifiedPumpResult() {
     const model = root.__npshGlobalModel || root.globalModel || {};
     return Object.values(model || {}).some((node) => {
       if (!node || node.type !== 'pump') return false;
       const outcome = node.results || {};
-      return Number.isFinite(Number(outcome.npsha))
-        || Number.isFinite(Number(outcome.requiredHead))
-        || String(outcome.backendValidationStatus || '').toLowerCase() === 'connected';
+      const evaluation = outcome.npshEvaluation || {};
+      const npsha = Number(evaluation.npsha ?? outcome.npsha);
+      const backendStatus = String(evaluation.backendValidationStatus || outcome.backendValidationStatus || '').toLowerCase();
+      const freshness = String(evaluation.calculationFreshness || outcome.calculationFreshness || '').toLowerCase();
+      return Number.isFinite(npsha)
+        && backendStatus === 'connected'
+        && freshness === 'current'
+        && outcome.isCalculationStale !== true
+        && outcome.previousResultWasStale !== true;
     });
   }
 
@@ -256,11 +263,12 @@
   }
 
   function shouldUseManualValidateFastLane(target) {
-    if (!target?.closest?.(RUN_COMMAND_SELECTOR)) return false;
+    const command = target?.closest?.(RUN_COMMAND_SELECTOR);
+    if (!command?.matches?.(EXPLICIT_EVIDENCE_REFRESH_SELECTOR)) return false;
     if (root.__NPSH_DISABLE_MANUAL_VALIDATE_FAST_LANE__ === true) return false;
     if (hasActiveLoadGuard()) return false;
     if (isBusyStatus(currentState.status, currentState)) return false;
-    return hasSolvedPumpResult();
+    return hasCurrentVerifiedPumpResult();
   }
 
   function ensureRunCommandAvailableIfSettled(reason = 'availability-audit') {
@@ -676,11 +684,11 @@
       nodeId: target.id || '',
       reason: target.id === 'menu-refresh-calculations'
         ? 'Refreshing calculations and connections.'
-        : 'Validate / Refresh Evidence started.'
+        : 'Validate calculation started.'
     }, {
       calculationMode,
       sourceEvent: 'manual-command',
-      message: 'Command received. Realtime results are already primary; refreshing validation evidence.'
+      message: 'Command received. Running the hydraulic and NPSH calculation.'
     });
   }
 

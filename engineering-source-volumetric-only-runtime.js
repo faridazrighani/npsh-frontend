@@ -1,8 +1,9 @@
 !function registerEngineeringSourceVolumetricOnlyRuntime(root) {
   "use strict";
 
-  const VERSION = "2026.07-source-boundary-snk-flow-sync1";
+  const VERSION = "2026.07-source-route-flow-lock4-src-input-flash-lock";
   const FLOW_MODE = "Volumetric Flow";
+  const SOURCE_NUMERIC_FAST_LANE_KEYS = new Set(["pressure", "flow", "elevation"]);
   const FIELD_ROW_SELECTOR = ".object-task-field-row, .pipe-task-field-row, tr, .prop-row";
   const HIDDEN_SOURCE_FIELD_KEYS = new Set([
     "sourceType",
@@ -35,6 +36,7 @@
     "renderSidebar",
     "openObjectPropertiesTaskWindow",
     "openSourcePropertiesTaskWindow",
+    "renderObjectProperties",
     "refreshBackendProtectedSelectedObjectTaskWindow",
     "refreshBackendProtectedRealtimeTaskWindows",
     "updateSimulation",
@@ -51,13 +53,35 @@
   const patchedFunctions = new Set();
   let observer = null;
   let cleanupTimer = 0;
+  let cleanupFrame = 0;
+  let pendingCleanupRoot = null;
   let contextMenuCleanupTimer = 0;
   let lastSourceMenuSourceId = "";
   let lastSourceMenuUntil = 0;
   let installAttempts = 0;
+  let flowSyncSequence = 0;
+  let activeFlowSync = null;
+  let sourceNumericTaskLock = null;
+  let sourceNumericTaskLockTimer = 0;
 
   function normalizeText(value) {
     return String(value ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  function setDatasetValue(element, key, value) {
+    if (!element?.dataset) return false;
+    const nextValue = String(value);
+    if (element.dataset[key] === nextValue) return false;
+    element.dataset[key] = nextValue;
+    return true;
+  }
+
+  function setAttributeValue(element, name, value) {
+    if (!element?.setAttribute) return false;
+    const nextValue = String(value);
+    if (element.getAttribute(name) === nextValue) return false;
+    element.setAttribute(name, nextValue);
+    return true;
   }
 
   function finiteNumber(value) {
@@ -88,10 +112,9 @@
       modelRef?.connections,
       root.globalModel?.connections
     ];
-    for (const candidate of candidates) {
-      if (Array.isArray(candidate)) return candidate;
-    }
-    return [];
+    return candidates.find((candidate) => Array.isArray(candidate) && candidate.length > 0)
+      || candidates.find(Array.isArray)
+      || [];
   }
 
   function connectionPipeId(connection = {}) {
@@ -170,25 +193,27 @@
   }
 
   function sinkIdsForSourceFlowSync(sourceId, modelRef = model()) {
-    const connected = connectedSinkIdsForSource(sourceId, modelRef);
-    if (connected.length) return connected;
-    const sources = sourceEntries(modelRef);
-    const sinks = sinkEntries(modelRef);
-    if (sources.length === 1 && sinks.length === 1 && (!sourceId || sourceId === sources[0][0])) {
-      return [sinks[0][0]];
-    }
-    return [];
+    return connectedSinkIdsForSource(sourceId, modelRef);
   }
 
   function sourceIdsForSinkFlowSync(sinkId, modelRef = model()) {
-    const connected = connectedSourceIdsForSink(sinkId, modelRef);
-    if (connected.length) return connected;
-    const sources = sourceEntries(modelRef);
-    const sinks = sinkEntries(modelRef);
-    if (sources.length === 1 && sinks.length === 1 && (!sinkId || sinkId === sinks[0][0])) {
-      return [sources[0][0]];
-    }
-    return [];
+    return connectedSourceIdsForSink(sinkId, modelRef);
+  }
+
+  function beginFlowSync(direction, originId, flow) {
+    if (activeFlowSync) return null;
+    activeFlowSync = {
+      id: `route-flow-${++flowSyncSequence}`,
+      direction,
+      originId,
+      flow,
+      startedAt: Date.now()
+    };
+    return activeFlowSync;
+  }
+
+  function endFlowSync(transaction) {
+    if (activeFlowSync?.id === transaction?.id) activeFlowSync = null;
   }
 
   function formatFlowInputValue(value) {
@@ -253,94 +278,105 @@
     const props = sourceNode?.props || {};
     const flow = finiteNumber(props.flow ?? props.flowM3h ?? props.volumetricFlow);
     if (flow === null || flow < 0) return { changed: 0, sinkIds: [] };
+    const transaction = beginFlowSync("forward", sourceId, flow);
+    if (!transaction) return { changed: 0, sinkIds: [], blockedBy: activeFlowSync?.id || "flow-sync-active" };
     const sinkIds = sinkIdsForSourceFlowSync(sourceId, modelRef);
     let changed = 0;
     const updatedSinkIds = [];
+    try {
+      sinkIds.forEach((sinkId) => {
+        const sink = modelRef?.[sinkId];
+        if (!sink || sink.type !== "sink") return;
+        if (!sink.props || typeof sink.props !== "object") sink.props = {};
+        let sinkChanged = false;
+        const currentDemand = finiteNumber(sink.props.demandFlow);
+        if (currentDemand === null || Math.abs(currentDemand - flow) > 1e-9) {
+          sink.props.demandFlow = flow;
+          sinkChanged = true;
+        }
+        const currentAlias = finiteNumber(sink.props.flowDemand);
+        if (currentAlias === null || Math.abs(currentAlias - flow) > 1e-9) {
+          sink.props.flowDemand = flow;
+          sinkChanged = true;
+        }
+        if (sink.props.boundaryMode !== "Flow Demand Boundary") {
+          sink.props.boundaryMode = "Flow Demand Boundary";
+          sinkChanged = true;
+        }
+        if (sinkChanged) {
+          sink.props.flowDemandSyncedFromSource = sourceId;
+          sink.props.flowDemandSyncBasis = "SRC Volumetric Flow";
+          sink.props.routeFlowSyncTransaction = transaction.id;
+          updatedSinkIds.push(sinkId);
+          changed += 1;
+        }
+      });
 
-    sinkIds.forEach((sinkId) => {
-      const sink = modelRef?.[sinkId];
-      if (!sink || sink.type !== "sink") return;
-      if (!sink.props || typeof sink.props !== "object") sink.props = {};
-      let sinkChanged = false;
-      const currentDemand = finiteNumber(sink.props.demandFlow);
-      if (currentDemand === null || Math.abs(currentDemand - flow) > 1e-9) {
-        sink.props.demandFlow = flow;
-        sinkChanged = true;
+      if ((updatedSinkIds.length || options.refreshInputs) && options.refreshInputs !== false) {
+        refreshSinkDemandSurfaces(sinkIds, flow);
       }
-      const currentAlias = finiteNumber(sink.props.flowDemand);
-      if (currentAlias === null || Math.abs(currentAlias - flow) > 1e-9) {
-        sink.props.flowDemand = flow;
-        sinkChanged = true;
-      }
-      if (sink.props.boundaryMode !== "Flow Demand Boundary") {
-        sink.props.boundaryMode = "Flow Demand Boundary";
-        sinkChanged = true;
-      }
-      if (sinkChanged) {
-        sink.props.flowDemandSyncedFromSource = sourceId;
-        sink.props.flowDemandSyncBasis = "SRC Volumetric Flow";
-        updatedSinkIds.push(sinkId);
-        changed += 1;
-      }
-    });
 
-    if ((updatedSinkIds.length || options.refreshInputs) && options.refreshInputs !== false) {
-      refreshSinkDemandSurfaces(sinkIds, flow);
+      return { changed, sinkIds: updatedSinkIds, transactionId: transaction.id };
+    } finally {
+      endFlowSync(transaction);
     }
-
-    return { changed, sinkIds: updatedSinkIds };
   }
 
   function syncSourceFlowFromSinkDemand(sinkId, sinkNode, modelRef = model(), options = {}) {
     const props = sinkNode?.props || {};
     const flow = finiteNumber(props.demandFlow ?? props.flowDemand);
     if (flow === null || flow < 0) return { changed: 0, sourceIds: [] };
+    const transaction = beginFlowSync("reverse", sinkId, flow);
+    if (!transaction) return { changed: 0, sourceIds: [], blockedBy: activeFlowSync?.id || "flow-sync-active" };
     const sourceIds = sourceIdsForSinkFlowSync(sinkId, modelRef);
     let changed = 0;
     const updatedSourceIds = [];
-
-    sourceIds.forEach((sourceId) => {
-      const source = modelRef?.[sourceId];
-      if (!source || source.type !== "source") return;
-      if (!source.props || typeof source.props !== "object") source.props = {};
-      let sourceChanged = false;
-      const currentFlow = finiteNumber(source.props.flow);
-      if (currentFlow === null || Math.abs(currentFlow - flow) > 1e-9) {
-        source.props.flow = flow;
-        sourceChanged = true;
-      }
-      const currentAlias = finiteNumber(source.props.volumetricFlow);
-      if (currentAlias === null || Math.abs(currentAlias - flow) > 1e-9) {
-        source.props.volumetricFlow = flow;
-        sourceChanged = true;
-      }
-      if (source.props.flowInputMode !== FLOW_MODE) {
-        source.props.flowInputMode = FLOW_MODE;
-        sourceChanged = true;
-      }
-      const density = activeDensity(modelRef);
-      if (density > 0) {
-        const derivedMassFlow = flow * density;
-        if (Math.abs((finiteNumber(source.props.massFlow) || 0) - derivedMassFlow) > 0.000001) {
-          source.props.massFlow = derivedMassFlow;
+    try {
+      sourceIds.forEach((sourceId) => {
+        const source = modelRef?.[sourceId];
+        if (!source || source.type !== "source") return;
+        if (!source.props || typeof source.props !== "object") source.props = {};
+        let sourceChanged = false;
+        const currentFlow = finiteNumber(source.props.flow);
+        if (currentFlow === null || Math.abs(currentFlow - flow) > 1e-9) {
+          source.props.flow = flow;
           sourceChanged = true;
         }
-        source.props.massFlowDerived = true;
-      }
-      if (sourceChanged) {
-        source.props.flowSyncedFromSink = sinkId;
-        source.props.flowSyncBasis = "SNK Flow Demand";
-        updatedSourceIds.push(sourceId);
-        changed += 1;
-      }
-      syncSinkDemandFromSourceFlow(sourceId, source, modelRef, { refreshInputs: options.refreshInputs !== false });
-    });
+        const currentAlias = finiteNumber(source.props.volumetricFlow);
+        if (currentAlias === null || Math.abs(currentAlias - flow) > 1e-9) {
+          source.props.volumetricFlow = flow;
+          sourceChanged = true;
+        }
+        if (source.props.flowInputMode !== FLOW_MODE) {
+          source.props.flowInputMode = FLOW_MODE;
+          sourceChanged = true;
+        }
+        const density = activeDensity(modelRef);
+        if (density > 0) {
+          const derivedMassFlow = flow * density;
+          if (Math.abs((finiteNumber(source.props.massFlow) || 0) - derivedMassFlow) > 0.000001) {
+            source.props.massFlow = derivedMassFlow;
+            sourceChanged = true;
+          }
+          source.props.massFlowDerived = true;
+        }
+        if (sourceChanged) {
+          source.props.flowSyncedFromSink = sinkId;
+          source.props.flowSyncBasis = "SNK Flow Demand";
+          source.props.routeFlowSyncTransaction = transaction.id;
+          updatedSourceIds.push(sourceId);
+          changed += 1;
+        }
+      });
 
-    if ((updatedSourceIds.length || options.refreshInputs) && options.refreshInputs !== false) {
-      syncSourceFlowInputControls(sourceIds, flow);
+      if ((updatedSourceIds.length || options.refreshInputs) && options.refreshInputs !== false) {
+        syncSourceFlowInputControls(sourceIds, flow);
+      }
+
+      return { changed, sourceIds: updatedSourceIds, transactionId: transaction.id };
+    } finally {
+      endFlowSync(transaction);
     }
-
-    return { changed, sourceIds: updatedSourceIds };
   }
 
   function syncAllSinkDemandFromSourceFlow(modelRef = model(), options = {}) {
@@ -400,7 +436,6 @@
     let changed = 0;
     sourceEntries(modelRef).forEach(([id, node]) => {
       if (normalizeSourceNode(id, node, modelRef)) changed += 1;
-      changed += syncSinkDemandFromSourceFlow(id, node, modelRef, { refreshInputs: false }).changed;
     });
     return changed;
   }
@@ -544,13 +579,11 @@
     const label = fieldLabelElement(row);
     if (label && normalizeText(label.textContent) !== "Volumetric Flow") {
       label.textContent = "Volumetric Flow";
-      label.setAttribute?.("data-i18n-fallback", "Volumetric Flow");
-      label.setAttribute?.("data-i18n-text", "task.source.volumetricFlow");
+      setAttributeValue(label, "data-i18n-fallback", "Volumetric Flow");
+      setAttributeValue(label, "data-i18n-text", "task.source.volumetricFlow");
     }
-    if (row?.dataset) {
-      row.dataset.propKey = "flow";
-      row.dataset.sourceVolumetricOnly = VERSION;
-    }
+    setDatasetValue(row, "propKey", "flow");
+    setDatasetValue(row, "sourceVolumetricOnly", VERSION);
   }
 
   function ensureFlowInput(row, sourceId) {
@@ -574,11 +607,11 @@
       unit.textContent = "m3/h";
       valueCell.append(input, unit);
     }
-    input.dataset.key = "flow";
-    if (sourceId) input.dataset.node = sourceId;
-    input.removeAttribute("readonly");
-    input.disabled = false;
-    input.dataset.sourceVolumetricOnly = VERSION;
+    setDatasetValue(input, "key", "flow");
+    if (sourceId) setDatasetValue(input, "node", sourceId);
+    if (input.hasAttribute("readonly")) input.removeAttribute("readonly");
+    if (input.disabled) input.disabled = false;
+    setDatasetValue(input, "sourceVolumetricOnly", VERSION);
     const flow = finiteNumber(model()?.[sourceId]?.props?.flow);
     if (flow !== null && document.activeElement !== input) input.value = String(Number(flow.toFixed(6)));
     return input;
@@ -747,6 +780,102 @@
     return true;
   }
 
+  function sourceNumericInputContext(input) {
+    const sourceId = normalizeText(input?.dataset?.node || input?.dataset?.nodeId || "");
+    const key = normalizeText(input?.dataset?.key || input?.name || "");
+    const source = sourceId ? model()?.[sourceId] : null;
+    if (!input || !SOURCE_NUMERIC_FAST_LANE_KEYS.has(key) || source?.type !== "source") return null;
+    return { input, sourceId, key, source };
+  }
+
+  function retainSourceNumericTaskWindow(context) {
+    const taskWindow = context?.input?.closest?.('.persistent-object-properties-task-window, #taskWindow[data-kind="object"], .task-window[data-kind="object"]');
+    if (!taskWindow) return false;
+    sourceNumericTaskLock = {
+      sourceId: context.sourceId,
+      key: context.key,
+      taskWindow,
+      expiresAt: Date.now() + 12000
+    };
+    if (typeof root.clearTimeout === "function") root.clearTimeout(sourceNumericTaskLockTimer);
+    if (typeof root.setTimeout === "function") {
+      sourceNumericTaskLockTimer = root.setTimeout(() => {
+        sourceNumericTaskLockTimer = 0;
+        sourceNumericTaskLock = null;
+      }, 12000);
+    }
+    return true;
+  }
+
+  function retainedSourceTaskWindow(nodeId = "", options = {}) {
+    const lock = sourceNumericTaskLock;
+    if (!lock || !lock.taskWindow?.isConnected) return null;
+    const active = typeof document !== "undefined" ? document.activeElement : null;
+    const activeKey = normalizeText(active?.dataset?.key || active?.name || "");
+    const activeSourceId = normalizeText(active?.dataset?.node || active?.dataset?.nodeId || "");
+    const activeSourceEdit = activeSourceId === lock.sourceId
+      && SOURCE_NUMERIC_FAST_LANE_KEYS.has(activeKey)
+      && active?.closest?.('.persistent-object-properties-task-window, #taskWindow[data-kind="object"], .task-window[data-kind="object"]') === lock.taskWindow;
+    if (Date.now() > lock.expiresAt && !activeSourceEdit) return null;
+    const requestedId = normalizeText(nodeId || options?.nodeId || options?.taskWindow?.dataset?.nodeId || "");
+    if (requestedId && requestedId !== lock.sourceId) return null;
+    if (model()?.[lock.sourceId]?.type !== "source") return null;
+    return lock.taskWindow;
+  }
+
+  function updateSourceAbsolutePressureReadout(context) {
+    if (context?.key !== "pressure") return false;
+    const scope = context.input.closest?.(".persistent-object-properties-task-window, .task-window, #taskWindow, .object-properties-task-body") || document;
+    const readout = scope?.querySelector?.('[data-key="source-absolute-pressure"]');
+    if (!readout || typeof root.getNodeAbsolutePressureBar !== "function") return false;
+    const absolutePressure = finiteNumber(root.getNodeAbsolutePressureBar(context.source));
+    if (absolutePressure === null) return false;
+    const nextText = `${absolutePressure.toFixed(3)} bar a`;
+    if (normalizeText(readout.textContent) === nextText) return false;
+    readout.textContent = nextText;
+    return true;
+  }
+
+  function notifySourceNumericInputChanged(context) {
+    const reason = context.key === "pressure"
+      ? "Source pressure changed; route hydraulic/NPSH results are recalculating."
+      : "Source elevation changed; route hydraulic/NPSH results are recalculating.";
+    if (typeof root.EngineeringRealtimeCalculationDefense?.notifyDependencyChanged === "function") {
+      root.EngineeringRealtimeCalculationDefense.notifyDependencyChanged({
+        dependency: `source.${context.key}`,
+        nodeId: context.sourceId,
+        reason,
+        sourceEvent: "source-numeric-input-fast-lane",
+        target: context.input,
+        initialStatus: "calculating"
+      });
+      return true;
+    }
+    return false;
+  }
+
+  function handleSourceNumericInput(event) {
+    const input = event.target?.closest?.('input[data-key][data-node]');
+    const context = sourceNumericInputContext(input);
+    if (!context) return false;
+    event.stopImmediatePropagation();
+    event.stopPropagation();
+    retainSourceNumericTaskWindow(context);
+    if (context.key === "flow") {
+      syncModelFromFlowInput(input, true);
+    } else {
+      const parsedValue = Number.parseFloat(input.value);
+      context.source.props[context.key] = Number.isFinite(parsedValue) ? parsedValue : 0;
+      normalizeSourceNode(context.sourceId, context.source);
+      updateSourceAbsolutePressureReadout(context);
+      notifySourceNumericInputChanged(context);
+    }
+    const scope = input.closest?.(".task-window, #taskWindow, .object-properties-task-body, [role='dialog']") || document;
+    flushCleanup(scope);
+    requestCleanup(scope);
+    return true;
+  }
+
   function cleanupSourceScope(scope) {
     const sourceId = sourceIdFromScope(scope);
     if (sourceId) normalizeSourceNode(sourceId, model()?.[sourceId]);
@@ -755,15 +884,16 @@
     removeSourceDefinitionBlock(scope);
     removeFlowSpecificationBlock(scope);
     removeSourceAdvisorBlocks(scope);
-    scope.dataset && (scope.dataset.sourceVolumetricOnly = VERSION);
+    setDatasetValue(scope, "sourceVolumetricOnly", VERSION);
     return true;
   }
 
   function cleanupSourceTaskWindows(rootNode = document) {
+    if (typeof document === "undefined") return;
     normalizeAllSourceNodes();
     sourceScopes(rootNode).forEach(cleanupSourceScope);
     cleanupSourceContextMenu(rootNode);
-    document.documentElement.dataset.sourceVolumetricOnlyRuntime = VERSION;
+    setDatasetValue(document.documentElement, "sourceVolumetricOnlyRuntime", VERSION);
   }
 
   function contextMenuElement(rootNode = document) {
@@ -879,12 +1009,53 @@
     return changed;
   }
 
-  function scheduleCleanup(rootNode = document, delayMs = 0) {
-    if (typeof document === "undefined" || typeof root.setTimeout !== "function") return;
+  function runPendingCleanup(rootNode = null) {
+    if (typeof document === "undefined") return;
+    const target = rootNode || pendingCleanupRoot || document;
+    pendingCleanupRoot = null;
+    cleanupSourceTaskWindows(target);
+  }
+
+  function requestCleanup(rootNode = document) {
+    if (typeof document === "undefined") return;
+    pendingCleanupRoot = rootNode || pendingCleanupRoot || document;
+    if (cleanupFrame) return;
+    if (typeof root.requestAnimationFrame === "function") {
+      cleanupFrame = root.requestAnimationFrame(() => {
+        cleanupFrame = 0;
+        runPendingCleanup();
+      });
+      return;
+    }
+    if (typeof root.setTimeout !== "function") return;
     root.clearTimeout?.(cleanupTimer);
     cleanupTimer = root.setTimeout(() => {
       cleanupTimer = 0;
-      cleanupSourceTaskWindows(rootNode);
+      runPendingCleanup();
+    }, 0);
+  }
+
+  function flushCleanup(rootNode = document) {
+    if (typeof document === "undefined") return;
+    if (cleanupFrame && typeof root.cancelAnimationFrame === "function") {
+      root.cancelAnimationFrame(cleanupFrame);
+    }
+    cleanupFrame = 0;
+    pendingCleanupRoot = rootNode || pendingCleanupRoot || document;
+    runPendingCleanup();
+  }
+
+  function scheduleCleanup(rootNode = document, delayMs = 0) {
+    if (typeof document === "undefined") return;
+    if (Math.max(0, delayMs) <= 0) {
+      requestCleanup(rootNode);
+      return;
+    }
+    if (typeof root.setTimeout !== "function") return;
+    root.clearTimeout?.(cleanupTimer);
+    cleanupTimer = root.setTimeout(() => {
+      cleanupTimer = 0;
+      requestCleanup(rootNode);
     }, Math.max(0, delayMs));
   }
 
@@ -902,14 +1073,23 @@
     const original = root[functionName];
     if (typeof original !== "function" || original.__sourceVolumetricOnlyRuntime) return false;
     function sourceVolumetricOnlyWrapper(...args) {
+      if (functionName === "renderSidebar") {
+        const retainedTaskWindow = retainedSourceTaskWindow(args[0], args[1]);
+        if (retainedTaskWindow) {
+          flushCleanup(retainedTaskWindow);
+          requestCleanup(retainedTaskWindow);
+          return retainedTaskWindow;
+        }
+      }
       normalizeAllSourceNodes();
       const result = original.apply(this, args);
       const after = () => {
-        cleanupSourceTaskWindows(document);
+        flushCleanup(document);
+        requestCleanup(document);
         scheduleCleanup(document, 20);
       };
-      if (result && typeof result.then === "function") return result.finally(after);
       after();
+      if (result && typeof result.then === "function") return result.finally(after);
       return result;
     }
     sourceVolumetricOnlyWrapper.__sourceVolumetricOnlyRuntime = VERSION;
@@ -923,11 +1103,45 @@
     if (typeof document === "undefined" || document.getElementById("source-volumetric-only-style")) return false;
     const style = document.createElement("style");
     style.id = "source-volumetric-only-style";
+    const sourceTaskScopes = [
+      '#taskWindow[data-kind="object"]',
+      '.task-window[data-kind="object"]',
+      '.persistent-object-properties-task-window[data-kind="object"]',
+      '.object-properties-task-body',
+      '.pipe-properties-task.object-properties-task'
+    ];
+    const sourceTaskHiddenSelectors = [
+      'tr.source-defense-toolbar-row',
+      'tr:has(> .prop-section-header[data-i18n-text="sidebar.section.sourceDefinition"])',
+      'tr:has(> .prop-section-header[data-i18n-fallback="Source Definition"])',
+      'tr:has(> .prop-section-header[data-i18n-text="sidebar.section.flowSpecification"])',
+      'tr:has(> .prop-section-header[data-i18n-fallback="Flow Specification"])',
+      'tr:has(> .prop-section-header[data-i18n-text="sidebar.section.semanticAttachment"])',
+      'tr:has(> .prop-section-header[data-i18n-fallback="Semantic Attachment"])',
+      'tr:has(> .prop-section-header[data-i18n-text="sidebar.section.hydraulicConnection"])',
+      'tr:has(> .prop-section-header[data-i18n-fallback="Hydraulic Connection"])',
+      'tr:has([data-key="sourceType"])',
+      'tr:has([data-key="source-type-meaning"])',
+      'tr:has([data-key="source-boundary-role"])',
+      'tr:has([data-key="source-boundary-meaning"])',
+      'tr:has([data-key="flowInputMode"])',
+      'tr:has([data-key="massFlow"])',
+      'tr:has([data-key="source-flow"])',
+      'tr:has([data-key="source-mass-flow"])',
+      '[data-prop-key="flowInputMode"]',
+      '[data-prop-key="massFlow"]',
+      '[data-prop-key="sourceType"]',
+      '[data-prop-key="source-boundary-role"]',
+      '[data-prop-key="source-boundary-meaning"]',
+      '[data-prop-key="source-flow"]',
+      '[data-prop-key="source-mass-flow"]',
+      '[data-prop-key="source-type-meaning"]'
+    ];
+    const sourceTaskRules = sourceTaskScopes.flatMap((scope) => (
+      sourceTaskHiddenSelectors.map((selector) => `${scope} ${selector}`)
+    ));
     style.textContent = [
-      '[data-prop-key="flowInputMode"],',
-      '[data-prop-key="massFlow"],',
-      '[data-prop-key="sourceType"],',
-      '[data-prop-key="source-type-meaning"],',
+      `${sourceTaskRules.join(",\n")}{display:none!important;}`,
       `[data-source-volumetric-only-removed="${VERSION}"]{display:none!important;}`,
       '.source-volumetric-only-hidden{display:none!important;}'
     ].join("\n");
@@ -944,12 +1158,7 @@
         scheduleContextMenuCleanup(document, eventName === "contextmenu" ? 0 : 20);
       }, true);
     });
-    document.addEventListener("input", (event) => {
-      const input = event.target?.closest?.('input[data-key="flow"][data-node]');
-      if (!input || model()?.[input.dataset.node]?.type !== "source") return;
-      syncModelFromFlowInput(input, input.dataset.sourceVolumetricOnlyCreated === VERSION);
-      scheduleCleanup(input.closest(".task-window, #taskWindow, .object-properties-task-body, [role='dialog']") || document, 0);
-    }, true);
+    document.addEventListener("input", handleSourceNumericInput, true);
     document.addEventListener("input", (event) => {
       const input = event.target?.closest?.('input[data-key="demandFlow"][data-node], input[name="demandFlow"][data-node]');
       const sinkId = input?.dataset?.node || input?.dataset?.nodeId || "";
@@ -977,14 +1186,19 @@
       const target = event.target;
       if (target?.matches?.('select[data-key="flowInputMode"], select[name="flowInputMode"]')) {
         target.value = FLOW_MODE;
-        scheduleCleanup(target.closest(".task-window, #taskWindow, .object-properties-task-body, [role='dialog']") || document, 0);
+        const scope = target.closest(".task-window, #taskWindow, .object-properties-task-body, [role='dialog']") || document;
+        flushCleanup(scope);
+        requestCleanup(scope);
       }
     }, true);
     [
       "npsh:calculation-current",
       "npsh:realtime-autosolve-complete",
       "npsh:linked-views-refreshed"
-    ].forEach((eventName) => document.addEventListener(eventName, () => scheduleCleanup(document, 20), true));
+    ].forEach((eventName) => document.addEventListener(eventName, () => {
+      flushCleanup(document);
+      scheduleCleanup(document, 20);
+    }, true));
     return true;
   }
 
@@ -999,7 +1213,8 @@
           || node.querySelector?.("#canvasContextMenu")
         ))
       ))) {
-        cleanupSourceTaskWindows(document);
+        flushCleanup(document);
+        requestCleanup(document);
         scheduleCleanup(document, 20);
         scheduleContextMenuCleanup(document, 0);
       }
@@ -1037,7 +1252,8 @@
     syncAllSinkDemandFromSourceFlow,
     syncSinkDemandFromSourceFlow,
     syncSourceFlowFromSinkDemand,
-    syncModelFromFlowInput
+    syncModelFromFlowInput,
+    handleSourceNumericInput
   };
 
   root.EngineeringSourceVolumetricOnlyRuntime = api;

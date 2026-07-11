@@ -130,10 +130,10 @@ async function waitForNpshApp(page) {
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.openPipePropertiesTaskWindow === 'function'
     && typeof window.renderSidebar === 'function'
-    && window.EngineeringPipePropertiesCleanupRuntime?.version === 'engineering-pipe-properties-cleanup-runtime.v1'
+    && window.EngineeringPipePropertiesCleanupRuntime?.version === 'engineering-pipe-properties-cleanup-runtime.v2-breakdown-decimals'
     && window.EngineeringPipeSegmentsFileRuntime?.version === 'engineering-pipe-segments-file-runtime.v4'
     && window.EngineeringPipeMoodyChartAudit?.version === 'engineering-pipe-moody-chart-audit.v9'
-    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v13'
+    && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v18-src-task-window-flash-lock'
   ), null, { timeout: 30000 });
 }
 
@@ -166,6 +166,58 @@ async function openPipeSegments(page) {
   await page.waitForSelector('[data-pipe-segments-export]', { timeout: 10000 });
   await page.waitForSelector('[data-pipe-segments-import]', { timeout: 10000 });
 }
+
+test('Pipe Fitting Valve Breakdown keeps the requested fixed decimal precision', async ({ page }) => {
+  await waitForNpshApp(page);
+
+  const values = await page.evaluate(() => {
+    const trace = {
+      totals: {
+        totalK: 0.05,
+        majorLoss: 2.227,
+        minorLoss: 0.032,
+        totalLoss: 2.259
+      },
+      fittingValveBreakdown: [{
+        name: 'PIPE-D-Seg-1',
+        componentType: 'Pipe major loss',
+        quantity: 1,
+        totalK: 0.05,
+        majorLoss: 2.227,
+        minorLoss: 0.032,
+        totalLoss: 2.259,
+        sourceNote: 'Precision regression fixture'
+      }]
+    };
+    const template = document.createElement('template');
+    template.innerHTML = window.renderPipeFittingValveBreakdownTable(trace, { compact: true });
+    const summary = Object.fromEntries(Array.from(template.content.querySelectorAll('.pipe-fitting-breakdown-summary > span'))
+      .map((item) => [item.childNodes[0].textContent.trim(), item.querySelector('strong')?.textContent.trim()]));
+    const row = template.content.querySelector('.pipe-fitting-breakdown-table tbody tr');
+    return {
+      summary,
+      row: {
+        totalK: row?.querySelector('td[data-label="K total"]')?.textContent.trim(),
+        major: row?.querySelector('td[data-label="Major hL"]')?.textContent.trim(),
+        minor: row?.querySelector('td[data-label="Minor hL"]')?.textContent.trim(),
+        total: row?.querySelector('td[data-label="Total hL"]')?.textContent.trim()
+      }
+    };
+  });
+
+  expect(values.summary).toEqual({
+    Major: '2.22700 m',
+    Minor: '0.03200 m',
+    'Total K': '0.050',
+    'Total hL': '2.25900 m'
+  });
+  expect(values.row).toEqual({
+    totalK: '0.050',
+    major: '2.22700 m',
+    minor: '0.03200 m',
+    total: '2.25900 m'
+  });
+});
 
 test('Pipe Segments can be exported and imported as local .v1 files without losing stale protection', async ({ page }, testInfo) => {
   await waitForNpshApp(page);

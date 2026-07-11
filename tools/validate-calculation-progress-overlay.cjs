@@ -39,18 +39,18 @@ assert.strictEqual(
 );
 
 assert(
-  indexHtml.includes('engineering-pump-edit-fast-lane.js?v=20260706-pump-edit-status-matrix1')
-    && indexHtml.includes('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1')
-    && indexHtml.includes('engineering-calculation-lifecycle-runtime.js?v=20260707-solver-release-watchdog3')
+  indexHtml.includes('engineering-pump-edit-fast-lane.js?v=20260710-pump-edit-manual-npshr-local1')
+    && indexHtml.includes('engineering-realtime-calculation-defense.js?v=20260711-src-task-window-flash-lock1')
+    && indexHtml.includes('engineering-calculation-lifecycle-runtime.js?v=20260711-solver-always-calculates1')
     && indexHtml.includes('engineering-calculation-progress-overlay.js?v=20260707-calculation-progress-stuck-hide1'),
   'index.html must load pump fast lane, realtime defense, lifecycle runtime, and progress overlay.'
 );
 assert(
-  indexHtml.indexOf('engineering-pump-edit-fast-lane.js?v=20260706-pump-edit-status-matrix1')
-    < indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1')
-    && indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1')
-      < indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260707-solver-release-watchdog3')
-    && indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260707-solver-release-watchdog3')
+  indexHtml.indexOf('engineering-pump-edit-fast-lane.js?v=20260710-pump-edit-manual-npshr-local1')
+    < indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260711-src-task-window-flash-lock1')
+    && indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260711-src-task-window-flash-lock1')
+      < indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260711-solver-always-calculates1')
+    && indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260711-solver-always-calculates1')
       < indexHtml.indexOf('engineering-calculation-progress-overlay.js?v=20260707-calculation-progress-stuck-hide1'),
   'Pump fast lane, realtime defense, lifecycle runtime, and overlay runtime must be loaded in dependency order.'
 );

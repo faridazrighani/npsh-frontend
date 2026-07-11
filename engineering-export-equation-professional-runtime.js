@@ -17,7 +17,7 @@
 })(typeof window !== "undefined" ? window : globalThis, function createExportEquationProfessionalRuntime(root) {
   "use strict";
 
-  const VERSION = "2026.07-pdf-equation-professional9";
+  const VERSION = "2026.07-pdf-equation-professional10-route-integrity";
   const MODE_LABEL = "Mode: Equation Professional";
   const LANGUAGE_LABEL = "Language: Professional English for Mechanical and Chemical Engineering";
   const LAYOUT_LABEL = "Layout: Compact";
@@ -600,6 +600,22 @@
     return text(model?.[nodeId]?.type, "").toLowerCase();
   }
 
+  function isSuctionBoundaryType(type) {
+    return type === "source"
+      || type === "tank"
+      || type === "verticalvessel"
+      || type === "horizontalvessel"
+      || type === "separator";
+  }
+
+  function isDischargeBoundaryType(type) {
+    return type === "sink";
+  }
+
+  function isLivePipe(model, pipeId) {
+    return !!pipeId && nodeType(model, pipeId) === "pipe";
+  }
+
   function primaryPumpId(report, model = runtimeModel(report)) {
     const fromReport = text(report?.sourceData?.primary?.pumpId || report?.pump?.id, "");
     if (fromReport && nodeType(model, fromReport) === "pump") return fromReport;
@@ -607,29 +623,42 @@
   }
 
   function connectionSourceId(connection) {
-    return connection?.from || connection?.sourceId || connection?.source || "";
+    return connection?.from || connection?.sourceId || connection?.source || connection?.fromNode || connection?.rawFrom || "";
   }
 
   function connectionTargetId(connection) {
-    return connection?.to || connection?.targetId || connection?.target || "";
+    return connection?.to || connection?.targetId || connection?.target || connection?.toNode || connection?.rawTo || "";
   }
 
   function connectionPipeId(connection) {
-    return connection?.pipeId || connection?.pipe || connection?.objectId || "";
+    return connection?.pipeId || connection?.pipe || connection?.objectId || connection?.lineId || connection?.linkId || "";
   }
 
   function detectActiveTopology(report) {
     const model = runtimeModel(report);
     const pumpId = primaryPumpId(report, model);
     const activeConnections = hydraulicConnections(report);
-    const inlet = activeConnections.find(connection => connectionTargetId(connection) === pumpId) || null;
-    const outlet = activeConnections.find(connection => connectionSourceId(connection) === pumpId) || null;
+    const inlet = activeConnections.find(connection => {
+      const from = connectionSourceId(connection);
+      const to = connectionTargetId(connection);
+      const pipeId = connectionPipeId(connection);
+      return to === pumpId && isSuctionBoundaryType(nodeType(model, from)) && isLivePipe(model, pipeId);
+    }) || null;
+    const outlet = activeConnections.find(connection => {
+      const from = connectionSourceId(connection);
+      const to = connectionTargetId(connection);
+      const pipeId = connectionPipeId(connection);
+      return from === pumpId && isDischargeBoundaryType(nodeType(model, to)) && isLivePipe(model, pipeId);
+    }) || null;
     const sourceId = inlet ? connectionSourceId(inlet) : text(report?.source?.id || report?.sourceData?.primary?.sourceId, "");
     const sinkId = outlet ? connectionTargetId(outlet) : "";
     const sourcePipeId = inlet ? connectionPipeId(inlet) : "";
     const dischargePipeId = outlet ? connectionPipeId(outlet) : "";
-    const activePipeIds = new Set(activeConnections.map(connectionPipeId).filter(Boolean));
-    const suctionOnly = !!pumpId && !!inlet && !outlet;
+    const activePipeIds = new Set([sourcePipeId, dischargePipeId].filter(Boolean));
+    const suctionComplete = !!(pumpId && inlet && sourcePipeId);
+    const dischargeComplete = !!(pumpId && outlet && dischargePipeId);
+    const complete = suctionComplete && dischargeComplete;
+    const suctionOnly = suctionComplete && !dischargeComplete;
     return {
       model,
       pumpId,
@@ -641,8 +670,11 @@
       outlet,
       activeConnections,
       activePipeIds,
+      suctionComplete,
+      dischargeComplete,
+      complete,
       suctionOnly,
-      hasDownstream: !!outlet
+      hasDownstream: complete
     };
   }
 
@@ -688,13 +720,15 @@
   function sanitizeReportForActiveTopology(report) {
     if (!report || typeof report !== "object") return report;
     const topology = detectActiveTopology(report);
-    if (!topology.suctionOnly) return report;
-    const noDownstreamLabel = "Not connected in the current active topology";
+    if (topology.complete) return report;
+    const noDownstreamLabel = topology.suctionOnly
+      ? "Not connected in the current active topology"
+      : "Current hydraulic route is incomplete or reversed";
     const activePipeIds = topology.activePipeIds;
     const inactiveTokens = inactiveTopologyTokens(topology, report);
 
     report.exportTopology = {
-      mode: "suction-only",
+      mode: topology.suctionOnly ? "suction-only" : "incomplete-route",
       pumpId: topology.pumpId,
       sourceId: topology.sourceId,
       suctionPipeId: topology.sourcePipeId,
@@ -756,7 +790,7 @@
         .filter(row => !/^discharge$/i.test(text(row?.side, "")))
         .filter(row => {
           const objectId = text(row?.objectId, "");
-          return !objectId || objectId === "-" || !activePipeIds.size || activePipeIds.has(objectId);
+          return !objectId || objectId === "-" || activePipeIds.has(objectId);
         });
       if (!report.routeRows.length && topology.sourcePipeId) {
         report.routeRows = [{
@@ -775,7 +809,7 @@
         const role = lower(row?.role || "");
         const pipeId = text(row?.pipeId || row?.objectId, "");
         if (role.includes("discharge")) return false;
-        return !activePipeIds.size || !pipeId || activePipeIds.has(pipeId);
+        return !pipeId || activePipeIds.has(pipeId);
       });
     }
 
@@ -1164,17 +1198,24 @@
   function renderSuctionOnlyExportNotice(report) {
     const topology = report?.exportTopology || {};
     const route = ["Fluid Basis", topology.sourceId, topology.suctionPipeId, topology.pumpId].filter(Boolean).join(" > ");
+    const incomplete = topology.mode === "incomplete-route";
+    const routeText = incomplete
+      ? "the valid upstream route could not be confirmed"
+      : (route || "source to pump");
+    const reasonText = incomplete
+      ? "The current hydraulic route is incomplete or reversed, therefore downstream duty, discharge-pipe, and SNK-boundary calculation sections are intentionally omitted from this report."
+      : "No downstream hydraulic boundary is connected, therefore discharge-pipe and SNK-boundary calculation sections are intentionally omitted from this report.";
     return `
       <aside class="eqp-fluid-phase-chart-note" data-export-note="active-topology-suction-only">
         <strong>Active topology export.</strong>
-        This PDF follows the current simulation route only: ${escapeHtml(route || "source to pump")}. No downstream hydraulic boundary is connected, therefore discharge-pipe and SNK-boundary calculation sections are intentionally omitted from this report.
+        This PDF follows the current simulation route only: ${escapeHtml(routeText)}. ${escapeHtml(reasonText)}
       </aside>`;
   }
 
   function removeInactiveTopologySections(html, report) {
     const topology = detectActiveTopology(report);
     const output = String(html || "");
-    if (!topology.suctionOnly) return output;
+    if (topology.complete) return output;
     const doc = parseHtmlDocument(output);
     if (doc?.body) {
       Array.from(doc.querySelectorAll("section")).forEach(section => {
@@ -1188,7 +1229,9 @@
       if (workflowHeading) {
         const nextParagraph = workflowHeading.parentElement?.querySelector("p");
         if (nextParagraph) {
-          nextParagraph.textContent = "The exported appendix follows only the current active simulation topology. This run stops at the pump because no downstream hydraulic boundary is connected.";
+          nextParagraph.textContent = topology.suctionOnly
+            ? "The exported appendix follows only the current active simulation topology. This run stops at the pump because no downstream hydraulic boundary is connected."
+            : "The exported appendix follows only the current active simulation topology. This run omits downstream duty because the hydraulic route is incomplete or reversed.";
         }
         if (!doc.querySelector('[data-export-note="active-topology-suction-only"]')) {
           workflowHeading.insertAdjacentHTML("afterend", renderSuctionOnlyExportNotice(report));
@@ -1201,7 +1244,9 @@
         return isDischargeOrSinkSectionTitle(sectionHeadingText(sectionHtml)) ? "" : sectionHtml;
       })
       .replace(/<tr\b[^>]*>[\s\S]*?(?:Discharge|SNK\s+Boundary|Sink\s+Boundary)[\s\S]*?<\/tr>/gi, "")
-      .replace(/The application solves the route from Fluid Basis[\s\S]*?calculation engine\./i, "The exported appendix follows only the current active simulation topology. This run stops at the pump because no downstream hydraulic boundary is connected.");
+      .replace(/The application solves the route from Fluid Basis[\s\S]*?calculation engine\./i, topology.suctionOnly
+        ? "The exported appendix follows only the current active simulation topology. This run stops at the pump because no downstream hydraulic boundary is connected."
+        : "The exported appendix follows only the current active simulation topology. This run omits downstream duty because the hydraulic route is incomplete or reversed.");
     if (!fallback.includes('data-export-note="active-topology-suction-only"')) {
       fallback = fallback.replace(/(<h[1-4]\b[^>]*>\s*Application\s+Calculation\s+Workflow\s*<\/h[1-4]>)/i, `$1${renderSuctionOnlyExportNotice(report)}`);
     }

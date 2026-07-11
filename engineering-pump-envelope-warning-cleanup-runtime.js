@@ -6,8 +6,8 @@
 })((root) => {
   'use strict';
 
-  const VERSION = '2026.07-pump-envelope-warning-cleanup1';
-  const CACHE_KEY = '20260707-pump-envelope-warning-clean2';
+  const VERSION = '2026.07-pump-envelope-warning-cleanup2-wrapper-lock';
+  const CACHE_KEY = '20260711-pump-warning-wrapper-lock1';
   const PANEL_ID = 'canvasWarningPanel';
   const LIST_ID = 'canvasWarningList';
   const COUNT_ID = 'canvasWarningCount';
@@ -35,6 +35,7 @@
   ];
 
   let installed = false;
+  let canvasWarningPanelPatchInstalled = false;
   let observer = null;
   let pruneTimer = 0;
 
@@ -125,6 +126,9 @@
   }
 
   function patchCanvasWarningPanel() {
+    if (canvasWarningPanelPatchInstalled || root.__engineeringPumpWarningPanelPatchInstalled === true) {
+      return false;
+    }
     const original = root.updateCanvasWarningPanel;
     if (typeof original !== 'function' || original.__pumpEnvelopeWarningCleanupPatched) return false;
     const patched = function patchedUpdateCanvasWarningPanel(...args) {
@@ -137,6 +141,8 @@
     patched.__pumpEnvelopeWarningCleanupPatched = true;
     patched.__pumpEnvelopeWarningCleanupOriginal = original;
     root.updateCanvasWarningPanel = patched;
+    canvasWarningPanelPatchInstalled = true;
+    root.__engineeringPumpWarningPanelPatchInstalled = true;
     return true;
   }
 

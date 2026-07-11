@@ -1,7 +1,7 @@
 (function installEngineeringAnalysisReportLiveRuntime(root) {
   'use strict';
 
-  const VERSION = '2026.07-analysis-report-live18-status-matrix';
+  const VERSION = '2026.07-analysis-report-live21-update-wrapper-lock';
   const REFRESH_MS = 3000;
   const ACTIVE_SELECTOR = '.journal-analysis-task-window, .journal-analysis-report-panel';
   const RESPONSIVE_STYLE_ID = 'engineeringAnalysisReportLiveResponsiveStyle';
@@ -187,6 +187,24 @@
     return null;
   };
 
+  const hasOwn = (object, key) => !!object
+    && typeof object === 'object'
+    && Object.prototype.hasOwnProperty.call(object, key);
+
+  const fieldNumberOrNull = (object, key) => {
+    if (!hasOwn(object, key)) return undefined;
+    return toNumber(object[key]);
+  };
+
+  const firstExplicitNumber = (...fields) => {
+    for (const field of fields) {
+      if (!field || field.length < 2) continue;
+      const value = fieldNumberOrNull(field[0], field[1]);
+      if (value !== undefined) return value;
+    }
+    return undefined;
+  };
+
   const trimZeros = (text) => String(text)
     .replace(/(\.\d*?[1-9])0+$/u, '$1')
     .replace(/\.0+$/u, '');
@@ -227,7 +245,7 @@
     if (/incomplete|input\s*required|unknown|not\s*connected|incomplete\s*network|incomplete\s*calculation/i.test(raw)) return 'Incomplete';
     if (/cavitation|npsh\s*risk|risk|unsafe|fail/i.test(raw)) return 'Cavitation Risk';
     if (/warning|review|near\s*vapor/i.test(raw)) return 'Warning';
-    if (/not\s*provided|npshr\s*not\s*provided|manual\s*npshr|npsha\s*calculated/i.test(raw)) return 'NPSHa Calculated';
+    if (/not\s*provided|npshr\s*not\s*provided|manual\s*npshr|npsha\s*calculated/i.test(raw)) return 'NPSHr Not Provided';
     if (/safe|ok|pass/i.test(raw)) return 'OK';
     return raw;
   };
@@ -309,6 +327,30 @@
     || ''
   );
 
+  const connectionPipeId = (connection) => cleanText(
+    connection?.pipeId || connection?.pipe || connection?.lineId || connection?.linkId || connection?.edgeId,
+    ''
+  );
+
+  const isHydraulicConnection = (connection) => {
+    const type = cleanText(connection?.connectionType || connection?.type, '').toLowerCase();
+    return !type || type === 'hydraulic' || /process|pipe|flow/u.test(type);
+  };
+
+  const objectType = (model, id) => cleanText(objectById(model, id)?.type, '').toLowerCase();
+
+  const isSuctionBoundaryType = (type) => (
+    type === 'source'
+    || type === 'tank'
+    || type === 'verticalvessel'
+    || type === 'horizontalvessel'
+    || type === 'separator'
+  );
+
+  const isDischargeBoundaryType = (type) => type === 'sink';
+
+  const isLivePipe = (model, pipeId) => pipeId && objectType(model, pipeId) === 'pipe';
+
   const findNetworkObjects = (model) => {
     const pump = firstByType(model, 'pump');
     const source = firstByType(model, 'source');
@@ -316,25 +358,50 @@
     const pipes = objectEntries(model)
       .filter(([, object]) => String(object.type || '').toLowerCase() === 'pipe')
       .map(([id, object]) => ({ id, object }));
-    const connections = getConnections(model);
+    const connections = getConnections(model).filter(isHydraulicConnection);
+    const hasHydraulicTopology = connections.length > 0;
     const pumpId = pump.id;
-    const suctionConnection = connections.find((connection) => connectionEndpoint(connection, 'to') === pumpId);
-    const dischargeConnection = connections.find((connection) => connectionEndpoint(connection, 'from') === pumpId);
-    const suctionPipeId = suctionConnection?.pipeId || suctionConnection?.pipe || '';
-    const dischargePipeId = dischargeConnection?.pipeId || dischargeConnection?.pipe || '';
+    const suctionConnection = connections.find((connection) => {
+      const from = connectionEndpoint(connection, 'from');
+      const to = connectionEndpoint(connection, 'to');
+      const pipeId = connectionPipeId(connection);
+      return to === pumpId && isSuctionBoundaryType(objectType(model, from)) && isLivePipe(model, pipeId);
+    });
+    const dischargeConnection = connections.find((connection) => {
+      const from = connectionEndpoint(connection, 'from');
+      const to = connectionEndpoint(connection, 'to');
+      const pipeId = connectionPipeId(connection);
+      return from === pumpId && isDischargeBoundaryType(objectType(model, to)) && isLivePipe(model, pipeId);
+    });
+    const suctionPipeId = connectionPipeId(suctionConnection);
+    const dischargePipeId = connectionPipeId(dischargeConnection);
     const suctionPipe = suctionPipeId
       ? { id: suctionPipeId, object: objectById(model, suctionPipeId) }
       : (pipes.find((entry) => /suction|pipe-?1/i.test(`${entry.id} ${entry.object?.name || ''}`)) || pipes[0] || { id: '', object: null });
     const dischargePipe = dischargePipeId
       ? { id: dischargePipeId, object: objectById(model, dischargePipeId) }
       : (pipes.find((entry) => /discharge|pipe-?2/i.test(`${entry.id} ${entry.object?.name || ''}`)) || pipes.find((entry) => entry.id !== suctionPipe.id) || { id: '', object: null });
+    const fallbackSuctionComplete = !!(source.object && suctionPipe.object);
+    const fallbackDischargeComplete = !!(sink.object && dischargePipe.object && dischargePipe.id !== suctionPipe.id);
+    const routeIntegrity = hasHydraulicTopology
+      ? {
+        suctionComplete: !!(suctionConnection && suctionPipeId),
+        dischargeComplete: !!(dischargeConnection && dischargePipeId),
+        complete: !!(suctionConnection && suctionPipeId && dischargeConnection && dischargePipeId)
+      }
+      : {
+        suctionComplete: fallbackSuctionComplete,
+        dischargeComplete: fallbackDischargeComplete,
+        complete: fallbackSuctionComplete && fallbackDischargeComplete
+      };
     return {
       fluid: firstByType(model, 'fluid'),
       source: source.object ? source : { id: connectionEndpoint(suctionConnection, 'from'), object: objectById(model, connectionEndpoint(suctionConnection, 'from')) },
       pump,
       sink: sink.object ? sink : { id: connectionEndpoint(dischargeConnection, 'to'), object: objectById(model, connectionEndpoint(dischargeConnection, 'to')) },
       suctionPipe,
-      dischargePipe
+      dischargePipe,
+      routeIntegrity
     };
   };
 
@@ -445,7 +512,8 @@
       });
     };
 
-    const { fluid, source, pump, suctionPipe, dischargePipe, sink } = findNetworkObjects(model);
+    const { fluid, source, pump, suctionPipe, dischargePipe, sink, routeIntegrity } = findNetworkObjects(model);
+    const downstreamDutyAvailable = routeIntegrity?.complete === true;
     const fluidProps = fluid.object?.props || {};
     const sourceProps = source.object?.props || {};
     const sourceResults = source.object?.results || {};
@@ -518,11 +586,11 @@
     };
 
     setPipeGroup('Pipe Suction', suctionPipe);
-    setPipeGroup('Pipe Discharge', dischargePipe);
+    setPipeGroup('Pipe Discharge', downstreamDutyAvailable ? dischargePipe : null);
     const suctionPfvStartElevation = pipeEndpointElevation(suctionPipe, 'startElevation');
     const suctionPfvEndElevation = pipeEndpointElevation(suctionPipe, 'endElevation');
-    const dischargePfvStartElevation = pipeEndpointElevation(dischargePipe, 'startElevation');
-    const dischargePfvEndElevation = pipeEndpointElevation(dischargePipe, 'endElevation');
+    const dischargePfvStartElevation = downstreamDutyAvailable ? pipeEndpointElevation(dischargePipe, 'startElevation') : null;
+    const dischargePfvEndElevation = downstreamDutyAvailable ? pipeEndpointElevation(dischargePipe, 'endElevation') : null;
     set('Pipe Suction - PFV Start Elevation', withUnit(suctionPfvStartElevation, 'm', 6), suctionPfvStartElevation);
     set('Pipe Suction - PFV End Elevation', withUnit(suctionPfvEndElevation, 'm', 6), suctionPfvEndElevation);
     set('Pipe Discharge - PFV Start Elevation', withUnit(dischargePfvStartElevation, 'm', 6), dischargePfvStartElevation);
@@ -544,7 +612,15 @@
     const pumpHead = actualPumpHeadAvailable
       ? firstNumber(npsh.actualPumpHead, pumpResults.actualPumpHead, npsh.pumpHead, pumpResults.pumpHeadAtFlow, pumpResults.head)
       : (routeOnlyPump ? null : firstNumber(npsh.actualPumpHead, pumpResults.actualPumpHead, npsh.pumpHead, pumpResults.pumpHeadAtFlow, pumpResults.head));
-    const pumpRequiredSystemHead = firstNumber(npsh.requiredSystemHead, pumpResults.requiredSystemHead, routeOnlyPump ? null : pumpHead);
+    const explicitRequiredSystemHead = firstExplicitNumber(
+      [npsh, 'requiredSystemHead'],
+      [pumpResults, 'requiredSystemHead']
+    );
+    const pumpRequiredSystemHead = !downstreamDutyAvailable
+      ? null
+      : explicitRequiredSystemHead !== undefined
+      ? explicitRequiredSystemHead
+      : firstNumber(routeOnlyPump ? null : pumpHead);
     const npsha = firstNumber(npsh.npsha, pumpResults.npsha);
     const npshr = firstNumber(npsh.npshr, pumpResults.npshr, pumpProps.manualNpshr);
     const marginRatioLimit = firstNumber(
@@ -588,7 +664,9 @@
         : null
     );
     const suctionLoss = firstNumber(npsh.suctionLoss, pipeMetric(suctionPipe, 'totalLoss'), pumpResults.suctionLoss);
-    const dischargeLoss = firstNumber(routeDischargeLoss(pumpResults, npsh), pipeMetric(dischargePipe, 'totalLoss'));
+    const dischargeLoss = downstreamDutyAvailable
+      ? firstNumber(routeDischargeLoss(pumpResults, npsh), pipeMetric(dischargePipe, 'totalLoss'))
+      : null;
     const computedHydraulicStatus = calculatedNpshStatus(npsha, npshr, requiredNpsha);
     const rawHydraulicStatus = npsh.hydraulicStatus || pumpResults.hydraulicNpshStatus || npsh.status || pumpResults.cavitationStatus || 'Incomplete';
     const hydraulicStatus = normalizeHydraulicStatusForMatrix(
@@ -618,7 +696,15 @@
       : (rawManualNpshrComparisonStatus || computedManualComparisonStatus);
     const vendorCurveVerificationStatus = cleanText(npsh.vendorCurveVerificationStatus || pumpResults.vendorCurveVerificationStatus || npshTraceInterpretation.vendorCurveVerificationStatus || 'Not Required for route calculation');
     const suctionPressure = firstNumber(npsh.suctionPressureAbs, pumpResults.suctionPressure);
-    const dischargePressure = firstNumber(pumpResults.dischargePressure);
+    const explicitDischargePressure = firstExplicitNumber(
+      [pumpResults, 'dischargePressure'],
+      [npsh, 'dischargePressure']
+    );
+    const dischargePressure = !downstreamDutyAvailable
+      ? null
+      : explicitDischargePressure !== undefined
+      ? explicitDischargePressure
+      : null;
     const shaftPower = routeOnlyPump && !actualPumpHeadAvailable ? null : firstNumber(pumpResults.power);
     const efficiency = firstNumber(pumpResults.efficiency, pumpProps.designEfficiency);
 
@@ -672,7 +758,7 @@
     set('Pump - Dominant Loss', cleanText(npsh.dominantLoss || pumpResults.dominantSuctionLoss), null);
 
     const targetFlow = firstNumber(proposal.targetFlow, proposal.targetFlowM3H, pumpFlow);
-    const requiredHead = firstNumber(proposal.requiredSystemHead, pumpResults.requiredSystemHead, pumpRequiredSystemHead, pumpHead);
+    const requiredHead = downstreamDutyAvailable ? firstNumber(proposal.requiredSystemHead, pumpRequiredSystemHead) : null;
     const proposalNpsha = firstNumber(proposal.npshaAtDesign, npsha);
     const proposalMaxAllowableNpshr = firstNumber(proposal.maxAllowableNpshr, proposal.allowableNpshrAtDesign, maxAllowableNpshr);
     const proposedNpshr = firstNumber(proposal.proposedNpshr, proposal.proposedProps?.manualNpshr);
@@ -1609,6 +1695,7 @@
   };
 
   let scheduled = 0;
+  let updateSimulationPatchInstalled = false;
   const scheduleRefresh = (delayMs = 120) => {
     if (!hasActiveReportSurface()) return false;
     if (scheduled) return true;
@@ -1621,8 +1708,14 @@
   };
 
   const patchUpdateSimulation = () => {
+    if (updateSimulationPatchInstalled || root.__analysisReportLiveUpdateSimulationPatchInstalled) return false;
     const current = root.updateSimulation;
-    if (typeof current !== 'function' || current.__analysisReportLivePatched) return;
+    if (typeof current !== 'function') return false;
+    if (current.__analysisReportLivePatched) {
+      updateSimulationPatchInstalled = true;
+      root.__analysisReportLiveUpdateSimulationPatchInstalled = VERSION;
+      return false;
+    }
     const wrapped = function updateSimulationAnalysisReportLiveWrapper(...args) {
       const result = current.apply(this, args);
       const options = args[0] && typeof args[0] === 'object' ? args[0] : {};
@@ -1637,6 +1730,9 @@
     wrapped.__analysisReportLivePatched = true;
     wrapped.__analysisReportLiveOriginal = current;
     root.updateSimulation = wrapped;
+    updateSimulationPatchInstalled = true;
+    root.__analysisReportLiveUpdateSimulationPatchInstalled = VERSION;
+    return true;
   };
 
   root.EngineeringAnalysisReportLiveRuntime = {

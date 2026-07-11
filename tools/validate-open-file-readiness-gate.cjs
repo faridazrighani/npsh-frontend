@@ -21,9 +21,10 @@ const manifest = fs.existsSync(manifestPath) ? read(manifestPath) : '';
 const uploadReadiness = fs.existsSync(uploadReadinessPath) ? read(uploadReadinessPath) : '';
 const runtime = require(runtimePath);
 
-assert.strictEqual(runtime.version, 'engineering-open-file-readiness-gate.v7');
-assert.strictEqual(runtime.cacheKey, '20260707-open-file-readiness-gate9');
+assert.strictEqual(runtime.version, 'engineering-open-file-readiness-gate.v9-hard-release');
+assert.strictEqual(runtime.cacheKey, '20260711-open-file-hard-release1');
 assert.strictEqual(runtime.maxWaitMs, 8200, 'Open-file gate must have a bounded fallback timeout.');
+assert.strictEqual(runtime.hardReleaseMs, 9700, 'Open-file gate must hard-release even if the normal readiness loop is superseded.');
 assert.strictEqual(runtime.minVisibleMs, 720, 'Open-file gate should stay visible long enough to mask initial canvas churn.');
 assert.strictEqual(runtime.quietMs, 180, 'Open-file gate should wait for a quiet canvas window before release.');
 assert.deepStrictEqual(
@@ -37,14 +38,14 @@ assert.strictEqual(
   'package.json must expose the open-file readiness gate validator.'
 );
 
-assert(indexHtml.includes('engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate9'), 'index.html must load the open-file readiness gate runtime.');
+assert(indexHtml.includes('engineering-open-file-readiness-gate.js?v=20260711-open-file-hard-release1'), 'index.html must load the open-file readiness gate runtime.');
 assert(
   indexHtml.indexOf('app.bundle.min.js?v=20260707-pipe-canvas-loss-label1')
-    < indexHtml.indexOf('engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate9'),
+    < indexHtml.indexOf('engineering-open-file-readiness-gate.js?v=20260711-open-file-hard-release1'),
   'Open-file gate should load after the app bundle.'
 );
 assert(
-  indexHtml.indexOf('engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate9')
+  indexHtml.indexOf('engineering-open-file-readiness-gate.js?v=20260711-open-file-hard-release1')
     < indexHtml.indexOf('engineering-model-snapshot-export-runtime.js?v=20260707-fluid-basis-workspace-snapshot11'),
   'Open-file gate should load early in the critical runtime pack.'
 );
@@ -79,6 +80,7 @@ assert(runtimeSource.includes('firstReadyEvidenceAt'), 'Open-file gate must trac
 assert(runtimeSource.includes('POST_CLEANUP_READY_MS'), 'Open-file gate must verify display readiness after forced cleanup before release.');
 assert(runtimeSource.includes('waitForPostCleanupReadiness'), 'Open-file gate must wait for post-cleanup pipe labels before showing the canvas.');
 assert(runtimeSource.includes('handleSimulationLoadSettled'), 'Open-file gate must release from transaction completion instead of waiting for stale timeouts.');
+assert(runtimeSource.includes('settledLoadTransactionStatus'), 'Open-file gate must poll the canonical load transaction in case a completion event is missed.');
 assert(runtimeSource.includes('npsh:simulation-load-transaction-complete'), 'Open-file gate must listen for completed load transactions.');
 assert(runtimeSource.includes('Applying loaded simulation state'), 'Open-file gate must present a clear updating state when transaction data is applied.');
 assert(runtimeSource.includes('PIPE_HYDRAULIC_LABEL_SELECTOR'), 'Open-file gate must inspect pipe hydraulic labels before release.');
@@ -93,6 +95,9 @@ assert(runtimeSource.includes('refreshPipeCanvasHydraulicLabels'), 'Open-file ga
 assert(runtimeSource.includes('cleanFrames'), 'Open-file gate must wait for clean animation frames before release.');
 assert(runtimeSource.includes('MAX_WAIT_MS'), 'Open-file gate must have a timeout fallback.');
 assert(runtimeSource.includes("finishSession('warning')"), 'Open-file gate must release with warning instead of sticking forever.');
+assert(runtimeSource.includes('HARD_RELEASE_MS'), 'Open-file gate must include a timer independent from the normal readiness loop.');
+assert(runtimeSource.includes("reason: 'hard-readiness-release'"), 'Hard readiness release must be auditable.');
+assert(runtimeSource.includes('releaseSession(session'), 'Normal and hard completion must share one idempotent release path.');
 assert(runtimeSource.includes('restoreOpenSensitiveControls'), 'Open-file gate must restore disabled controls after release.');
 assert(runtimeSource.includes('document.body.classList.remove(ACTIVE_CLASS, WARNING_CLASS)'), 'Open-file gate must remove body lock classes after release.');
 
@@ -109,7 +114,7 @@ assert(runtimeSource.includes('document.body.classList.remove(ACTIVE_CLASS, WARN
 });
 
 if (manifest) {
-  assert(manifest.includes('Open file readiness gate cache key: engineering-open-file-readiness-gate.js?v=20260707-open-file-readiness-gate9'), 'FILE_MANIFEST must document the open-file readiness gate cache key.');
+  assert(manifest.includes('Open file readiness gate cache key: engineering-open-file-readiness-gate.js?v=20260711-open-file-hard-release1'), 'FILE_MANIFEST must document the open-file readiness gate cache key.');
   assert(manifest.includes('validate:open-file-readiness-gate'), 'FILE_MANIFEST must mention the open-file readiness gate validator.');
 }
 if (uploadReadiness) {

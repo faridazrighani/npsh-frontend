@@ -1,8 +1,8 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-pump-edit-fast-lane.v8';
-  const CACHE_KEY = '20260706-pump-edit-status-matrix1';
-  const NPSHA_CALCULATED_STATUS = 'NPSHa Calculated';
+  const VERSION = 'engineering-pump-edit-fast-lane.v11';
+  const CACHE_KEY = '20260710-pump-edit-manual-npshr-local1';
+  const NPSHR_NOT_PROVIDED_STATUS = 'NPSHr Not Provided';
   const PUMP_WINDOW_SELECTOR = [
     '.persistent-object-properties-task-window',
     '#taskWindow',
@@ -188,7 +188,7 @@
     const field = canonicalField(target);
     if (!field) return null;
     if (field === 'manualNpshr') {
-      return { field, className: 'network-defer', backend: 'defer', chart: true, delayMs: 90 };
+      return { field, className: 'light', backend: 'none', chart: true, delayMs: 0 };
     }
     if (LIGHT_FIELDS.has(field)) {
       return { field, className: 'light', backend: 'none', chart: true, delayMs: 0 };
@@ -330,6 +330,17 @@
     return value === '' ? null : value;
   }
 
+  function isManualNpshrField(field) {
+    return field === 'manualNpshr' || field === 'npshr';
+  }
+
+  function resolvePreviewNpsha(pump, evaluation, field) {
+    if (isManualNpshrField(field)) {
+      return firstFinite(evaluation.npsha, pump.results?.npsha, pump.results?.npshAvailable);
+    }
+    return firstFinite(recalcNpsha(pump, evaluation), evaluation.npsha, pump.results?.npsha, pump.results?.npshAvailable);
+  }
+
   function canPreviewActualHead(pump, evaluation, field) {
     if (CHART_FIELDS.has(field)) return true;
     if (evaluation?.actualPumpHeadAvailable === false || pump?.results?.actualPumpHeadAvailable === false) return false;
@@ -361,7 +372,7 @@
     const evaluation = ensurePumpResults(pump);
     const criteria = marginCriteria(pump, evaluation);
     const flow = resolvePreviewFlow(pump, evaluation, field);
-    const npsha = firstFinite(recalcNpsha(pump, evaluation), evaluation.npsha, pump.results.npsha);
+    const npsha = resolvePreviewNpsha(pump, evaluation, field);
     const npshr = resolvePreviewNpshr(pump, evaluation, flow, field);
     if (npsha !== null) {
       evaluation.npsha = round(npsha, 6);
@@ -379,21 +390,21 @@
       evaluation.npshRatio = null;
       evaluation.npshExcess = null;
       evaluation.requiredNpsha = null;
-      evaluation.manualNpshrComparisonStatus = 'Not Provided';
+      evaluation.manualNpshrComparisonStatus = NPSHR_NOT_PROVIDED_STATUS;
       pump.results.npshr = null;
       pump.results.npshRequired = null;
       pump.results.npshMargin = null;
       pump.results.npshRatio = null;
       pump.results.npshExcess = null;
       pump.results.requiredNpsha = null;
-      pump.results.manualNpshrComparisonStatus = 'Not Provided';
-      evaluation.status = NPSHA_CALCULATED_STATUS;
-      evaluation.hydraulicStatus = NPSHA_CALCULATED_STATUS;
-      evaluation.engineeringStatus = NPSHA_CALCULATED_STATUS;
+      pump.results.manualNpshrComparisonStatus = NPSHR_NOT_PROVIDED_STATUS;
+      evaluation.status = NPSHR_NOT_PROVIDED_STATUS;
+      evaluation.hydraulicStatus = NPSHR_NOT_PROVIDED_STATUS;
+      evaluation.engineeringStatus = NPSHR_NOT_PROVIDED_STATUS;
       evaluation.message = 'NPSHa is calculated; Manual NPSHr is not provided.';
-      pump.results.status = NPSHA_CALCULATED_STATUS;
-      pump.results.hydraulicNpshStatus = NPSHA_CALCULATED_STATUS;
-      pump.results.engineeringStatus = NPSHA_CALCULATED_STATUS;
+      pump.results.status = NPSHR_NOT_PROVIDED_STATUS;
+      pump.results.hydraulicNpshStatus = NPSHR_NOT_PROVIDED_STATUS;
+      pump.results.engineeringStatus = NPSHR_NOT_PROVIDED_STATUS;
       pump.results.engineeringMessage = 'NPSHa is calculated; Manual NPSHr is not provided.';
     }
     if (npsha !== null && npshr !== null && criteria.valid) {
@@ -480,7 +491,7 @@
     if (!pump.props || typeof pump.props !== 'object') pump.props = {};
     const field = classification.field;
     let value = inputValue(target, field);
-    if (field === 'manualNpshr' || field === 'npshr') {
+    if (isManualNpshrField(field)) {
       pump.props.designNpshr = value;
       pump.props.manualNpshr = value;
     } else if (field === 'pumpDatumElevation') {
@@ -623,7 +634,7 @@
     markFastLaneState(result.pumpId, classification, classification.backend === 'defer');
     if (classification.backend === 'defer') {
       const autosolveReason = classification.field === 'manualNpshr'
-        ? 'Manual NPSHr changed; recalculating connected route for NPSHa and NPSH status.'
+        ? 'Manual NPSHr changed; preserving suction-side NPSHa while refreshing NPSH comparison.'
         : 'Pump input changed; backend recalculation deferred until typing settles.';
       hooks.markStale?.(result.pumpId, autosolveReason);
       if (event?.isTrusted && typeof hooks.requestAutoSolve === 'function') {

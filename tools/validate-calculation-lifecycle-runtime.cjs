@@ -20,7 +20,7 @@ const manifest = fs.existsSync(MANIFEST_FILE) ? read(MANIFEST_FILE) : '';
 const runtime = require(RUNTIME_FILE);
 
 assert.strictEqual(runtime.version, 'engineering-calculation-lifecycle.v1');
-assert.strictEqual(runtime.cacheKey, '20260707-solver-release-watchdog3');
+assert.strictEqual(runtime.cacheKey, '20260711-solver-always-calculates1');
 assert.strictEqual(runtime.evidenceRefreshReleaseMs, 650, 'Evidence refresh release timer should prevent a stuck Refreshing button.');
 assert.strictEqual(runtime.sampleOpenReleaseMs, 900, 'Sample case open must have a bounded release timer so Validate cannot stay Calculating.');
 assert.strictEqual(runtime.commandBusyWatchdogMs, 5200, 'Generic command busy watchdog should release a stuck Validate command.');
@@ -45,18 +45,18 @@ assert.strictEqual(
 );
 
 assert(
-  indexHtml.includes('engineering-pump-edit-fast-lane.js?v=20260706-pump-edit-status-matrix1')
-    && indexHtml.includes('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1')
-    && indexHtml.includes('engineering-calculation-lifecycle-runtime.js?v=20260707-solver-release-watchdog3')
+  indexHtml.includes('engineering-pump-edit-fast-lane.js?v=20260710-pump-edit-manual-npshr-local1')
+    && indexHtml.includes('engineering-realtime-calculation-defense.js?v=20260711-src-task-window-flash-lock1')
+    && indexHtml.includes('engineering-calculation-lifecycle-runtime.js?v=20260711-solver-always-calculates1')
     && indexHtml.includes('engineering-calculation-progress-overlay.js?v=20260707-calculation-progress-stuck-hide1'),
   'index.html must load pump fast lane, realtime defense, lifecycle runtime, then progress overlay.'
 );
 assert(
-  indexHtml.indexOf('engineering-pump-edit-fast-lane.js?v=20260706-pump-edit-status-matrix1')
-    < indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1')
-    && indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260703-snk-input-active1')
-      < indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260707-solver-release-watchdog3')
-    && indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260707-solver-release-watchdog3')
+  indexHtml.indexOf('engineering-pump-edit-fast-lane.js?v=20260710-pump-edit-manual-npshr-local1')
+    < indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260711-src-task-window-flash-lock1')
+    && indexHtml.indexOf('engineering-realtime-calculation-defense.js?v=20260711-src-task-window-flash-lock1')
+      < indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260711-solver-always-calculates1')
+    && indexHtml.indexOf('engineering-calculation-lifecycle-runtime.js?v=20260711-solver-always-calculates1')
       < indexHtml.indexOf('engineering-calculation-progress-overlay.js?v=20260707-calculation-progress-stuck-hide1'),
   'Pump fast lane, realtime defense, lifecycle runtime, and progress overlay must load in dependency order.'
 );
@@ -103,8 +103,8 @@ assert(runtimeSource.includes('sample-case-open'), 'Lifecycle runtime must recor
 assert(runtimeSource.includes('menu-browse'), 'Lifecycle runtime must track menu-browse mode separately from calculation modes.');
 assert(runtimeSource.includes('sample-open'), 'Lifecycle runtime must track sample-open mode separately from manual solve.');
 assert(runtimeSource.includes('manual-solve'), 'Lifecycle runtime must track manual-solve mode for full evidence refresh.');
-assert(runtimeSource.includes('Validate / Refresh Evidence started.'), 'Lifecycle manual command copy must describe validation/evidence refresh, not primary solving.');
-assert(runtimeSource.includes('Realtime results are already primary'), 'Lifecycle manual command message must declare realtime autosolve as primary.');
+assert(runtimeSource.includes('Validate calculation started.'), 'Lifecycle manual command copy must describe an actual calculation.');
+assert(runtimeSource.includes('Running the hydraulic and NPSH calculation.'), 'Lifecycle manual command message must state that Validate runs the solver.');
 assert(runtimeSource.includes('setRunCommandBusy'), 'Lifecycle runtime must manage Run/Validate command busy state.');
 assert(runtimeSource.includes("mode === 'realtime-input'"), 'Lifecycle runtime must keep Run/Validate passive during realtime input autosolve.');
 assert(runtimeSource.includes('aria-busy'), 'Lifecycle runtime must expose command busy state for accessibility.');
@@ -124,10 +124,12 @@ assert(runtimeSource.includes('MutationObserver'), 'Lifecycle runtime must obser
 assert(runtimeSource.includes('solve-command-attribute-observer'), 'Lifecycle runtime must release late Validate attribute locks.');
 assert(runtimeSource.includes('solve-command-settled-heartbeat'), 'Lifecycle runtime must periodically audit Validate after repeated file/case switches.');
 assert(runtimeSource.includes("attributeFilter: ['disabled', 'aria-busy', 'aria-disabled', 'data-calculation-busy', 'class']"), 'Validate observer must be scoped to command lock attributes.');
-assert(runtimeSource.includes('runManualValidateFastLane'), 'Lifecycle runtime must fast-lane manual Validate when realtime results are current.');
-assert(runtimeSource.includes('stopImmediatePropagation'), 'Manual Validate fast-lane must prevent legacy heavy handlers after current realtime results.');
-assert(runtimeSource.includes('manual-validate-fast-lane'), 'Manual Validate fast-lane must publish a traceable lifecycle source event.');
-assert(runtimeSource.includes('hasSolvedPumpResult'), 'Manual Validate fast-lane must only activate when solved pump evidence exists.');
+assert(runtimeSource.includes('runManualValidateFastLane'), 'Lifecycle runtime must retain the explicit evidence-refresh fast lane.');
+assert(runtimeSource.includes('stopImmediatePropagation'), 'Explicit evidence refresh must prevent duplicate legacy handlers.');
+assert(runtimeSource.includes('manual-validate-fast-lane'), 'Explicit evidence refresh must publish a traceable lifecycle source event.');
+assert(runtimeSource.includes('hasCurrentVerifiedPumpResult'), 'Evidence refresh must require a current verified pump result.');
+assert(runtimeSource.includes("EXPLICIT_EVIDENCE_REFRESH_SELECTOR = '#menu-refresh-calculations'"), 'Only the explicit evidence-refresh command may bypass a real solve.');
+assert(runtimeSource.includes("command?.matches?.(EXPLICIT_EVIDENCE_REFRESH_SELECTOR)"), 'Validate and Run commands must never enter the evidence-only fast lane.');
 assert(runtimeSource.includes('npsh:simulation-load-transaction-complete'), 'Simulation load completion must release Validate.');
 assert(runtimeSource.includes('npsh:simulation-load-transaction-abort'), 'Simulation load abort must release Validate.');
 assert(runtimeSource.includes('npsh:simulation-load-transaction-stale-result'), 'Stale load results must release Validate instead of leaving Calculating.');
@@ -178,7 +180,7 @@ for (const pattern of forbiddenPatterns) {
 
 if (manifest) {
   assert(manifest.includes('engineering-calculation-lifecycle-runtime.js'), 'FILE_MANIFEST must mention the calculation lifecycle runtime.');
-  assert(manifest.includes('20260707-solver-release-watchdog3'), 'FILE_MANIFEST must mention the calculation lifecycle cache key.');
+  assert(manifest.includes('20260711-solver-always-calculates1'), 'FILE_MANIFEST must mention the calculation lifecycle cache key.');
   assert(manifest.includes('validate:calculation-lifecycle'), 'FILE_MANIFEST must mention the calculation lifecycle validator.');
 }
 

@@ -15,7 +15,7 @@ const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
 const E2E_FILE = path.join(FRONTEND_ROOT, "tests", "e2e", "pdf-export-progress.spec.cjs");
 
 const PROGRESS_CACHE_KEY = "engineering-pdf-export-progress-runtime.js?v=20260707-pdf-export-progress1";
-const EXPORT_CACHE_KEY = "engineering-export-equation-professional-runtime.js?v=20260707-pdf-equation-professional9";
+const EXPORT_CACHE_KEY = "engineering-export-equation-professional-runtime.js?v=20260710-pdf-equation-professional-route-integrity1";
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");

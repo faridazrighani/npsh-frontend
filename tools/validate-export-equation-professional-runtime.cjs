@@ -14,11 +14,11 @@ const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
 
-const CACHE_KEY = "engineering-export-equation-professional-runtime.js?v=20260707-pdf-equation-professional9";
+const CACHE_KEY = "engineering-export-equation-professional-runtime.js?v=20260710-pdf-equation-professional-route-integrity1";
 const MOODY_CACHE_KEY = "engineering-pipe-moody-chart-audit.js?v=20260708-pipe-moody-export-chart5";
 const SNAPSHOT_KEY = "engineering-model-snapshot-export-runtime.js?v=20260707-fluid-basis-workspace-snapshot11";
 const APP_BUNDLE_KEY = "app.bundle.min.js?v=20260707-pipe-canvas-loss-label1";
-const VERSION = "2026.07-pdf-equation-professional9";
+const VERSION = "2026.07-pdf-equation-professional10-route-integrity";
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");
@@ -166,6 +166,9 @@ assert(runtime.includes("Fanning friction factor equals Darcy f / 4"), "runtime 
 assert(runtime.includes("sanitizeReportForActiveTopology"), "runtime must sanitize stale report data against the active topology.");
 assert(runtime.includes("refreshActiveCalculationBeforeExport"), "runtime must refresh current calculation data before PDF export.");
 assert(runtime.includes("removeInactiveTopologySections"), "runtime must remove inactive discharge/SNK sections from suction-only PDF exports.");
+assert(runtime.includes("isSuctionBoundaryType"), "runtime must classify source/tank suction endpoints before trusting export route data.");
+assert(runtime.includes("isDischargeBoundaryType"), "runtime must classify SNK endpoints before trusting export route data.");
+assert(runtime.includes("Current hydraulic route is incomplete or reversed"), "runtime must explain incomplete/reversed route exports without leaking stale downstream duty.");
 assert(runtime.includes("DOMParser"), "runtime must use DOM parsing for reliable Fluid Basis insertion and pump curve removal.");
 assert(runtime.includes("removePumpPerformanceChartDiscussion"), "runtime must remove the unused Pump Performance Chart discussion.");
 assert(runtime.includes("Pump Performance (?:Chart|Curve)"), "runtime must remove both Pump Performance Chart and Curve wording.");
@@ -361,5 +364,34 @@ assert.equal(sanitized.routeRows.length, 1, "route rows must contain only the ac
 assert.equal(sanitized.moody.rows.length, 1, "Moody rows must contain only active suction pipe rows.");
 assert.equal(sanitized.pump.steps.length, 0, "stale pump sequence steps that mention inactive objects must be removed.");
 assert.equal(sanitized.pump.results.routeCalculationStatus, "Suction Only", "pump results must declare suction-only export status.");
+
+const reversedDischargeReport = JSON.parse(JSON.stringify(staleReport));
+sandbox.connections = [
+  { from: "SRC-100", to: "P-100", pipeId: "PIPE-1", connectionType: "hydraulic" },
+  { from: "SNK-100", to: "P-100", pipeId: "PIPE-2", connectionType: "hydraulic", hydraulicReversed: true }
+];
+const sanitizedReversedDischarge = api.sanitizeReportForActiveTopology(reversedDischargeReport);
+assert.equal(sanitizedReversedDischarge.exportTopology.mode, "suction-only", "reversed discharge must be exported as suction-only, not full-route.");
+assert.equal(sanitizedReversedDischarge.discharge.rows.length, 0, "reversed discharge must clear stale discharge rows.");
+assert.equal(sanitizedReversedDischarge.sink.id, "-", "reversed discharge must clear stale sink report object.");
+assert.deepEqual(sanitizedReversedDischarge.moody.rows.map(row => row.pipeId), ["PIPE-1"], "reversed discharge PDF must keep only suction Moody chart rows.");
+const reversedDischargeHtml = api.professionalizeAppendixHtml(rawHtml, sanitizedReversedDischarge);
+assert(!reversedDischargeHtml.includes("Discharge Pipe, Fitting, and Valve Calculation"), "reversed discharge PDF HTML must remove discharge section.");
+assert(!reversedDischargeHtml.includes("SNK Boundary Calculation"), "reversed discharge PDF HTML must remove SNK section.");
+
+const reversedSuctionReport = JSON.parse(JSON.stringify(staleReport));
+sandbox.connections = [
+  { from: "P-100", to: "SRC-100", pipeId: "PIPE-1", connectionType: "hydraulic", hydraulicReversed: true },
+  { from: "P-100", to: "SNK-100", pipeId: "PIPE-2", connectionType: "hydraulic" }
+];
+const sanitizedReversedSuction = api.sanitizeReportForActiveTopology(reversedSuctionReport);
+assert.equal(sanitizedReversedSuction.exportTopology.mode, "incomplete-route", "reversed suction must be exported as incomplete-route, not full-route.");
+assert.equal(sanitizedReversedSuction.discharge.rows.length, 0, "reversed suction must clear stale discharge rows.");
+assert.equal(sanitizedReversedSuction.routeRows.length, 0, "reversed suction must not keep stale route rows.");
+assert.equal(sanitizedReversedSuction.moody.rows.length, 0, "reversed suction must not keep stale Moody rows.");
+const reversedSuctionHtml = api.professionalizeAppendixHtml(rawHtml, sanitizedReversedSuction);
+assert(reversedSuctionHtml.includes("hydraulic route is incomplete or reversed"), "reversed suction PDF must explain why downstream duty is omitted.");
+assert(!reversedSuctionHtml.includes("PIPE-2 old downstream calculation"), "reversed suction PDF HTML must not leak stale discharge content.");
+assert(!reversedSuctionHtml.includes("SNK-100 old sink calculation"), "reversed suction PDF HTML must not leak stale sink content.");
 
 console.log("Export equation professional validation passed.");

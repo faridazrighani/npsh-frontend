@@ -10,8 +10,21 @@ const indexPath = path.join(root, 'index.html');
 const runtime = fs.readFileSync(runtimePath, 'utf8');
 const indexHtml = fs.readFileSync(indexPath, 'utf8');
 
-assert.match(indexHtml, /engineering-suction-only-npsha-runtime\.js\?v=20260707-suction-only-stale-discharge1/, 'index.html must load the suction-only NPSHa runtime with a fresh cache key.');
-assert.match(runtime, /const VERSION = "2026\.07-suction-only-npsha6-stale-discharge"/, 'runtime version should match the cache key.');
+assert.match(indexHtml, /engineering-suction-only-npsha-runtime\.js\?v=20260711-suction-route-direction-lock1/, 'index.html must load the suction-only NPSHa runtime with a fresh cache key.');
+assert.match(runtime, /const VERSION = "2026\.07-suction-only-npsha12-route-direction-lock"/, 'runtime version should match the cache key.');
+assert.match(runtime, /root\.__npshConnections/, 'runtime must read the active connection getter exposed by the application bundle.');
+assert.match(runtime, /candidate\.length > 0/, 'runtime must not let an empty legacy connection array hide active hydraulic connections.');
+assert.match(runtime, /function orientHydraulicConnection/, 'runtime must canonicalize reverse construction connections before route discovery.');
+assert.match(runtime, /fromType === "sink"[\s\S]*toType === "source"/, 'reverse SNK-to-SRC construction direction must be normalized to forward hydraulic direction.');
+assert.match(runtime, /props\.flow,[\s\S]*results\.flow/, 'current SRC input flow must take precedence over stale solved flow.');
+assert.match(runtime, /hasUsableSuctionOnlyResult/, 'runtime must reject finite-looking suction-only results that did not solve positive route flow.');
+assert.match(runtime, /solvedPumpFlow === null \|\| solvedPipeFlow === null/, 'positive SRC flow must require positive solved pump and pipe flow.');
+assert.match(runtime, /installTopologyInputBridge/, 'runtime must trigger suction-only autosolve after hydraulic port connection clicks.');
+assert.match(runtime, /hydraulic-port-click/, 'topology autosolve must publish a traceable scan reason.');
+assert.match(runtime, /installSuctionOnlyValidateBridge/, 'runtime must install a dedicated Validate router for suction-only topology.');
+assert.match(runtime, /stopImmediatePropagation/, 'suction-only Validate must prevent the full-route solver from racing the suction-only result.');
+assert.match(runtime, /suction-only-validate-complete/, 'suction-only Validate must publish a deterministic completion event.');
+assert.match(runtime, /function optionalManualNpshr/, 'runtime must distinguish blank Manual NPSHr from explicit zero.');
 assert.match(runtime, /runBackendProtectedPumpSimulation/, 'runtime must call the protected backend pump simulation.');
 assert.match(runtime, /Suction Only/, 'runtime must recognize the suction-only route status.');
 assert.match(runtime, /Downstream Required/, 'runtime must keep downstream required-head status separate.');
@@ -309,6 +322,61 @@ async function runRuntimeSmoke() {
   assert.equal(localHydrationMock.globalModel['P-100'].results.requiredPumpHeadStatus, 'Downstream Required');
   assert.equal(localHydrationMock.pipeLabelRefreshed, true);
 
+  const activeGetterMock = {
+    ...localHydrationMock,
+    globalModel: createModel(),
+    connections: [],
+    __npshConnections: [
+      { from: 'SRC-100', to: 'P-100', pipeId: 'PIPE-1', connectionType: 'hydraulic' }
+    ],
+    pipeLabelRefreshed: false,
+    protectedUiRefreshed: false,
+    statusRefreshed: false
+  };
+  activeGetterMock.__npshGlobalModel = activeGetterMock.globalModel;
+  activeGetterMock.globalModel['SRC-100'].results = { evaluatedFlow: 0, flow: 0 };
+  activeGetterMock.globalModel['P-100'].results.flow = 0;
+  activeGetterMock.runBackendProtectedPumpSimulation = async () => {
+    const pumpResults = activeGetterMock.globalModel['P-100'].results;
+    const pipeResults = activeGetterMock.globalModel['PIPE-1'].results;
+    Object.assign(pumpResults, {
+      flow: 0,
+      npsha: -0.9722,
+      routeCalculationStatus: 'Suction Only',
+      suctionOnlyNpshaEvaluation: true,
+      npshEvaluation: {
+        flow: 0,
+        npsha: -0.9722,
+        routeCalculationStatus: 'Suction Only'
+      }
+    });
+    Object.assign(pipeResults, {
+      flow: 0,
+      pressureCalculated: true,
+      calculationTrace: { basis: { flowM3H: 0 }, totals: { totalLoss: 0 } }
+    });
+    return { primaryApplied: true };
+  };
+  vm.runInNewContext(runtime, {
+    window: activeGetterMock,
+    console,
+    CustomEvent: class CustomEvent {
+      constructor(type, init = {}) {
+        this.type = type;
+        this.detail = init.detail;
+      }
+    }
+  }, { filename: runtimePath });
+  const activeGetterApi = activeGetterMock.EngineeringSuctionOnlyNpshaRuntime;
+  assert.ok(
+    activeGetterApi.isSuctionOnlyEligiblePump(activeGetterMock.globalModel, 'P-100'),
+    'active __npshConnections must remain calculation-eligible when a legacy root.connections array is empty.'
+  );
+  await activeGetterApi.runRouteSolve('P-100');
+  assert.ok(Number(activeGetterMock.globalModel['SRC-100'].results.evaluatedFlow) > 0, 'positive SRC input flow must replace stale zero evaluated flow.');
+  assert.ok(Number(activeGetterMock.globalModel['PIPE-1'].results.flow) > 0, 'active suction pipe must receive solved flow from SRC input.');
+  assert.ok(Number(activeGetterMock.globalModel['P-100'].results.npsha) > 0, 'active SRC -> PIPE -> Pump route must calculate NPSHa.');
+
   const noManualMock = {
     ...localHydrationMock,
     globalModel: createModel(),
@@ -338,13 +406,38 @@ async function runRuntimeSmoke() {
   assert.equal(noManualMock.globalModel['P-100'].results.npshr, null, 'NPSHr must remain blank without manualNpshr, even when design/curve NPSHr exists.');
   assert.equal(noManualMock.globalModel['P-100'].results.npshRequired, null, 'NPSH Required must remain blank without manualNpshr.');
   assert.equal(noManualMock.globalModel['P-100'].results.npshMargin, null, 'NPSH margin must remain blank without manualNpshr.');
+  assert.equal(noManualMock.globalModel['P-100'].results.hydraulicNpshStatus, 'NPSHr Not Provided', 'Blank Manual NPSHr should expose the canonical warning status.');
+
+  const zeroManualMock = {
+    ...localHydrationMock,
+    globalModel: createModel(),
+    pipeLabelRefreshed: false,
+    protectedUiRefreshed: false,
+    statusRefreshed: false
+  };
+  zeroManualMock.__npshGlobalModel = zeroManualMock.globalModel;
+  zeroManualMock.globalModel['P-100'].props.manualNpshr = 0;
+  vm.runInNewContext(runtime, {
+    window: zeroManualMock,
+    console,
+    CustomEvent: class CustomEvent {
+      constructor(type, init = {}) {
+        this.type = type;
+        this.detail = init.detail;
+      }
+    }
+  }, { filename: runtimePath });
+  await zeroManualMock.EngineeringSuctionOnlyNpshaRuntime.runRouteSolve('P-100');
+  assert.equal(zeroManualMock.globalModel['P-100'].results.npshr, 0, 'Explicit zero Manual NPSHr must remain calculation-usable.');
+  assert.ok(Number(zeroManualMock.globalModel['P-100'].results.npshMargin) > 0, 'Explicit zero Manual NPSHr must calculate margin from NPSHa.');
+  assert.equal(zeroManualMock.globalModel['P-100'].results.npshRatio, null, 'Explicit zero Manual NPSHr must keep NPSH ratio blank.');
 }
 
 runRuntimeSmoke().then(() => {
   console.log(JSON.stringify({
     passed: true,
     runtime: path.basename(runtimePath),
-    cacheKey: '20260707-suction-only-stale-discharge1',
+    cacheKey: '20260711-suction-route-direction-lock1',
     smoke: 'SRC -> PFV -> Pump calculated'
   }, null, 2));
 }).catch((error) => {

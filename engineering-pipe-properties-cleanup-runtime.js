@@ -1,7 +1,7 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-pipe-properties-cleanup-runtime.v1';
-  const CACHE_KEY = '20260706-pipe-hl-allow-clean1';
+  const VERSION = 'engineering-pipe-properties-cleanup-runtime.v2-breakdown-decimals';
+  const CACHE_KEY = '20260711-pipe-breakdown-decimals1';
   const STYLE_ID = 'engineering-pipe-properties-cleanup-style';
   const SURFACE_SELECTOR = [
     '.persistent-object-properties-task-window[data-kind="pipe"]',
@@ -61,6 +61,7 @@
   let observer = null;
   let cleaning = false;
   let scheduled = false;
+  let breakdownRendererPatched = false;
 
   function hasDocument() {
     return typeof document !== 'undefined' && !!document.documentElement;
@@ -77,6 +78,65 @@
 
   function normalizeKey(value) {
     return String(value ?? '').replace(/[^a-z0-9]+/gi, '').toLowerCase();
+  }
+
+  function formatFixedMetric(value, digits, unit = '') {
+    const parsed = Number.parseFloat(value);
+    if (!Number.isFinite(parsed)) return '-';
+    const normalized = Math.abs(parsed) < 0.5 * (10 ** -digits) ? 0 : parsed;
+    return `${normalized.toFixed(digits)}${unit ? ` ${unit}` : ''}`;
+  }
+
+  function formatPipeBreakdownMarkup(markup, trace = {}) {
+    if (!hasDocument() || typeof markup !== 'string' || !markup) return markup;
+    const template = document.createElement('template');
+    template.innerHTML = markup;
+    const content = template.content || template;
+    const totals = trace?.totals || {};
+    const summaryValues = {
+      Major: formatFixedMetric(totals.majorLoss, 5, 'm'),
+      Minor: formatFixedMetric(totals.minorLoss, 5, 'm'),
+      'Total K': formatFixedMetric(totals.totalK, 3),
+      'Total hL': formatFixedMetric(totals.totalLoss, 5, 'm')
+    };
+    content.querySelectorAll?.('.pipe-fitting-breakdown-summary > span').forEach((item) => {
+      const label = normalizeText(item.childNodes?.[0]?.textContent);
+      const value = item.querySelector?.('strong');
+      if (value && Object.prototype.hasOwnProperty.call(summaryValues, label)) {
+        value.textContent = summaryValues[label];
+      }
+    });
+    const rows = Array.isArray(trace?.fittingValveBreakdown) ? trace.fittingValveBreakdown : [];
+    content.querySelectorAll?.('.pipe-fitting-breakdown-table tbody tr').forEach((row, index) => {
+      const data = rows[index];
+      if (!data) return;
+      const values = {
+        'K total': formatFixedMetric(data.totalK, 3),
+        'Major hL': formatFixedMetric(data.majorLoss, 5, 'm'),
+        'Minor hL': formatFixedMetric(data.minorLoss, 5, 'm'),
+        'Total hL': formatFixedMetric(data.totalLoss, 5, 'm')
+      };
+      Object.entries(values).forEach(([label, value]) => {
+        const cell = row.querySelector?.(`td[data-label="${label}"]`);
+        if (cell) cell.textContent = value;
+      });
+    });
+    return template.innerHTML;
+  }
+
+  function patchBreakdownRenderer() {
+    if (breakdownRendererPatched || root.__pipeBreakdownDecimalRendererPatched === true) return false;
+    const original = root.renderPipeFittingValveBreakdownTable;
+    if (typeof original !== 'function') return false;
+    const patched = function renderPipeFittingValveBreakdownWithFixedDecimals(trace, options) {
+      return formatPipeBreakdownMarkup(original.apply(this, arguments), trace);
+    };
+    patched.__pipeBreakdownDecimalPatched = true;
+    patched.__pipeBreakdownDecimalOriginal = original;
+    root.renderPipeFittingValveBreakdownTable = patched;
+    breakdownRendererPatched = true;
+    root.__pipeBreakdownDecimalRendererPatched = true;
+    return true;
   }
 
   function runtimeModel() {
@@ -478,6 +538,7 @@ ${keySelectors.join(',\n')} {
 
   function install() {
     if (!hasDocument()) return false;
+    patchBreakdownRenderer();
     injectStyles();
     attachRetentionListeners();
     installObserver();
@@ -498,6 +559,9 @@ ${keySelectors.join(',\n')} {
     scheduleClean,
     rememberStableState,
     restoreStableState,
+    formatFixedMetric,
+    formatPipeBreakdownMarkup,
+    patchBreakdownRenderer,
     removedPropertyKeys: REMOVED_PROPERTY_KEYS.slice(),
     removedPropertyLabels: REMOVED_PROPERTY_LABELS.slice(),
     removedSegmentKeys: REMOVED_SEGMENT_KEYS.slice(),

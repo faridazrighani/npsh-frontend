@@ -18,7 +18,7 @@ const indexHtml = read(INDEX_FILE);
 const packageJson = JSON.parse(read(PACKAGE_FILE));
 const manifest = fs.existsSync(MANIFEST_FILE) ? read(MANIFEST_FILE) : '';
 const runtime = require(RUNTIME_FILE);
-const CLEANUP_RUNTIME_URL = 'engineering-pipe-properties-cleanup-runtime.js?v=20260706-pipe-hl-allow-clean1';
+const CLEANUP_RUNTIME_URL = 'engineering-pipe-properties-cleanup-runtime.js?v=20260711-pipe-breakdown-decimals1';
 
 assert.strictEqual(runtime.version, 'engineering-pipe-segments-file-runtime.v4');
 assert.strictEqual(runtime.cacheKey, '20260630-pipe-properties-cleanup1');

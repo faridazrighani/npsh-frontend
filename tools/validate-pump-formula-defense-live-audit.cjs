@@ -271,12 +271,17 @@ globalThis.updateSimulation = (options = {}) => ({ ok: true, options });
 globalThis.shouldSkipBackendSimulationFetch = () => true;
 
 const runtime = require(runtimePath);
-assert.equal(runtime.version, 'pump-formula-defense-live-audit.v12', 'Pump Formula Defense live audit runtime must expose status-matrix audit v12.');
+assert.equal(runtime.version, 'pump-formula-defense-live-audit.v13-idempotent-refresh', 'Pump Formula Defense live audit runtime must expose idempotent refresh audit v13.');
+assert.equal(
+  runtime.hydrateAllPumpTopLevelResults(),
+  false,
+  'A second hydration pass over unchanged pump results must be idempotent and must not request another canvas repaint.'
+);
 assert.equal(typeof runtime.refreshOpenWindows, 'function', 'Runtime must expose open-window refresh.');
 assert.equal(typeof runtime.scheduleRefresh, 'function', 'Runtime must expose scheduled refresh.');
 assert.equal(typeof runtime.ensureRuntimeGuards, 'function', 'Runtime must expose self-healing guard installer.');
 assert.equal(typeof runtime.buildCalculationMatrixRows, 'function', 'Runtime must expose live calculation matrix rows for validation.');
-assert.equal(globalThis.refreshPumpFormulaDefenseWindowContent.__pumpFormulaDefenseLiveAuditVersion, 'pump-formula-defense-live-audit.v12');
+assert.equal(globalThis.refreshPumpFormulaDefenseWindowContent.__pumpFormulaDefenseLiveAuditVersion, 'pump-formula-defense-live-audit.v13-idempotent-refresh');
 
 runtime.refreshOpenWindows('P-100', { reason: 'unit-test' });
 assert(contentRefreshCalls > 0, 'Open Pump Formula Defense windows must rebuild their content when refreshed.');
@@ -310,7 +315,7 @@ assert.equal(routeSourceCell.textContent, 'P-100 -> PIPE-2 -> SNK-100', 'Existin
 assert.equal(snkValueCell.textContent, 'H=30.353 m; Q=50 m3/h; P=1.744 bar a; z=29.085 m', 'Existing Route Trace SNK row must be hydrated from live sink boundary data when it was blank.');
 assert.equal(snkSourceCell.textContent, 'SNK-100 downstream boundary -> system head', 'Existing Route Trace SNK row must cite its downstream boundary source.');
 assert(!windowNode.children.includes(legacyFormulaDefenseBlock), 'Legacy Pump Formula Defense sections containing removed rows and duplicate Volumetric Flow block must be pruned.');
-assert.equal(windowNode.dataset.pumpFormulaDefenseLegacyPruned, 'pump-formula-defense-live-audit.v12', 'Pruned Pump Formula Defense windows should carry a legacy-pruned marker.');
+assert.equal(windowNode.dataset.pumpFormulaDefenseLegacyPruned, 'pump-formula-defense-live-audit.v13-idempotent-refresh', 'Pruned Pump Formula Defense windows should carry a legacy-pruned marker.');
 const matrixRows = runtime.buildCalculationMatrixRows('P-100');
 assert(!matrixRows.some((row) => /^(Required NPSHa|Maximum Allowable NPSHr|Maximum Allowable NPSHr Status|Manual NPSHr Comparison|Vendor Curve Verification|NPSH Excess)$/i.test(row.output)), 'Matrix rows must omit the removed Formula Defense outputs.');
 assert(matrixRows.some((row) => row.output === 'Suction Loss' && /Suction Pipe\/Fitting\/Valve/.test(row.connectedTo)), 'Matrix must connect suction loss to the PFV path.');
@@ -344,7 +349,7 @@ globalThis.refreshPumpFormulaDefenseWindowContent = () => ({ stale: true });
 runtime.ensureRuntimeGuards();
 assert.equal(
   globalThis.refreshPumpFormulaDefenseWindowContent.__pumpFormulaDefenseLiveAuditVersion,
-  'pump-formula-defense-live-audit.v12',
+  'pump-formula-defense-live-audit.v13-idempotent-refresh',
   'Runtime must reclaim Pump Formula Defense content refresh after late overrides.'
 );
 
@@ -372,11 +377,11 @@ assert(runtimeSource.includes('CLEAN_REMOVED_FORMULA_DEFENSE_OUTPUTS'), 'Runtime
 assert(runtimeSource.includes('EngineeringPerformanceRefreshGovernor'), 'Runtime must delegate scheduled open-window refreshes to the performance governor when available.');
 assert(!runtimeSource.includes("scheduleOpenFormulaDefenseWindowRefresh('', { reason: 'guard-loop'"), 'Runtime guard loop must not trigger repeated visual refreshes.');
 assert(
-  index.includes('engineering-pump-formula-defense-live-audit.js?v=20260706-status-matrix-lock1'),
+  index.includes('engineering-pump-formula-defense-live-audit.js?v=20260711-idempotent-refresh-lock1'),
   'Index must cache-bust Pump Formula Defense live audit runtime.'
 );
 assert(
-  manifest.includes('Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260706-status-matrix-lock1'),
+  manifest.includes('Pump formula defense live audit cache key: engineering-pump-formula-defense-live-audit.js?v=20260711-idempotent-refresh-lock1'),
   'Manifest must document Pump Formula Defense live audit cache key.'
 );
 
