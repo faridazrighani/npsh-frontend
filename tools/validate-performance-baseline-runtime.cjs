@@ -19,7 +19,7 @@ const cacheKey = "engineering-performance-baseline-runtime.js?v=20260712-perform
 
 assert.ok(indexHtml.includes(cacheKey), "index.html must load the performance baseline runtime with its cache key.");
 assert.ok(
-  indexHtml.indexOf("engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-stale-promise-clean1") <
+  indexHtml.indexOf("engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-stale-promise-clean2") <
     indexHtml.indexOf(cacheKey),
   "Performance baseline must load after the Simulation Load Transaction Manager."
 );

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "local-live-sync-manifest.v1",
-  "generatedAt": "2026-07-12T13:39:40.959Z",
+  "generatedAt": "2026-07-12T13:47:17.477Z",
   "purpose": "Keeps the local preview server auditable against the deployed npsh.virsim.id package.",
   "status": "review-required",
   "syncChecks": {
@@ -16,8 +16,8 @@
     "frontendRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-frontend",
     "apiRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-api",
     "serverUrl": "http://127.0.0.1:4174/",
-    "frontendCommit": "f44dad81a53fbcbdcf5bf6dd8374adbe301c467d",
-    "frontendOriginMain": "f44dad81a53fbcbdcf5bf6dd8374adbe301c467d",
+    "frontendCommit": "3bf8985c0ef8a6e249376d9a6f133a29f8add772",
+    "frontendOriginMain": "3bf8985c0ef8a6e249376d9a6f133a29f8add772",
     "apiCommit": "ca5304fa90b2b24b091601ec9a06512ebb492496",
     "apiOriginMain": "ca5304fa90b2b24b091601ec9a06512ebb492496",
     "releaseIntegrity": {
@@ -29,9 +29,9 @@
     "index": {
       "path": "index.html",
       "sizeBytes": 71215,
-      "sha256": "e58a3303583348c466bbc40c865c70db1eaa8184478c6b535dbba39725931c77",
+      "sha256": "e2c91529a1cb21d17b31aeb374a1ce89dd5806c66ae4c557150db260832239aa",
       "canonicalSizeBytes": 70301,
-      "canonicalSha256": "8e149f5a28557de736ca151727216a2ae7bb9c961b6881d06788cb27ac9129a6",
+      "canonicalSha256": "40cfbe08e26236581e9c5f106f5c13878a790f12d99db4b5a90fe7f54efefd0d",
       "canonicalizedLineEndings": true,
       "cacheKeys": [
         "app.bundle.min.js?v=20260707-pipe-canvas-loss-label1",
@@ -83,7 +83,7 @@
         "engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-sink-solver-flash-lock1",
         "engineering-runtime-health-audit.js?v=20260710-runtime-health-audit-phase10-1",
         "engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3",
-        "engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-stale-promise-clean1",
+        "engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-stale-promise-clean2",
         "engineering-sink-input-stability-runtime.js?v=20260712-sink-solver-flash-lock1",
         "engineering-source-temperature-runtime.js?v=20260711-src-input-flash-lock1",
         "engineering-source-volumetric-only-runtime.js?v=20260711-src-input-flash-lock1",
@@ -593,7 +593,7 @@
         "canonicalSizeBytes": 67315,
         "canonicalSha256": "5888a369c66a5e4cc12930a38d3a53df59532c70716427ee64db70f54a73ae58",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-stale-promise-clean1"
+        "cacheKey": "engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-stale-promise-clean2"
       },
       {
         "path": "engineering-sink-input-stability-runtime.js",
@@ -669,9 +669,9 @@
         "path": "FILE_MANIFEST.md",
         "exists": true,
         "sizeBytes": 57142,
-        "sha256": "15eb1ffa01aabf3a4d3cc1a991622a2e3127bc779e2da61041ddc7e751059d86",
+        "sha256": "7dcc1ff384336cb29d42e35d23e31e10b93a1f04f847baa96b177a3ac76d1f1f",
         "canonicalSizeBytes": 56916,
-        "canonicalSha256": "8c3741864d932d23cbf26c877d6377edb3d42467adf2c83e135f3cc9e3d56576",
+        "canonicalSha256": "0741b33fcece5f9bab85580d39604944165df66b14adcdeb09e48ddbe53a047b",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
@@ -679,9 +679,9 @@
         "path": "index.html",
         "exists": true,
         "sizeBytes": 71215,
-        "sha256": "e58a3303583348c466bbc40c865c70db1eaa8184478c6b535dbba39725931c77",
+        "sha256": "e2c91529a1cb21d17b31aeb374a1ce89dd5806c66ae4c557150db260832239aa",
         "canonicalSizeBytes": 70301,
-        "canonicalSha256": "8e149f5a28557de736ca151727216a2ae7bb9c961b6881d06788cb27ac9129a6",
+        "canonicalSha256": "40cfbe08e26236581e9c5f106f5c13878a790f12d99db4b5a90fe7f54efefd0d",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
@@ -705,10 +705,10 @@
     "error": null,
     "index": {
       "statusCode": 200,
-      "sizeBytes": 71722,
-      "sha256": "5b8f2ad0aa6e69f9c13d738fa71cde3311b63b92d08dcfce0502fbe0ef061ed8",
-      "canonicalSizeBytes": 70304,
-      "canonicalSha256": "0de1d83cf9fd5b85b0a421f8923d63418258463942ed8867104e1bd200138897",
+      "sizeBytes": 71719,
+      "sha256": "54df2765a6680a68abf5bf11170bd9dbbbfcb798442e10971cd845019126bcf8",
+      "canonicalSizeBytes": 70301,
+      "canonicalSha256": "8e149f5a28557de736ca151727216a2ae7bb9c961b6881d06788cb27ac9129a6",
       "canonicalizedLineEndings": true,
       "cacheKeys": [
         "app.bundle.min.js?v=20260707-pipe-canvas-loss-label1",
@@ -740,7 +740,7 @@
         "engineering-open-file-readiness-gate.js?v=20260712-open-file-sink-flash-lock1",
         "engineering-parameter-task-runtime.js?v=20260626-head-power-audit1",
         "engineering-pdf-export-progress-runtime.js?v=20260707-pdf-export-progress1",
-        "engineering-performance-baseline-runtime.js?v=20260709-performance-baseline1",
+        "engineering-performance-baseline-runtime.js?v=20260712-performance-console-clean1",
         "engineering-performance-refresh-governor.js?v=20260629-live-evidence1",
         "engineering-pipe-canvas-hydraulic-label-runtime-20260707-pfv-loss-summary-clean1.js?v=20260711-reynolds-darcy-flash-lock1",
         "engineering-pipe-moody-chart-audit.js?v=20260708-pipe-moody-export-chart5",
@@ -760,7 +760,7 @@
         "engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-sink-solver-flash-lock1",
         "engineering-runtime-health-audit.js?v=20260710-runtime-health-audit-phase10-1",
         "engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3",
-        "engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-primary-apply-evidence-lock1",
+        "engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-stale-promise-clean1",
         "engineering-sink-input-stability-runtime.js?v=20260712-sink-solver-flash-lock1",
         "engineering-source-temperature-runtime.js?v=20260711-src-input-flash-lock1",
         "engineering-source-volumetric-only-runtime.js?v=20260711-src-input-flash-lock1",
@@ -773,7 +773,7 @@
     },
     "apiVersion": {
       "statusCode": 200,
-      "sha256": "f4d85b9b85fba0cbda77f29ac22cc8271c93ee50c07152d75f91431f6e90ee34",
+      "sha256": "8e3f5e7cdb80b78551ce3d01348de0794b8be939844514809d260d4249e6aa94",
       "payload": {
         "ok": true,
         "appName": "GhaniSIM1 NPSH",
@@ -922,19 +922,17 @@
             "parity.fingerprint"
           ]
         },
-        "generatedAt": "2026-07-12T13:39:39.824Z"
+        "generatedAt": "2026-07-12T13:47:16.530Z"
       }
     },
     "verifiedAssets": []
   },
   "differences": {
     "cacheKeysMissingOnLive": [
-      "engineering-performance-baseline-runtime.js?v=20260712-performance-console-clean1",
-      "engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-stale-promise-clean1"
+      "engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-stale-promise-clean2"
     ],
     "cacheKeysMissingLocally": [
-      "engineering-performance-baseline-runtime.js?v=20260709-performance-baseline1",
-      "engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-primary-apply-evidence-lock1"
+      "engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-stale-promise-clean1"
     ],
     "assetVerificationFailures": []
   },

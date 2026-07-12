@@ -116,12 +116,12 @@ const manifestSource = read(manifestPath);
 
 assertIncludes(
   indexSource,
-  'engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-stale-promise-clean1',
+  'engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-stale-promise-clean2',
   'index.html'
 );
 
 const appIndex = indexSource.indexOf('app.bundle.min.js?v=20260707-pipe-canvas-loss-label1');
-const managerIndex = indexSource.indexOf('engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-stale-promise-clean1');
+const managerIndex = indexSource.indexOf('engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-stale-promise-clean2');
 const readinessIndex = indexSource.indexOf('engineering-open-file-readiness-gate.js?v=20260712-open-file-sink-flash-lock1');
 assert(appIndex >= 0 && managerIndex > appIndex, 'simulation load transaction manager must load after app.bundle.min.js');
 assert(readinessIndex > managerIndex, 'open-file readiness gate must load after simulation load transaction manager');
