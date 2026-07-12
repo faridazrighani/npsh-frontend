@@ -120,7 +120,7 @@ assertIncludes(
 
 const appIndex = indexSource.indexOf('app.bundle.min.js?v=20260707-pipe-canvas-loss-label1');
 const managerIndex = indexSource.indexOf('engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-primary-apply-evidence-lock1');
-const readinessIndex = indexSource.indexOf('engineering-open-file-readiness-gate.js?v=20260711-open-file-hard-release1');
+const readinessIndex = indexSource.indexOf('engineering-open-file-readiness-gate.js?v=20260712-open-file-route-runtime-lock1');
 assert(appIndex >= 0 && managerIndex > appIndex, 'simulation load transaction manager must load after app.bundle.min.js');
 assert(readinessIndex > managerIndex, 'open-file readiness gate must load after simulation load transaction manager');
 

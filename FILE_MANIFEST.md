@@ -199,7 +199,7 @@ Realtime calculation defense cache key: engineering-realtime-calculation-defense
 Suction-only NPSHa runtime cache key: engineering-suction-only-npsha-runtime.js?v=20260711-suction-route-direction-lock1
 Calculation lifecycle runtime cache key: engineering-calculation-lifecycle-runtime.js?v=20260711-solver-always-calculates1
 Calculation progress overlay cache key: engineering-calculation-progress-overlay.js?v=20260707-calculation-progress-stuck-hide1
-Open file readiness gate cache key: engineering-open-file-readiness-gate.js?v=20260711-open-file-hard-release1
+Open file readiness gate cache key: engineering-open-file-readiness-gate.js?v=20260712-open-file-route-runtime-lock1
 Browser issues runtime cache key: engineering-browser-issues-runtime.js?v=20260620-orphan-label-cleanup1
 Pipe Properties cleanup runtime cache key: engineering-pipe-properties-cleanup-runtime.js?v=20260711-pipe-breakdown-decimals1
 Pipe Segments file runtime cache key: engineering-pipe-segments-file-runtime.js?v=20260630-pipe-properties-cleanup1

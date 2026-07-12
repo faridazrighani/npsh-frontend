@@ -36,7 +36,7 @@ assert(
   'Pump envelope warning cleanup should load after the protected app bundle.'
 );
 assert(
-  indexHtml.indexOf(scriptSrc) < indexHtml.indexOf('engineering-open-file-readiness-gate.js?v=20260711-open-file-hard-release1'),
+  indexHtml.indexOf(scriptSrc) < indexHtml.indexOf('engineering-open-file-readiness-gate.js?v=20260712-open-file-route-runtime-lock1'),
   'Pump envelope warning cleanup should run before open-file readiness checks.'
 );
 
