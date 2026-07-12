@@ -159,7 +159,7 @@ assert(!stableRuntime.includes("innerHTML"), "Stable runtime must not rebuild li
 assert(indexHtml.includes("engineering-src-canvas-parameter-runtime.js?v=20260712-route-warning-color-lock1"), "Index must load the global SRC realtime indicator runtime.");
 assert(indexHtml.includes("engineering-source-volumetric-only-runtime.js?v=20260711-src-input-flash-lock1"), "Index must load the Source volumetric-only runtime.");
 assert(indexHtml.includes("engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260706-fast-preview-preserve1"), "Index must load the global stable live-parameter runtime with a physical filename cache-bust.");
-assert(indexHtml.includes("engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-route-warning-color-lock1"), "Index must load the global SNK/pump hover-sync runtime.");
+assert(indexHtml.includes("engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-sink-solver-flash-lock1"), "Index must load the global SNK/pump hover-sync runtime.");
 assert(indexHtml.includes("engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2"), "Index must load the global decimal display lock.");
 
 assert(manifest.includes("Global live indicator engine-link validation"), "Manifest must document the global live indicator engine-link validation.");

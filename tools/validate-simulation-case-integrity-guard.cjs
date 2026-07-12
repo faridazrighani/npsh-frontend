@@ -91,7 +91,7 @@ assert(
   'Index must load the simulation case integrity guard with cache busting.'
 );
 assert(
-  indexSource.indexOf('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-route-warning-color-lock1')
+  indexSource.indexOf('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-sink-solver-flash-lock1')
     < indexSource.indexOf('engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3')
     && indexSource.indexOf('engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3')
     > indexSource.indexOf('engineering-realtime-calculation-defense.js?v=20260711-src-task-window-flash-lock1')

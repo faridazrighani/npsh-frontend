@@ -118,7 +118,7 @@ assert(source.includes('forceImmediate'), 'Governor must preserve an immediate r
 });
 
 assert(
-  index.includes('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-route-warning-color-lock1')
+  index.includes('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-sink-solver-flash-lock1')
     && index.includes('engineering-performance-refresh-governor.js?v=20260629-live-evidence1')
     && index.includes('engineering-pump-edit-fast-lane.js?v=20260710-pump-edit-manual-npshr-local1')
     && index.includes('engineering-realtime-calculation-defense.js?v=20260711-src-task-window-flash-lock1'),
@@ -137,9 +137,9 @@ assert(
   'Performance Refresh Governor and Pump edit fast lane must load before realtime defense starts scheduling linked view refreshes.'
 );
 assert(
-  index.indexOf('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-route-warning-color-lock1')
+  index.indexOf('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-sink-solver-flash-lock1')
     > index.indexOf('const diagnosticScripts = [')
-    && index.indexOf('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-route-warning-color-lock1')
+    && index.indexOf('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-sink-solver-flash-lock1')
       > index.indexOf('engineering-realtime-calculation-defense.js?v=20260711-src-task-window-flash-lock1'),
   'Route trace audit must remain deferred with diagnostic scripts so PageSpeed critical-path work stays calculation-only.'
 );

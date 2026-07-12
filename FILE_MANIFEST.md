@@ -187,7 +187,7 @@ Pipe source confidence map runtime cache key: engineering-pipe-source-confidence
 Pump nozzle simplify runtime cache key: engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5
 Analysis Report live runtime cache key: engineering-analysis-report-live-runtime.js?v=20260711-analysis-update-wrapper-lock1
 Head Power Audit Guard cache key: engineering-head-power-audit-guard.js?v=20260627-head-power-audit2
-Route audit cache key: engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-route-warning-color-lock1
+Route audit cache key: engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-sink-solver-flash-lock1
 Sink input stability runtime cache key: engineering-sink-input-stability-runtime.js?v=20260712-sink-solver-flash-lock1
 Simulation case integrity guard cache key: engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3
 Simulation load transaction manager cache key: engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-primary-apply-evidence-lock1
@@ -199,7 +199,7 @@ Realtime calculation defense cache key: engineering-realtime-calculation-defense
 Suction-only NPSHa runtime cache key: engineering-suction-only-npsha-runtime.js?v=20260711-suction-route-direction-lock1
 Calculation lifecycle runtime cache key: engineering-calculation-lifecycle-runtime.js?v=20260711-solver-always-calculates1
 Calculation progress overlay cache key: engineering-calculation-progress-overlay.js?v=20260707-calculation-progress-stuck-hide1
-Open file readiness gate cache key: engineering-open-file-readiness-gate.js?v=20260712-open-file-route-runtime-lock1
+Open file readiness gate cache key: engineering-open-file-readiness-gate.js?v=20260712-open-file-sink-flash-lock1
 Browser issues runtime cache key: engineering-browser-issues-runtime.js?v=20260620-orphan-label-cleanup1
 Pipe Properties cleanup runtime cache key: engineering-pipe-properties-cleanup-runtime.js?v=20260711-pipe-breakdown-decimals1
 Pipe Segments file runtime cache key: engineering-pipe-segments-file-runtime.js?v=20260712-pipe-segment-actions-lock1
