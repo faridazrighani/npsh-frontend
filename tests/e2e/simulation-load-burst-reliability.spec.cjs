@@ -10,8 +10,8 @@ async function waitForNpshApp(page) {
   await page.waitForFunction(() => (
     typeof window.updateSimulation === 'function'
     && window.EngineeringCalculationLifecycle?.version === 'engineering-calculation-lifecycle.v1'
-    && window.EngineeringSimulationLoadTransaction?.version === 'engineering-simulation-load-transaction-manager.v5-primary-apply-evidence-lock'
-    && window.EngineeringSimulationLoadTransaction?.cacheKey === '20260712-simulation-load-primary-apply-evidence-lock1'
+    && window.EngineeringSimulationLoadTransaction?.version === 'engineering-simulation-load-transaction-manager.v6-stale-promise-clean'
+    && window.EngineeringSimulationLoadTransaction?.cacheKey === '20260712-simulation-load-stale-promise-clean1'
     && window.EngineeringCalculationLifecycle?.cacheKey === '20260711-solver-always-calculates1'
   ), null, { timeout: 30000 });
 }
@@ -235,6 +235,15 @@ test('repeated case and external file loads keep Validate responsive', async ({ 
 
 test('rapid simulation case switching does not leave stale Calculating state', async ({ page }) => {
   await waitForNpshApp(page);
+  const pageErrors = [];
+  const consoleErrors = [];
+  const routinePerfLogs = [];
+  page.on('pageerror', (error) => pageErrors.push(`${error?.name || 'Error'}: ${error?.message || String(error)}`));
+  page.on('console', (message) => {
+    const text = message.text();
+    if (message.type() === 'error') consoleErrors.push(text);
+    if (/^\[PERF\]\s+(calculation-complete|update-simulation|simulation-load-abort)\b/.test(text)) routinePerfLogs.push(text);
+  });
 
   for (const caseId of ['simulation-case-1', 'simulation-case-4', 'simulation-case-6']) {
     await openSimulationCase(page, caseId);
@@ -242,12 +251,16 @@ test('rapid simulation case switching does not leave stale Calculating state', a
   }
 
   await waitForReady(page, 'rapid case burst');
+  await page.waitForTimeout(1200);
   await expectReadySnapshot(page, 'rapid case burst');
   const finalState = await assertValidateClickable(page);
   expect(finalState.lifecycle.status).toBe('current');
   expect(finalState.transaction.status).not.toBe('active');
   expect(finalState.disabled).toBe(false);
   expect(finalState.calculationBusy).toBe('false');
+  expect(pageErrors).toEqual([]);
+  expect(consoleErrors.filter((text) => /AbortError|openSimulationCaseSample|stale/i.test(text))).toEqual([]);
+  expect(routinePerfLogs).toEqual([]);
 });
 
 test('external file readiness releases from the completed canonical load transaction', async ({ page }) => {

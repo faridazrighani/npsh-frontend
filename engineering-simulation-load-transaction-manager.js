@@ -6,8 +6,8 @@
 })((root) => {
   'use strict';
 
-  const VERSION = 'engineering-simulation-load-transaction-manager.v5-primary-apply-evidence-lock';
-  const CACHE_KEY = '20260712-simulation-load-primary-apply-evidence-lock1';
+  const VERSION = 'engineering-simulation-load-transaction-manager.v6-stale-promise-clean';
+  const CACHE_KEY = '20260712-simulation-load-stale-promise-clean1';
   const ACTIVE_CLASS = 'npsh-simulation-load-transaction-active';
   const CASE_OPEN_SELECTOR = '[data-simulation-case-action="open"][data-simulation-case-id]';
   const SAMPLE_DIALOG_OPEN_TEXT = /open\s+sample\s+case/i;
@@ -764,18 +764,30 @@
     }
   }
 
-  function assertSessionStillCurrent(sessionId, label = 'simulation-load') {
-    if (!sessionId || isCurrent(sessionId)) return true;
-    dispatch(EVENT_NAMES.stale, {
+  function markStaleResultIgnored(sessionId, label = 'simulation-load') {
+    const detail = {
       version: VERSION,
       cacheKey: CACHE_KEY,
       sessionId,
       currentSessionId: activeSession?.sessionId || '',
       label,
-      ignoredAt: wallTimeIso()
+      ignoredAt: wallTimeIso(),
+      ignored: true,
+      stale: true,
+      aborted: true
+    };
+    dispatch(EVENT_NAMES.stale, {
+      ...detail
     });
     releaseRunCommandLocks('simulation-load-transaction-stale-result');
     scheduleSettleWatchdogs('simulation-load-transaction-stale-result');
+    root.__npshLastIgnoredSimulationLoadResult = detail;
+    return detail;
+  }
+
+  function assertSessionStillCurrent(sessionId, label = 'simulation-load') {
+    if (!sessionId || isCurrent(sessionId)) return true;
+    markStaleResultIgnored(sessionId, label);
     throw createAbortError(`Ignored stale ${label} result from a previous simulation load.`);
   }
 
@@ -1254,12 +1266,17 @@
         ? activeSession
         : beginTransaction('simulation-case', detail);
       return Promise.resolve(original.call(this, entry, ...args)).then((result) => {
-        assertSessionStillCurrent(session.sessionId, 'openSimulationCaseSample.resolve');
+        if (!isCurrent(session.sessionId)) {
+          return markStaleResultIgnored(session.sessionId, 'openSimulationCaseSample.resolve');
+        }
         if (isCurrent(session.sessionId) && !sessionById(session.sessionId)?.awaitingAuthoritativeCalculation) {
           complete(session.sessionId, { reason: 'simulation-case-opened' });
         }
         return result;
       }, (error) => {
+        if (!isCurrent(session.sessionId) && error?.name === 'AbortError') {
+          return markStaleResultIgnored(session.sessionId, 'openSimulationCaseSample.reject');
+        }
         if (isCurrent(session.sessionId)) fail(session.sessionId, error);
         throw error;
       });

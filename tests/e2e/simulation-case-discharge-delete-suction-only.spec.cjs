@@ -8,7 +8,7 @@ async function waitForNpshApp(page) {
     typeof window.updateSimulation === 'function'
     && window.EngineeringSuctionOnlyNpshaRuntime
     && window.EngineeringCalculationLifecycle?.version === 'engineering-calculation-lifecycle.v1'
-    && window.EngineeringSimulationLoadTransaction?.version === 'engineering-simulation-load-transaction-manager.v5-primary-apply-evidence-lock'
+    && window.EngineeringSimulationLoadTransaction?.version === 'engineering-simulation-load-transaction-manager.v6-stale-promise-clean'
   ), null, { timeout: 30000 });
 }
 

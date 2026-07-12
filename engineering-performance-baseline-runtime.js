@@ -6,8 +6,8 @@
 })((root) => {
   'use strict';
 
-  const VERSION = 'engineering-performance-baseline.v1';
-  const CACHE_KEY = '20260709-performance-baseline1';
+  const VERSION = 'engineering-performance-baseline.v2-console-clean';
+  const CACHE_KEY = '20260712-performance-console-clean1';
   const SAMPLE_EVENT = 'npsh:performance-baseline-sample';
   const MAX_SAMPLES = 120;
   const LOAD_STUCK_MS = 15000;
@@ -60,7 +60,8 @@
     unhandledRejections: 0,
     longTasks: 0,
     staleResultsRejected: 0,
-    commandClicks: 0
+    commandClicks: 0,
+    orphanCalculationCompletionsIgnored: 0
   };
 
   function hasDocument() {
@@ -177,15 +178,18 @@
   function shouldLog(type, detail = {}) {
     if (root.__NPSH_PERFORMANCE_BASELINE_SILENT__ === true) return false;
     if (detail?.silent === true) return false;
+    if ([
+      'simulation-load-failed',
+      'simulation-load-stuck',
+      'calculation-failed',
+      'calculation-stuck'
+    ].includes(type)) return true;
+    if (root.__NPSH_PERFORMANCE_BASELINE_VERBOSE__ !== true) return false;
     return [
       'app-ready',
       'simulation-load-complete',
-      'simulation-load-failed',
       'simulation-load-abort',
-      'simulation-load-stuck',
       'calculation-complete',
-      'calculation-failed',
-      'calculation-stuck',
       'apply-simulation-state',
       'update-simulation'
     ].includes(type);
@@ -334,8 +338,11 @@
 
   function finishCalculation(detail = {}) {
     if (!activeCalculation) {
-      record(detail.status === 'failed' ? 'calculation-failed' : 'calculation-complete', detail);
-      return;
+      if (String(detail.status || '').toLowerCase() === 'failed') {
+        return record('calculation-failed', detail);
+      }
+      counters.orphanCalculationCompletionsIgnored += 1;
+      return null;
     }
     const current = activeCalculation;
     activeCalculation = null;

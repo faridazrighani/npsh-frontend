@@ -12,7 +12,7 @@ async function waitForApp(page) {
   await page.evaluate(() => window.__npshLoadSupport?.());
   await page.waitForFunction(() => (
     typeof window.updateSimulation === 'function'
-    && window.EngineeringSimulationLoadTransaction?.version === 'engineering-simulation-load-transaction-manager.v5-primary-apply-evidence-lock'
+    && window.EngineeringSimulationLoadTransaction?.version === 'engineering-simulation-load-transaction-manager.v6-stale-promise-clean'
   ), null, { timeout: 30000 });
 }
 

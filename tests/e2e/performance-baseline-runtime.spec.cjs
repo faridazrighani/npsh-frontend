@@ -7,9 +7,9 @@ async function waitForNpshApp(page) {
   await page.evaluate(() => window.__npshLoadSupport?.());
   await page.waitForFunction(() => (
     typeof window.updateSimulation === 'function'
-    && window.EngineeringPerformanceBaselineRuntime?.version === 'engineering-performance-baseline.v1'
-    && window.EngineeringPerformanceBaselineRuntime?.cacheKey === '20260709-performance-baseline1'
-    && window.EngineeringSimulationLoadTransaction?.version === 'engineering-simulation-load-transaction-manager.v5-primary-apply-evidence-lock'
+    && window.EngineeringPerformanceBaselineRuntime?.version === 'engineering-performance-baseline.v2-console-clean'
+    && window.EngineeringPerformanceBaselineRuntime?.cacheKey === '20260712-performance-console-clean1'
+    && window.EngineeringSimulationLoadTransaction?.version === 'engineering-simulation-load-transaction-manager.v6-stale-promise-clean'
     && window.EngineeringCalculationLifecycle?.version === 'engineering-calculation-lifecycle.v1'
   ), null, { timeout: 30000 });
   await page.evaluate(() => window.EngineeringPerformanceBaselineRuntime.reset());
@@ -69,7 +69,7 @@ test('performance baseline records simulation load and canvas metrics without bl
     }))
   }));
 
-  expect(baseline.snapshot.cacheKey).toBe('20260709-performance-baseline1');
+  expect(baseline.snapshot.cacheKey).toBe('20260712-performance-console-clean1');
   expect(baseline.snapshot.canvasObjects).toBeGreaterThanOrEqual(3);
   expect(baseline.snapshot.validateDisabled).toBe(false);
   expect(baseline.snapshot.validateBusy).toBe(false);

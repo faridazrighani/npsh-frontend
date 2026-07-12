@@ -15,11 +15,11 @@ const runtimeSource = fs.readFileSync(runtimePath, "utf8");
 const indexHtml = fs.readFileSync(indexPath, "utf8");
 const manifest = fs.readFileSync(manifestPath, "utf8");
 const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf8"));
-const cacheKey = "engineering-performance-baseline-runtime.js?v=20260709-performance-baseline1";
+const cacheKey = "engineering-performance-baseline-runtime.js?v=20260712-performance-console-clean1";
 
 assert.ok(indexHtml.includes(cacheKey), "index.html must load the performance baseline runtime with its cache key.");
 assert.ok(
-  indexHtml.indexOf("engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-primary-apply-evidence-lock1") <
+  indexHtml.indexOf("engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-stale-promise-clean1") <
     indexHtml.indexOf(cacheKey),
   "Performance baseline must load after the Simulation Load Transaction Manager."
 );
@@ -45,8 +45,8 @@ assert.ok(
 
 [
   "EngineeringPerformanceBaselineRuntime",
-  "engineering-performance-baseline.v1",
-  "20260709-performance-baseline1",
+  "engineering-performance-baseline.v2-console-clean",
+  "20260712-performance-console-clean1",
   "npsh:performance-baseline-sample",
   "npsh:simulation-load-transaction-begin",
   "npsh:simulation-load-transaction-complete",
@@ -81,8 +81,8 @@ assert.ok(
 
 delete require.cache[require.resolve(runtimePath)];
 const api = require(runtimePath);
-assert.equal(api.version, "engineering-performance-baseline.v1", "Runtime API version mismatch.");
-assert.equal(api.cacheKey, "20260709-performance-baseline1", "Runtime API cache key mismatch.");
+assert.equal(api.version, "engineering-performance-baseline.v2-console-clean", "Runtime API version mismatch.");
+assert.equal(api.cacheKey, "20260712-performance-console-clean1", "Runtime API cache key mismatch.");
 assert.equal(api.sampleEvent, "npsh:performance-baseline-sample", "Runtime must expose the sample event.");
 ["install", "record", "snapshot", "samples", "reset", "beginLoad", "finishLoad"].forEach((method) => {
   assert.equal(typeof api[method], "function", `Runtime API must expose ${method}.`);
@@ -96,6 +96,15 @@ assert.equal(afterSamples.length, 1, "Runtime must store baseline samples.");
 assert.equal(afterSamples[0].type, "validator-sample", "Runtime sample type must be retained.");
 assert.equal(afterSamples[0].durationMs, 12.3, "Runtime must normalize sample durations.");
 assert.equal(afterSamples[0].caseId, "simulation-case-6", "Runtime must retain simple sample detail.");
-assert.equal(before.version, "engineering-performance-baseline.v1", "Snapshot must include runtime version.");
+assert.equal(before.version, "engineering-performance-baseline.v2-console-clean", "Snapshot must include runtime version.");
+
+api.reset();
+for (let index = 0; index < 12; index += 1) api.handleCalculationLifecycle({ status: "current" });
+assert.equal(api.samples().length, 0, "Orphan Current pulses must not create calculation-complete samples.");
+assert.equal(api.snapshot().counters.orphanCalculationCompletionsIgnored, 12, "Orphan Current pulses must be counted without console/sample spam.");
+api.handleCalculationLifecycle({ status: "calculating", calculationMode: "validator" });
+api.handleCalculationLifecycle({ status: "current", calculationMode: "validator" });
+api.handleCalculationLifecycle({ status: "current", calculationMode: "validator" });
+assert.equal(api.samples().filter((sample) => sample.type === "calculation-complete").length, 1, "One active calculation must create exactly one completion sample.");
 
 console.log("Performance baseline runtime validation passed.");

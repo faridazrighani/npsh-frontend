@@ -19,12 +19,12 @@ const cacheKey = "engineering-runtime-health-audit.js?v=20260710-runtime-health-
 
 assert.ok(indexHtml.includes(cacheKey), "index.html must load the runtime health audit with its cache key.");
 assert.ok(
-  indexHtml.indexOf("engineering-performance-baseline-runtime.js?v=20260709-performance-baseline1") <
+  indexHtml.indexOf("engineering-performance-baseline-runtime.js?v=20260712-performance-console-clean1") <
     indexHtml.indexOf(cacheKey),
   "Runtime health audit must load after the performance baseline runtime."
 );
 assert.ok(
-  indexHtml.indexOf("engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-primary-apply-evidence-lock1") <
+  indexHtml.indexOf("engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-stale-promise-clean1") <
     indexHtml.indexOf(cacheKey),
   "Runtime health audit must load after the Simulation Load Transaction Manager."
 );

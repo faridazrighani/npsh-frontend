@@ -10,7 +10,7 @@ async function waitForApp(page) {
   await page.waitForFunction(() => (
     typeof window.updateSimulation === 'function'
     && window.EngineeringPumpEnvelopeWarningCleanup?.version === '2026.07-warning-lifecycle-cleanup3-current-request-lock'
-    && window.EngineeringSimulationLoadTransaction?.version === 'engineering-simulation-load-transaction-manager.v5-primary-apply-evidence-lock'
+    && window.EngineeringSimulationLoadTransaction?.version === 'engineering-simulation-load-transaction-manager.v6-stale-promise-clean'
   ), null, { timeout: 30000 });
 }
 
