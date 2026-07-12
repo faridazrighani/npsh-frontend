@@ -179,17 +179,21 @@ assert(inputStabilityRuntimeSource.includes('taskWindow?.dataset?.nodeId'), 'SNK
 assert(inputStabilityRuntimeSource.includes('event.stopImmediatePropagation()'), 'SNK input fast lane must block competing legacy input listeners.');
 assert(inputStabilityRuntimeSource.includes('INPUT_IDLE_MS = 3000'), 'SNK input fast lane must debounce backend work until typing pauses.');
 assert(inputStabilityRuntimeSource.includes('state.notifiedValue === preview[key]'), 'SNK draft cleanup must wait until the exact committed value has completed its transaction.');
-assert(inputStabilityRuntimeSource.includes('engineering-sink-input-stability-runtime.v13-canonical-control-sync'), 'SNK input fast lane must use the canonical-control lifecycle lock.');
+assert(inputStabilityRuntimeSource.includes('engineering-sink-input-stability-runtime.v14-solver-flash-lock'), 'SNK input fast lane must use the solver flash lifecycle lock.');
+assert(inputStabilityRuntimeSource.includes('markCanonicalTaskLayout'), 'SNK input runtime must retain the canonical task-window DOM identity.');
+assert(inputStabilityRuntimeSource.includes('syncCanonicalTaskWindow'), 'SNK readout refresh must use the lightweight canonical task-window sync.');
+assert(inputStabilityRuntimeSource.includes('beginSolverTaskLock'), 'Validate must lock current SNK user inputs before solver lifecycle updates.');
+assert(inputStabilityRuntimeSource.includes('root.addEventListener("input", handleInputEvent, true)'), 'SNK numeric fast lane must capture native input before document-level legacy refresh handlers.');
 assert(inputStabilityRuntimeSource.includes('{ refreshInputs: false }'), 'SNK demand flow must synchronize the SRC model only once when the committed autosolve starts.');
 assert(!inputStabilityRuntimeSource.includes('refreshVisibleAuditSurfaces'), 'SNK keystrokes must not synchronously refresh every audit and canvas surface.');
 assert(!inputStabilityRuntimeSource.includes('ensureDefaultSinkCanvasRows'), 'SNK keystrokes must not rebuild the canvas ribbon rows.');
 assert(!inputStabilityRuntimeSource.includes('EngineeringRealtimeCalculationDefense?.markStale'), 'SNK keystrokes must defer global Stale propagation until the committed autosolve transaction starts.');
-assert(inputStabilityRuntimeSource.includes('document.addEventListener("focusin", handleEditFocus, true)'), 'SNK task-window retention must start before the first typed character.');
-assert(inputStabilityRuntimeSource.includes('document.addEventListener("pointerdown", handleEditFocus, true)'), 'SNK pointer interaction must protect the active task window from delayed repaint replacement.');
+assert(inputStabilityRuntimeSource.includes('root.addEventListener("focusin", handleEditFocus, true)'), 'SNK task-window retention must start before the first typed character.');
+assert(inputStabilityRuntimeSource.includes('root.addEventListener("pointerdown", handleEditFocus, true)'), 'SNK pointer interaction must protect the active task window from delayed repaint replacement.');
 assert(!inputStabilityRuntimeSource.includes('setCanvasPreviewRow'), 'SNK keystrokes must not mutate solved canvas readouts before backend completion.');
 assert(!inputStabilityRuntimeSource.includes('refreshSinkPresentation'), 'SNK canvas/task surfaces must refresh through the canonical backend-complete lifecycle.');
 assert(inputStabilityRuntimeSource.includes('document.activeElement === context.input'), 'SNK debounce must not solve a partial value while its field remains focused.');
-assert(inputStabilityRuntimeSource.includes('document.addEventListener("focusout", handleEditCommit, true)'), 'SNK focus exit must commit exactly one backend transaction.');
+assert(inputStabilityRuntimeSource.includes('root.addEventListener("focusout", handleEditCommit, true)'), 'SNK focus exit must commit exactly one backend transaction.');
 assert(inputStabilityRuntimeSource.includes('event.key !== "Enter"'), 'SNK Enter must provide an explicit keyboard commit path.');
 assert(inputStabilityRuntimeSource.includes('function restoreDraftInputs'), 'SNK repaint recovery must restore the latest complete draft to replacement controls.');
 assert(inputStabilityRuntimeSource.includes('[`${context.key}Text`]'), 'SNK draft state must retain the exact typed text, not only its parsed number.');
@@ -283,12 +287,12 @@ assert(
   'Index must load the route trace audit runtime with the SNK boundary mode lock cache key.'
 );
 assert(
-  index.indexOf('engineering-sink-input-stability-runtime.js?v=20260712-sink-canonical-control-sync1')
+  index.indexOf('engineering-sink-input-stability-runtime.js?v=20260712-sink-solver-flash-lock1')
     < index.indexOf('engineering-source-volumetric-only-runtime.js?v=20260711-src-input-flash-lock1'),
   'SNK input stability runtime must install before legacy SRC/SNK flow synchronization listeners.'
 );
 assert(
-  manifest.includes('Sink input stability runtime cache key: engineering-sink-input-stability-runtime.js?v=20260712-sink-canonical-control-sync1'),
+  manifest.includes('Sink input stability runtime cache key: engineering-sink-input-stability-runtime.js?v=20260712-sink-solver-flash-lock1'),
   'Manifest must lock the SNK input stability cache key.'
 );
 assert(

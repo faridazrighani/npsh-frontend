@@ -188,7 +188,7 @@ Pump nozzle simplify runtime cache key: engineering-pump-nozzle-simplify-runtime
 Analysis Report live runtime cache key: engineering-analysis-report-live-runtime.js?v=20260711-analysis-update-wrapper-lock1
 Head Power Audit Guard cache key: engineering-head-power-audit-guard.js?v=20260627-head-power-audit2
 Route audit cache key: engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-route-warning-color-lock1
-Sink input stability runtime cache key: engineering-sink-input-stability-runtime.js?v=20260712-sink-canonical-control-sync1
+Sink input stability runtime cache key: engineering-sink-input-stability-runtime.js?v=20260712-sink-solver-flash-lock1
 Simulation case integrity guard cache key: engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3
 Simulation load transaction manager cache key: engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-primary-apply-evidence-lock1
 Performance baseline runtime cache key: engineering-performance-baseline-runtime.js?v=20260709-performance-baseline1
@@ -202,7 +202,7 @@ Calculation progress overlay cache key: engineering-calculation-progress-overlay
 Open file readiness gate cache key: engineering-open-file-readiness-gate.js?v=20260712-open-file-route-runtime-lock1
 Browser issues runtime cache key: engineering-browser-issues-runtime.js?v=20260620-orphan-label-cleanup1
 Pipe Properties cleanup runtime cache key: engineering-pipe-properties-cleanup-runtime.js?v=20260711-pipe-breakdown-decimals1
-Pipe Segments file runtime cache key: engineering-pipe-segments-file-runtime.js?v=20260630-pipe-properties-cleanup1
+Pipe Segments file runtime cache key: engineering-pipe-segments-file-runtime.js?v=20260712-pipe-segment-actions-lock1
 Formula Defense UI runtime cache key: engineering-formula-defense-ui-20260628-physical-cache1.js?v=20260630-pipe-properties-live1
 Formula Defense UI KaTeX CSS cache key: vendor/katex/katex.min.css?v=20260630-pipe-properties-live1
 Canvas context dock cache key: engineering-canvas-context-dock-20260628-canvas-dock-scroll-anchor1.js?v=20260707-clear-keeps-fluid-basis1

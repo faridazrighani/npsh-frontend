@@ -20,8 +20,8 @@ const manifest = fs.existsSync(MANIFEST_FILE) ? read(MANIFEST_FILE) : '';
 const runtime = require(RUNTIME_FILE);
 const CLEANUP_RUNTIME_URL = 'engineering-pipe-properties-cleanup-runtime.js?v=20260711-pipe-breakdown-decimals1';
 
-assert.strictEqual(runtime.version, 'engineering-pipe-segments-file-runtime.v4');
-assert.strictEqual(runtime.cacheKey, '20260630-pipe-properties-cleanup1');
+assert.strictEqual(runtime.version, 'engineering-pipe-segments-file-runtime.v5-controls-persistence');
+assert.strictEqual(runtime.cacheKey, '20260712-pipe-segment-actions-lock1');
 assert.strictEqual(runtime.schemaType, 'pipe-segments-export.v1');
 assert.strictEqual(
   packageJson.scripts?.['validate:pipe-segments-file-runtime'],
@@ -34,12 +34,12 @@ assert.strictEqual(
   'package.json must expose the Pipe Segments browser E2E.'
 );
 assert(
-  indexHtml.includes('engineering-pipe-segments-file-runtime.js?v=20260630-pipe-properties-cleanup1'),
+  indexHtml.includes('engineering-pipe-segments-file-runtime.js?v=20260712-pipe-segment-actions-lock1'),
   'index.html must cache-bust and load the Pipe Segments file runtime.'
 );
 assert(
   indexHtml.indexOf(CLEANUP_RUNTIME_URL)
-    < indexHtml.indexOf('engineering-pipe-segments-file-runtime.js?v=20260630-pipe-properties-cleanup1'),
+    < indexHtml.indexOf('engineering-pipe-segments-file-runtime.js?v=20260712-pipe-segment-actions-lock1'),
   'Pipe Properties cleanup runtime must load before Pipe Segments runtime.'
 );
 assert(
@@ -48,6 +48,10 @@ assert(
 );
 assert(runtimeSource.includes('dataset.pipeSegmentsImport'), 'Runtime must create an Import control.');
 assert(runtimeSource.includes('dataset.pipeSegmentsExport'), 'Runtime must create an Export control.');
+assert(runtimeSource.includes('syncControls(taskWindow || document)'), 'Direct Pipe render must restore Import/Export controls synchronously.');
+assert(runtimeSource.includes('mutationNeedsImmediateControlsSync'), 'DOM replacement must restore Import/Export controls before a delayed fallback.');
+assert(runtimeSource.includes('removeOrphanedControls'), 'Runtime must remove detached action bars without suppressing current controls.');
+assert(runtimeSource.includes('display: flex !important'), 'Pipe Segment actions must remain visibly rendered.');
 assert(runtimeSource.includes('EngineeringRealtimeCalculationDefense.markStale'), 'Import must mark the calculation stale through the realtime defense bridge.');
 assert(runtimeSource.includes('engineering-pipe-segments-imported'), 'Import must dispatch a browser event for audit/E2E visibility.');
 assert(runtimeSource.includes('application/json'), 'Exported local file must be JSON content.');
@@ -161,7 +165,7 @@ assert.strictEqual(global.__engineeringCalculationDefenseRealtimeState.status, '
 
 if (manifest) {
   assert(manifest.includes('engineering-pipe-segments-file-runtime.js'), 'FILE_MANIFEST must mention the Pipe Segments file runtime.');
-  assert(manifest.includes('20260630-pipe-properties-cleanup1'), 'FILE_MANIFEST must mention the Pipe Segments file cache key.');
+  assert(manifest.includes('20260712-pipe-segment-actions-lock1'), 'FILE_MANIFEST must mention the Pipe Segments file cache key.');
 }
 
 console.log('Pipe Segments file runtime validation passed: schema, filename, cache key, import/export controls, and stale marking are locked.');

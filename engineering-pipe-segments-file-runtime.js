@@ -1,14 +1,16 @@
 (() => {
   const root = typeof window !== 'undefined' ? window : globalThis;
-  const VERSION = 'engineering-pipe-segments-file-runtime.v4';
-  const CACHE_KEY = '20260630-pipe-properties-cleanup1';
+  const VERSION = 'engineering-pipe-segments-file-runtime.v5-controls-persistence';
+  const CACHE_KEY = '20260712-pipe-segment-actions-lock1';
   const SCHEMA_TYPE = 'pipe-segments-export.v1';
   const STYLE_ID = 'engineering-pipe-segments-file-style';
   const ACTIONS_CLASS = 'pipe-segments-file-actions';
   const STATUS_CLASS = 'pipe-segments-file-status';
   const SCROLL_GUARD_ATTR = 'pipeSegmentsScrollGuard';
+  const SEGMENT_TABLE_SELECTOR = '#pipeSegmentTable, table.segment-table';
   const segmentScrollMemory = new Map();
   let renderSidebarScrollRetentionWrapped = false;
+  let controlsSyncInProgress = false;
   const REMOVED_SEGMENT_FIELDS = new Set([
     'startElevation',
     'endElevation'
@@ -240,7 +242,7 @@
 
   function pipeSegmentTables(scope = document) {
     if (typeof document === 'undefined') return [];
-    return Array.from((scope || document).querySelectorAll?.('#pipeSegmentTable, table.segment-table') || [])
+    return Array.from((scope || document).querySelectorAll?.(SEGMENT_TABLE_SELECTOR) || [])
       .filter((table) => table.id === 'pipeSegmentTable' || table.querySelector?.('.segment-input'));
   }
 
@@ -353,6 +355,7 @@
       }
       const result = originalRenderSidebar.apply(this, arguments);
       if (typeof document !== 'undefined' && isPipeRender) {
+        syncControls(taskWindow || document);
         root.EngineeringPipePropertiesCleanupRuntime?.clean?.(document, { capture: false });
         scheduleSegmentScrollRestoreForKeys(keys);
       }
@@ -487,12 +490,17 @@
     style.id = STYLE_ID;
     style.textContent = `
 .pipe-segments-file-actions {
-  display: flex;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
   justify-content: flex-end;
   align-items: center;
   gap: 6px;
   margin: 6px 0 0 auto;
   min-height: 26px;
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 2;
 }
 .pipe-segments-file-btn {
   min-height: 24px;
@@ -527,12 +535,46 @@
     document.head.appendChild(style);
   }
 
+  function controlsAnchorForTable(table) {
+    return table?.closest?.('.segment-table-scroll') || table || null;
+  }
+
+  function isControlsAnchor(element) {
+    return !!element && (
+      element.matches?.(SEGMENT_TABLE_SELECTOR)
+      || !!element.querySelector?.(SEGMENT_TABLE_SELECTOR)
+    );
+  }
+
+  function removeOrphanedControls(scope = document) {
+    let removed = 0;
+    Array.from((scope || document).querySelectorAll?.(`.${ACTIONS_CLASS}`) || []).forEach((actions) => {
+      if (isControlsAnchor(actions.previousElementSibling)) return;
+      actions.remove();
+      removed += 1;
+    });
+    return removed;
+  }
+
+  function keepControlsVisible(actions, pipeId) {
+    if (!actions) return null;
+    actions.hidden = false;
+    actions.removeAttribute('hidden');
+    actions.setAttribute('aria-hidden', 'false');
+    actions.dataset.pipeId = pipeId || actions.dataset.pipeId || '';
+    return actions;
+  }
+
   function createControls(table) {
-    const scroll = table.closest?.('.segment-table-scroll') || table;
-    const parent = scroll.parentElement;
-    if (!parent || parent.querySelector(`.${ACTIONS_CLASS}`)) return;
+    const scroll = controlsAnchorForTable(table);
+    const parent = scroll?.parentElement;
+    if (!parent) return null;
     const context = table.closest?.('.task-window, .persistent-object-properties-task-window') || parent;
     const pipeId = resolvePipeId('', context);
+    const existing = scroll.nextElementSibling?.matches?.(`.${ACTIONS_CLASS}`)
+      ? scroll.nextElementSibling
+      : null;
+    if (existing) return keepControlsVisible(existing, pipeId);
 
     const actions = document.createElement('div');
     actions.className = ACTIONS_CLASS;
@@ -584,19 +626,44 @@
 
     actions.append(status, importButton, exportButton, input);
     scroll.insertAdjacentElement('afterend', actions);
+    return keepControlsVisible(actions, pipeId);
   }
 
   function syncControls(scope = document) {
     if (typeof document === 'undefined') return 0;
-    wrapRenderSidebarScrollRetention();
-    injectStyles();
-    const pipeTables = pipeSegmentTables(scope);
-    pipeTables.forEach(attachSegmentScrollGuard);
-    pipeTables.forEach(createControls);
-    restoreSegmentScrollPositions(scope);
-    root.EngineeringPipePropertiesCleanupRuntime?.clean?.(scope, { capture: false });
-    root.EngineeringPipePropertiesCleanupRuntime?.restoreStableState?.(document);
-    return pipeTables.length;
+    if (controlsSyncInProgress) return pipeSegmentTables(scope).length;
+    controlsSyncInProgress = true;
+    try {
+      wrapRenderSidebarScrollRetention();
+      injectStyles();
+      removeOrphanedControls(scope);
+      const pipeTables = pipeSegmentTables(scope);
+      pipeTables.forEach(attachSegmentScrollGuard);
+      pipeTables.forEach(createControls);
+      restoreSegmentScrollPositions(scope);
+      root.EngineeringPipePropertiesCleanupRuntime?.clean?.(scope, { capture: false });
+      root.EngineeringPipePropertiesCleanupRuntime?.restoreStableState?.(document);
+      return pipeTables.length;
+    } finally {
+      controlsSyncInProgress = false;
+    }
+  }
+
+  function mutationNeedsImmediateControlsSync(mutations = []) {
+    return mutations.some((mutation) => {
+      const addedSegmentTable = Array.from(mutation.addedNodes || []).some((node) => (
+        node?.nodeType === 1
+        && (node.matches?.(SEGMENT_TABLE_SELECTOR) || node.querySelector?.(SEGMENT_TABLE_SELECTOR))
+      ));
+      const removedControlsOrTable = Array.from(mutation.removedNodes || []).some((node) => (
+        node?.nodeType === 1
+        && (
+          node.matches?.(`.${ACTIONS_CLASS}, ${SEGMENT_TABLE_SELECTOR}`)
+          || node.querySelector?.(`.${ACTIONS_CLASS}, ${SEGMENT_TABLE_SELECTOR}`)
+        )
+      ));
+      return addedSegmentTable || removedControlsOrTable;
+    });
   }
 
   function install() {
@@ -608,9 +675,13 @@
     root.__engineeringPipeSegmentsFileRuntimeInstalled = true;
     syncControls(document);
     let pending = 0;
-    const observer = new MutationObserver(() => {
+    const observer = new MutationObserver((mutations) => {
       window.clearTimeout(pending);
       root.EngineeringPipePropertiesCleanupRuntime?.rememberStableState?.(document);
+      if (mutationNeedsImmediateControlsSync(mutations)) {
+        syncControls(document);
+        return;
+      }
       pending = window.setTimeout(() => syncControls(document), 24);
     });
     observer.observe(document.body || document.documentElement, { childList: true, subtree: true });

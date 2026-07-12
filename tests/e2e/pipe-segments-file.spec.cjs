@@ -131,7 +131,7 @@ async function waitForNpshApp(page) {
     && typeof window.openPipePropertiesTaskWindow === 'function'
     && typeof window.renderSidebar === 'function'
     && window.EngineeringPipePropertiesCleanupRuntime?.version === 'engineering-pipe-properties-cleanup-runtime.v2-breakdown-decimals'
-    && window.EngineeringPipeSegmentsFileRuntime?.version === 'engineering-pipe-segments-file-runtime.v4'
+    && window.EngineeringPipeSegmentsFileRuntime?.version === 'engineering-pipe-segments-file-runtime.v5-controls-persistence'
     && window.EngineeringPipeMoodyChartAudit?.version === 'engineering-pipe-moody-chart-audit.v9'
     && window.EngineeringRealtimeCalculationDefense?.version === 'engineering-realtime-calculation-defense.v18-src-task-window-flash-lock'
   ), null, { timeout: 30000 });
@@ -314,6 +314,78 @@ test('Pipe Segments can be exported and imported as local .v1 files without losi
     staleStatus: importedState.realtime.status,
     screenshotPath
   }, null, 2));
+});
+
+test('Pipe Segments Import and Export controls remain visible through rerender and DOM replacement', async ({ page }) => {
+  await waitForNpshApp(page);
+  await openPipeSegments(page);
+
+  const immediateRenders = await page.evaluate(() => {
+    const taskWindow = document.querySelector('.persistent-object-properties-task-window[data-kind="pipe"][data-node-id="PIPE-D"]')
+      || document.querySelector('.task-window[data-task-node-id="PIPE-D"]')
+      || document.querySelector('.persistent-object-properties-task-window[data-kind="pipe"]');
+    const snapshots = [];
+    for (let index = 0; index < 12; index += 1) {
+      window.renderSidebar('PIPE-D', { taskWindow, skipDismissedGuard: true });
+      const table = taskWindow.querySelector('#pipeSegmentTable');
+      const anchor = table?.closest('.segment-table-scroll') || table;
+      const actions = anchor?.nextElementSibling;
+      snapshots.push({
+        index,
+        actions: taskWindow.querySelectorAll('.pipe-segments-file-actions').length,
+        paired: !!actions?.matches('.pipe-segments-file-actions'),
+        importCount: actions?.querySelectorAll('[data-pipe-segments-import]').length || 0,
+        exportCount: actions?.querySelectorAll('[data-pipe-segments-export]').length || 0,
+        hidden: actions?.hidden ?? true,
+        ariaHidden: actions?.getAttribute('aria-hidden') || ''
+      });
+    }
+    return snapshots;
+  });
+
+  for (const snapshot of immediateRenders) {
+    expect(snapshot).toMatchObject({
+      actions: 1,
+      paired: true,
+      importCount: 1,
+      exportCount: 1,
+      hidden: false,
+      ariaHidden: 'false'
+    });
+  }
+
+  await page.evaluate(() => {
+    document.querySelector('.persistent-object-properties-task-window[data-kind="pipe"] .pipe-segments-file-actions')?.remove();
+  });
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => resolve())));
+
+  const repaired = await page.evaluate(() => {
+    const taskWindow = document.querySelector('.persistent-object-properties-task-window[data-kind="pipe"][data-node-id="PIPE-D"]')
+      || document.querySelector('.persistent-object-properties-task-window[data-kind="pipe"]');
+    const table = taskWindow?.querySelector('#pipeSegmentTable');
+    const anchor = table?.closest('.segment-table-scroll') || table;
+    const actions = anchor?.nextElementSibling;
+    const style = actions ? window.getComputedStyle(actions) : null;
+    return {
+      actions: taskWindow?.querySelectorAll('.pipe-segments-file-actions').length || 0,
+      paired: !!actions?.matches('.pipe-segments-file-actions'),
+      importVisible: !!actions?.querySelector('[data-pipe-segments-import]')?.getClientRects().length,
+      exportVisible: !!actions?.querySelector('[data-pipe-segments-export]')?.getClientRects().length,
+      display: style?.display || '',
+      visibility: style?.visibility || '',
+      opacity: style?.opacity || ''
+    };
+  });
+
+  expect(repaired).toEqual({
+    actions: 1,
+    paired: true,
+    importVisible: true,
+    exportVisible: true,
+    display: 'flex',
+    visibility: 'visible',
+    opacity: '1'
+  });
 });
 
 test('Pipe Segments keeps horizontal scroll position while editing cells', async ({ page }) => {

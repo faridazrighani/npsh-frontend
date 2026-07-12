@@ -19,7 +19,7 @@ const packageJson = JSON.parse(read(PACKAGE_FILE));
 const manifest = fs.existsSync(MANIFEST_FILE) ? read(MANIFEST_FILE) : '';
 const CLEANUP_CACHE_KEY = '20260711-pipe-breakdown-decimals1';
 const CLEANUP_RUNTIME_URL = `engineering-pipe-properties-cleanup-runtime.js?v=${CLEANUP_CACHE_KEY}`;
-const SEGMENTS_RUNTIME_URL = 'engineering-pipe-segments-file-runtime.js?v=20260630-pipe-properties-cleanup1';
+const SEGMENTS_RUNTIME_URL = 'engineering-pipe-segments-file-runtime.js?v=20260712-pipe-segment-actions-lock1';
 
 const sandbox = {
   document: undefined,

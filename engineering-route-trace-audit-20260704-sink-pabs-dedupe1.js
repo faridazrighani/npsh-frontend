@@ -2220,6 +2220,15 @@
       if (!sink) return;
       const canonical = sinkCanonicalValues(sink.node);
       const pressureText = formatCanvasValue(sinkReferencePressureAbsBar(sink.node), 'bar a');
+      const stableSync = root.EngineeringSinkInputStabilityRuntime?.syncCanonicalTaskWindow?.(
+        windowNode,
+        sink.id,
+        { pressureText }
+      );
+      if (stableSync?.handled) {
+        changed += Number(stableSync.changed) || 0;
+        return;
+      }
 
       changed += removeLegacyGeneratedSinkPropertyRows(windowNode);
       changed += lockSinkPropertyWindowLayout(windowNode);
@@ -2230,6 +2239,7 @@
         'Calculated absolute sink pressure from Reference Pressure + atmospheric pressure.'
       );
       changed += compactSinkPropertyWindowRows(windowNode, canonical, sink.node);
+      root.EngineeringSinkInputStabilityRuntime?.markCanonicalTaskLayout?.(windowNode, sink.id);
     });
     return changed;
   }

@@ -1,7 +1,7 @@
 !function registerEngineeringSinkInputStabilityRuntime(root) {
   "use strict";
 
-  const VERSION = "engineering-sink-input-stability-runtime.v13-canonical-control-sync";
+  const VERSION = "engineering-sink-input-stability-runtime.v14-solver-flash-lock";
   const EDIT_KEYS = new Set(["demandFlow", "pressure", "elevation"]);
   const INPUT_IDLE_MS = 3000;
   const sharedState = root.__engineeringSinkInputStabilitySharedState || {
@@ -11,7 +11,11 @@
   root.__engineeringSinkInputStabilitySharedState = sharedState;
   const editStates = sharedState.editStates;
   const previews = sharedState.previews;
+  const canonicalTaskLayouts = sharedState.canonicalTaskLayouts || new WeakMap();
+  sharedState.canonicalTaskLayouts = canonicalTaskLayouts;
   let activeTaskLock = null;
+  let activeSolverLock = null;
+  let solverLockSequence = 0;
   let activeTaskObserver = null;
   let taskHostObserver = null;
   let observedTaskWindow = null;
@@ -55,10 +59,39 @@
     });
   }
 
+  function applyPreviewToSink(sinkId, sink, preview = previews.get(sinkId) || {}) {
+    if (!sink || sink.type !== 'sink' || !preview) return 0;
+    sink.props ||= {};
+    let changed = 0;
+    EDIT_KEYS.forEach((key) => {
+      if (preview[key] === undefined) return;
+      const value = finiteNumber(preview[key]);
+      if (value === null || finiteNumber(sink.props[key]) === value) return;
+      sink.props[key] = value;
+      changed += 1;
+    });
+    if (preview.demandFlow !== undefined) {
+      const demand = finiteNumber(preview.demandFlow);
+      if (demand !== null && finiteNumber(sink.props.flowDemand) !== demand) {
+        sink.props.flowDemand = demand;
+        changed += 1;
+      }
+      if (sink.props.boundaryMode !== 'Flow Demand Boundary') {
+        sink.props.boundaryMode = 'Flow Demand Boundary';
+        changed += 1;
+      }
+    }
+    if (preview.pressure !== undefined && sink.props.pressureInputBasis !== 'Gauge') {
+      sink.props.pressureInputBasis = 'Gauge';
+      changed += 1;
+    }
+    return changed;
+  }
+
   function restoreDraftInputs(taskWindow, sinkId, options = {}) {
     if (!taskWindow?.isConnected || !sinkId) return 0;
     const preview = previews.get(sinkId) || {};
-    let changed = 0;
+    let changed = applyPreviewToSink(sinkId, model()?.[sinkId], preview);
     EDIT_KEYS.forEach((key) => {
       const input = taskWindow.querySelector?.(`input[data-key="${key}"]`);
       if (!input) return;
@@ -100,6 +133,171 @@
       || null;
   }
 
+  function taskBody(taskWindow) {
+    return taskWindow?.querySelector?.('.task-window-body, [data-task-prop-body="true"], #taskWindowBody') || taskWindow || null;
+  }
+
+  function rowLabel(row) {
+    const label = Array.from(row?.children || []).find((child) => /^(TD|TH)$/i.test(child.tagName || ''))
+      || row?.querySelector?.('.prop-label, .field-label, .property-label, label');
+    return String(label?.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function canonicalTaskParts(taskWindow) {
+    const rows = Array.from(taskWindow?.querySelectorAll?.('tr, .object-task-field-row, .pipe-task-field-row, .prop-row, .field-row, .property-row') || []);
+    const calculatedRow = rows.find((row) => rowLabel(row) === 'Calculated Abs. Pressure') || null;
+    return {
+      body: taskBody(taskWindow),
+      demandFlow: taskWindow?.querySelector?.('input[data-key="demandFlow"]') || null,
+      pressure: taskWindow?.querySelector?.('input[data-key="pressure"]') || null,
+      elevation: taskWindow?.querySelector?.('input[data-key="elevation"]') || null,
+      calculatedRow,
+      calculatedValue: calculatedRow?.querySelector?.('[data-key="sink-absolute-pressure"], .prop-value, .field-value, .property-value')
+        || Array.from(calculatedRow?.children || []).find((child, index) => index > 0 && /^(TD|TH)$/i.test(child.tagName || ''))
+        || null
+    };
+  }
+
+  function markCanonicalTaskLayout(taskWindow, sinkId) {
+    const parts = canonicalTaskParts(taskWindow);
+    if (!taskWindow?.isConnected || !sinkId || !parts.body || !parts.demandFlow || !parts.pressure || !parts.elevation || !parts.calculatedValue) {
+      canonicalTaskLayouts.delete(taskWindow);
+      return false;
+    }
+    canonicalTaskLayouts.set(taskWindow, { sinkId, ...parts, markedAt: Date.now() });
+    return true;
+  }
+
+  function canonicalTaskLayout(taskWindow, sinkId) {
+    const retained = canonicalTaskLayouts.get(taskWindow);
+    if (!retained || retained.sinkId !== sinkId || !taskWindow?.isConnected) return null;
+    const current = canonicalTaskParts(taskWindow);
+    const stable = retained.body === current.body
+      && retained.demandFlow === current.demandFlow
+      && retained.pressure === current.pressure
+      && retained.elevation === current.elevation
+      && retained.calculatedRow === current.calculatedRow
+      && retained.calculatedValue === current.calculatedValue;
+    if (!stable) {
+      canonicalTaskLayouts.delete(taskWindow);
+      return null;
+    }
+    return retained;
+  }
+
+  function restoreSolverInputProps(sinkId) {
+    const lock = activeSolverLock;
+    const sink = model()?.[sinkId];
+    if (!lock || lock.sinkId !== sinkId || lock.sink !== sink || sink?.type !== 'sink') return false;
+    sink.props ||= {};
+    EDIT_KEYS.forEach((key) => {
+      const value = lock.values[key];
+      if (Number.isFinite(value)) sink.props[key] = value;
+    });
+    if (Number.isFinite(lock.values.demandFlow)) sink.props.flowDemand = lock.values.demandFlow;
+    sink.props.boundaryMode = 'Flow Demand Boundary';
+    sink.props.pressureInputBasis = 'Gauge';
+    return true;
+  }
+
+  function syncCanonicalTaskWindow(taskWindow, sinkId, options = {}) {
+    const retained = canonicalTaskLayout(taskWindow, sinkId);
+    if (!retained) return { handled: false, changed: 0 };
+    restoreSolverInputProps(sinkId);
+    let changed = syncTaskInputsFromModel(taskWindow, sinkId);
+    changed += restoreDraftInputs(taskWindow, sinkId, { restoreFocus: false });
+    const pressureText = options.pressureText;
+    if (pressureText !== undefined && retained.calculatedValue.textContent !== String(pressureText)) {
+      retained.calculatedValue.textContent = String(pressureText);
+      changed += 1;
+    }
+    return { handled: true, changed };
+  }
+
+  function visibleSinkTaskWindow() {
+    if (typeof document === 'undefined') return null;
+    return Array.from(document.querySelectorAll('.persistent-object-properties-task-window[data-kind="object"], #taskWindow[data-kind="object"]'))
+      .find((taskWindow) => !taskWindow.hidden && taskWindow.getClientRects?.().length > 0 && inputContext(taskWindow.querySelector?.('input[data-key="demandFlow"]')))
+      || null;
+  }
+
+  function beginSolverTaskLock(event) {
+    if (!event?.target?.closest?.('#btn-solve, [data-action="solve"], [data-action="validate"]')) return false;
+    const taskWindow = visibleSinkTaskWindow();
+    const context = inputContext(taskWindow?.querySelector?.('input[data-key="demandFlow"]'));
+    if (!context) return false;
+    const values = {};
+    EDIT_KEYS.forEach((key) => {
+      const input = taskWindow.querySelector?.(`input[data-key="${key}"]`);
+      const value = finiteNumber(input?.value ?? context.sink.props?.[key]);
+      values[key] = value === null ? 0 : value;
+      context.sink.props ||= {};
+      context.sink.props[key] = values[key];
+    });
+    context.sink.props.flowDemand = values.demandFlow;
+    activeSolverLock = {
+      id: ++solverLockSequence,
+      sinkId: context.sinkId,
+      sink: context.sink,
+      taskWindow,
+      values,
+      startedAt: Date.now()
+    };
+    root.__engineeringSinkSolverTaskLockState = {
+      version: VERSION,
+      id: activeSolverLock.id,
+      sinkId: context.sinkId,
+      status: 'active',
+      startedAt: activeSolverLock.startedAt
+    };
+    activeTaskLock = {
+      sinkId: context.sinkId,
+      taskWindow,
+      activeKey: '',
+      selectionStart: null,
+      selectionEnd: null,
+      expiresAt: Date.now() + 10000
+    };
+    observeTaskWindow(taskWindow);
+    markCanonicalTaskLayout(taskWindow, context.sinkId);
+    return true;
+  }
+
+  function holdSolverTaskWindow() {
+    const lock = activeSolverLock;
+    if (!lock) return false;
+    restoreSolverInputProps(lock.sinkId);
+    syncCanonicalTaskWindow(lock.taskWindow, lock.sinkId);
+    if (activeTaskLock?.sinkId === lock.sinkId) activeTaskLock.expiresAt = Date.now() + 10000;
+    if (root.__engineeringSinkSolverTaskLockState?.id === lock.id) {
+      root.__engineeringSinkSolverTaskLockState.status = 'active';
+      root.__engineeringSinkSolverTaskLockState.updatedAt = Date.now();
+    }
+    return true;
+  }
+
+  function finishSolverTaskLock() {
+    const lock = activeSolverLock;
+    if (!lock) return false;
+    holdSolverTaskWindow();
+    stabilizeCanonicalTaskInputs(lock.sinkId, 1200);
+    if (root.__engineeringSinkSolverTaskLockState?.id === lock.id) {
+      root.__engineeringSinkSolverTaskLockState.status = 'settling';
+      root.__engineeringSinkSolverTaskLockState.updatedAt = Date.now();
+    }
+    root.setTimeout?.(() => {
+      if (activeSolverLock?.id !== lock.id) return;
+      holdSolverTaskWindow();
+      activeSolverLock = null;
+      if (activeTaskLock?.sinkId === lock.sinkId) activeTaskLock.expiresAt = Date.now() + 4000;
+      if (root.__engineeringSinkSolverTaskLockState?.id === lock.id) {
+        root.__engineeringSinkSolverTaskLockState.status = 'current';
+        root.__engineeringSinkSolverTaskLockState.completedAt = Date.now();
+      }
+    }, 1600);
+    return true;
+  }
+
   function canonicalInputValue(sink, key) {
     const props = sink?.props || {};
     const value = key === "demandFlow"
@@ -112,6 +310,7 @@
     const sink = model()?.[sinkId];
     if (!taskWindow?.isConnected || sink?.type !== "sink") return 0;
     const preview = previews.get(sinkId) || {};
+    applyPreviewToSink(sinkId, sink, preview);
     const active = typeof document !== "undefined" ? document.activeElement : null;
     let changed = 0;
     EDIT_KEYS.forEach((key) => {
@@ -389,6 +588,14 @@
     const activeContext = inputContext(active);
     previews.forEach((preview, sinkId) => {
       if (activeContext?.sinkId === sinkId && preview[activeContext.key] !== undefined) return;
+      const sink = model()?.[sinkId];
+      const modelMatchedBeforeRestore = Array.from(EDIT_KEYS).every((key) => (
+        preview[key] === undefined || finiteNumber(sink?.props?.[key]) === finiteNumber(preview[key])
+      ));
+      if (!modelMatchedBeforeRestore) {
+        applyPreviewToSink(sinkId, sink, preview);
+        return;
+      }
       const settled = Array.from(EDIT_KEYS).every((key) => {
         if (preview[key] === undefined) return true;
         const state = editStates.get(`${sinkId}:${key}`) || {};
@@ -399,16 +606,24 @@
     sinkIds.forEach((sinkId) => stabilizeCanonicalTaskInputs(sinkId));
   }
 
+  function handleCalculationCurrent() {
+    clearSettledPreviews();
+    finishSolverTaskLock();
+  }
+
   function install() {
     if (typeof document === "undefined" || document.documentElement.dataset.sinkInputStabilityRuntime === VERSION) return false;
     document.documentElement.dataset.sinkInputStabilityRuntime = VERSION;
-    document.addEventListener("pointerdown", handleEditFocus, true);
-    document.addEventListener("focusin", handleEditFocus, true);
-    document.addEventListener("focusout", handleEditCommit, true);
-    document.addEventListener("keydown", handleEditCommit, true);
-    document.addEventListener("input", handleInputEvent, true);
-    document.addEventListener("change", handleInputEvent, true);
-    document.addEventListener("npsh:calculation-current", clearSettledPreviews, true);
+    root.addEventListener("pointerdown", handleEditFocus, true);
+    root.addEventListener("focusin", handleEditFocus, true);
+    root.addEventListener("focusout", handleEditCommit, true);
+    root.addEventListener("keydown", handleEditCommit, true);
+    root.addEventListener("input", handleInputEvent, true);
+    root.addEventListener("change", handleInputEvent, true);
+    root.addEventListener("click", beginSolverTaskLock, true);
+    root.addEventListener("npsh:calculation-calculating", holdSolverTaskWindow, true);
+    root.addEventListener("npsh:calculation-applying-results", holdSolverTaskWindow, true);
+    root.addEventListener("npsh:calculation-current", handleCalculationCurrent, true);
     observeTaskHost();
     ensureRenderSidebarPatch();
     return true;
@@ -423,7 +638,11 @@
     previewForNode,
     syncTaskInputsFromModel,
     stabilizeCanonicalTaskInputs,
-    clearSettledPreviews
+    clearSettledPreviews,
+    markCanonicalTaskLayout,
+    syncCanonicalTaskWindow,
+    beginSolverTaskLock,
+    holdSolverTaskWindow
   };
 
   root.EngineeringSinkInputStabilityRuntime = api;
