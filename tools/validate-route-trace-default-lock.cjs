@@ -11,15 +11,18 @@ const runtime = require(runtimePath);
 const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = fs.readFileSync(manifestPath, 'utf8');
+const repaintLockCss = fs.readFileSync(path.join(rootDir, 'engineering-live-parameter-repaint-lock.css'), 'utf8');
 const publish = fs.readFileSync(path.join(rootDir, 'tools', 'publish-local-live.cjs'), 'utf8');
 
-assert.equal(runtime.version, '2026.07-route-trace-audit-v52-sink-input-stability', 'Route trace audit runtime should expose the SNK input-stability canvas version.');
+assert.equal(runtime.version, '2026.07-route-trace-audit-v54-route-warning-color-lock', 'Route trace audit runtime should expose the forward/reverse route warning-color lock version.');
 assert.equal(typeof runtime.openRouteAuditPanel, 'function', 'Dedicated route audit panel should remain available.');
 assert.equal(typeof runtime.pruneDefaultCanvasRouteTraceOverlays, 'function', 'Canvas route trace overlay pruning should be exposed for audit tests.');
 assert.equal(typeof runtime.pruneDefaultPumpRouteTraceRows, 'function', 'Pump route trace row pruning should be exposed for audit tests.');
 assert.equal(typeof runtime.pruneDefaultSinkCanvasRows, 'function', 'SNK canvas row pruning should be exposed for audit tests.');
 assert.equal(typeof runtime.normalizeDefaultSinkCanvasRows, 'function', 'SNK canvas Source/Sink terminology normalizer should be exposed for audit tests.');
 assert.equal(typeof runtime.ensureDefaultSinkCanvasRows, 'function', 'SNK canvas Sink Flow/Sink Elev./Sink Head injection should be exposed for audit tests.');
+assert.equal(typeof runtime.routePresentationStatuses, 'function', 'Route warning-color status resolution should be exposed for forward/reverse validation.');
+assert.equal(typeof runtime.syncRoutePresentationColors, 'function', 'Route warning-color canvas synchronization should be exposed for validation.');
 assert.equal(typeof runtime.setRouteTraceCanvasOverlayVisible, 'function', 'Audit/debug unlock should be explicit for canvas overlays.');
 assert.equal(typeof runtime.setRouteTracePumpSummaryVisible, 'function', 'Audit/debug unlock should be explicit for pump summary injection.');
 assert.equal(typeof runtime.isRouteTraceCanvasOverlayUnlocked, 'function', 'Canvas overlay lock status should be auditable.');
@@ -44,6 +47,11 @@ assert(publish.includes("['run', 'validate:route-trace-default-lock']"), 'Publis
 assert(runtimeSource.includes('function normalizeHydraulicNpshStatusForMatrix'), 'Pump canvas panel lock should normalize Hydraulic NPSH into the approved matrix labels.');
 assert(runtimeSource.includes('isSuctionBoundaryType'), 'Route trace pump route lock must classify valid suction boundaries before showing downstream duty.');
 assert(runtimeSource.includes('function orientHydraulicConnection'), 'Route trace must canonicalize reverse construction connections before resolving pump routes.');
+assert(runtimeSource.includes('const ROUTE_PRESENTATION_PRIORITY = Object.freeze({'), 'Route warning colors must use one explicit risk/warning/incomplete/safe priority matrix.');
+assert(runtimeSource.includes('routeNodeIds.forEach((nodeId) => setWorst(nodeId, routeStatus));'), 'Route warning status must propagate consistently across connected SRC/PFV/Pump/PFV/SNK objects.');
+assert(repaintLockCss.includes('.pipe-hydraulic-label-warning .pipe-hydraulic-label-bg'), 'PFV parameter labels must expose warning color styling.');
+assert(repaintLockCss.includes('.object-type-sink.sink-status-warning .object-icon'), 'SNK object icons must expose warning color styling.');
+assert(repaintLockCss.includes('.object-type-source.source-status-warning .object-icon'), 'SRC object icons must expose warning color styling.');
 assert(runtimeSource.includes('isDischargeBoundaryType'), 'Route trace pump route lock must classify valid SNK discharge boundaries before showing downstream duty.');
 assert(runtimeSource.includes('route.suctionConnection && route.suctionPipe && route.suctionBoundary'), 'Route trace downstream duty must require a complete live suction route.');
 assert(runtimeSource.includes("return 'NPSHr Not Provided';"), 'Pump canvas panel lock should expose the canonical missing-NPSHr status when Manual NPSHr is blank.');
@@ -56,13 +64,14 @@ assert(runtimeSource.includes("'Outlet Flow'"), 'SNK canvas panel lock should hi
 assert(runtimeSource.includes("'Vapor Press.'"), 'SNK canvas panel lock should hide Vapor Press. rows.');
 assert(runtimeSource.includes("'Vapor Margin'"), 'SNK canvas panel lock should hide Vapor Margin rows.');
 assert(runtimeSource.includes("'Pump NPSH Margin'"), 'SNK canvas panel lock should hide Pump NPSH Margin rows.');
+assert(runtimeSource.includes("'NPSH Margin'"), 'SNK canvas panel lock should hide legacy NPSH Margin rows owned by the pump ribbon.');
 assert(runtimeSource.includes("upsertSinkCanvasRow(panel, 'Sink Flow'"), 'SNK canvas panel lock should add Sink Flow rows.');
 assert(runtimeSource.includes("upsertSinkCanvasRow(panel, 'Sink Elev.'"), 'SNK canvas panel lock should add Sink Elev. rows.');
 assert(runtimeSource.includes("upsertSinkCanvasRow(panel, 'Sink Head'"), 'SNK canvas panel lock should add Sink Head rows.');
 assert(runtimeSource.includes("upsertSinkCanvasRow(panel, 'Sink P abs'"), 'SNK canvas panel lock should add Sink P abs rows.');
-assert(runtimeSource.includes("upsertSinkCanvasRow(panel, 'Boundary'"), 'SNK canvas panel lock should add boundary feasibility rows when backend data is available.');
-assert(runtimeSource.includes("upsertSinkCanvasRow(panel, 'Head Res.'"), 'SNK canvas panel lock should add head residual rows when backend data is available.');
-assert(runtimeSource.includes("upsertSinkCanvasRow(panel, 'Max Elev.'"), 'SNK canvas panel lock should add maximum elevation rows when backend data is available.');
+assert(!runtimeSource.includes("upsertSinkCanvasRow(panel, 'Boundary'"), 'SNK canvas panel must not add boundary feasibility audit rows.');
+assert(!runtimeSource.includes("upsertSinkCanvasRow(panel, 'Head Res.'"), 'SNK canvas panel must not add head residual audit rows.');
+assert(!runtimeSource.includes("upsertSinkCanvasRow(panel, 'Max Elev.'"), 'SNK canvas panel must not add maximum elevation audit rows.');
 assert(runtimeSource.includes("label === 'Required Press.' || label === 'Outlet Press.'"), 'SNK canvas panel lock should normalize legacy pressure labels.');
 assert(runtimeSource.includes('function patchSinkStatusTooltip'), 'SNK hover tooltip should use the Source/Sink terminology and decimal lock.');
 assert(runtimeSource.includes('function syncSinkObjectTooltip'), 'SNK object hover/title should stay synchronized with canonical Sink Flow/P abs/Elev./Head values.');
@@ -72,10 +81,9 @@ assert(runtimeSource.includes("routeTracePumpObjectTooltipLock"), 'Pump object h
 assert(runtimeSource.includes("data-engineering-runtime-originaltitle"), 'Pump/SNK object hover/title synchronization should update the hover bridge backup title.');
 assert(runtimeSource.includes('refreshVisibleAuditSurfaces, delayMs'), 'Backend result application should schedule route presentation refresh after repaint.');
 assert(runtimeSource.includes('Sink Elev.:'), 'SNK hover tooltip should include Sink Elev. in the canonical display.');
-assert(runtimeSource.includes('Head Res.:'), 'SNK hover tooltip should include head residual when available.');
-assert(runtimeSource.includes('Max Elev.:'), 'SNK hover tooltip should include maximum allowable elevation when available.');
+assert(runtimeSource.includes('const auditLinePattern = /^(Boundary Feasibility|Boundary|Head Residual|Head Res\\.|Max SNK elevation|Max Elev\\.|(?:Pump )?NPSH Margin):/i;'), 'SNK hover tooltip must filter engineering audit and pump-owned NPSH rows from the compact global template.');
 assert(runtimeSource.includes('Mode: ${mode'), 'SNK hover tooltip should normalize Flow mode to Flow Demand where applicable.');
-assert(runtimeSource.includes('const corePatterns = [/^Mode:/i, /^Sink Flow:/i, /^Sink P abs:/i, /^Sink Elev\\.:/i, /^Sink Head:/i, /^Boundary:/i, /^Head Res\\.:/i, /^Max Elev\\.:/i];'), 'SNK hover tooltip should order canonical rows like the canvas card.');
+assert(runtimeSource.includes('const corePatterns = [/^Mode:/i, /^Sink Flow:/i, /^Sink P abs:/i, /^Sink Elev\\.:/i, /^Sink Head:/i];'), 'SNK hover tooltip should use the same five-row global template as the canvas card.');
 assert(runtimeSource.includes('.route-trace-canvas-overlay-hidden{display:none!important;}'), 'Canvas overlay hidden class should be enforced by runtime CSS.');
 assert(runtimeSource.includes('.route-trace-sink-mode-hidden{display:none!important;}'), 'SNK mode-ignored property rows should be hidden by runtime CSS.');
 assert(runtimeSource.includes('function pruneDefaultPumpRouteTraceRows'), 'Runtime should prune legacy route/loss and hidden pump rows inside pump live panels.');
@@ -562,7 +570,12 @@ try {
       type: 'sink',
       name: 'SNK-CANON',
       props: { demandFlow: 39.68 },
-      results: { flow: 39.68 }
+      results: {
+        flow: 39.68,
+        operatingFeasibilityStatus: 'Safe',
+        headResidual: 0.029,
+        maxAllowableSnkElevation: 10.029
+      }
     },
     'SNK-100': {
       type: 'sink',
@@ -666,8 +679,31 @@ try {
   assert.deepEqual(
     global.buildSinkLiveParameterRows(global.globalModel['SNK-CANON']).map((row) => row.label),
     ['Mode', 'Sink Flow', 'Sink P abs', 'Sink Elev.', 'Sink Head'],
-    'SNK row-builder wrapper should render the stable canonical Sink rows before canvas paint when a Sink node is available.'
+    'SNK row-builder wrapper should render only the five-row global template even when backend audit metrics are available.'
   );
+
+  const pumpWarningState = {
+    hydraulicNpshStatus: global.globalModel['P-CANON'].results.hydraulicNpshStatus,
+    backendValidationStatus: global.globalModel['P-CANON'].results.backendValidationStatus,
+    status: global.globalModel['P-CANON'].results.status
+  };
+  global.globalModel['P-CANON'].results.hydraulicNpshStatus = 'Warning';
+  global.globalModel['P-CANON'].results.backendValidationStatus = 'Connected';
+  global.globalModel['P-CANON'].results.status = 'Warning';
+  const forwardWarningStatuses = browserRuntime.routePresentationStatuses(global.globalModel);
+  ['SRC-CANON', 'PIPE-SUC-CANON', 'P-CANON', 'PIPE-DIS-CANON', 'SNK-CANON'].forEach((nodeId) => {
+    assert.equal(forwardWarningStatuses[nodeId], 'warning', `Forward workflow ${nodeId} must inherit the active route warning color.`);
+  });
+  global.connections = [
+    { from: 'P-CANON', fromPort: '.port.inlet', to: 'SRC-CANON', toPort: '.port.outlet', pipeId: 'PIPE-SUC-CANON', connectionType: 'hydraulic' },
+    { from: 'SNK-CANON', fromPort: '.port.inlet', to: 'P-CANON', toPort: '.port.outlet', pipeId: 'PIPE-DIS-CANON', connectionType: 'hydraulic' }
+  ];
+  const reverseWarningStatuses = browserRuntime.routePresentationStatuses(global.globalModel);
+  ['SRC-CANON', 'PIPE-SUC-CANON', 'P-CANON', 'PIPE-DIS-CANON', 'SNK-CANON'].forEach((nodeId) => {
+    assert.equal(reverseWarningStatuses[nodeId], 'warning', `Reverse workflow ${nodeId} must inherit the same active route warning color.`);
+  });
+  global.connections = canonicalConnections;
+  Object.assign(global.globalModel['P-CANON'].results, pumpWarningState);
 
   assert(routeOverlay.classList.contains('route-trace-canvas-overlay-hidden'), 'Canvas ROUTE TRACE overlay should be hidden by default.');
   assert.equal(routeOverlay.dataset.routeTraceDefaultLock, 'hidden-default', 'Canvas ROUTE TRACE overlay should carry audit-visible lock metadata.');
@@ -817,11 +853,11 @@ try {
 }
 
 assert(
-  index.includes('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260711-sink-input-stability1'),
+  index.includes('engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-route-warning-color-lock1'),
   'Index must load the route trace audit runtime with the default-lock cache key.'
 );
 assert(
-  manifest.includes('Route audit cache key: engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260711-sink-input-stability1'),
+  manifest.includes('Route audit cache key: engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-route-warning-color-lock1'),
   'Manifest must document the route trace default-lock cache key.'
 );
 

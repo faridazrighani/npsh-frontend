@@ -1038,6 +1038,67 @@ test('Pump canvas keeps NPSHr and margin blank during Fluid Basis preview when M
   expect(isDash(previewRatio)).toBe(true);
 });
 
+test('Backend NPSHa remains canonical after an older canvas preview pulse', async ({ page }) => {
+  const caseData = CASE;
+  await waitForNpshApp(page);
+  await loadSyntheticProject(page, { manualNpshr: 2 });
+  const baseline = await runProtectedSolve(page, caseData);
+  const canonicalBaseline = Number(baseline.results?.npsha);
+  expect(Number.isFinite(canonicalBaseline)).toBe(true);
+
+  const staleNpsha = canonicalBaseline - 0.0036;
+  await page.evaluate(({ pumpId, stale }) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const pump = model[pumpId];
+    const results = pump.results || (pump.results = {});
+    const evaluation = results.npshEvaluation || (results.npshEvaluation = {});
+    results.npsha = stale;
+    results.npshAvailable = stale;
+    evaluation.npsha = stale;
+    evaluation.npshAvailable = stale;
+    window.EngineeringCanvasFastPreviewRuntime?.captureAuthoritativeBaselines?.();
+    window.EngineeringCanvasFastPreviewRuntime?.applyTransientPumpPreview?.(pump, {
+      npsha: stale,
+      npshr: Number(pump.props?.manualNpshr),
+      margin: stale - Number(pump.props?.manualNpshr),
+      ratio: stale / Number(pump.props?.manualNpshr),
+      status: 'OK',
+      currentVaporHead: Number(results.vaporPressureHead || evaluation.vaporPressureHead || 0)
+    });
+    document.dispatchEvent(new CustomEvent('npsh:input-lightweight-update', {
+      bubbles: true,
+      detail: { sourceEvent: 'e2e-stale-npsha-preview' }
+    }));
+  }, { pumpId: caseData.pumpId, stale: staleNpsha });
+
+  const refreshed = await runProtectedSolve(page, caseData, { expectedPreviousId: baseline.calculationId });
+  const canonical = Number(refreshed.results?.npsha);
+  expect(Number.isFinite(canonical)).toBe(true);
+  await page.waitForTimeout(2400);
+
+  const final = await page.evaluate((pumpId) => {
+    const model = window.__npshGlobalModel || window.globalModel || {};
+    const results = model[pumpId]?.results || {};
+    const evaluation = results.npshEvaluation || {};
+    return {
+      aliases: [
+        Number(results.npsha),
+        Number(results.npshAvailable),
+        Number(evaluation.npsha),
+        Number(evaluation.npshAvailable)
+      ],
+      transient: results.__canvasFastPreviewTransient || null,
+      commit: window.__engineeringCanvasFastPreviewLastAuthoritativeCommit || null,
+      finalize: window.__engineeringCanvasFastPreviewLastFinalize || null
+    };
+  }, caseData.pumpId);
+  final.aliases.forEach((value) => expect(value).toBeCloseTo(canonical, 8));
+  expect(final.transient).toBeNull();
+  expect(final.commit?.npsha).toBeCloseTo(canonical, 8);
+  expect(final.finalize?.committed).toBeGreaterThan(0);
+  expect(numericReadoutValue(await readPumpCanvasRow(page, caseData.pumpId, 'NPSH Available'))).toBeCloseTo(canonical, 4);
+});
+
 test('Manual NPSHr UI edit previews locally and refreshes linked pump panel values', async ({ page }) => {
   const caseData = CASE;
   const ariaHiddenFocusWarnings = [];

@@ -1,5 +1,5 @@
 (function registerEngineeringRouteTraceAudit(root) {
-  const VERSION = '2026.07-route-trace-audit-v52-sink-input-stability';
+  const VERSION = '2026.07-route-trace-audit-v54-route-warning-color-lock';
   const PANEL_ID = 'engineeringRouteTraceAuditPanel';
   const PANEL_BODY_ID = 'engineeringRouteTraceAuditPanelBody';
   const MENU_BUTTON_ID = 'menu-tools-route-trace-audit';
@@ -52,17 +52,21 @@
     'Discharge Loss',
     'Vapor Press.',
     'Vapor Margin',
-    'Pump NPSH Margin'
+    'NPSH Margin',
+    'Pump NPSH Margin',
+    'Boundary',
+    'Boundary Feasibility',
+    'Head Residual',
+    'Head Res.',
+    'Max SNK Elevation',
+    'Max Elev.'
   ]);
   const SINK_CANVAS_CANONICAL_ROW_LABELS = new Set([
     'Mode',
     'Sink Flow',
     'Sink P abs',
     'Sink Elev.',
-    'Sink Head',
-    'Boundary',
-    'Head Res.',
-    'Max Elev.'
+    'Sink Head'
   ]);
   const SINK_CANVAS_LEGACY_CANONICAL_LABELS = new Map([
     ['Flow Demand', 'Sink Flow'],
@@ -253,9 +257,6 @@
       { label: 'Sink Elev.', value: liveRowValue(canonical.elevation, 'm'), unit: 'm' },
       { label: 'Sink Head', value: liveRowValue(canonical.sinkHead, 'm'), unit: 'm' }
     ];
-    if (canonical.operatingFeasibilityStatus) rows.push({ label: 'Boundary', value: canonical.operatingFeasibilityStatus });
-    if (canonical.headResidual !== null) rows.push({ label: 'Head Res.', value: liveRowValue(canonical.headResidual, 'm'), unit: 'm' });
-    if (canonical.maxAllowableSnkElevation !== null) rows.push({ label: 'Max Elev.', value: liveRowValue(canonical.maxAllowableSnkElevation, 'm'), unit: 'm' });
     return rows;
   }
 
@@ -1008,6 +1009,164 @@
       suctionPipe: modelRef[connectionPipeId(suctionConnection || {})],
       dischargePipe: modelRef[connectionPipeId(dischargeConnection || {})]
     };
+  }
+
+  const ROUTE_PRESENTATION_PRIORITY = Object.freeze({
+    safe: 1,
+    incomplete: 2,
+    warning: 3,
+    risk: 4
+  });
+
+  function warningTextList(node = {}) {
+    const values = [
+      ...(Array.isArray(node.results?.warnings) ? node.results.warnings : []),
+      ...(Array.isArray(node.results?.validationWarnings) ? node.results.validationWarnings : []),
+      ...(Array.isArray(node.warnings) ? node.warnings : [])
+    ];
+    return values.map((value) => {
+      if (typeof value === 'string') return value;
+      if (!value || typeof value !== 'object') return '';
+      return [value.status, value.title, value.label, value.message, value.detail].filter(Boolean).join(' ');
+    }).filter(Boolean);
+  }
+
+  function presentationFromStatusText(...values) {
+    const text = values.flat(Infinity).filter((value) => value !== null && value !== undefined).join(' ').trim();
+    if (/cavitation|\brisk\b|unsafe|\bfail(?:ed|ure)?\b|below\s+vapor|vaporizing|infeasible/i.test(text)) return 'risk';
+    if (/\bwarning\b|review|required|not\s+provided|stale|timeout|unavailable|mismatch|near\s+vapor/i.test(text)) return 'warning';
+    if (/incomplete|unverified|unknown|not\s+connected|no\s+solved|invalid|input\s+required/i.test(text)) return 'incomplete';
+    if (/\bsafe\b|\bok\b|\bpass(?:ed)?\b|\bconnected\b|\bcurrent\b|\bsolved\b/i.test(text)) return 'safe';
+    return '';
+  }
+
+  function worstRoutePresentation(...values) {
+    return values.flat(Infinity).filter(Boolean).reduce((worst, value) => (
+      (ROUTE_PRESENTATION_PRIORITY[value] || 0) > (ROUTE_PRESENTATION_PRIORITY[worst] || 0) ? value : worst
+    ), '');
+  }
+
+  function nodeOwnPresentation(node = {}, nodeId = '') {
+    if (!node || !node.type) return 'incomplete';
+    if (node.type === 'pump') {
+      return pumpPresentationClassFromStatus(pumpCanonicalStatusValues(node, nodeId));
+    }
+    if (node.type === 'sink') {
+      const canonical = sinkCanonicalValues(node);
+      if (canonical.boundaryFeasible === false) return 'risk';
+      return presentationFromStatusText(
+        canonical.engineeringStatus,
+        canonical.operatingFeasibilityStatus,
+        node.results?.status,
+        warningTextList(node)
+      ) || 'safe';
+    }
+    return presentationFromStatusText(
+      node.results?.status,
+      node.results?.engineeringStatus,
+      node.results?.hydraulicStatus,
+      node.results?.backendValidationStatus,
+      warningTextList(node)
+    ) || 'safe';
+  }
+
+  function routePresentationStatuses(modelRef = model()) {
+    const statuses = new Map();
+    const setWorst = (nodeId, presentation) => {
+      if (!nodeId || !modelRef[nodeId]) return;
+      statuses.set(nodeId, worstRoutePresentation(statuses.get(nodeId), presentation));
+    };
+
+    Object.entries(modelRef || {}).filter(([, node]) => node?.type === 'pump').forEach(([pumpId, pump]) => {
+      const route = pumpRouteConnections(pumpId, modelRef);
+      const suctionBoundaryId = connectionFrom(route.suctionConnection || {});
+      const suctionPipeId = connectionPipeId(route.suctionConnection || {});
+      const dischargeBoundaryId = connectionTo(route.dischargeConnection || {});
+      const dischargePipeId = connectionPipeId(route.dischargeConnection || {});
+      const suctionComplete = !!(route.suctionConnection && route.suctionBoundary && route.suctionPipe);
+      const routeNodeIds = [
+        suctionBoundaryId,
+        suctionPipeId,
+        pumpId,
+        dischargePipeId,
+        dischargeBoundaryId
+      ].filter((nodeId) => modelRef[nodeId]);
+      const routeStatus = worstRoutePresentation(
+        suctionComplete ? '' : 'incomplete',
+        routeNodeIds.map((nodeId) => nodeOwnPresentation(modelRef[nodeId], nodeId))
+      ) || 'incomplete';
+      routeNodeIds.forEach((nodeId) => setWorst(nodeId, routeStatus));
+    });
+
+    Object.entries(modelRef || {}).forEach(([nodeId, node]) => {
+      if (['source', 'pump', 'pipe', 'sink'].includes(node?.type) && !statuses.has(nodeId)) {
+        statuses.set(nodeId, 'incomplete');
+      }
+    });
+
+    return Object.fromEntries(statuses);
+  }
+
+  function canvasObjectForNodeId(nodeId) {
+    if (typeof document === 'undefined' || !nodeId) return null;
+    const escaped = root.CSS?.escape ? root.CSS.escape(String(nodeId)) : String(nodeId).replace(/["\\]/g, '\\$&');
+    return document.querySelector(
+      `.pfd-object[data-node-id="${escaped}"], .pfd-object[data-object-id="${escaped}"], .pfd-object[data-id="${escaped}"]`
+    ) || Array.from(document.querySelectorAll('.pfd-object')).find((object) => (
+      normalizeText(object.textContent).includes(String(nodeId))
+    )) || null;
+  }
+
+  function applyRoutePresentationClass(element, prefix, presentation) {
+    if (!element?.classList || !presentation) return 0;
+    let changed = 0;
+    ['safe', 'warning', 'risk', 'incomplete'].forEach((name) => {
+      const className = `${prefix}-${name}`;
+      const shouldHave = name === presentation;
+      if (element.classList.contains(className) !== shouldHave) {
+        element.classList.toggle(className, shouldHave);
+        changed += 1;
+      }
+    });
+    return changed;
+  }
+
+  function syncRoutePresentationColors(scope = null) {
+    if (typeof document === 'undefined') return 0;
+    const modelRef = model();
+    const statuses = routePresentationStatuses(modelRef);
+    let changed = 0;
+    Object.entries(statuses).forEach(([nodeId, presentation]) => {
+      const node = modelRef[nodeId];
+      const object = canvasObjectForNodeId(nodeId);
+      if (object) {
+        const previous = object.dataset?.routePresentationStatus || '';
+        if (previous !== presentation) {
+          object.dataset.routePresentationStatus = presentation;
+          changed += 1;
+        }
+        if (object.dataset.operatingStatus !== (presentation === 'safe' ? 'normal' : presentation)) {
+          object.dataset.operatingStatus = presentation === 'safe' ? 'normal' : presentation;
+          changed += 1;
+        }
+        if (node?.type === 'source') changed += applyRoutePresentationClass(object, 'source-status', presentation);
+        if (node?.type === 'pump') changed += applyRoutePresentationClass(object, 'pump-status', presentation);
+        if (node?.type === 'sink') changed += applyRoutePresentationClass(object, 'sink-status', presentation);
+        const panel = object.querySelector?.(`.${node.type === 'source' ? 'source' : node.type === 'pump' ? 'pump' : node.type === 'sink' ? 'sink' : ''}-live-params`);
+        if (panel) changed += applyRoutePresentationClass(panel, `${node.type}-live-params`, presentation);
+      }
+      if (node?.type === 'pipe') {
+        document.querySelectorAll('#svg-lines .pipe-hydraulic-label[data-pipe-id]').forEach((label) => {
+          if (label.dataset.pipeId !== nodeId) return;
+          changed += applyRoutePresentationClass(label, 'pipe-hydraulic-label', presentation);
+          if (label.dataset.routePresentationStatus !== presentation) {
+            label.dataset.routePresentationStatus = presentation;
+            changed += 1;
+          }
+        });
+      }
+    });
+    return changed;
   }
 
   function matchingBoundaryFlow(sourceFlow, sinkFlow) {
@@ -2517,15 +2676,6 @@
       `Sink Elev.: ${elevation}`,
       `Sink Head: ${sinkHead}`
     ];
-    if (canonical.operatingFeasibilityStatus) {
-      lines.push(`Boundary: ${canonical.operatingFeasibilityStatus}`);
-    }
-    if (canonical.headResidual !== null) {
-      lines.push(`Head Res.: ${formatCanvasValue(canonical.headResidual, 'm')}`);
-    }
-    if (canonical.maxAllowableSnkElevation !== null) {
-      lines.push(`Max Elev.: ${formatCanvasValue(canonical.maxAllowableSnkElevation, 'm')}`);
-    }
     return lines.join('\n');
   }
 
@@ -2618,25 +2768,14 @@
           row.title = 'Total sink hydraulic head at the discharge closure';
           row.dataset.routeTraceSinkTerminologyLock = VERSION;
         } else if (label === 'Boundary Feasibility' || label === 'Boundary') {
-          if (!canonical.operatingFeasibilityStatus) {
-            row.remove();
-            changed += 1;
-          } else {
-            changed += setTextIfChanged(labelElement, 'Boundary') ? 1 : 0;
-            changed += setTextIfChanged(valueElement, canonical.operatingFeasibilityStatus) ? 1 : 0;
-            row.title = 'Pump head feasibility against downstream pressure/elevation boundary';
-            row.dataset.routeTraceSinkTerminologyLock = VERSION;
-          }
+          row.remove();
+          changed += 1;
         } else if (label === 'Head Residual' || label === 'Head Res.') {
-          changed += setTextIfChanged(labelElement, 'Head Res.') ? 1 : 0;
-          changed += setTextIfChanged(valueElement, valueForExistingSinkRow(row, formatCanvasValue(canonical.headResidual, 'm'))) ? 1 : 0;
-          row.title = 'Pump available head minus required system head';
-          row.dataset.routeTraceSinkTerminologyLock = VERSION;
+          row.remove();
+          changed += 1;
         } else if (label === 'Max SNK Elevation' || label === 'Max Elev.') {
-          changed += setTextIfChanged(labelElement, 'Max Elev.') ? 1 : 0;
-          changed += setTextIfChanged(valueElement, valueForExistingSinkRow(row, formatCanvasValue(canonical.maxAllowableSnkElevation, 'm'))) ? 1 : 0;
-          row.title = 'Maximum SNK elevation allowed by the current pump head and outlet pressure duty';
-          row.dataset.routeTraceSinkTerminologyLock = VERSION;
+          row.remove();
+          changed += 1;
         }
       });
       changed += pruneDuplicateSinkCanvasRows(panel);
@@ -2703,15 +2842,6 @@
       changed += upsertSinkCanvasRow(panel, 'Sink P abs', formatCanvasValue(canonical.pressureAbsBar, 'bar a'), ['Sink Flow', 'Mode']) ? 1 : 0;
       changed += upsertSinkCanvasRow(panel, 'Sink Elev.', formatCanvasValue(elevation, 'm'), ['Sink P abs', 'Sink Flow']) ? 1 : 0;
       changed += upsertSinkCanvasRow(panel, 'Sink Head', formatCanvasValue(sinkHead, 'm'), ['Sink Elev.', 'Sink P abs', 'Sink Flow']) ? 1 : 0;
-      if (canonical.operatingFeasibilityStatus) {
-        changed += upsertSinkCanvasRow(panel, 'Boundary', canonical.operatingFeasibilityStatus, ['Sink Head', 'Sink Elev.']) ? 1 : 0;
-      }
-      if (canonical.headResidual !== null) {
-        changed += upsertSinkCanvasRow(panel, 'Head Res.', formatCanvasValue(canonical.headResidual, 'm'), ['Boundary', 'Sink Head']) ? 1 : 0;
-      }
-      if (canonical.maxAllowableSnkElevation !== null) {
-        changed += upsertSinkCanvasRow(panel, 'Max Elev.', formatCanvasValue(canonical.maxAllowableSnkElevation, 'm'), ['Head Res.', 'Boundary', 'Sink Head']) ? 1 : 0;
-      }
       changed += pruneDuplicateSinkCanvasRows(panel);
       changed += syncSinkObjectTooltip(panel, node, canonical);
     });
@@ -2792,21 +2922,14 @@
         const elevationLine = `Sink Elev.: ${formatCanvasValue(canonical.elevation, 'm')}`;
         lines.splice(pressureIndex >= 0 ? pressureIndex + 1 : Math.min(2, lines.length), 0, elevationLine);
       }
-      if (canonical.operatingFeasibilityStatus && !lines.some((line) => /^Boundary:/i.test(line))) {
-        lines.push(`Boundary: ${canonical.operatingFeasibilityStatus}`);
-      }
-      if (canonical.headResidual !== null && !lines.some((line) => /^Head Res\.:/i.test(line))) {
-        lines.push(`Head Res.: ${formatCanvasValue(canonical.headResidual, 'm')}`);
-      }
-      if (canonical.maxAllowableSnkElevation !== null && !lines.some((line) => /^Max Elev\.:/i.test(line))) {
-        lines.push(`Max Elev.: ${formatCanvasValue(canonical.maxAllowableSnkElevation, 'm')}`);
-      }
-      const corePatterns = [/^Mode:/i, /^Sink Flow:/i, /^Sink P abs:/i, /^Sink Elev\.:/i, /^Sink Head:/i, /^Boundary:/i, /^Head Res\.:/i, /^Max Elev\.:/i];
-      const statusLines = lines.filter((line) => /^SNK status:/i.test(line));
+      const auditLinePattern = /^(Boundary Feasibility|Boundary|Head Residual|Head Res\.|Max SNK elevation|Max Elev\.|(?:Pump )?NPSH Margin):/i;
+      const visibleLines = lines.filter((line) => !auditLinePattern.test(line));
+      const corePatterns = [/^Mode:/i, /^Sink Flow:/i, /^Sink P abs:/i, /^Sink Elev\.:/i, /^Sink Head:/i];
+      const statusLines = visibleLines.filter((line) => /^SNK status:/i.test(line));
       const coreLines = corePatterns
-        .map((pattern) => lines.find((line) => pattern.test(line)))
+        .map((pattern) => visibleLines.find((line) => pattern.test(line)))
         .filter(Boolean);
-      const detailLines = lines.filter((line) => (
+      const detailLines = visibleLines.filter((line) => (
         !/^SNK status:/i.test(line)
         && !corePatterns.some((pattern) => pattern.test(line))
       ));
@@ -3240,6 +3363,7 @@
     pruneDefaultPumpRouteTraceRows(scope || documentRef);
     pruneDefaultSinkCanvasRows(scope || documentRef);
     ensureDefaultSinkCanvasRows(scope || documentRef);
+    syncRoutePresentationColors(scope || documentRef);
     syncRouteObjectTooltips(scope || documentRef);
     if (isRouteTraceCanvasOverlayUnlocked()) {
       documentRef.querySelectorAll(`.${CANVAS_OVERLAY_HIDDEN_CLASS}`).forEach((element) => {
@@ -3445,6 +3569,7 @@
       const prune = () => {
         const canvas = document.getElementById('canvas') || document;
         patchCanonicalLiveParameterRowBuilders();
+        syncRoutePresentationColors(canvas);
         syncSinkPropertyWindowCanonicalReadouts(document);
         if (SOLVER_CANVAS_LAYOUT_REFRESH_HOOKS.includes(functionName)) {
           scheduleSolverCanvasLayoutStabilitySweep(canvas);
@@ -4058,6 +4183,8 @@
     pruneDefaultSinkCanvasRows,
     normalizeDefaultSinkCanvasRows,
     ensureDefaultSinkCanvasRows,
+    routePresentationStatuses,
+    syncRoutePresentationColors,
     pruneDefaultCanvasRouteTraceOverlays,
     setRouteTraceCanvasOverlayVisible,
     setRouteTracePumpSummaryVisible,

@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const LOCK_VERSION = "2026.07-src-canvas-flow-basis-lock5";
+  const LOCK_VERSION = "2026.07-src-canvas-route-warning-color-lock6";
   const ALWAYS_HIDDEN_ROWS = new Set(["Contribution", "Suction Loss", "NPSH at Pump", "Pump NPSHa"]);
   const DYNAMIC_ROWS = new Set(["Dyn Mode", "Target", "Dyn Feed", "Target Net", "Dyn Net", "Target Trend", "Dyn Trend"]);
   const SOURCE_TOOLTIP_HIDDEN_ROWS = new Set(["Contribution to tank", "Dynamic contribution"]);
@@ -363,31 +363,29 @@
     const object = panel?.closest?.(".pfd-object");
     const sourceId = source?.id || sourceIdForNode(source, source?.node || source || {}, model());
     const connected = sourceHasHydraulicConnection(sourceId, model());
+    const routePresentation = String(object?.dataset?.routePresentationStatus || "").trim().toLowerCase();
+    const presentation = ["safe", "warning", "risk", "incomplete"].includes(routePresentation)
+      ? routePresentation
+      : (connected ? "safe" : "incomplete");
     let changed = 0;
     if (panel?.classList) {
-      if (panel.classList.contains("source-live-params-incomplete") !== !connected) {
-        if (!connected) panel.classList.add("source-live-params-incomplete");
-        else panel.classList.remove("source-live-params-incomplete");
+      ["safe", "warning", "risk", "incomplete"].forEach((name) => {
+        const className = `source-live-params-${name}`;
+        const shouldHave = name === presentation;
+        if (panel.classList.contains(className) === shouldHave) return;
+        panel.classList.toggle(className, shouldHave);
         changed += 1;
-      }
-      if (panel.classList.contains("source-live-params-safe") !== connected) {
-        if (connected) panel.classList.add("source-live-params-safe");
-        else panel.classList.remove("source-live-params-safe");
-        changed += 1;
-      }
+      });
     }
     if (object?.classList) {
-      if (object.classList.contains("source-status-incomplete") !== !connected) {
-        if (!connected) object.classList.add("source-status-incomplete");
-        else object.classList.remove("source-status-incomplete");
+      ["safe", "warning", "risk", "incomplete"].forEach((name) => {
+        const className = `source-status-${name}`;
+        const shouldHave = name === presentation;
+        if (object.classList.contains(className) === shouldHave) return;
+        object.classList.toggle(className, shouldHave);
         changed += 1;
-      }
-      if (object.classList.contains("source-status-safe") !== connected) {
-        if (connected) object.classList.add("source-status-safe");
-        else object.classList.remove("source-status-safe");
-        changed += 1;
-      }
-      const targetStatus = connected ? "normal" : "incomplete";
+      });
+      const targetStatus = presentation === "safe" ? "normal" : presentation;
       if (object.dataset.operatingStatus !== targetStatus) {
         object.dataset.operatingStatus = targetStatus;
         changed += 1;

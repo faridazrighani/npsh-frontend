@@ -33,7 +33,7 @@ const pkg = JSON.parse(read(packagePath));
 const runtimeCacheKey = 'engineering-source-volumetric-only-runtime.js?v=20260711-src-input-flash-lock1';
 const bilingualCacheKey = 'engineering-bilingual-improvements.js?v=20260711-src-input-flash-lock1';
 const sourceTemperatureCacheKey = 'engineering-source-temperature-runtime.js?v=20260711-src-input-flash-lock1';
-const srcCanvasCacheKey = 'engineering-src-canvas-parameter-runtime.js?v=20260702-object-status-clean1';
+const srcCanvasCacheKey = 'engineering-src-canvas-parameter-runtime.js?v=20260712-route-warning-color-lock1';
 const sourceStandardSections = bilingual.match(/const SOURCE_STANDARD_FORM_SECTIONS = Object\.freeze\(\[([\s\S]*?)\]\);/)?.[1] || '';
 
 assert(runtime.includes('2026.07-source-route-flow-lock4-src-input-flash-lock'), 'runtime version is missing');

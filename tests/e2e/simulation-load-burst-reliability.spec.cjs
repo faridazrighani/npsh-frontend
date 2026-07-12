@@ -10,8 +10,8 @@ async function waitForNpshApp(page) {
   await page.waitForFunction(() => (
     typeof window.updateSimulation === 'function'
     && window.EngineeringCalculationLifecycle?.version === 'engineering-calculation-lifecycle.v1'
-    && window.EngineeringSimulationLoadTransaction?.version === 'engineering-simulation-load-transaction-manager.v3-visual-wrapper-lock'
-    && window.EngineeringSimulationLoadTransaction?.cacheKey === '20260711-simulation-load-visual-wrapper-lock1'
+    && window.EngineeringSimulationLoadTransaction?.version === 'engineering-simulation-load-transaction-manager.v5-primary-apply-evidence-lock'
+    && window.EngineeringSimulationLoadTransaction?.cacheKey === '20260712-simulation-load-primary-apply-evidence-lock1'
     && window.EngineeringCalculationLifecycle?.cacheKey === '20260711-solver-always-calculates1'
   ), null, { timeout: 30000 });
 }
@@ -212,7 +212,7 @@ test('repeated case and external file loads keep Validate responsive', async ({ 
   expect(Math.max(...timings.map((entry) => entry.loadDurationMs))).toBeLessThan(20000);
   expect(Math.max(...timings.map((entry) => entry.validateDurationMs))).toBeLessThan(10000);
   expect(runtimeMetrics.bodyDomNodes).toBeLessThan(1000);
-  expect(runtimeMetrics.scripts).toBe(60);
+  expect(runtimeMetrics.scripts).toBe(61);
   expect(runtimeMetrics.taskWindows).toBeLessThanOrEqual(1);
   expect(runtimeMetrics.visualQueueSize).toBe(0);
   expect(runtimeMetrics.lifecycleSequence).toBeLessThan(180);

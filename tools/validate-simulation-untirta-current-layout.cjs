@@ -127,10 +127,18 @@ function validateProject(filePath) {
       firstFinite(pump.props.manualNpshr) !== null,
       `${fileName} ${pumpId} must persist explicit manualNpshr for protected backend calculations.`
     );
-    assert(
-      firstFinite(pump.results?.flow, pump.results?.npshEvaluation?.flow, pump.props.designFlow) !== null,
-      `${fileName} ${pumpId} must keep a solved/design flow fallback.`
-    );
+    if (project.projectFile?.globalRuntimeMigration?.persistedResultPolicy === 'input-only-recalculate-on-open-and-validate') {
+      assert.deepEqual(pump.results || {}, {}, `${fileName} ${pumpId} must not persist runtime results.`);
+      assert(
+        firstFinite(sources[0]?.[1]?.props?.flow, sources[0]?.[1]?.props?.volumetricFlow) !== null,
+        `${fileName} ${pumpId} must receive its operating-flow input from SRC.`
+      );
+    } else {
+      assert(
+        firstFinite(pump.results?.flow, pump.results?.npshEvaluation?.flow, pump.props.designFlow) !== null,
+        `${fileName} ${pumpId} must keep a solved/design flow fallback.`
+      );
+    }
   });
 }
 

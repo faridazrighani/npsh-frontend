@@ -1,8 +1,8 @@
 !function registerEngineeringCanvasFastPreviewRuntime(root) {
   "use strict";
 
-  const VERSION = "2026.07-canvas-fast-preview21";
-  const GRAVITY_MS2 = 9.80665;
+  const VERSION = "2026.07-canvas-fast-preview22-authoritative-result-lock";
+  const GRAVITY_MS2 = 9.81;
   const NPSHR_NOT_PROVIDED_STATUS = "NPSHr Not Provided";
   const SUCTION_VAPOR_WARNING_HEAD_M = 0.5;
   const SUCTION_VAPOR_WARNING_BAR = 0.05;
@@ -24,8 +24,14 @@
     "npsh:calculation-current",
     "npsh:realtime-autosolve-complete"
   ];
+  const RESET_EVENTS = [
+    "npsh:simulation-load-transaction-begin",
+    "npsh:simulation-load-workspace-cleanup"
+  ];
 
   const pumpBaselines = new Map();
+  const pumpPreviewStates = new Map();
+  const authoritativePumpSnapshots = new Map();
   let previewFrame = 0;
   let previewPulseTimer = 0;
   let previewPulseUntil = 0;
@@ -335,7 +341,7 @@
 
   function capturePumpBaseline(pumpId, pumpNode, options = {}) {
     if (!pumpId || pumpNode?.type !== "pump") return false;
-    if (options.preservePreviewFluidBasis && pumpNode?.results?.__canvasFastPreviewTransient) return false;
+    if (options.preservePreviewFluidBasis && pumpPreviewStates.has(pumpId)) return false;
     const view = pumpResultView(pumpNode);
     const fluid = fluidProps();
     const prior = pumpBaselines.get(pumpId);
@@ -373,6 +379,124 @@
       if (node?.type === "pump" && capturePumpBaseline(id, node, options)) captured += 1;
     });
     return captured;
+  }
+
+  function hasOwn(object, key) {
+    return !!object && Object.prototype.hasOwnProperty.call(object, key);
+  }
+
+  function buildAuthoritativePumpSnapshot(pumpNode, source = null) {
+    if (!pumpNode || pumpNode.type !== "pump") return null;
+    const results = pumpNode.results || {};
+    const evaluation = results.npshEvaluation || {};
+    const sourceOwnsNpsha = hasOwn(source, "npsha") || hasOwn(source, "npshAvailable");
+    const npsha = sourceOwnsNpsha
+      ? firstFiniteValue(source?.npsha, source?.npshAvailable)
+      : firstFiniteValue(evaluation.npsha, results.npsha, evaluation.npshAvailable, results.npshAvailable);
+    if (npsha === null) return null;
+
+    const sourceOwnsNpshr = hasOwn(source, "npshr") || hasOwn(source, "npshRequired");
+    const manualNpshr = optionalManualNpshr(pumpNode.props?.manualNpshr);
+    const npshr = sourceOwnsNpshr
+      ? firstFiniteValue(source?.npshr, source?.npshRequired)
+      : manualNpshr === null
+      ? null
+      : firstFiniteValue(evaluation.npshr, results.npshr, evaluation.npshRequired, results.npshRequired, manualNpshr);
+    const sourceMargin = hasOwn(source, "npshMargin") ? finiteNumber(source?.npshMargin) : null;
+    const sourceRatio = hasOwn(source, "npshRatio") ? finiteNumber(source?.npshRatio) : null;
+    const margin = npshr === null
+      ? null
+      : firstFiniteValue(sourceMargin, npsha - npshr);
+    const ratio = npshr === null || npshr === 0
+      ? null
+      : firstFiniteValue(sourceRatio, npsha / npshr);
+    return {
+      version: VERSION,
+      npsha,
+      npshr,
+      margin,
+      ratio,
+      capturedAt: Date.now()
+    };
+  }
+
+  function synchronizeAuthoritativePumpResults(pumpNode, snapshot) {
+    if (!pumpNode || !snapshot) return false;
+    const results = pumpNode.results && typeof pumpNode.results === "object"
+      ? pumpNode.results
+      : (pumpNode.results = {});
+    const evaluation = results.npshEvaluation && typeof results.npshEvaluation === "object"
+      ? results.npshEvaluation
+      : (results.npshEvaluation = {});
+
+    results.npsha = snapshot.npsha;
+    results.npshAvailable = snapshot.npsha;
+    evaluation.npsha = snapshot.npsha;
+    evaluation.npshAvailable = snapshot.npsha;
+    results.npshr = snapshot.npshr;
+    results.npshRequired = snapshot.npshr;
+    evaluation.npshr = snapshot.npshr;
+    evaluation.npshRequired = snapshot.npshr;
+    results.npshMargin = snapshot.margin;
+    results.npshRatio = snapshot.ratio;
+    evaluation.npshMargin = snapshot.margin;
+    evaluation.npshRatio = snapshot.ratio;
+    delete results.__canvasFastPreviewTransient;
+    return true;
+  }
+
+  function commitAuthoritativePumpResult(pumpNode, source = null, options = {}) {
+    const pumpId = nodeIdForModelNode(pumpNode, "pump");
+    const snapshot = buildAuthoritativePumpSnapshot(pumpNode, source);
+    if (!pumpId || !snapshot) return false;
+    cancelScheduledPreview({ clearPreviewStates: true });
+    synchronizeAuthoritativePumpResults(pumpNode, snapshot);
+    pumpBaselines.delete(pumpId);
+    capturePumpBaseline(pumpId, pumpNode);
+    if (options.record !== false) authoritativePumpSnapshots.set(pumpId, snapshot);
+    root.__engineeringCanvasFastPreviewLastAuthoritativeCommit = {
+      pumpId,
+      reason: options.reason || "authoritative-result",
+      ...snapshot
+    };
+    return true;
+  }
+
+  function finalizeAuthoritativePumpResults(reason = "authoritative-event") {
+    const modelRef = model();
+    let committed = 0;
+    Object.entries(modelRef || {}).forEach(([pumpId, pumpNode]) => {
+      if (pumpNode?.type !== "pump") return;
+      const recorded = authoritativePumpSnapshots.get(pumpId) || null;
+      authoritativePumpSnapshots.delete(pumpId);
+      const snapshot = recorded || buildAuthoritativePumpSnapshot(pumpNode);
+      if (!snapshot) return;
+      synchronizeAuthoritativePumpResults(pumpNode, snapshot);
+      pumpBaselines.delete(pumpId);
+      capturePumpBaseline(pumpId, pumpNode);
+      committed += 1;
+    });
+    root.__engineeringCanvasFastPreviewLastFinalize = { reason, committed, finalizedAt: Date.now() };
+    return committed;
+  }
+
+  function patchBackendPrimaryApply() {
+    const current = root.applyBackendSimulationPrimaryResults;
+    if (typeof current !== "function" || current.__canvasFastPreviewAuthoritativePatched) return false;
+    function authoritativeBackendApply(pumpNode, backendResult, ...args) {
+      const applied = current.call(this, pumpNode, backendResult, ...args);
+      if (applied !== false && pumpNode?.type === "pump") {
+        commitAuthoritativePumpResult(pumpNode, backendResult, {
+          reason: "applyBackendSimulationPrimaryResults"
+        });
+        requestPreview("backend-authoritative-result");
+      }
+      return applied;
+    }
+    authoritativeBackendApply.__canvasFastPreviewAuthoritativePatched = true;
+    authoritativeBackendApply.__canvasFastPreviewAuthoritativeOriginal = current;
+    root.applyBackendSimulationPrimaryResults = authoritativeBackendApply;
+    return true;
   }
 
   function pumpRowByLabel(panel, label) {
@@ -469,46 +593,11 @@
 
   function applyTransientPumpPreview(pumpNode, preview = {}) {
     if (!pumpNode || typeof pumpNode !== "object") return false;
-    const results = pumpNode.results && typeof pumpNode.results === "object"
-      ? pumpNode.results
-      : (pumpNode.results = {});
-    const evaluation = results.npshEvaluation && typeof results.npshEvaluation === "object"
-      ? results.npshEvaluation
-      : (results.npshEvaluation = {});
     const npsha = finiteNumber(preview.npsha);
     if (npsha === null) return false;
-    if (preview.writeNpsha !== false) {
-      results.npsha = npsha;
-      results.npshAvailable = npsha;
-      evaluation.npsha = npsha;
-      evaluation.npshAvailable = npsha;
-    }
-    if (preview.npshr === null) {
-      results.npshr = null;
-      results.npshRequired = null;
-      results.npshMargin = null;
-      results.npshRatio = null;
-      evaluation.npshr = null;
-      evaluation.npshRequired = null;
-      evaluation.npshMargin = null;
-      evaluation.npshRatio = null;
-    } else {
-      results.npshr = preview.npshr;
-      results.npshRequired = preview.npshr;
-      evaluation.npshr = preview.npshr;
-      evaluation.npshRequired = preview.npshr;
-      results.npshMargin = preview.margin;
-      results.npshRatio = preview.ratio;
-      evaluation.npshMargin = preview.margin;
-      evaluation.npshRatio = preview.ratio;
-    }
-    if (preview.status) {
-      results.hydraulicNpshStatus = preview.status;
-      results.cavitationStatus = preview.status;
-      evaluation.hydraulicStatus = preview.status;
-      evaluation.status = preview.status;
-    }
-    results.__canvasFastPreviewTransient = {
+    const pumpId = nodeIdForModelNode(pumpNode, "pump");
+    if (!pumpId) return false;
+    const state = {
       version: VERSION,
       npsha,
       npshr: preview.npshr,
@@ -517,6 +606,8 @@
       vaporPressureHead: preview.currentVaporHead,
       appliedAt: Date.now()
     };
+    pumpPreviewStates.set(pumpId, state);
+    root.__engineeringCanvasFastPreviewLastTransient = { pumpId, ...state };
     return true;
   }
 
@@ -562,8 +653,7 @@
       margin,
       ratio,
       status,
-      currentVaporHead,
-      writeNpsha: !manualNpshrPreviewOnly
+      currentVaporHead
     });
 
     let changed = 0;
@@ -772,6 +862,26 @@
     previewPulseTimer = 0;
   }
 
+  function cancelScheduledPreview(options = {}) {
+    if (previewFrame && typeof root.cancelAnimationFrame === "function") {
+      root.cancelAnimationFrame(previewFrame);
+    }
+    previewFrame = 0;
+    endPreviewWindow();
+    if (immediatePanelStampTimer) root.clearTimeout?.(immediatePanelStampTimer);
+    immediatePanelStampTimer = 0;
+    panelStampDeferredUntil = 0;
+    if (options.clearPreviewStates) pumpPreviewStates.clear();
+  }
+
+  function resetPreviewState(reason = "workspace-reset") {
+    cancelScheduledPreview({ clearPreviewStates: true });
+    pumpBaselines.clear();
+    authoritativePumpSnapshots.clear();
+    root.__engineeringCanvasFastPreviewLastReset = { reason, resetAt: Date.now() };
+    return true;
+  }
+
   function isCalculationTarget(target) {
     if (!target?.matches?.(CALCULATION_TARGET_SELECTOR)) return false;
     if (target.closest?.(".task-window, #taskWindow, .object-properties-task-body, .fluid-help-body")) return true;
@@ -794,13 +904,15 @@
     });
     AUTHORITATIVE_EVENTS.forEach((eventName) => {
       document.addEventListener(eventName, () => {
-        const preservePreviewFluidBasis = isPreviewWindowOpen();
+        cancelScheduledPreview({ clearPreviewStates: true });
         root.setTimeout?.(() => {
-          captureAuthoritativeBaselines({ preservePreviewFluidBasis });
-          endPreviewWindow();
+          finalizeAuthoritativePumpResults(eventName);
           requestPreview(eventName);
         }, 0);
       }, true);
+    });
+    RESET_EVENTS.forEach((eventName) => {
+      document.addEventListener(eventName, () => resetPreviewState(eventName), true);
     });
     return true;
   }
@@ -811,6 +923,7 @@
       return true;
     }
     installEvents();
+    patchBackendPrimaryApply();
     if (!pumpBaselines.size) captureAuthoritativeBaselines();
     const supportSignature = [
       root.EngineeringPipeCanvasHydraulicLabelRuntime?.version || "",
@@ -838,6 +951,11 @@
     requestPreview,
     runPreview,
     captureAuthoritativeBaselines,
+    commitAuthoritativePumpResult,
+    finalizeAuthoritativePumpResults,
+    synchronizeAuthoritativePumpResults,
+    applyTransientPumpPreview,
+    resetPreviewState,
     fluidProps,
     pumpResultView
   };

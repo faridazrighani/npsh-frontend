@@ -134,8 +134,11 @@ function assertPipeSegments(caseId, pipeId, pipeNode) {
     assertFinite(segment.fittingQuantity ?? 0, `${caseId} ${pipeId}.segments[${index}].fittingQuantity`, 0);
     assertFinite(segment.fittingK ?? 0, `${caseId} ${pipeId}.segments[${index}].fittingK`, 0);
   });
-  assertFinite(pipeNode.results?.flow, `${caseId} ${pipeId}.results.flow`, 0);
-  assertFinite(pipeNode.results?.hydraulicHead ?? pipeNode.results?.outletHydraulicHead, `${caseId} ${pipeId}.results hydraulic head`);
+  assert.deepEqual(
+    pipeNode.results || {},
+    {},
+    `${caseId} ${pipeId} must persist inputs only; pipe results are recalculated by the global backend.`
+  );
 }
 
 function assertFluid(caseId, fluidNode) {
@@ -151,23 +154,20 @@ function assertFluid(caseId, fluidNode) {
   assertFinite(props.specWeight, `${caseId} FLUID.props.specWeight`, 0);
 }
 
-function assertPump(caseId, pumpId, pumpNode) {
+function assertPump(caseId, pumpId, pumpNode, sourceFlow) {
   assert.strictEqual(pumpNode?.type, 'pump', `${caseId} ${pumpId} must have type "pump".`);
-  assertFinite(pumpNode.results?.npshEvaluation?.flow ?? pumpNode.results?.flow ?? pumpNode.props?.designFlow, `${caseId} ${pumpId} operating flow`, 0);
+  assertFinite(sourceFlow, `${caseId} ${pumpId} route operating flow`, 0);
   assertFinite(
-    pumpNode.results?.npshEvaluation?.requiredSystemHead
-      ?? pumpNode.results?.requiredHead
-      ?? pumpNode.results?.head
-      ?? pumpNode.props?.designHead,
-    `${caseId} ${pumpId} route/system head`,
-    0
-  );
-  assertFinite(
-    pumpNode.props?.manualNpshr ?? pumpNode.results?.npshEvaluation?.npshr ?? pumpNode.results?.npshr ?? pumpNode.props?.designNpshr,
+    pumpNode.props?.manualNpshr,
     `${caseId} ${pumpId} NPSHr basis`,
     0
   );
-  assertFinite(pumpNode.results?.npshEvaluation?.npsha ?? pumpNode.results?.npsha, `${caseId} ${pumpId}.results NPSHa`, 0);
+  assert.strictEqual(pumpNode.props?.npshrSourceMode, 'Manual', `${caseId} ${pumpId} must use manual NPSHr mode.`);
+  assert.deepEqual(
+    pumpNode.results || {},
+    {},
+    `${caseId} ${pumpId} must persist inputs only; pump results are recalculated by the global backend.`
+  );
 }
 
 function warningText(value) {
@@ -236,7 +236,7 @@ function validateCase(entry) {
   assertFinite(model[sinkId].props?.demandFlow ?? model[sinkId].results?.flow, `${entry.id} ${sinkId} demand flow`, 0);
   assertFinite(model[sinkId].props?.pressure ?? model[sinkId].results?.boundaryPressure, `${entry.id} ${sinkId} pressure`, 0);
   assertFinite(model[sinkId].props?.elevation, `${entry.id} ${sinkId} elevation`);
-  assertPump(entry.id, pumpId, model[pumpId]);
+  assertPump(entry.id, pumpId, model[pumpId], model[sourceId].props?.flow);
   assertNoSuppressedPumpWarnings(entry.id, pumpId, model[pumpId]);
 
   pipeIds.forEach((pipeId) => {

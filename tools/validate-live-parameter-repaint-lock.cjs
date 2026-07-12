@@ -13,7 +13,7 @@ const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
 
-const LOCK_CACHE_KEY = "engineering-live-parameter-repaint-lock.css?v=20260702-object-status-clean1";
+const LOCK_CACHE_KEY = "engineering-live-parameter-repaint-lock.css?v=20260712-route-warning-color-lock1";
 const STABLE_RUNTIME_CACHE_KEY = "engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260706-fast-preview-preserve1";
 
 function read(filePath) {

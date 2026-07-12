@@ -9,7 +9,7 @@ async function waitForNpshApp(page) {
     typeof window.updateSimulation === 'function'
     && window.EngineeringPerformanceBaselineRuntime?.version === 'engineering-performance-baseline.v1'
     && window.EngineeringPerformanceBaselineRuntime?.cacheKey === '20260709-performance-baseline1'
-    && window.EngineeringSimulationLoadTransaction?.version === 'engineering-simulation-load-transaction-manager.v3-visual-wrapper-lock'
+    && window.EngineeringSimulationLoadTransaction?.version === 'engineering-simulation-load-transaction-manager.v5-primary-apply-evidence-lock'
     && window.EngineeringCalculationLifecycle?.version === 'engineering-calculation-lifecycle.v1'
   ), null, { timeout: 30000 });
   await page.evaluate(() => window.EngineeringPerformanceBaselineRuntime.reset());

@@ -41,6 +41,8 @@
 .source-live-params-safe,
 .sink-live-params-safe {
   background: #f0fdf4 !important;
+  border-color: #86efac !important;
+  border-left-color: #16a34a !important;
 }
 
 .pump-live-params-warning,
@@ -48,6 +50,8 @@
 .source-live-params-warning,
 .sink-live-params-warning {
   background: #fff7ed !important;
+  border-color: #fdba74 !important;
+  border-left-color: #f97316 !important;
 }
 
 .pump-live-params-risk,
@@ -55,6 +59,8 @@
 .source-live-params-risk,
 .sink-live-params-risk {
   background: #fef2f2 !important;
+  border-color: #fca5a5 !important;
+  border-left-color: #dc2626 !important;
 }
 
 .pump-live-params-incomplete,
@@ -62,6 +68,8 @@
 .source-live-params-incomplete,
 .sink-live-params-incomplete {
   background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  border-left-color: #94a3b8 !important;
 }
 
 .tank-live-params-advisory {
@@ -98,10 +106,53 @@
   box-shadow: 0 0 0 2px #16a34a !important;
 }
 
+.object-type-source.source-status-warning .object-icon,
+.object-type-sink.sink-status-warning .object-icon {
+  background: #fff7ed !important;
+  box-shadow: 0 0 0 2px #f97316 !important;
+}
+
+.object-type-source.source-status-risk .object-icon,
+.object-type-sink.sink-status-risk .object-icon {
+  background: #fef2f2 !important;
+  box-shadow: 0 0 0 2px #dc2626 !important;
+}
+
+.object-type-sink.sink-status-safe .object-icon {
+  background: #f0fdf4 !important;
+  box-shadow: 0 0 0 2px #16a34a !important;
+}
+
 .object-type-source.source-status-incomplete .object-icon,
 .object-type-source[data-operating-status="incomplete"] .object-icon {
   background: #f8fafc !important;
   box-shadow: 0 0 0 2px #94a3b8 !important;
+}
+
+.object-type-sink.sink-status-incomplete .object-icon,
+.object-type-sink[data-operating-status="incomplete"] .object-icon {
+  background: #f8fafc !important;
+  box-shadow: 0 0 0 2px #94a3b8 !important;
+}
+
+#svg-lines .pipe-hydraulic-label-safe .pipe-hydraulic-label-bg {
+  fill: #f0fdf4 !important;
+  stroke: #16a34a !important;
+}
+
+#svg-lines .pipe-hydraulic-label-warning .pipe-hydraulic-label-bg {
+  fill: #fff7ed !important;
+  stroke: #f97316 !important;
+}
+
+#svg-lines .pipe-hydraulic-label-risk .pipe-hydraulic-label-bg {
+  fill: #fef2f2 !important;
+  stroke: #dc2626 !important;
+}
+
+#svg-lines .pipe-hydraulic-label-incomplete .pipe-hydraulic-label-bg {
+  fill: #f8fafc !important;
+  stroke: #94a3b8 !important;
 }
 
 .pfd-object.object-type-pump.selected .object-icon {

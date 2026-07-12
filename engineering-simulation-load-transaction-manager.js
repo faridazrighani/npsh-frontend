@@ -6,8 +6,8 @@
 })((root) => {
   'use strict';
 
-  const VERSION = 'engineering-simulation-load-transaction-manager.v3-visual-wrapper-lock';
-  const CACHE_KEY = '20260711-simulation-load-visual-wrapper-lock1';
+  const VERSION = 'engineering-simulation-load-transaction-manager.v5-primary-apply-evidence-lock';
+  const CACHE_KEY = '20260712-simulation-load-primary-apply-evidence-lock1';
   const ACTIVE_CLASS = 'npsh-simulation-load-transaction-active';
   const CASE_OPEN_SELECTOR = '[data-simulation-case-action="open"][data-simulation-case-id]';
   const SAMPLE_DIALOG_OPEN_TEXT = /open\s+sample\s+case/i;
@@ -32,8 +32,8 @@
   const WARM_CASE_IDS = ['simulation-case-1', 'simulation-case-4', 'simulation-case-6'];
   const WARM_RUNTIME_SOURCES = [
     'engineering-pipe-canvas-hydraulic-label-runtime-20260707-pfv-loss-summary-clean1.js?v=20260711-reynolds-darcy-flash-lock1',
-    'engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260711-sink-input-stability1',
-    'engineering-pump-envelope-warning-cleanup-runtime.js?v=20260711-pump-warning-wrapper-lock1',
+    'engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-sink-canvas-template-lock1',
+    'engineering-pump-envelope-warning-cleanup-runtime.js?v=20260712-warning-lifecycle-current-request-lock1',
     'engineering-open-file-readiness-gate.js?v=20260711-open-file-hard-release1'
   ];
   const EVENT_NAMES = {
@@ -153,6 +153,7 @@
       controllerCount: session.controllers.length,
       timerCount: session.timers.length,
       fileReaderCount: session.fileReaders.length,
+      awaitingAuthoritativeCalculation: !!session.awaitingAuthoritativeCalculation,
       cleanup: cleanupSummary(),
       visualRefresh: visualRefreshSummary(),
       settleWatchdog: settleWatchdogSummary()
@@ -690,7 +691,8 @@
       signal: primaryAbort?.controller?.signal || null,
       timers: [],
       fileReaders: [],
-      idleTimer: 0
+      idleTimer: 0,
+      awaitingAuthoritativeCalculation: false
     };
     activeSession = session;
     if (session.signal) sessionSignals.set(session.sessionId, session.signal);
@@ -1130,24 +1132,105 @@
         ? activeSession
         : beginTransaction('atomic-project-apply', { reason: 'applySimulationStateAtomic called directly' });
       assertSessionStillCurrent(session.sessionId, 'applySimulationStateAtomic');
+      const active = sessionById(session.sessionId);
+      if (active) active.awaitingAuthoritativeCalculation = true;
+      const originalUpdateSimulation = root.updateSimulation;
+      let calculationPromise = null;
+      function captureLoadedSimulationCalculation(...updateArgs) {
+        const options = updateArgs[0] && typeof updateArgs[0] === 'object'
+          ? { ...updateArgs[0] }
+          : {};
+        options.forceBackend = true;
+        options.trigger = 'solve';
+        options.refreshReason = 'solve';
+        options.calculationMode = 'sample-open';
+        options.simulationLoadReason = 'simulation-load-authoritative';
+        calculationPromise = originalUpdateSimulation.call(this, options, ...updateArgs.slice(1));
+        return calculationPromise;
+      }
+      if (typeof originalUpdateSimulation === 'function') {
+        root.updateSimulation = captureLoadedSimulationCalculation;
+      }
+      const restoreUpdateSimulation = () => {
+        if (root.updateSimulation === captureLoadedSimulationCalculation) {
+          root.updateSimulation = originalUpdateSimulation;
+        }
+      };
+      const ensureAuthoritativeCalculation = () => {
+        if (calculationPromise || typeof originalUpdateSimulation !== 'function') return calculationPromise;
+        calculationPromise = originalUpdateSimulation.call(root, {
+          forceBackend: true,
+          trigger: 'solve',
+          refreshReason: 'solve',
+          calculationMode: 'sample-open',
+          simulationLoadReason: 'simulation-load-authoritative',
+          renderSidebarAfter: false
+        });
+        return calculationPromise;
+      };
+      const hasPrimaryApplyEvidence = (outcome) => {
+        if (outcome?.primaryApplied === true) return true;
+        if (!Array.isArray(outcome)) return false;
+        return outcome.some((entry) => (
+          entry?.primaryApplied === true
+          || entry?.value?.primaryApplied === true
+          || entry?.status === 'fulfilled' && entry?.value?.primaryApplied === true
+        ));
+      };
+      const runDirectAuthoritativeCalculation = () => {
+        if (typeof root.runBackendProtectedPumpSimulation !== 'function') return Promise.resolve([]);
+        const pumpIds = typeof root.getBackendProtectedPumpIds === 'function'
+          ? root.getBackendProtectedPumpIds()
+          : [];
+        const current = sessionById(session.sessionId);
+        if (current) {
+          current.detail.authoritativeFallbackUsed = true;
+          current.detail.authoritativePumpIds = Array.isArray(pumpIds) ? pumpIds.slice() : [];
+        }
+        if (!Array.isArray(pumpIds) || !pumpIds.length) return Promise.resolve([]);
+        return Promise.allSettled(pumpIds.map((pumpId) => root.runBackendProtectedPumpSimulation(pumpId, {
+          forceBackend: true,
+          trigger: 'solve',
+          refreshReason: 'solve',
+          calculationMode: 'sample-open',
+          simulationLoadReason: 'simulation-load-authoritative-fallback',
+          renderSidebarAfter: false
+        })));
+      };
+      const requirePrimaryApplyEvidence = (outcome) => {
+        if (hasPrimaryApplyEvidence(outcome)) return outcome;
+        return runDirectAuthoritativeCalculation();
+      };
+      const finalizeAppliedState = (value) => Promise.resolve(calculationPromise)
+        .then(requirePrimaryApplyEvidence)
+        .then((calculationOutcome) => {
+        assertSessionStillCurrent(session.sessionId, 'applySimulationStateAtomic.calculation');
+        const current = sessionById(session.sessionId);
+        if (current) current.awaitingAuthoritativeCalculation = false;
+        markApplied(session.sessionId, {
+          appliedBy: 'applySimulationStateAtomic',
+          calculationAwaited: true,
+          primaryApplied: hasPrimaryApplyEvidence(calculationOutcome)
+        });
+        complete(session.sessionId, { reason: 'project-state-calculated' });
+        return value;
+      });
       try {
         const result = original.apply(this, args);
+        restoreUpdateSimulation();
+        ensureAuthoritativeCalculation();
         if (result && typeof result.then === 'function') {
-          return Promise.resolve(result).then((value) => {
-            assertSessionStillCurrent(session.sessionId, 'applySimulationStateAtomic.resolve');
-            markApplied(session.sessionId, { appliedBy: 'applySimulationStateAtomic' });
-            complete(session.sessionId, { reason: 'project-state-applied' });
-            return value;
-          }, (error) => {
+          return Promise.resolve(result).then((value) => finalizeAppliedState(value)).catch((error) => {
             if (isCurrent(session.sessionId)) fail(session.sessionId, error);
             throw error;
           });
         }
-        assertSessionStillCurrent(session.sessionId, 'applySimulationStateAtomic.return');
-        markApplied(session.sessionId, { appliedBy: 'applySimulationStateAtomic' });
-        complete(session.sessionId, { reason: 'project-state-applied' });
-        return result;
+        return finalizeAppliedState(result).catch((error) => {
+          if (isCurrent(session.sessionId)) fail(session.sessionId, error);
+          throw error;
+        });
       } catch (error) {
+        restoreUpdateSimulation();
         if (isCurrent(session.sessionId)) fail(session.sessionId, error);
         throw error;
       }
@@ -1172,7 +1255,9 @@
         : beginTransaction('simulation-case', detail);
       return Promise.resolve(original.call(this, entry, ...args)).then((result) => {
         assertSessionStillCurrent(session.sessionId, 'openSimulationCaseSample.resolve');
-        if (isCurrent(session.sessionId)) complete(session.sessionId, { reason: 'simulation-case-opened' });
+        if (isCurrent(session.sessionId) && !sessionById(session.sessionId)?.awaitingAuthoritativeCalculation) {
+          complete(session.sessionId, { reason: 'simulation-case-opened' });
+        }
         return result;
       }, (error) => {
         if (isCurrent(session.sessionId)) fail(session.sessionId, error);
@@ -1520,6 +1605,7 @@
 
   function handleLifecycleComplete(event) {
     if (!activeSession || activeSession.status !== 'active') return false;
+    if (activeSession.awaitingAuthoritativeCalculation) return false;
     const status = String(event?.detail?.status || event?.detail?.phase || '').toLowerCase();
     if (event.type === 'npsh:calculation-current'
       || event.type === 'npsh:realtime-autosolve-complete'

@@ -25,10 +25,10 @@ const manifest = read(manifestPath);
 const pkg = JSON.parse(read(packagePath));
 const publish = read(publishPath);
 
-const cacheKey = 'engineering-canvas-fast-preview-runtime.js?v=20260710-canvas-fast-preview21';
+const cacheKey = 'engineering-canvas-fast-preview-runtime.js?v=20260712-canvas-fast-preview22-authoritative-result-lock';
 const cacheKeyCount = (index.match(new RegExp(cacheKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
 
-assert(runtime.includes('2026.07-canvas-fast-preview21'), 'runtime version is missing');
+assert(runtime.includes('2026.07-canvas-fast-preview22-authoritative-result-lock'), 'runtime version is missing');
 assert(runtime.includes('EngineeringCanvasFastPreviewRuntime'), 'global API is missing');
 assert(cacheKeyCount >= 2, 'runtime must load in feature and initial canvas hydration paths');
 assert(
@@ -92,17 +92,27 @@ assert(runtime.includes('npshMargin: propsNpshr === null ? null'), 'fast preview
 assert(runtime.includes('results.vaporPressureHead'), 'fast preview must use the last authoritative pump vaporPressureHead as its baseline.');
 assert(runtime.indexOf('results.vaporPressureHead') < runtime.indexOf('basis.vaporPressureHead'), 'pump vaporPressureHead result must be preferred over current Fluid Basis trace fallback.');
 assert(runtime.includes('preservePreviewFluidBasis ? prior?.vaporPressureHead : null'), 'baseline capture must preserve the previous vapor head while temperature preview is active.');
-assert(runtime.includes('const preservePreviewFluidBasis = isPreviewWindowOpen();'), 'authoritative events must not erase fast-preview baselines during active input.');
+assert(runtime.includes('finalizeAuthoritativePumpResults(eventName);'), 'authoritative events must finalize backend values before the final repaint.');
 assert(runtime.includes('panel.dataset.canvasFastPreview = VERSION;'), 'pump panel must be stamped whenever fast preview runs.');
 assert(runtime.includes('__engineeringCanvasFastPreviewLastPumpPreview'), 'fast preview must expose last pump preview diagnostics for E2E/debug verification.');
 assert(runtime.includes('eventName === "npsh:input-lightweight-update"'), 'lightweight input events must trigger immediate pump preview.');
 assert(/beginPreviewWindow\(event\?\.detail\?\.sourceEvent \|\| eventName,\s*1800,\s*immediate\)/.test(runtime), 'preview events must pass the immediate flag through beginPreviewWindow.');
-assert(runtime.includes('function applyTransientPumpPreview'), 'fast preview must publish transient pump result values so renderer rebuilds cannot restore stale NPSHa rows.');
-assert(runtime.includes('__canvasFastPreviewTransient'), 'transient pump preview results must be tagged for audit and baseline guards.');
+assert(runtime.includes('function applyTransientPumpPreview'), 'fast preview must stage transient pump display values.');
+assert(runtime.includes('const pumpPreviewStates = new Map();'), 'transient pump preview state must remain outside persistent model results.');
 assert(runtime.includes('function isManualNpshrFastLaneActive'), 'fast preview must detect Manual NPSHr-only local previews.');
-assert(runtime.includes('writeNpsha: !manualNpshrPreviewOnly'), 'Manual NPSHr-only previews must not write transient NPSHa into pump results.');
-assert(runtime.includes('if (preview.writeNpsha !== false)'), 'transient pump preview must guard model writes to NPSHa.');
-assert(runtime.includes('options.preservePreviewFluidBasis && pumpNode?.results?.__canvasFastPreviewTransient'), 'baseline capture must not treat transient preview values as authoritative results.');
+assert(runtime.includes('pumpPreviewStates.set(pumpId, state);'), 'transient preview must be staged in the dedicated preview map.');
+assert(runtime.includes('options.preservePreviewFluidBasis && pumpPreviewStates.has(pumpId)'), 'baseline capture must not treat active preview state as authoritative results.');
+assert(runtime.includes('function commitAuthoritativePumpResult'), 'backend result commit barrier is missing.');
+assert(runtime.includes('function synchronizeAuthoritativePumpResults'), 'atomic NPSHa alias synchronization is missing.');
+assert(runtime.includes('function finalizeAuthoritativePumpResults'), 'authoritative lifecycle finalizer is missing.');
+assert(runtime.includes('function patchBackendPrimaryApply'), 'backend primary apply hook is missing.');
+assert(runtime.includes('cancelScheduledPreview({ clearPreviewStates: true });'), 'authoritative completion must cancel stale preview work.');
+assert(runtime.includes('results.npshAvailable = snapshot.npsha;'), 'top-level NPSHa alias must match the canonical value.');
+assert(runtime.includes('evaluation.npshAvailable = snapshot.npsha;'), 'evaluation NPSHa alias must match the canonical value.');
+assert(runtime.includes('"npsh:simulation-load-transaction-begin"'), 'simulation load must reset preview state before hydration.');
+assert(runtime.includes('"npsh:simulation-load-workspace-cleanup"'), 'workspace cleanup must reset preview state.');
+assert(runtime.includes('const GRAVITY_MS2 = 9.81;'), 'fast preview must use the same gravity constant as the solver.');
+assert(!runtime.includes('const GRAVITY_MS2 = 9.80665;'), 'legacy gravity constant must not remain in fast preview.');
 assert(runtime.includes('return "NPSHr Not Provided";') || runtime.includes('return NPSHR_NOT_PROVIDED_STATUS;'), 'fast preview must keep blank Manual NPSHr pumps in the canonical NPSHr Not Provided status.');
 assert(runtime.includes('return "Cavitation Risk";'), 'fast preview must keep cavitation-risk status canonical.');
 assert(runtime.includes('return "Warning";'), 'fast preview must keep warning status canonical.');
@@ -119,6 +129,89 @@ assert(runtime.includes('panelStampDeferredUntil'), 'immediate pump preview must
 assert(/if \(immediate\) \{\s*panelStampDeferredUntil/.test(runtime), 'beginPreviewWindow must set the panel-ready defer before immediate preview runs.');
 assert(runtime.includes('function markPumpPanelsPreviewPending'), 'input preview must mark existing pump panels pending before any transient row changes.');
 assert(runtime.includes('markPumpPanelsPreviewPending(document);'), 'immediate preview must clear the previous ready stamp before repainting pump values.');
-assert(!runtime.includes('clearTimeout?.(immediatePanelStampTimer)'), 'immediate preview finalize timer must not be reset by repeated lightweight events.');
+const immediateStart = runtime.indexOf('function runImmediatePumpPreview');
+const immediateEnd = runtime.indexOf('\n  function ', immediateStart + 20);
+const immediateBody = runtime.slice(immediateStart, immediateEnd);
+assert(!immediateBody.includes('clearTimeout?.(immediatePanelStampTimer)'), 'repeated lightweight events must not reset the immediate preview finalize timer.');
+
+const transientStart = runtime.indexOf('function applyTransientPumpPreview');
+const transientEnd = runtime.indexOf('\n  function ', transientStart + 20);
+const transientBody = runtime.slice(transientStart, transientEnd);
+assert(!/results\.(?:npsha|npshAvailable|npshr|npshRequired|npshMargin|npshRatio)\s*=/.test(transientBody), 'transient preview must not mutate persistent pump result values.');
+assert(!/evaluation\.(?:npsha|npshAvailable|npshr|npshRequired|npshMargin|npshRatio)\s*=/.test(transientBody), 'transient preview must not mutate persistent NPSH evaluation values.');
+
+const previousGlobals = {
+  globalModel: global.globalModel,
+  npshGlobalModel: global.__npshGlobalModel,
+  applyBackendSimulationPrimaryResults: global.applyBackendSimulationPrimaryResults,
+  runtime: global.EngineeringCanvasFastPreviewRuntime
+};
+const pump = {
+  type: 'pump',
+  props: { manualNpshr: 1 },
+  results: {
+    npsha: 15.347897032013499,
+    npshAvailable: 15.347897032013499,
+    npshr: 1,
+    npshRequired: 1,
+    npshMargin: 14.347897032013499,
+    npshRatio: 15.347897032013499,
+    npshEvaluation: {
+      npsha: 15.347897032013499,
+      npshAvailable: 15.347897032013499,
+      npshr: 1,
+      npshRequired: 1
+    }
+  }
+};
+global.globalModel = { 'P-100': pump };
+global.__npshGlobalModel = global.globalModel;
+global.applyBackendSimulationPrimaryResults = (pumpNode, backendResult) => {
+  pumpNode.results.npsha = String(backendResult.npsha.toFixed(4));
+  pumpNode.results.npshEvaluation.npsha = backendResult.npsha;
+  return true;
+};
+delete require.cache[require.resolve(runtimePath)];
+const runtimeApi = require(runtimePath);
+const beforePreview = JSON.stringify(pump.results);
+runtimeApi.applyTransientPumpPreview(pump, {
+  npsha: 15.3446,
+  npshr: 1,
+  margin: 14.3446,
+  ratio: 15.3446,
+  status: 'OK',
+  currentVaporHead: 7.411303
+});
+assert(JSON.stringify(pump.results) === beforePreview, 'staging a canvas preview must leave persistent results untouched.');
+
+global.applyBackendSimulationPrimaryResults(pump, {
+  npsha: 15.3482,
+  npshr: 1,
+  npshMargin: 14.3482,
+  npshRatio: 15.3482
+});
+runtimeApi.applyTransientPumpPreview(pump, {
+  npsha: 15.3446,
+  npshr: 1,
+  margin: 14.3446,
+  ratio: 15.3446,
+  status: 'OK',
+  currentVaporHead: 7.411303
+});
+runtimeApi.finalizeAuthoritativePumpResults('validator-authoritative-current');
+[
+  pump.results.npsha,
+  pump.results.npshAvailable,
+  pump.results.npshEvaluation.npsha,
+  pump.results.npshEvaluation.npshAvailable
+].forEach((value) => assert(value === 15.3482, 'backend canonical NPSHa must survive stale preview finalization.'));
+assert(pump.results.npshMargin === 14.3482, 'backend canonical NPSH margin must remain synchronized.');
+assert(pump.results.npshRatio === 15.3482, 'backend canonical NPSH ratio must remain synchronized.');
+
+global.globalModel = previousGlobals.globalModel;
+global.__npshGlobalModel = previousGlobals.npshGlobalModel;
+global.applyBackendSimulationPrimaryResults = previousGlobals.applyBackendSimulationPrimaryResults;
+global.EngineeringCanvasFastPreviewRuntime = previousGlobals.runtime;
+delete require.cache[require.resolve(runtimePath)];
 
 console.log('Canvas fast preview runtime validation passed.');

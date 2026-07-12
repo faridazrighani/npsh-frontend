@@ -9,6 +9,9 @@ const {
   CURRENT_LAYOUT_SCHEMA,
   cleanProject
 } = require('./upgrade-simulation-untirta-current-layout.cjs');
+const {
+  migrateProject
+} = require('./upgrade-active-simulation-cases-global-runtime.cjs');
 
 const frontendRoot = path.resolve(__dirname, '..');
 const workspaceRoot = path.resolve(frontendRoot, '..');
@@ -128,6 +131,7 @@ if (fs.existsSync(optionalPapahSource)) {
   const source = readUntirtaProject(optionalPapahSource);
   const migratedSourceProject = deepClone(source.project);
   cleanProject(migratedSourceProject);
+  migrateProject(caseId, migratedSourceProject);
   assert.deepEqual(
     first.project,
     migratedSourceProject,

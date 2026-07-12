@@ -9,7 +9,7 @@ async function waitForNpshApp(page) {
   await page.evaluate(() => window.__npshLoadSupport?.());
   await page.waitForFunction(() => (
     typeof window.updateSimulation === 'function'
-    && window.EngineeringSimulationLoadTransaction?.cacheKey === '20260711-simulation-load-visual-wrapper-lock1'
+    && window.EngineeringSimulationLoadTransaction?.cacheKey === '20260712-simulation-load-primary-apply-evidence-lock1'
     && window.EngineeringPerformanceBaselineRuntime?.cacheKey === '20260709-performance-baseline1'
     && window.EngineeringRuntimeHealthAudit?.cacheKey === '20260710-runtime-health-audit-phase10-1'
   ), null, { timeout: 30000 });

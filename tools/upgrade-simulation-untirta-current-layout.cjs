@@ -285,5 +285,6 @@ module.exports = {
   REMOVED_PIPE_RESULT_KEYS,
   cleanProject,
   listSimulationFiles,
-  readUntirtaProject
+  readUntirtaProject,
+  writeUntirtaProject
 };

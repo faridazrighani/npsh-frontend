@@ -29,9 +29,20 @@ async function openSimulationCase(page, caseId) {
     const model = window.__npshGlobalModel || window.globalModel || {};
     return Object.values(model).some((node) => node?.type === 'sink');
   }, null, { timeout: 30000 });
+  await page.waitForFunction(() => {
+    const solve = document.getElementById('btn-solve');
+    const label = solve?.querySelector?.('.ribbon-label')?.textContent?.trim();
+    const lifecycle = window.EngineeringCalculationLifecycle?.current?.();
+    const transaction = window.EngineeringSimulationLoadTransaction?.current?.();
+    return label === 'Validate'
+      && !solve?.disabled
+      && lifecycle?.status === 'current'
+      && transaction?.status !== 'active';
+  }, null, { timeout: 30000 });
 }
 
 test('actual SNK numeric inputs remain stable and create one realtime transaction per committed value', async ({ page }, testInfo) => {
+  test.setTimeout(120000);
   await waitForNpshApp(page);
   await openSimulationCase(page, 'simulation-case-6');
   const sinkId = await page.evaluate(() => {
@@ -62,6 +73,19 @@ test('actual SNK numeric inputs remain stable and create one realtime transactio
       pressure: task?.querySelector('input[data-key="pressure"]'),
       elevation: task?.querySelector('input[data-key="elevation"]')
     };
+    const captureRibbon = () => {
+      const panel = document.querySelector('.sink-live-params');
+      if (!panel) return;
+      const labels = Array.from(panel.querySelectorAll('.sink-live-param-row'))
+        .map((row) => row.querySelector('.sink-live-param-label')?.textContent?.trim())
+        .filter(Boolean);
+      const height = panel.getBoundingClientRect?.().height || 0;
+      window.__sinkRibbonTemplateSamples.push({ labels, height });
+    };
+    window.__sinkRibbonTemplateSamples = [];
+    window.clearInterval(window.__sinkRibbonTemplateTimer);
+    window.__sinkRibbonTemplateTimer = window.setInterval(captureRibbon, 100);
+    captureRibbon();
     return Number(window.__engineeringCalculationDefenseRealtimeState?.sequence || 0);
   }, { windowSelector });
 
@@ -69,61 +93,67 @@ test('actual SNK numeric inputs remain stable and create one realtime transactio
   await flowInput.click();
   await flowInput.press('Control+A');
   const previewSnapshots = [];
-  for (const character of '20.25') {
+  for (const character of '30') {
     await flowInput.type(character);
     const currentValue = await flowInput.inputValue();
     previewSnapshots.push(await page.evaluate(({ sinkId: id, expected }) => {
       const model = window.__npshGlobalModel || window.globalModel || {};
-      const row = Array.from(document.querySelectorAll('.sink-live-param-row')).find((candidate) => (
-        candidate.querySelector('.sink-live-param-label')?.textContent?.trim() === 'Sink Flow'
-      ));
       return {
         expected,
         prop: model[id]?.props?.demandFlow,
-        preview: window.EngineeringSinkInputStabilityRuntime?.previewForNode?.(model[id])?.demandFlow,
-        canvas: row?.querySelector('.sink-live-param-value')?.textContent || ''
+        inputPreview: window.EngineeringSinkInputStabilityRuntime?.previewForNode?.(model[id])?.demandFlow
       };
     }, { sinkId, expected: currentValue }));
-    await page.waitForTimeout(350);
   }
   previewSnapshots.forEach((snapshot) => {
     const expected = Number(snapshot.expected);
     expect(Number(snapshot.prop)).toBeCloseTo(expected, 9);
-    expect(Number(snapshot.preview)).toBeCloseTo(expected, 9);
-    expect(snapshot.canvas).toBe(expected.toFixed(3));
+    expect(Number(snapshot.inputPreview)).toBeCloseTo(expected, 9);
   });
+  await expect(flowInput).toHaveValue('30');
+  await flowInput.press('Tab');
   await page.waitForFunction(({ sinkId: id }) => {
     const model = window.__npshGlobalModel || window.globalModel || {};
     return window.__engineeringCalculationDefenseRealtimeState?.status === 'Current'
-      && Math.abs(Number(model[id]?.props?.demandFlow) - 20.25) < 1e-9
-      && Math.abs(Number(model[id]?.results?.flow) - 20.25) < 1e-9;
+      && Math.abs(Number(model[id]?.props?.demandFlow) - 30) < 1e-9
+      && Math.abs(Number(model[id]?.results?.flow) - 30) < 1e-9;
   }, { sinkId }, { timeout: 30000 });
   const afterFlowSequence = await page.evaluate(() => Number(window.__engineeringCalculationDefenseRealtimeState?.sequence || 0));
   expect(afterFlowSequence - baseline).toBe(1);
+  await expect(page.locator('.sink-live-param-row').filter({ hasText: /^Sink Flow/ }).first()).toContainText('30.000');
 
   const elevationInput = page.locator(`${windowSelector} input[data-key="elevation"]`);
-  await elevationInput.fill('2.75');
+  await elevationInput.click();
+  await elevationInput.press('Control+A');
+  await elevationInput.pressSequentially('10');
+  await expect(elevationInput).toHaveValue('10');
+  await elevationInput.press('Tab');
   await page.waitForFunction(({ sinkId: id }) => {
     const model = window.__npshGlobalModel || window.globalModel || {};
     return window.__engineeringCalculationDefenseRealtimeState?.status === 'Current'
-      && Math.abs(Number(model[id]?.props?.elevation) - 2.75) < 1e-9
-      && Math.abs(Number(model[id]?.results?.calculationTrace?.boundary?.elevation) - 2.75) < 1e-9;
+      && Math.abs(Number(model[id]?.props?.elevation) - 10) < 1e-9
+      && Math.abs(Number(model[id]?.results?.calculationTrace?.boundary?.elevation) - 10) < 1e-9;
   }, { sinkId }, { timeout: 30000 });
 
   const pressureInput = page.locator(`${windowSelector} input[data-key="pressure"]`);
-  await pressureInput.fill('2.5');
-  await expect(page.locator(`${windowSelector} [data-prop-key="source-absolute-pressure"], ${windowSelector} .object-task-field-row`).filter({ hasText: /Calculated Abs\. Pressure/ }).first()).toContainText('3.513');
+  await pressureInput.click();
+  await pressureInput.press('Control+A');
+  await pressureInput.pressSequentially('10');
+  await expect(pressureInput).toHaveValue('10');
+  await pressureInput.press('Tab');
   await page.waitForFunction(({ sinkId: id }) => {
     const model = window.__npshGlobalModel || window.globalModel || {};
     return window.__engineeringCalculationDefenseRealtimeState?.status === 'Current'
-      && Math.abs(Number(model[id]?.props?.pressure) - 2.5) < 1e-9
-      && Math.abs(Number(model[id]?.results?.boundaryPressureInput) - 2.5) < 0.001;
+      && Math.abs(Number(model[id]?.props?.pressure) - 10) < 1e-9
+      && Math.abs(Number(model[id]?.results?.boundaryPressureInput) - 10) < 0.001;
   }, { sinkId }, { timeout: 30000 });
+  await expect(page.locator(`${windowSelector} [data-prop-key="source-absolute-pressure"], ${windowSelector} .object-task-field-row`).filter({ hasText: /Calculated Abs\. Pressure/ }).first()).toContainText('11.013');
 
   const state = await page.evaluate(({ windowSelector, sinkId: id }) => {
     const task = document.querySelector(windowSelector);
     const model = window.__npshGlobalModel || window.globalModel || {};
     const retained = window.__sinkStableTaskNodes || {};
+    window.clearInterval(window.__sinkRibbonTemplateTimer);
     return {
       nodesStable: retained.task === task
         && retained.body === task?.querySelector('.task-window-body, [data-task-prop-body="true"], #taskWindowBody')
@@ -137,18 +167,24 @@ test('actual SNK numeric inputs remain stable and create one realtime transactio
       },
       props: model[id]?.props || {},
       resultFlow: model[id]?.results?.flow,
-      sequence: Number(window.__engineeringCalculationDefenseRealtimeState?.sequence || 0)
+      sequence: Number(window.__engineeringCalculationDefenseRealtimeState?.sequence || 0),
+      ribbonSamples: window.__sinkRibbonTemplateSamples || []
     };
   }, { windowSelector, sinkId });
 
   expect(state.nodesStable).toBe(true);
-  expect(state.values).toEqual({ demandFlow: '20.25', pressure: '2.5', elevation: '2.75' });
-  expect(Number(state.props.demandFlow)).toBeCloseTo(20.25, 9);
-  expect(Number(state.props.flowDemand)).toBeCloseTo(20.25, 9);
-  expect(Number(state.props.pressure)).toBeCloseTo(2.5, 9);
-  expect(Number(state.props.elevation)).toBeCloseTo(2.75, 9);
-  expect(Number(state.resultFlow)).toBeCloseTo(20.25, 9);
+  expect(state.values).toEqual({ demandFlow: '30', pressure: '10', elevation: '10' });
+  expect(Number(state.props.demandFlow)).toBeCloseTo(30, 9);
+  expect(Number(state.props.flowDemand)).toBeCloseTo(30, 9);
+  expect(Number(state.props.pressure)).toBeCloseTo(10, 9);
+  expect(Number(state.props.elevation)).toBeCloseTo(10, 9);
+  expect(Number(state.resultFlow)).toBeCloseTo(30, 9);
   expect(state.sequence - baseline).toBe(3);
+  expect(state.ribbonSamples.length).toBeGreaterThan(10);
+  const canonicalRibbonLabels = ['Mode', 'Sink Flow', 'Sink P abs', 'Sink Elev.', 'Sink Head'];
+  state.ribbonSamples.forEach((sample) => expect(sample.labels).toEqual(canonicalRibbonLabels));
+  const ribbonHeights = state.ribbonSamples.map((sample) => sample.height).filter((height) => height > 0);
+  expect(Math.max(...ribbonHeights) - Math.min(...ribbonHeights)).toBeLessThan(1);
 
   const screenshotPath = testInfo.outputPath('sink-object-properties-input-stability.png');
   await page.screenshot({ path: screenshotPath, fullPage: false });

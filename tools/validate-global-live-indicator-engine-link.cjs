@@ -156,10 +156,10 @@ assert(stableRuntime.includes("MutationObserver"), "Stable runtime must watch la
 assert(stableRuntime.includes("dataset.liveParameterStableShell"), "Stable runtime must mark stable shell panels for QA.");
 assert(!stableRuntime.includes("innerHTML"), "Stable runtime must not rebuild live parameter panels via innerHTML.");
 
-assert(indexHtml.includes("engineering-src-canvas-parameter-runtime.js?v=20260702-object-status-clean1"), "Index must load the global SRC realtime indicator runtime.");
+assert(indexHtml.includes("engineering-src-canvas-parameter-runtime.js?v=20260712-route-warning-color-lock1"), "Index must load the global SRC realtime indicator runtime.");
 assert(indexHtml.includes("engineering-source-volumetric-only-runtime.js?v=20260711-src-input-flash-lock1"), "Index must load the Source volumetric-only runtime.");
 assert(indexHtml.includes("engineering-live-parameter-stable-runtime-20260628-global-stable-values3.js?v=20260706-fast-preview-preserve1"), "Index must load the global stable live-parameter runtime with a physical filename cache-bust.");
-assert(indexHtml.includes("engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260711-sink-input-stability1"), "Index must load the global SNK/pump hover-sync runtime.");
+assert(indexHtml.includes("engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-route-warning-color-lock1"), "Index must load the global SNK/pump hover-sync runtime.");
 assert(indexHtml.includes("engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2"), "Index must load the global decimal display lock.");
 
 assert(manifest.includes("Global live indicator engine-link validation"), "Manifest must document the global live indicator engine-link validation.");
@@ -174,6 +174,8 @@ for (const filePath of simulationFiles) {
   const pumps = nodesByType(project.model, "pump");
   const sinks = nodesByType(project.model, "sink");
   const pipes = nodesByType(project.model, "pipe");
+  const inputOnly = project.projectFile?.globalRuntimeMigration?.persistedResultPolicy
+    === "input-only-recalculate-on-open-and-validate";
 
   assert(sources.length === 1, `${fileName} must keep one canonical SRC/source object for global readout parity.`);
   assert(pumps.length === 1, `${fileName} must keep one canonical pump object for global readout parity.`);
@@ -183,21 +185,38 @@ for (const filePath of simulationFiles) {
   for (const [sourceId, source] of sources) {
     assert(source.results && typeof source.results === "object", `${fileName} ${sourceId} must keep source results for indicator fallback.`);
     assert(source.props && typeof source.props === "object", `${fileName} ${sourceId} must keep source props for pre-solve fallback.`);
-    assert(sourceHead(source) !== null, `${fileName} ${sourceId} must expose source head trace/results for Source Head.`);
+    if (inputOnly) {
+      assert(firstFinite(source.props?.flow, source.props?.volumetricFlow) !== null, `${fileName} ${sourceId} must keep SRC flow input for backend recalculation.`);
+      assert(firstFinite(source.props?.pressure) !== null, `${fileName} ${sourceId} must keep SRC pressure input for backend recalculation.`);
+      assert(firstFinite(source.props?.elevation) !== null, `${fileName} ${sourceId} must keep SRC elevation input for backend recalculation.`);
+    } else {
+      assert(sourceHead(source) !== null, `${fileName} ${sourceId} must expose source head trace/results for Source Head.`);
+    }
   }
 
   for (const [sinkId, sink] of sinks) {
     assert(sink.results && typeof sink.results === "object", `${fileName} ${sinkId} must keep sink results for realtime Sink readouts.`);
     assert(sink.props && typeof sink.props === "object", `${fileName} ${sinkId} must keep sink props for pre-solve fallback.`);
-    assert(sinkHead(sink) !== null, `${fileName} ${sinkId} must expose sink head trace/results for Sink Head.`);
+    if (inputOnly) {
+      assert(firstFinite(sink.props?.demandFlow, sink.props?.flowDemand) !== null, `${fileName} ${sinkId} must keep SNK flow input for backend recalculation.`);
+      assert(firstFinite(sink.props?.pressure) !== null, `${fileName} ${sinkId} must keep SNK pressure input for backend recalculation.`);
+      assert(firstFinite(sink.props?.elevation) !== null, `${fileName} ${sinkId} must keep SNK elevation input for backend recalculation.`);
+    } else {
+      assert(sinkHead(sink) !== null, `${fileName} ${sinkId} must expose sink head trace/results for Sink Head.`);
+    }
   }
 
   for (const [pumpId, pump] of pumps) {
     const results = pump.results || {};
     assert(results && typeof results === "object", `${fileName} ${pumpId} must keep pump results for live pump indicators.`);
-    assert(firstFinite(results.flow, results.npshEvaluation?.flow, pump.props?.designFlow) !== null, `${fileName} ${pumpId} must expose solved/design flow for pump/SRC/SNK parity.`);
-    assert(firstFinite(results.npsha, results.npshEvaluation?.npsha) !== null, `${fileName} ${pumpId} must expose NPSHa for pump live indicators.`);
-    assert(firstFinite(results.npshr, results.npshEvaluation?.npshr) !== null, `${fileName} ${pumpId} must expose NPSHr for pump live indicators.`);
+    if (inputOnly) {
+      assert.deepEqual(results, {}, `${fileName} ${pumpId} must not persist stale pump results.`);
+      assert(firstFinite(pump.props?.manualNpshr) !== null, `${fileName} ${pumpId} must keep manual NPSHr input for backend recalculation.`);
+    } else {
+      assert(firstFinite(results.flow, results.npshEvaluation?.flow, pump.props?.designFlow) !== null, `${fileName} ${pumpId} must expose solved/design flow for pump/SRC/SNK parity.`);
+      assert(firstFinite(results.npsha, results.npshEvaluation?.npsha) !== null, `${fileName} ${pumpId} must expose NPSHa for pump live indicators.`);
+      assert(firstFinite(results.npshr, results.npshEvaluation?.npshr) !== null, `${fileName} ${pumpId} must expose NPSHr for pump live indicators.`);
+    }
   }
 }
 

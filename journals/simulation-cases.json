@@ -14,7 +14,10 @@
         "id": "Pompa air umpan ke deaerator"
       },
       "sampleFile": "journals/simulasi_1/simulasi_performansi_pompa_air_umpan_tangki_deaerator.untirta",
-      "analysisReport": "journals/analysis-reports/simulasi-1-analysis.json"
+      "analysisReport": "journals/analysis-reports/simulasi-1-analysis.json",
+      "runtimeSchemaVersion": "simulation-case-global-runtime.v1",
+      "layoutProfile": "global-forward-route.v1",
+      "calculationAuthority": "protected-backend"
     },
     {
       "id": "simulation-case-2",
@@ -71,7 +74,10 @@
         "id": "Analisis NPSH pompa metanol dan kerusakan impeller"
       },
       "sampleFile": "journals/simulasi_4/Methanol_Analisa_NPSH_Kerusakan_Impeller.untirta",
-      "analysisReport": "journals/analysis-reports/simulasi-4-analysis.json"
+      "analysisReport": "journals/analysis-reports/simulasi-4-analysis.json",
+      "runtimeSchemaVersion": "simulation-case-global-runtime.v1",
+      "layoutProfile": "global-forward-route.v1",
+      "calculationAuthority": "protected-backend"
     },
     {
       "id": "simulation-case-5",
@@ -107,7 +113,10 @@
         "id": "Evaluasi pompa air panas P-2941A"
       },
       "sampleFile": "journals/simulasi_6/Evaluasi_Pompa_Sentrifugal_P-2941A_sebagai_Pompa_Air_Panas.untirta",
-      "analysisReport": "journals/analysis-reports/simulasi-6-analysis.json"
+      "analysisReport": "journals/analysis-reports/simulasi-6-analysis.json",
+      "runtimeSchemaVersion": "simulation-case-global-runtime.v1",
+      "layoutProfile": "global-forward-route.v1",
+      "calculationAuthority": "protected-backend"
     }
   ]
 }

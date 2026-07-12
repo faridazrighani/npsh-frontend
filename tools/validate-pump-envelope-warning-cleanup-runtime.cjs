@@ -21,15 +21,15 @@ const manifest = fs.existsSync(manifestPath) ? read(manifestPath) : '';
 const uploadReadiness = fs.existsSync(uploadReadinessPath) ? read(uploadReadinessPath) : '';
 const runtime = require(runtimePath);
 
-assert.strictEqual(runtime.version, '2026.07-pump-envelope-warning-cleanup2-wrapper-lock');
-assert.strictEqual(runtime.cacheKey, '20260711-pump-warning-wrapper-lock1');
+assert.strictEqual(runtime.version, '2026.07-warning-lifecycle-cleanup3-current-request-lock');
+assert.strictEqual(runtime.cacheKey, '20260712-warning-lifecycle-current-request-lock1');
 assert.strictEqual(
   packageJson.scripts?.['validate:pump-envelope-warning-cleanup'],
   'node tools/validate-pump-envelope-warning-cleanup-runtime.cjs',
   'package.json must expose the pump envelope warning cleanup validator.'
 );
 
-const scriptSrc = 'engineering-pump-envelope-warning-cleanup-runtime.js?v=20260711-pump-warning-wrapper-lock1';
+const scriptSrc = 'engineering-pump-envelope-warning-cleanup-runtime.js?v=20260712-warning-lifecycle-current-request-lock1';
 assert(indexHtml.includes(scriptSrc), 'index.html must load the pump envelope warning cleanup runtime.');
 assert(
   indexHtml.indexOf('app.bundle.min.js?v=20260707-pipe-canvas-loss-label1') < indexHtml.indexOf(scriptSrc),
@@ -43,8 +43,15 @@ assert(
 [
   'SUPPRESSED_PUMP_INPUT_FIELDS',
   'DEPRECATED_WARNING_PATTERNS',
+  'BACKEND_UNAVAILABLE_WARNING_PATTERNS',
+  'WARNING_ARRAY_KEYS',
   'getPumpOperatingWarnings',
   'getPumpValidationWarnings',
+  'setBackendProtectedUnavailableResult',
+  'applyBackendSimulationPrimaryResults',
+  'shouldExpireBackendWarning',
+  'isCurrentVerifiedBackendResult',
+  'npsh:realtime-autosolve-superseded',
   'updateCanvasWarningPanel',
   'getActiveModel',
   'sanitizeModelWarnings',
@@ -87,6 +94,86 @@ const filtered = runtime.filterWarningList([
 ]);
 assert.deepStrictEqual(filtered, ['Hydraulic NPSH margin is below the required value.']);
 
+const backendWarning = 'Backend validation unavailable; displayed hydraulic results are unverified by the protected backend.';
+const connectedPump = {
+  type: 'pump',
+  results: {
+    npsha: '15.3482',
+    backendValidationStatus: 'Connected',
+    calculationFreshness: 'Current',
+    backendCalculationSource: 'backend-primary-protected',
+    warnings: [backendWarning, 'NPSHr Not Provided'],
+    npshEvaluation: {
+      npsha: 15.3482,
+      backendValidationStatus: 'Connected',
+      calculationFreshness: 'Current',
+      warnings: [backendWarning, 'Hydraulic NPSH margin is below the required value.']
+    }
+  }
+};
+assert(runtime.isBackendUnavailableWarning(backendWarning), 'Protected-backend warning must be classified explicitly.');
+assert(runtime.isCurrentVerifiedBackendResult(connectedPump), 'Connected/current backend result must be recognized.');
+assert(runtime.shouldExpireBackendWarning(connectedPump), 'Backend warning must expire after a connected/current result.');
+assert.deepStrictEqual(
+  runtime.filterWarningList(connectedPump.results.warnings, { node: connectedPump }),
+  ['NPSHr Not Provided'],
+  'Connected result must clear stale backend warning and preserve NPSHr warning.'
+);
+
+const pendingPump = {
+  type: 'pump',
+  results: {
+    backendValidationStatus: 'Calculating',
+    calculationFreshness: 'Calculating',
+    backendParity: { status: 'pending', requestId: 22 },
+    warnings: [backendWarning]
+  }
+};
+assert(
+  runtime.shouldExpireBackendWarning(pendingPump, { status: 'timeout' }),
+  'An older timeout must not create a warning while a newer backend request is pending.'
+);
+
+const failedPump = {
+  type: 'pump',
+  results: {
+    backendValidationStatus: 'Timeout',
+    calculationFreshness: 'Failed',
+    backendCalculationSource: 'backend-unavailable',
+    backendParity: { status: 'timeout', requestId: 23 },
+    warnings: [backendWarning]
+  }
+};
+assert(
+  !runtime.shouldExpireBackendWarning(failedPump, { status: 'timeout' }),
+  'A real terminal failure for the active request must remain visible.'
+);
+assert.deepStrictEqual(
+  runtime.filterWarningList(failedPump.results.warnings, { node: failedPump }),
+  [backendWarning],
+  'True active backend outage warning must not be hidden.'
+);
+
+const localTraceOnlyPump = {
+  type: 'pump',
+  results: {
+    npsha: 15.3479,
+    backendValidationStatus: 'Connected',
+    calculationFreshness: 'Current',
+    backendCalculationSource: 'frontend-local-trace',
+    warnings: [backendWarning]
+  }
+};
+assert(
+  !runtime.isCurrentVerifiedBackendResult(localTraceOnlyPump),
+  'Frontend local trace must never be mislabeled as a protected-backend verification.'
+);
+assert.deepStrictEqual(
+  runtime.filterWarningList(localTraceOnlyPump.results.warnings, { node: localTraceOnlyPump }),
+  [backendWarning],
+  'A real unverified local trace must retain its backend validation warning.'
+);
+
 const model = {
   'P-100': {
     type: 'pump',
@@ -108,6 +195,18 @@ assert.deepStrictEqual(model['P-100'].results.validationWarnings, [
   { field: 'designNpshr', message: 'Manual NPSHr must be greater than zero.' }
 ]);
 
+const connectedModel = { 'P-200': connectedPump };
+assert.strictEqual(
+  runtime.sanitizeModelWarnings(connectedModel),
+  2,
+  'Lifecycle sanitation must clear expired backend warnings from nested warning containers.'
+);
+assert.deepStrictEqual(connectedPump.results.warnings, ['NPSHr Not Provided']);
+assert.deepStrictEqual(
+  connectedPump.results.npshEvaluation.warnings,
+  ['Hydraulic NPSH margin is below the required value.']
+);
+
 [
   /\bcalculatePumpSystemHead\b/,
   /\bcalculateDarcy\b/,
@@ -118,7 +217,7 @@ assert.deepStrictEqual(model['P-100'].results.validationWarnings, [
 });
 
 if (manifest) {
-  assert(manifest.includes(`Pump envelope warning cleanup cache key: ${scriptSrc}`), 'FILE_MANIFEST must document the pump envelope warning cleanup cache key.');
+  assert(manifest.includes(`Pump warning lifecycle cleanup cache key: ${scriptSrc}`), 'FILE_MANIFEST must document the warning lifecycle cleanup cache key.');
   assert(manifest.includes('validate:pump-envelope-warning-cleanup'), 'FILE_MANIFEST must mention the pump envelope warning cleanup validator.');
 }
 if (uploadReadiness) {

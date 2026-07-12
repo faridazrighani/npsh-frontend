@@ -7,7 +7,7 @@ async function waitForNpshApp(page) {
   await page.waitForFunction(() => (
     typeof window.updateSimulation === 'function'
     && window.EngineeringCalculationLifecycle?.version === 'engineering-calculation-lifecycle.v1'
-    && window.EngineeringSimulationLoadTransaction?.version === 'engineering-simulation-load-transaction-manager.v3-visual-wrapper-lock'
+    && window.EngineeringSimulationLoadTransaction?.version === 'engineering-simulation-load-transaction-manager.v5-primary-apply-evidence-lock'
   ), null, { timeout: 30000 });
 }
 
@@ -77,5 +77,83 @@ for (const caseId of ['simulation-case-1', 'simulation-case-4', 'simulation-case
     expect(state.lifecycle.status).toBe('current');
     expect(state.transaction.status).not.toBe('active');
     expect(state.hasPump).toBe(true);
+
+    if (caseId === 'simulation-case-6') {
+      const loadedNpsha = await page.evaluate(() => {
+        const model = window.__npshGlobalModel || window.globalModel || {};
+        const pump = Object.values(model).find((node) => node?.type === 'pump') || {};
+        const results = pump.results || {};
+        const evaluation = results.npshEvaluation || {};
+        return {
+          aliases: [
+            Number(results.npsha),
+            Number(results.npshAvailable),
+            Number(evaluation.npsha),
+            Number(evaluation.npshAvailable)
+          ],
+          commit: window.__engineeringCanvasFastPreviewLastAuthoritativeCommit || null,
+          backendSource: results.backendCalculationSource || evaluation.backendCalculationSource || '',
+          responseNpsha: Number(window.__npshLastBackendSimulationResponse?.response?.results?.npsha),
+          awaiting: !!window.EngineeringSimulationLoadTransaction?.current?.()?.awaitingAuthoritativeCalculation
+        };
+      });
+      expect(loadedNpsha.aliases.every(Number.isFinite)).toBe(true);
+      expect(new Set(loadedNpsha.aliases.map((value) => value.toFixed(8))).size).toBe(1);
+      expect(
+        Number.isFinite(loadedNpsha.responseNpsha)
+        || /backend|primary|protected/i.test(loadedNpsha.backendSource)
+      ).toBe(true);
+      if (Number.isFinite(loadedNpsha.responseNpsha)) {
+        expect(loadedNpsha.responseNpsha).toBeCloseTo(loadedNpsha.aliases[0], 8);
+      }
+      expect(loadedNpsha.awaiting).toBe(false);
+
+      await page.locator('#btn-solve').click();
+      await waitUntilNotBusy(page, caseId);
+      await page.waitForTimeout(2400);
+      const npshaState = await page.evaluate(() => {
+        const model = window.__npshGlobalModel || window.globalModel || {};
+        const pumpEntry = Object.entries(model).find(([, node]) => node?.type === 'pump') || [];
+        const sourceEntry = Object.entries(model).find(([, node]) => node?.type === 'source') || [];
+        let connectionList = model.connections || window.connections || [];
+        try {
+          if (typeof connections !== 'undefined' && Array.isArray(connections)) connectionList = connections;
+        } catch {
+          connectionList = [];
+        }
+        const suctionConnection = connectionList.find((connection) => connection?.to === pumpEntry[0]);
+        const suctionPipe = model[suctionConnection?.pipeId];
+        const pump = pumpEntry[1] || {};
+        const source = sourceEntry[1] || {};
+        const fluid = model.FLUID?.props || {};
+        const results = pump.results || {};
+        const evaluation = results.npshEvaluation || {};
+        const pressureInput = Number(source.props?.pressure);
+        const pressureAbs = source.props?.pressureInputBasis === 'Gauge' ? pressureInput + 1.01325 : pressureInput;
+        const density = Number(fluid.density);
+        const vaporPressure = Number(fluid.vaporPressure);
+        const sourceElevation = Number(source.props?.elevation || 0);
+        const pumpElevation = Number(pump.props?.suctionElevation ?? pump.props?.elevation ?? 0);
+        const suctionLoss = Number(suctionPipe?.results?.calculationTrace?.totals?.totalLoss || 0);
+        const expected = pressureAbs * 100000 / (density * 9.81)
+          + sourceElevation
+          - pumpElevation
+          - suctionLoss
+          - vaporPressure * 100000 / (density * 9.81);
+        return {
+          expected,
+          aliases: [
+            Number(results.npsha),
+            Number(results.npshAvailable),
+            Number(evaluation.npsha),
+            Number(evaluation.npshAvailable)
+          ],
+          transient: results.__canvasFastPreviewTransient || null
+        };
+      });
+      npshaState.aliases.forEach((value) => expect(value).toBeCloseTo(npshaState.expected, 4));
+      expect(new Set(npshaState.aliases.map((value) => value.toFixed(8))).size).toBe(1);
+      expect(npshaState.transient).toBeNull();
+    }
   });
 }

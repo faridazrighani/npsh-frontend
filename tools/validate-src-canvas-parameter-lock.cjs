@@ -8,7 +8,7 @@ const INDEX_FILE = path.join(FRONTEND_ROOT, "index.html");
 const JOURNALS_DIR = path.join(FRONTEND_ROOT, "journals");
 const UNTIRTA_MAGIC = "UNTIRTA-NPSH-V1\n";
 
-const RUNTIME_CACHE_KEY = "engineering-src-canvas-parameter-runtime.js?v=20260702-object-status-clean1";
+const RUNTIME_CACHE_KEY = "engineering-src-canvas-parameter-runtime.js?v=20260712-route-warning-color-lock1";
 const DEFAULT_ROW_LABELS = ["Mode", "SRC Input Flow", "Source P abs", "Source Elev.", "Source Head"];
 const ALWAYS_HIDDEN_ROWS = new Set(["Contribution", "Suction Loss", "NPSH at Pump", "Pump NPSHa"]);
 const DYNAMIC_ROWS = new Set(["Dyn Mode", "Target", "Dyn Feed", "Target Net", "Dyn Net", "Target Trend", "Dyn Trend"]);
@@ -58,9 +58,15 @@ function filterRows(labels, unlocked) {
   });
 }
 
-function formatDisplayValue(value, digits = 3) {
-  const numeric = Number.parseFloat(value);
-  return Number.isFinite(numeric) ? numeric.toFixed(digits) : null;
+function expectedSourceHead(projectFile, source) {
+  const fluid = projectFile.model?.FLUID || Object.values(projectFile.model || {}).find((node) => node?.type === "fluid");
+  const density = Number.parseFloat(fluid?.props?.density);
+  const pressureInput = Number.parseFloat(source?.props?.pressure);
+  const elevation = Number.parseFloat(source?.props?.elevation);
+  if (![density, pressureInput, elevation].every(Number.isFinite) || density <= 0) return null;
+  const basis = String(source?.props?.pressureInputBasis || "Absolute");
+  const pressureAbsBar = /gauge/i.test(basis) ? pressureInput + 1.01325 : pressureInput;
+  return pressureAbsBar * 100000 / (density * 9.81) + elevation;
 }
 
 function readUntirtaProject(filePath) {
@@ -96,7 +102,7 @@ function listSimulationUntirtaFiles() {
 }
 
 const runtime = fs.readFileSync(RUNTIME_FILE, "utf8");
-assert(runtime.includes('2026.07-src-canvas-flow-basis-lock5'), "Runtime must keep the source flow canvas basis lock version.");
+assert(runtime.includes('2026.07-src-canvas-route-warning-color-lock6'), "Runtime must keep the route-aware SRC warning color lock version.");
 assert(runtime.includes("isSourceLiveDynamicDisplayActive = isRealtimeDynamicUnlocked"), "Runtime must override the SRC dynamic display gate.");
 assert(runtime.includes("setRealtimeDynamicUnlocked(true)"), "Runtime must unlock SRC dynamic rows when realtime dynamic starts.");
 assert(runtime.includes("setRealtimeDynamicUnlocked(false)"), "Runtime must lock SRC dynamic rows when realtime dynamic stops.");
@@ -113,7 +119,9 @@ assert(runtime.includes("connectedRouteFlowForSource"), "Runtime must read conne
 assert(runtime.includes("singleRouteSolvedFlowForSource"), "Runtime must safely fall back to single-route solved pump/sink flow before using static source input.");
 assert(runtime.includes("syncSourceObjectTooltip"), "Runtime must keep SRC object hover/title synchronized with canonical canvas values.");
 assert(runtime.includes("sourceHasHydraulicConnection"), "Runtime must keep disconnected SRC objects Incomplete instead of green/OK.");
-assert(runtime.includes("source-status-incomplete"), "Runtime must mark disconnected SRC object icons with the incomplete class.");
+assert(runtime.includes("`source-status-${name}`"), "Runtime must apply the exclusive source icon status class selected by the route presentation matrix.");
+assert(runtime.includes("routePresentationStatus"), "Runtime must preserve the route presentation status selected by the canonical route audit.");
+assert(runtime.includes('["safe", "warning", "risk", "incomplete"]'), "Runtime must enforce an exclusive route presentation color matrix.");
 assert(runtime.includes("dataset.sourceObjectTooltipLock"), "Runtime must mark SRC object hover/title synchronization for QA.");
 assert(runtime.includes('data-engineering-runtime-originaltitle'), "Runtime must update the SRC hover title backup used by the hover bridge.");
 assert(runtime.includes("patchSourceRenderFunction"), "Runtime must refresh SRC canvas/hover after render and backend-result hooks.");
@@ -172,15 +180,20 @@ for (const filePath of simulationFiles) {
   for (const sourceId of sourceIds) {
     const source = projectFile.model[sourceId] || {};
     const trace = source.results?.calculationTrace?.boundary || {};
-    const sourceHead = formatDisplayValue(trace.totalSourceHead);
-    if (sourceHead) {
+    const derivedSourceHead = expectedSourceHead(projectFile, source);
+    assert(Number.isFinite(derivedSourceHead), `${path.basename(filePath)} ${sourceId} must provide canonical pressure, density, and elevation inputs for Source Head.`);
+    const persistedSourceHead = Number.parseFloat(trace.totalSourceHead);
+    if (Number.isFinite(persistedSourceHead)) {
       assert(
-        sourceHead !== "19.400",
-        `${path.basename(filePath)} ${sourceId} must not preserve stale 1-decimal source head 19.400.`
+        Math.abs(persistedSourceHead - derivedSourceHead) < 0.0005,
+        `${path.basename(filePath)} ${sourceId} persisted Source Head must match its canonical boundary inputs.`
       );
     }
-    if (path.basename(filePath) === "simulasi_performansi_pompa_air_umpan_tangki_deaerator.untirta") {
-      assert(sourceHead === "19.369", "Simulasi 1 SRC-100 Source Head must render from exact trace as 19.369 m.");
+    if (projectFile.projectFile?.globalRuntimeMigration?.persistedResultPolicy === "input-only-recalculate-on-open-and-validate") {
+      assert(
+        Object.keys(source.results || {}).length === 0,
+        `${path.basename(filePath)} ${sourceId} must not retain stale SRC results under the input-only result policy.`
+      );
     }
   }
 }

@@ -27,8 +27,8 @@ const packageJson = JSON.parse(read(packagePath));
 const manifestSource = read(manifestPath);
 
 [
-  'engineering-simulation-load-transaction-manager.v3-visual-wrapper-lock',
-  '20260711-simulation-load-visual-wrapper-lock1',
+  'engineering-simulation-load-transaction-manager.v5-primary-apply-evidence-lock',
+  '20260712-simulation-load-primary-apply-evidence-lock1',
   'AbortController',
   'beginTransaction',
   'abortPrevious',
@@ -89,6 +89,18 @@ const manifestSource = read(manifestPath);
   'stopImmediatePropagation',
   'patchResponseBodyMethod',
   'applySimulationStateAtomic',
+  'awaitingAuthoritativeCalculation',
+  'captureLoadedSimulationCalculation',
+  'options.forceBackend = true',
+  'simulation-load-authoritative',
+  'ensureAuthoritativeCalculation',
+  'hasPrimaryApplyEvidence',
+  'runDirectAuthoritativeCalculation',
+  'runBackendProtectedPumpSimulation',
+  'authoritativeFallbackUsed',
+  'primaryApplied: hasPrimaryApplyEvidence(calculationOutcome)',
+  'applySimulationStateAtomic.calculation',
+  'project-state-calculated',
   'openSimulationCaseSample',
   'releaseRunCommandLocks',
   'calculationBusy',
@@ -102,12 +114,12 @@ const manifestSource = read(manifestPath);
 
 assertIncludes(
   indexSource,
-  'engineering-simulation-load-transaction-manager.js?v=20260711-simulation-load-visual-wrapper-lock1',
+  'engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-primary-apply-evidence-lock1',
   'index.html'
 );
 
 const appIndex = indexSource.indexOf('app.bundle.min.js?v=20260707-pipe-canvas-loss-label1');
-const managerIndex = indexSource.indexOf('engineering-simulation-load-transaction-manager.js?v=20260711-simulation-load-visual-wrapper-lock1');
+const managerIndex = indexSource.indexOf('engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-primary-apply-evidence-lock1');
 const readinessIndex = indexSource.indexOf('engineering-open-file-readiness-gate.js?v=20260711-open-file-hard-release1');
 assert(appIndex >= 0 && managerIndex > appIndex, 'simulation load transaction manager must load after app.bundle.min.js');
 assert(readinessIndex > managerIndex, 'open-file readiness gate must load after simulation load transaction manager');
@@ -121,8 +133,8 @@ assertIncludes(manifestSource, 'engineering-simulation-load-transaction-manager.
 assertIncludes(manifestSource, 'Simulation load transaction manager cache key', 'FILE_MANIFEST.md');
 
 const runtime = require(runtimePath);
-assert(runtime.version === 'engineering-simulation-load-transaction-manager.v3-visual-wrapper-lock', 'runtime version mismatch');
-assert(runtime.cacheKey === '20260711-simulation-load-visual-wrapper-lock1', 'runtime cache key mismatch');
+assert(runtime.version === 'engineering-simulation-load-transaction-manager.v5-primary-apply-evidence-lock', 'runtime version mismatch');
+assert(runtime.cacheKey === '20260712-simulation-load-primary-apply-evidence-lock1', 'runtime cache key mismatch');
 [
   'install',
   'beginTransaction',
