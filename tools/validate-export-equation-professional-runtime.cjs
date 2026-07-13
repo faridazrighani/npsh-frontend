@@ -14,11 +14,11 @@ const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
 
-const CACHE_KEY = "engineering-export-equation-professional-runtime.js?v=20260710-pdf-equation-professional-route-integrity1";
+const CACHE_KEY = "engineering-export-equation-professional-runtime.js?v=20260712-pdf-fluid-phase-visibility1";
 const MOODY_CACHE_KEY = "engineering-pipe-moody-chart-audit.js?v=20260708-pipe-moody-export-chart5";
 const SNAPSHOT_KEY = "engineering-model-snapshot-export-runtime.js?v=20260707-fluid-basis-workspace-snapshot11";
 const APP_BUNDLE_KEY = "app.bundle.min.js?v=20260707-pipe-canvas-loss-label1";
-const VERSION = "2026.07-pdf-equation-professional10-route-integrity";
+const VERSION = "2026.07-pdf-equation-professional11-fluid-phase-visibility";
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");
@@ -81,6 +81,7 @@ function loadRuntime(runtimeSource) {
     exportScenarioCalculationTraceToPdf: () => "original-pdf",
     exportScenarioCalculationTraceToDocx: () => "original-docx",
     EngineeringFluidBasisPhaseChartRuntime: {
+      shouldDisplayPhaseChart: () => String(sandbox.globalModel?.FLUID?.props?.fluidName || "Water") === "Water",
       buildExportMarkup: () => `
         <section class="eqp-fluid-phase-chart-figure" data-export-note="pressure-enthalpy-phase-chart">
           <h3>Pressure-enthalpy phase chart</h3>
@@ -279,6 +280,15 @@ assert(transformed.includes("compact-equation-sequence"), "step table must be re
 assert(transformed.includes("Pressure-enthalpy phase chart"), "Fluid Basis PDF section must discuss the P-h phase chart.");
 assert(transformed.includes("fluid-basis-phase-chart-svg"), "Fluid Basis PDF section must include the P-h chart SVG markup.");
 assert(transformed.includes("liquid, mixed-phase, or vapor"), "P-h discussion must state the fluid-region visualization purpose.");
+const waterFluidName = sandbox.globalModel.FLUID.props.fluidName;
+sandbox.globalModel.FLUID.props.fluidName = "Methanol";
+const methanolTransformed = api.professionalizeAppendixHtml(rawHtml, { language: "id" });
+assert(!methanolTransformed.includes("Pressure-enthalpy phase chart"), "Methanol PDF must not include the Water P-h chart.");
+assert(!methanolTransformed.includes('<svg class="fluid-basis-phase-chart-svg"'), "Methanol PDF must not include the Water P-h chart SVG element.");
+sandbox.globalModel.FLUID.props.fluidName = "Custom";
+const customTransformed = api.professionalizeAppendixHtml(rawHtml, { language: "id" });
+assert(!customTransformed.includes("Pressure-enthalpy phase chart"), "Custom Fluid PDF must not include the Water P-h chart.");
+sandbox.globalModel.FLUID.props.fluidName = waterFluidName;
 assert(transformed.includes('data-export-note="moody-friction-factor-chart"'), "Moody Chart PDF section must include the visual friction-factor chart.");
 assert(transformed.includes("Log-Log Moody Chart"), "Moody Chart PDF section must use the requested log-log chart title.");
 assert(transformed.includes("eqp-moody-chart-svg"), "Moody Chart PDF section must include SVG chart markup.");

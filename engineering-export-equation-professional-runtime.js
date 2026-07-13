@@ -17,7 +17,7 @@
 })(typeof window !== "undefined" ? window : globalThis, function createExportEquationProfessionalRuntime(root) {
   "use strict";
 
-  const VERSION = "2026.07-pdf-equation-professional10-route-integrity";
+  const VERSION = "2026.07-pdf-equation-professional11-fluid-phase-visibility";
   const MODE_LABEL = "Mode: Equation Professional";
   const LANGUAGE_LABEL = "Language: Professional English for Mechanical and Chemical Engineering";
   const LAYOUT_LABEL = "Layout: Compact";
@@ -1045,7 +1045,9 @@
   function renderFluidPhaseChartDiscussion() {
     publishPdfProgress("phase-chart", { message: "Rendering Fluid Basis phase chart" });
     try {
-      const chartMarkup = root.EngineeringFluidBasisPhaseChartRuntime?.buildExportMarkup?.();
+      const phaseChartRuntime = root.EngineeringFluidBasisPhaseChartRuntime;
+      if (phaseChartRuntime?.shouldDisplayPhaseChart?.() === false) return "";
+      const chartMarkup = phaseChartRuntime?.buildExportMarkup?.();
       if (chartMarkup) return chartMarkup;
     } catch (error) {
       console.warn("Pressure-enthalpy phase chart export markup failed.", error);
@@ -1058,7 +1060,15 @@
   }
 
   function injectFluidPhaseChartDiscussion(html) {
-    const output = String(html || "");
+    let output = String(html || "");
+    if (root.EngineeringFluidBasisPhaseChartRuntime?.shouldDisplayPhaseChart?.() === false) {
+      const doc = parseHtmlDocument(output);
+      if (doc?.body) {
+        doc.querySelectorAll('[data-export-note="pressure-enthalpy-phase-chart"]').forEach(node => node.remove());
+        return serializeHtmlDocument(doc, output);
+      }
+      return output.replace(/<(?:section|aside)\b[^>]*data-export-note=["']pressure-enthalpy-phase-chart["'][^>]*>[\s\S]*?<\/(?:section|aside)>/gi, "");
+    }
     if (output.includes('data-export-note="pressure-enthalpy-phase-chart"')) return output;
     const note = renderFluidPhaseChartDiscussion();
     const doc = parseHtmlDocument(output);

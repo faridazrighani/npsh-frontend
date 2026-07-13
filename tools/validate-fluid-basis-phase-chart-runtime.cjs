@@ -7,6 +7,7 @@ const runtimePath = path.join(root, 'engineering-fluid-basis-phase-chart-runtime
 const indexPath = path.join(root, 'index.html');
 const manifestPath = path.join(root, 'FILE_MANIFEST.md');
 const packagePath = path.join(root, 'package.json');
+const e2ePath = path.join(root, 'tests', 'e2e', 'fluid-basis-phase-chart-visibility.spec.cjs');
 
 function read(file) {
   return fs.readFileSync(file, 'utf8');
@@ -16,9 +17,10 @@ const runtimeSource = read(runtimePath);
 const indexHtml = read(indexPath);
 const manifest = read(manifestPath);
 const pkg = JSON.parse(read(packagePath));
-const cacheKey = 'engineering-fluid-basis-phase-chart-runtime.js?v=20260708-fluid-phase-chart-if97-1';
+const e2eSource = read(e2ePath);
+const cacheKey = 'engineering-fluid-basis-phase-chart-runtime.js?v=20260712-fluid-phase-chart-water-only1';
 
-assert(runtimeSource.includes('2026.07-fluid-basis-phase-chart4'), 'runtime version must be present');
+assert(runtimeSource.includes('2026.07-fluid-basis-phase-chart5-water-only'), 'runtime version must be present');
 assert(runtimeSource.includes('EngineeringFluidBasisPhaseChartRuntime'), 'global runtime API must be exposed');
 assert(runtimeSource.includes('Pressure-enthalpy phase chart'), 'chart title must match the requested P-h chart placement');
 assert(runtimeSource.includes('buildExportMarkup'), 'runtime must expose export markup for PDF Fluid Basis discussion');
@@ -34,6 +36,10 @@ assert(runtimeSource.includes('region2Vapor'), 'runtime must include IF97 Region
 assert(runtimeSource.includes('buildIsothermPixels'), 'runtime must build temperature curves from liquid/two-phase/vapor P-h data');
 assert(runtimeSource.includes('pathFromPixelSegments'), 'runtime must draw split isotherm paths without distorted jumps');
 assert(runtimeSource.includes('MutationObserver'), 'runtime must self-heal after Fluid Basis task-window rerenders');
+assert(runtimeSource.includes('shouldDisplayPhaseChart'), 'runtime must expose the Water-only visibility gate');
+assert(runtimeSource.includes('removePanel'), 'runtime must remove unsupported-fluid chart panels without leaving a layout gap');
+assert(runtimeSource.includes("#fluidNameSelect"), 'runtime must react to the legacy Fluid Name selector');
+assert(runtimeSource.includes("data-fluid-control='fluidName'"), 'runtime must react to the current Fluid Basis Fluid Name selector');
 assert(runtimeSource.includes('drawDiagram'), 'runtime must draw the SVG chart');
 assert(!runtimeSource.includes("input[data-key='pressure'][data-node]"), 'runtime must not listen to SRC pressure input changes');
 assert(!runtimeSource.includes("pressureInputBasis"), 'runtime must not listen to SRC pressure basis changes');
@@ -45,6 +51,9 @@ assert(indexHtml.indexOf(cacheKey) < indexHtml.indexOf('engineering-pump-status-
 assert(manifest.includes('engineering-fluid-basis-phase-chart-runtime.js public-safe'), 'manifest runtime inventory entry is missing');
 assert(manifest.includes(`Fluid Basis phase chart runtime cache key: ${cacheKey}`), 'manifest cache key entry is missing');
 assert.equal(pkg.scripts['validate:fluid-basis-phase-chart'], 'node tools/validate-fluid-basis-phase-chart-runtime.cjs', 'npm validation script is missing');
+assert(e2eSource.includes("selectOption('Methanol')"), 'browser lock test must cover Water to Methanol visibility');
+assert(e2eSource.includes("selectOption('Custom')"), 'browser lock test must cover Custom Fluid visibility');
+assert(e2eSource.includes("selectOption('Water')"), 'browser lock test must cover restoring the Water chart');
 
 globalThis.globalModel = {
   FLUID: {
@@ -75,8 +84,10 @@ globalThis.globalModel = {
 
 delete require.cache[require.resolve(runtimePath)];
 const runtime = require(runtimePath);
-assert.equal(runtime.version, '2026.07-fluid-basis-phase-chart4', 'runtime API version mismatch');
-assert.equal(runtime.cacheKey, '20260708-fluid-phase-chart-if97-1', 'runtime API cache key mismatch');
+assert.equal(runtime.version, '2026.07-fluid-basis-phase-chart5-water-only', 'runtime API version mismatch');
+assert.equal(runtime.cacheKey, '20260712-fluid-phase-chart-water-only1', 'runtime API cache key mismatch');
+assert.equal(runtime.readFluidName(globalThis.globalModel), 'Water', 'default Fluid Name must resolve to Water');
+assert.equal(runtime.shouldDisplayPhaseChart(globalThis.globalModel), true, 'Water must display the phase chart');
 
 const calculation = runtime.buildCalculation(globalThis.globalModel);
 assert.equal(calculation.temperatureC, 90, 'calculation must use Fluid Basis temperature');
@@ -100,6 +111,18 @@ const exportMarkup = runtime.buildExportMarkup(globalThis.globalModel);
 assert(exportMarkup.includes('Pressure-enthalpy phase chart'), 'export markup must include the chart title');
 assert(exportMarkup.includes('Temperature'), 'export markup must include chart metadata');
 assert(exportMarkup.includes('liquid, mixed-phase, or vapor'), 'export markup must explain phase-region visualization');
+
+const methanolModel = JSON.parse(JSON.stringify(globalThis.globalModel));
+methanolModel.FLUID.props.fluidName = 'Methanol';
+assert.equal(runtime.shouldDisplayPhaseChart(methanolModel), false, 'Methanol must hide the Water phase chart');
+assert.equal(runtime.buildExportMarkup(methanolModel), '', 'Methanol must not export the Water phase chart');
+
+const customModel = JSON.parse(JSON.stringify(globalThis.globalModel));
+customModel.FLUID.props.fluidName = 'Custom';
+assert.equal(runtime.shouldDisplayPhaseChart(customModel), false, 'Custom Fluid must hide the Water phase chart');
+assert.equal(runtime.buildExportMarkup(customModel), '', 'Custom Fluid must not export the Water phase chart');
+
+assert.equal(runtime.shouldDisplayPhaseChart({}), true, 'first browser load without a saved model must keep Water as the clean default');
 
 globalThis.globalModel['SRC-100'].results = {};
 globalThis.globalModel['SRC-100'].props.pressureInputBasis = 'Gauge';

@@ -1,10 +1,11 @@
 !function registerEngineeringFluidBasisPhaseChartRuntime(root) {
   "use strict";
 
-  const VERSION = "2026.07-fluid-basis-phase-chart4";
-  const CACHE_KEY = "20260708-fluid-phase-chart-if97-1";
+  const VERSION = "2026.07-fluid-basis-phase-chart5-water-only";
+  const CACHE_KEY = "20260712-fluid-phase-chart-water-only1";
   const STYLE_ID = "engineering-fluid-basis-phase-chart-style";
   const PANEL_SELECTOR = "[data-fluid-basis-phase-chart-panel='true']";
+  const FLUID_NAME_SELECTOR = "#fluidNameSelect, select[data-fluid-control='fluidName'], select[data-node='FLUID'][data-key='fluidName']";
   const SVG_NS = "http://www.w3.org/2000/svg";
   const CRITICAL_TEMPERATURE_C = 373.946;
   const CRITICAL_PRESSURE_BAR = 220.64;
@@ -186,6 +187,25 @@
       // Protected/local previews may not expose a serializable state yet.
     }
     return root.globalModel || root.__npshGlobalModel || {};
+  }
+
+  function readFluidName(model = runtimeModel(), scope = null) {
+    if (typeof document !== "undefined") {
+      const host = scope?.querySelector ? scope : document;
+      const activeInput = host.querySelector(FLUID_NAME_SELECTOR)
+        || (host !== document ? document.querySelector(FLUID_NAME_SELECTOR) : null);
+      const fromInput = normalizeText(activeInput?.value || activeInput?.selectedOptions?.[0]?.textContent);
+      if (fromInput) return fromInput;
+    }
+    return normalizeText(model?.FLUID?.props?.fluidName || model?.FLUID?.name || "Water");
+  }
+
+  function isWaterFluid(fluidName) {
+    return normalizeText(fluidName).toLowerCase() === "water";
+  }
+
+  function shouldDisplayPhaseChart(model = runtimeModel(), scope = null) {
+    return isWaterFluid(readFluidName(model, scope));
   }
 
   function readFluidTemperature(model = runtimeModel()) {
@@ -814,6 +834,7 @@
   }
 
   function buildExportMarkup(model = runtimeModel()) {
+    if (!shouldDisplayPhaseChart(model)) return "";
     const calc = buildCalculation(model);
     let svgMarkup = "";
     if (typeof document !== "undefined") {
@@ -1019,6 +1040,12 @@
     return panel;
   }
 
+  function removePanel(windowNode) {
+    const panels = Array.from(windowNode?.querySelectorAll?.(PANEL_SELECTOR) || []);
+    panels.forEach((panel) => panel.remove());
+    return panels.length;
+  }
+
   function updatePanel(panel, calc = buildCalculation()) {
     if (!panel) return null;
     panel.querySelector("[data-fluid-phase-temperature]").textContent = `${fmt(calc.temperatureC, 3)} deg C`;
@@ -1039,14 +1066,26 @@
     if (typeof document === "undefined") return 0;
     installStyles();
     let count = 0;
+    let windowCount = 0;
+    const model = runtimeModel();
     fluidBasisWindows(rootNode).forEach((windowNode) => {
+      windowCount += 1;
+      if (!shouldDisplayPhaseChart(model, windowNode)) {
+        removePanel(windowNode);
+        windowNode.dataset.fluidBasisPhaseChartVisibility = "hidden-non-water";
+        return;
+      }
       const panel = ensurePanel(windowNode);
       if (panel) {
         updatePanel(panel);
+        windowNode.dataset.fluidBasisPhaseChartVisibility = "visible-water";
         count += 1;
       }
     });
     document.documentElement.dataset.fluidBasisPhaseChartRuntime = VERSION;
+    document.documentElement.dataset.fluidBasisPhaseChartVisibility = windowCount === 0
+      ? "idle"
+      : count > 0 ? "visible-water" : "hidden-non-water";
     return count;
   }
 
@@ -1080,13 +1119,20 @@
     document.documentElement.dataset.fluidBasisPhaseChartEvents = VERSION;
     document.addEventListener("input", (event) => {
       const target = event.target;
-      if (target?.matches?.("#fluid-task-temp, input[data-node='FLUID'][data-key='temp'], input[data-node='FLUID'][data-key='vaporPressure']")) {
+      if (target?.matches?.(`#fluid-task-temp, input[data-node='FLUID'][data-key='temp'], input[data-node='FLUID'][data-key='vaporPressure'], ${FLUID_NAME_SELECTOR}`)) {
         scheduleRefresh(target.closest(".task-window, #taskWindow") || document, 40);
       }
     }, true);
     document.addEventListener("change", (event) => {
       const target = event.target;
-      if (target?.matches?.("#fluid-task-temp, input[data-node='FLUID'][data-key='temp'], input[data-node='FLUID'][data-key='vaporPressure']")) {
+      if (target?.matches?.(FLUID_NAME_SELECTOR)) {
+        const windowNode = target.closest(".task-window, #taskWindow");
+        if (windowNode && !isWaterFluid(target.value)) {
+          removePanel(windowNode);
+          windowNode.dataset.fluidBasisPhaseChartVisibility = "hidden-non-water";
+        }
+      }
+      if (target?.matches?.(`#fluid-task-temp, input[data-node='FLUID'][data-key='temp'], input[data-node='FLUID'][data-key='vaporPressure'], ${FLUID_NAME_SELECTOR}`)) {
         scheduleRefresh(target.closest(".task-window, #taskWindow") || document, 20);
       }
     }, true);
@@ -1104,7 +1150,7 @@
       if (mutations.some((mutation) => Array.from(mutation.addedNodes || []).some((node) => (
         node?.nodeType === 1 && (
           node.matches?.("#taskWindow, .task-window, .fluid-basis-task")
-          || node.querySelector?.("#taskWindow, .task-window, .fluid-basis-task, #fluid-task-temp, input[data-node='FLUID'][data-key='temp']")
+          || node.querySelector?.(`#taskWindow, .task-window, .fluid-basis-task, #fluid-task-temp, input[data-node='FLUID'][data-key='temp'], ${FLUID_NAME_SELECTOR}`)
         )
       )))) {
         scheduleRefresh(document, 20);
@@ -1137,6 +1183,9 @@
     install,
     refresh,
     buildCalculation,
+    readFluidName,
+    isWaterFluid,
+    shouldDisplayPhaseChart,
     saturationPressureBar,
     saturationVisualPoint,
     saturationPropsFromTC,

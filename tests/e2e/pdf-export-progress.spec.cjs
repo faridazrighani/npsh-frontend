@@ -151,7 +151,7 @@ async function waitForNpshApp(page) {
     typeof window.applySimulationStateAtomic === 'function'
     && typeof window.updateSimulation === 'function'
     && window.EngineeringPdfExportProgressRuntime?.version === 'engineering-pdf-export-progress.v1'
-    && window.EngineeringExportEquationProfessionalRuntime?.version === '2026.07-pdf-equation-professional10-route-integrity'
+    && window.EngineeringExportEquationProfessionalRuntime?.version === '2026.07-pdf-equation-professional11-fluid-phase-visibility'
     && window.EngineeringPipeMoodyChartAudit?.version === 'engineering-pipe-moody-chart-audit.v9'
   ), null, { timeout: 30000 });
 }
