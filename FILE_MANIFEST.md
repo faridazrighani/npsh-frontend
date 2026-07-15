@@ -184,7 +184,7 @@ Model snapshot export runtime cache key: engineering-model-snapshot-export-runti
 Export equation professional runtime cache key: engineering-export-equation-professional-runtime.js?v=20260712-pdf-fluid-phase-visibility1
 Dropdown focus guard runtime cache key: engineering-dropdown-focus-guard-runtime.js?v=20260707-dropdown-focus-guard2
 PDF export progress runtime cache key: engineering-pdf-export-progress-runtime.js?v=20260707-pdf-export-progress1
-Excel calculation trace runtime cache key: engineering-excel-calculation-trace-runtime-20260715-water-only-ph-sheets1.js?v=20260715-excel-water-only-ph-sheets1
+Excel calculation trace runtime cache key: engineering-excel-calculation-trace-runtime-20260715-water-only-ph-sheets1.js?v=20260715-excel-water-only-ph-sheets2
 Canvas fast preview runtime cache key: engineering-canvas-fast-preview-runtime.js?v=20260712-canvas-fast-preview22-authoritative-result-lock
 Pipe source confidence map runtime cache key: engineering-pipe-source-confidence-map-runtime.js?v=20260630-pipe-properties-live1
 Pump nozzle simplify runtime cache key: engineering-pump-nozzle-simplify-runtime.js?v=20260614-pump-nozzle-simplify5

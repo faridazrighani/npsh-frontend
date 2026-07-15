@@ -14,7 +14,7 @@ const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
 const E2E_FILE = path.join(FRONTEND_ROOT, "tests", "e2e", "excel-calculation-trace.spec.cjs");
 
-const CACHE_KEY = "engineering-excel-calculation-trace-runtime-20260715-water-only-ph-sheets1.js?v=20260715-excel-water-only-ph-sheets1";
+const CACHE_KEY = "engineering-excel-calculation-trace-runtime-20260715-water-only-ph-sheets1.js?v=20260715-excel-water-only-ph-sheets2";
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");
