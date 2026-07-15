@@ -3,6 +3,7 @@ const path = require('path');
 
 const repoRoot = path.resolve(__dirname, '..');
 const runtimePath = path.join(repoRoot, 'engineering-simulation-load-transaction-manager.js');
+const runtimeAliasPath = path.join(repoRoot, 'engineering-simulation-load-transaction-manager-20260715-export-lock-dedupe1.js');
 const indexPath = path.join(repoRoot, 'index.html');
 const packagePath = path.join(repoRoot, 'package.json');
 const manifestPath = path.join(repoRoot, 'FILE_MANIFEST.md');
@@ -22,9 +23,12 @@ function assertIncludes(source, needle, label) {
 }
 
 const runtimeSource = read(runtimePath);
+const runtimeAliasSource = read(runtimeAliasPath);
 const indexSource = read(indexPath);
 const packageJson = JSON.parse(read(packagePath));
 const manifestSource = read(manifestPath);
+
+assert(runtimeAliasSource === runtimeSource, 'cache-busted Simulation Load Transaction Manager alias must exactly match the canonical runtime');
 
 [
   'engineering-simulation-load-transaction-manager.v7-export-lock-dedupe',
@@ -118,12 +122,12 @@ const manifestSource = read(manifestPath);
 
 assertIncludes(
   indexSource,
-  'engineering-simulation-load-transaction-manager.js?v=20260715-external-open-export-unlock1',
+  'engineering-simulation-load-transaction-manager-20260715-export-lock-dedupe1.js?v=20260715-external-open-export-unlock1',
   'index.html'
 );
 
 const appIndex = indexSource.indexOf('app.bundle.min.js?v=20260707-pipe-canvas-loss-label1');
-const managerIndex = indexSource.indexOf('engineering-simulation-load-transaction-manager.js?v=20260715-external-open-export-unlock1');
+const managerIndex = indexSource.indexOf('engineering-simulation-load-transaction-manager-20260715-export-lock-dedupe1.js?v=20260715-external-open-export-unlock1');
 const readinessIndex = indexSource.indexOf('engineering-open-file-readiness-gate.js?v=20260712-open-file-sink-flash-lock1');
 assert(appIndex >= 0 && managerIndex > appIndex, 'simulation load transaction manager must load after app.bundle.min.js');
 assert(readinessIndex > managerIndex, 'open-file readiness gate must load after simulation load transaction manager');

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "local-live-sync-manifest.v1",
-  "generatedAt": "2026-07-15T13:44:48.597Z",
+  "generatedAt": "2026-07-15T13:56:12.802Z",
   "purpose": "Keeps the local preview server auditable against the deployed npsh.virsim.id package.",
   "status": "review-required",
   "syncChecks": {
@@ -16,8 +16,8 @@
     "frontendRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-frontend",
     "apiRoot": "C:\\Users\\Zfaryana\\Desktop\\npshs\\npsh-api",
     "serverUrl": "http://127.0.0.1:4174/",
-    "frontendCommit": "b22f1ce24ec8bbc3b76d1cdf3aca42e08b3717aa",
-    "frontendOriginMain": "b22f1ce24ec8bbc3b76d1cdf3aca42e08b3717aa",
+    "frontendCommit": "f7607700ea76aac37d0f29f77bfb67a5ffce921a",
+    "frontendOriginMain": "f7607700ea76aac37d0f29f77bfb67a5ffce921a",
     "apiCommit": "06629a24242f78bace5fc5ea8b186be1cc81645d",
     "apiOriginMain": "06629a24242f78bace5fc5ea8b186be1cc81645d",
     "releaseIntegrity": {
@@ -28,10 +28,10 @@
     },
     "index": {
       "path": "index.html",
-      "sizeBytes": 71198,
-      "sha256": "eb267e81339147397ba225aa824c364b886b2fa90c3369dc559ad1d31b855b8f",
-      "canonicalSizeBytes": 70286,
-      "canonicalSha256": "031087ec716bddb34be71d7fe055a118eb0eaf331844da4a513f7aebea755b7d",
+      "sizeBytes": 71258,
+      "sha256": "aca1271d54260900f7a96cbb7d1465033d137959f249724d750a72269750b187",
+      "canonicalSizeBytes": 70346,
+      "canonicalSha256": "c832ad5d216c870e220c1506dfc5ddffe54e9a781b749239d659469a00adfd87",
       "canonicalizedLineEndings": true,
       "cacheKeys": [
         "app.bundle.min.js?v=20260707-pipe-canvas-loss-label1",
@@ -47,7 +47,7 @@
         "engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2",
         "engineering-defense-export-package.js?v=20260702-source-boundary-clean1",
         "engineering-dropdown-focus-guard-runtime.js?v=20260707-dropdown-focus-guard2",
-        "engineering-excel-calculation-trace-runtime.js?v=20260715-excel-water-only-ph-sheets1",
+        "engineering-excel-calculation-trace-runtime-20260715-water-only-ph-sheets1.js?v=20260715-excel-water-only-ph-sheets1",
         "engineering-export-equation-professional-runtime.js?v=20260712-pdf-fluid-phase-visibility1",
         "engineering-fluid-basis-phase-chart-runtime.js?v=20260712-fluid-phase-chart-water-only1",
         "engineering-formula-defense-ui-20260628-physical-cache1.js?v=20260630-pipe-properties-live1",
@@ -83,7 +83,7 @@
         "engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-sink-solver-flash-lock1",
         "engineering-runtime-health-audit.js?v=20260710-runtime-health-audit-phase10-1",
         "engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3",
-        "engineering-simulation-load-transaction-manager.js?v=20260715-external-open-export-unlock1",
+        "engineering-simulation-load-transaction-manager-20260715-export-lock-dedupe1.js?v=20260715-external-open-export-unlock1",
         "engineering-sink-input-stability-runtime.js?v=20260712-sink-solver-flash-lock1",
         "engineering-source-temperature-runtime.js?v=20260711-src-input-flash-lock1",
         "engineering-source-volumetric-only-runtime.js?v=20260711-src-input-flash-lock1",
@@ -226,14 +226,14 @@
         "cacheKey": "engineering-dropdown-focus-guard-runtime.js?v=20260707-dropdown-focus-guard2"
       },
       {
-        "path": "engineering-excel-calculation-trace-runtime.js",
+        "path": "engineering-excel-calculation-trace-runtime-20260715-water-only-ph-sheets1.js",
         "exists": true,
         "sizeBytes": 86662,
         "sha256": "4aa924684bdaf04cb3aea3468910315590542c205f484e5b3a03f692176c3b68",
         "canonicalSizeBytes": 86662,
         "canonicalSha256": "4aa924684bdaf04cb3aea3468910315590542c205f484e5b3a03f692176c3b68",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-excel-calculation-trace-runtime.js?v=20260715-excel-water-only-ph-sheets1"
+        "cacheKey": "engineering-excel-calculation-trace-runtime-20260715-water-only-ph-sheets1.js?v=20260715-excel-water-only-ph-sheets1"
       },
       {
         "path": "engineering-export-equation-professional-runtime.js",
@@ -586,14 +586,14 @@
         "cacheKey": "engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3"
       },
       {
-        "path": "engineering-simulation-load-transaction-manager.js",
+        "path": "engineering-simulation-load-transaction-manager-20260715-export-lock-dedupe1.js",
         "exists": true,
         "sizeBytes": 68209,
         "sha256": "9f7260030b5046b8c3007e5752b6e8ab27599adab85996f23fe7316238eb9a36",
         "canonicalSizeBytes": 67623,
         "canonicalSha256": "a27f1ee1155dd1f52f6061636c22ba667d551e0a1de4ac10f77362900688106d",
         "canonicalizedLineEndings": true,
-        "cacheKey": "engineering-simulation-load-transaction-manager.js?v=20260715-external-open-export-unlock1"
+        "cacheKey": "engineering-simulation-load-transaction-manager-20260715-export-lock-dedupe1.js?v=20260715-external-open-export-unlock1"
       },
       {
         "path": "engineering-sink-input-stability-runtime.js",
@@ -668,20 +668,20 @@
       {
         "path": "FILE_MANIFEST.md",
         "exists": true,
-        "sizeBytes": 57463,
-        "sha256": "b11980227b59faf4d70fdb8418f027de2d649f236db54f93bc4993770828eebe",
-        "canonicalSizeBytes": 57241,
-        "canonicalSha256": "3ec021dd5d01a33fba79aa613d54fea4875f5dc315a54532c4df970c2b8a0cfb",
+        "sizeBytes": 58179,
+        "sha256": "6f533463089a11c4ce4728ad377f626237c90d504d0f0c2bfacd9bb3073deb84",
+        "canonicalSizeBytes": 57958,
+        "canonicalSha256": "a3dd55a08051e3c10de58f12079a5a6ddeaff3f815782e7953a38350e2ef09f6",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
       {
         "path": "index.html",
         "exists": true,
-        "sizeBytes": 71198,
-        "sha256": "eb267e81339147397ba225aa824c364b886b2fa90c3369dc559ad1d31b855b8f",
-        "canonicalSizeBytes": 70286,
-        "canonicalSha256": "031087ec716bddb34be71d7fe055a118eb0eaf331844da4a513f7aebea755b7d",
+        "sizeBytes": 71258,
+        "sha256": "aca1271d54260900f7a96cbb7d1465033d137959f249724d750a72269750b187",
+        "canonicalSizeBytes": 70346,
+        "canonicalSha256": "c832ad5d216c870e220c1506dfc5ddffe54e9a781b749239d659469a00adfd87",
         "canonicalizedLineEndings": true,
         "cacheKey": null
       },
@@ -705,10 +705,10 @@
     "error": null,
     "index": {
       "statusCode": 200,
-      "sizeBytes": 71708,
-      "sha256": "1750612ba4a4e2cd538ce253030c15578ac41540a7255fb1a2d0f72dc2746c18",
-      "canonicalSizeBytes": 70291,
-      "canonicalSha256": "e691b5a9b7b5184f6ec84cede42a75a863c136d95c671f6df06debae1187fb87",
+      "sizeBytes": 71702,
+      "sha256": "cc4f870297528f9a99a1cb8544e7b12d7d936a2ee555a1425daafa3de8c52f98",
+      "canonicalSizeBytes": 70286,
+      "canonicalSha256": "031087ec716bddb34be71d7fe055a118eb0eaf331844da4a513f7aebea755b7d",
       "canonicalizedLineEndings": true,
       "cacheKeys": [
         "app.bundle.min.js?v=20260707-pipe-canvas-loss-label1",
@@ -724,7 +724,7 @@
         "engineering-decimal-display-runtime.js?v=20260609-pump-live-readout-click-lock2",
         "engineering-defense-export-package.js?v=20260702-source-boundary-clean1",
         "engineering-dropdown-focus-guard-runtime.js?v=20260707-dropdown-focus-guard2",
-        "engineering-excel-calculation-trace-runtime.js?v=20260707-excel-calculation-trace5",
+        "engineering-excel-calculation-trace-runtime.js?v=20260715-excel-water-only-ph-sheets1",
         "engineering-export-equation-professional-runtime.js?v=20260712-pdf-fluid-phase-visibility1",
         "engineering-fluid-basis-phase-chart-runtime.js?v=20260712-fluid-phase-chart-water-only1",
         "engineering-formula-defense-ui-20260628-physical-cache1.js?v=20260630-pipe-properties-live1",
@@ -760,7 +760,7 @@
         "engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-sink-solver-flash-lock1",
         "engineering-runtime-health-audit.js?v=20260710-runtime-health-audit-phase10-1",
         "engineering-simulation-case-integrity-guard.js?v=20260614-simulation-case-integrity3",
-        "engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-stale-promise-clean2",
+        "engineering-simulation-load-transaction-manager.js?v=20260715-external-open-export-unlock1",
         "engineering-sink-input-stability-runtime.js?v=20260712-sink-solver-flash-lock1",
         "engineering-source-temperature-runtime.js?v=20260711-src-input-flash-lock1",
         "engineering-source-volumetric-only-runtime.js?v=20260711-src-input-flash-lock1",
@@ -773,7 +773,7 @@
     },
     "apiVersion": {
       "statusCode": 200,
-      "sha256": "6a3acc8bfde81f4d24f4e7d9b208072f69f1051ff1833eff883af0f49f176f71",
+      "sha256": "278878606933d9458cf9e559f878400fb95008cfb646fd53ecdb2f82ce4d8381",
       "payload": {
         "ok": true,
         "appName": "GhaniSIM1 NPSH",
@@ -922,19 +922,19 @@
             "parity.fingerprint"
           ]
         },
-        "generatedAt": "2026-07-15T13:44:48.449Z"
+        "generatedAt": "2026-07-15T13:56:12.650Z"
       }
     },
     "verifiedAssets": []
   },
   "differences": {
     "cacheKeysMissingOnLive": [
-      "engineering-excel-calculation-trace-runtime.js?v=20260715-excel-water-only-ph-sheets1",
-      "engineering-simulation-load-transaction-manager.js?v=20260715-external-open-export-unlock1"
+      "engineering-excel-calculation-trace-runtime-20260715-water-only-ph-sheets1.js?v=20260715-excel-water-only-ph-sheets1",
+      "engineering-simulation-load-transaction-manager-20260715-export-lock-dedupe1.js?v=20260715-external-open-export-unlock1"
     ],
     "cacheKeysMissingLocally": [
-      "engineering-excel-calculation-trace-runtime.js?v=20260707-excel-calculation-trace5",
-      "engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-stale-promise-clean2"
+      "engineering-excel-calculation-trace-runtime.js?v=20260715-excel-water-only-ph-sheets1",
+      "engineering-simulation-load-transaction-manager.js?v=20260715-external-open-export-unlock1"
     ],
     "assetVerificationFailures": []
   },

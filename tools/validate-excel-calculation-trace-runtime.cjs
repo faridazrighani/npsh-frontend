@@ -7,13 +7,14 @@ const path = require("node:path");
 
 const FRONTEND_ROOT = path.resolve(__dirname, "..");
 const RUNTIME_FILE = path.join(FRONTEND_ROOT, "engineering-excel-calculation-trace-runtime.js");
+const RUNTIME_ALIAS_FILE = path.join(FRONTEND_ROOT, "engineering-excel-calculation-trace-runtime-20260715-water-only-ph-sheets1.js");
 const INDEX_FILE = path.join(FRONTEND_ROOT, "index.html");
 const PACKAGE_FILE = path.join(FRONTEND_ROOT, "package.json");
 const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
 const E2E_FILE = path.join(FRONTEND_ROOT, "tests", "e2e", "excel-calculation-trace.spec.cjs");
 
-const CACHE_KEY = "engineering-excel-calculation-trace-runtime.js?v=20260715-excel-water-only-ph-sheets1";
+const CACHE_KEY = "engineering-excel-calculation-trace-runtime-20260715-water-only-ph-sheets1.js?v=20260715-excel-water-only-ph-sheets1";
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");
@@ -94,11 +95,14 @@ function projectWithFluid(fluidName) {
 
 (async () => {
   const runtimeSource = read(RUNTIME_FILE);
+  const runtimeAliasSource = read(RUNTIME_ALIAS_FILE);
   const indexHtml = read(INDEX_FILE);
   const packageJson = JSON.parse(read(PACKAGE_FILE));
   const manifest = read(MANIFEST_FILE);
   const uploadReadiness = read(UPLOAD_READINESS_FILE);
   const e2eSource = read(E2E_FILE);
+
+  assert.equal(runtimeAliasSource, runtimeSource, "cache-busted Excel Calculation Trace alias must exactly match the canonical runtime.");
 
   [
     "engineering-excel-calculation-trace.v6-water-only-ph-sheets",
@@ -163,6 +167,7 @@ function projectWithFluid(fluidName) {
 
   [
     "engineering-excel-calculation-trace-runtime.js public-safe",
+    "engineering-excel-calculation-trace-runtime-20260715-water-only-ph-sheets1.js cache-busted production alias",
     `Excel calculation trace runtime cache key: ${CACHE_KEY}`,
     "Excel calculation trace validation: npm run validate:excel-calculation-trace",
     "Excel calculation trace sensitivity validation: npm run validate:excel-calculation-trace-sensitivity",
