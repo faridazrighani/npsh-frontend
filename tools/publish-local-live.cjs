@@ -184,11 +184,24 @@ async function waitForLiveSync() {
   if (skipWaitLive) return manifestStatus();
   const deadline = Date.now() + Math.max(30, maxWaitSeconds) * 1000;
   let latest = null;
+  let liveIndexReady = false;
   do {
-    refreshManifest({ verifyAssets: true });
+    refreshManifest({ verifyAssets: liveIndexReady });
     latest = manifestStatus();
-    console.log(`Live sync status: ${latest.status}`);
-    if (latest.status === 'synced') return latest;
+
+    if (!liveIndexReady) {
+      const checks = latest?.syncChecks || {};
+      liveIndexReady = checks.localIndexMatchesLive === true && checks.cacheKeysMatch === true;
+      console.log(`Live index/cache-key status: ${liveIndexReady ? 'ready' : 'waiting'}`);
+      if (liveIndexReady) {
+        await sleep(2000);
+        continue;
+      }
+    } else {
+      console.log(`Live sync status: ${latest.status}`);
+      if (latest.status === 'synced') return latest;
+    }
+
     await sleep(15000);
   } while (Date.now() < deadline);
   return latest;
