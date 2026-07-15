@@ -10,7 +10,7 @@
   "use strict";
 
   const VERSION = "engineering-simulation-case-menu-cleanup.v1";
-  const CACHE_KEY = "20260715-simulation-case-report-action-remove1";
+  const CACHE_KEY = "20260716-simulation-case-report-action-remove2";
   const MENU_SELECTOR = "#dropdown-simulate";
   const REPORT_ACTION_SELECTOR = '[data-simulation-case-action="report"]';
   const STYLE_ID = "engineering-simulation-case-menu-cleanup-style";
