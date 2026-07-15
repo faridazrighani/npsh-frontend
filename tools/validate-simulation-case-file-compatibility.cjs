@@ -6,7 +6,7 @@ const zlib = require('node:zlib');
 
 const FRONTEND_ROOT = path.resolve(__dirname, '..');
 const CASE_MANIFEST_FILE = path.join(FRONTEND_ROOT, 'journals', 'simulation-cases.json');
-const CASE_IDS = ['simulation-case-1', 'simulation-case-4', 'simulation-case-6'];
+const CASE_IDS = ['simulation-case-1', 'simulation-case-4', 'simulation-case-5', 'simulation-case-6'];
 const UNTIRTA_MAGIC = Buffer.from('UNTIRTA-NPSH-V1\n', 'utf8');
 const MAX_DECODE_MS = 500;
 const MAX_STORED_BYTES = 250 * 1024;

@@ -64,6 +64,7 @@
     "validate:simulation-untirta-current-layout": "node tools/validate-simulation-untirta-current-layout.cjs",
     "upgrade:active-simulation-cases-global-runtime": "node tools/upgrade-active-simulation-cases-global-runtime.cjs",
     "validate:active-simulation-cases-global-runtime": "node tools/validate-active-simulation-cases-global-runtime.cjs",
+    "validate:simulation-case-menu-cleanup": "node tools/validate-simulation-case-menu-cleanup.cjs",
     "validate:canvas-clear-reset-guard": "node tools/validate-canvas-clear-reset-guard.cjs",
     "validate:canvas-fast-preview": "node tools/validate-canvas-fast-preview-runtime.cjs",
     "test:e2e": "playwright test",
@@ -85,7 +86,8 @@
     "test:e2e:sink-input-stability": "playwright test tests/e2e/sink-object-properties-input-stability.spec.cjs",
     "test:e2e:simulation-load-burst": "playwright test tests/e2e/simulation-load-burst-reliability.spec.cjs",
     "test:e2e:warning-lifecycle": "playwright test tests/e2e/warning-lifecycle-cleanup.spec.cjs",
-    "test:e2e:active-simulation-cases-global-runtime": "playwright test tests/e2e/active-simulation-cases-global-runtime.spec.cjs"
+    "test:e2e:active-simulation-cases-global-runtime": "playwright test tests/e2e/active-simulation-cases-global-runtime.spec.cjs",
+    "test:e2e:simulation-case-menu-cleanup": "playwright test tests/e2e/simulation-case-menu-cleanup.spec.cjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

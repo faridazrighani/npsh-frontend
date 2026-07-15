@@ -17,6 +17,7 @@ const ASSET_ROOTS = Object.freeze([
 const ACTIVE_CASE_IDS = Object.freeze([
   'simulation-case-1',
   'simulation-case-4',
+  'simulation-case-5',
   'simulation-case-6'
 ]);
 const GLOBAL_RUNTIME_SCHEMA = 'simulation-case-global-runtime.v1';

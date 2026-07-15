@@ -65,7 +65,7 @@ async function snapshotCaseState(page) {
   });
 }
 
-for (const caseId of ['simulation-case-1', 'simulation-case-4', 'simulation-case-6']) {
+for (const caseId of ['simulation-case-1', 'simulation-case-4', 'simulation-case-5', 'simulation-case-6']) {
   test(`${caseId} load releases Calculating state and keeps Validate clickable`, async ({ page }) => {
     await waitForNpshApp(page);
     await openSimulationCase(page, caseId);

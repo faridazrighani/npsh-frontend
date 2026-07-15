@@ -3,6 +3,7 @@ const { test, expect } = require('@playwright/test');
 const CASES = [
   { id: 'simulation-case-1', fluid: 'Water', temperature: 100, flow: 50, manualNpshr: 2.4002 },
   { id: 'simulation-case-4', fluid: 'Methanol', temperature: 40, flow: 280, manualNpshr: 5 },
+  { id: 'simulation-case-5', fluid: 'Custom', temperature: 40, flow: 1 / 6, manualNpshr: 3.5 },
   { id: 'simulation-case-6', fluid: 'Water', temperature: 90, flow: 39.68, manualNpshr: 1 }
 ];
 

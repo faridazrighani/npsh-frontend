@@ -406,7 +406,7 @@ test('new-user UI route SRC -> PIPE -> Pump automatically calculates NPSHa', asy
   await waitForSuctionOnlyReady(page, 'P-100');
 });
 
-for (const caseId of ['simulation-case-1', 'simulation-case-4', 'simulation-case-6']) {
+for (const caseId of ['simulation-case-1', 'simulation-case-4', 'simulation-case-5', 'simulation-case-6']) {
   test(`${caseId} remains solvable after deleting discharge pipe and SNK`, async ({ page }) => {
     await waitForNpshApp(page);
     await openSimulationCase(page, caseId);

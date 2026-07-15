@@ -86,19 +86,15 @@
         "en": "Simulation Cases 5",
         "id": "Kasus Simulasi 5"
       },
-      "title": "Multistage Centrifugal Pump 118.5 kW",
+      "title": "PERTASOL CB Pump Reconstruction - 37 m Suction Line",
       "titleI18n": {
-        "en": "Multistage Centrifugal Pump 118.5 kW",
-        "id": "Pompa sentrifugal multistage 118,5 kW"
+        "en": "PERTASOL CB Pump Reconstruction - 37 m Suction Line",
+        "id": "Rekonstruksi Pompa PERTASOL CB - Jalur Suction 37 m"
       },
-      "sampleFile": "journals/simulasi_5/Kinerja_Sentrifugal_Multistage_118,5_KW.untirta",
-      "analysisReport": "journals/analysis-reports/simulasi-5-analysis.json",
-      "disabled": true,
-      "disabledReason": "Temporarily disabled - journal data incomplete.",
-      "disabledReasonI18n": {
-        "en": "Temporarily disabled - journal data incomplete.",
-        "id": "Sementara dinonaktifkan - data jurnal belum lengkap."
-      }
+      "sampleFile": "journals/simulasi_5/PERTASOL-CB-Rekonstruksi 37m.untirta",
+      "runtimeSchemaVersion": "simulation-case-global-runtime.v1",
+      "layoutProfile": "global-forward-route.v1",
+      "calculationAuthority": "protected-backend"
     },
     {
       "id": "simulation-case-6",
