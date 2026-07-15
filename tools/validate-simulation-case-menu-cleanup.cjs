@@ -3,10 +3,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const runtime = fs.readFileSync(path.join(root, 'engineering-simulation-case-menu-cleanup-runtime.js'), 'utf8');
+const runtime = fs.readFileSync(path.join(root, 'engineering-simulation-case-menu-cleanup-runtime-20260716-report-action-remove2.js'), 'utf8');
 const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const e2e = fs.readFileSync(path.join(root, 'tests', 'e2e', 'simulation-case-menu-cleanup.spec.cjs'), 'utf8');
-const cacheKey = 'engineering-simulation-case-menu-cleanup-runtime.js?v=20260716-simulation-case-report-action-remove2';
+const cacheKey = 'engineering-simulation-case-menu-cleanup-runtime-20260716-report-action-remove2.js?v=20260716-simulation-case-report-action-remove2';
 
 assert(index.includes(cacheKey), 'index.html must load the cache-busted Simulation Case menu cleanup runtime.');
 assert(runtime.includes('engineering-simulation-case-menu-cleanup.v1'), 'Runtime version must remain explicit.');
