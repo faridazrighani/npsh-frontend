@@ -194,7 +194,8 @@ async function waitForLiveSync() {
       liveIndexReady = checks.localIndexMatchesLive === true && checks.cacheKeysMatch === true;
       console.log(`Live index/cache-key status: ${liveIndexReady ? 'ready' : 'waiting'}`);
       if (liveIndexReady) {
-        await sleep(2000);
+        console.log('Allowing versioned assets to propagate before their first custom-domain verification...');
+        await sleep(45000);
         continue;
       }
     } else {

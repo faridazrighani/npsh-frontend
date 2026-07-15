@@ -3,11 +3,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const runtime = fs.readFileSync(path.join(root, 'engineering-simulation-case-menu-cleanup-runtime-20260716-report-action-remove3.js'), 'utf8');
+const runtime = fs.readFileSync(path.join(root, 'engineering-simulation-case-menu-cleanup-runtime-20260716-report-action-remove4.js'), 'utf8');
 const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const e2e = fs.readFileSync(path.join(root, 'tests', 'e2e', 'simulation-case-menu-cleanup.spec.cjs'), 'utf8');
 const publisher = fs.readFileSync(path.join(root, 'tools', 'publish-local-live.cjs'), 'utf8');
-const cacheKey = 'engineering-simulation-case-menu-cleanup-runtime-20260716-report-action-remove3.js?v=20260716-simulation-case-report-action-remove3';
+const cacheKey = 'engineering-simulation-case-menu-cleanup-runtime-20260716-report-action-remove4.js?v=20260716-simulation-case-report-action-remove4';
 
 assert(index.includes(cacheKey), 'index.html must load the cache-busted Simulation Case menu cleanup runtime.');
 assert(runtime.includes('engineering-simulation-case-menu-cleanup.v1'), 'Runtime version must remain explicit.');
@@ -21,5 +21,6 @@ assert(e2e.includes('[data-simulation-case-action="report"]'), 'E2E must assert 
 assert(publisher.includes('let liveIndexReady = false'), 'Publisher must stage live-index readiness before asset verification.');
 assert(publisher.includes('verifyAssets: liveIndexReady'), 'Publisher must not request new assets before the live index is ready.');
 assert(publisher.includes("checks.localIndexMatchesLive === true && checks.cacheKeysMatch === true"), 'Publisher must require live index and cache-key parity before asset verification.');
+assert(publisher.includes('await sleep(45000)'), 'Publisher must allow custom-domain assets to stabilize before their first verification request.');
 
 console.log('Simulation Case menu cleanup validation passed.');

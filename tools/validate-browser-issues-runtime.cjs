@@ -110,6 +110,9 @@ assert(worker.includes("headers.delete('X-Frame-Options')"), 'Worker must strip 
 assert(worker.includes("headers.delete('X-XSS-Protection')"), 'Worker must strip deprecated X-XSS-Protection from static responses.');
 assert(worker.includes("frame-ancestors 'none'"), 'Worker must protect HTML documents with CSP frame-ancestors.');
 assert(worker.includes("public, max-age=31536000, immutable"), 'Worker must cache immutable cache-busted static assets.');
+assert(worker.includes('isHtmlFallback'), 'Worker must detect HTML fallbacks returned for versioned static assets.');
+assert(worker.includes("headers.set('Cache-Control', 'no-store, max-age=0')"), 'Worker must never cache an HTML asset fallback as immutable.');
+assert(worker.includes("headers.set('X-NPSH-Asset-Fallback', '1')"), 'Worker must identify temporary static asset fallbacks for diagnostics.');
 assert(worker.includes('/must-revalidate/i'), 'Worker must normalize inherited must-revalidate cache directives.');
 
 assert(staticPreview.includes("'.svg': 'image/svg+xml; charset=utf-8'"), 'Local static preview must serve SVG with utf-8 charset.');

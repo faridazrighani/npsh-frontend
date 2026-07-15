@@ -38,6 +38,8 @@ function withStaticHeaders(request, response) {
   const headers = new Headers(response.headers);
   const contentType = staticContentType(url.pathname, headers.get('Content-Type') || '');
   if (contentType) headers.set('Content-Type', contentType);
+  const isVersionedAsset = url.searchParams.has('v') && /\.[a-z0-9]+$/i.test(url.pathname) && !/\.html?$/i.test(url.pathname);
+  const isHtmlFallback = isVersionedAsset && /text\/html/i.test(headers.get('Content-Type') || '');
 
   headers.set('X-Content-Type-Options', 'nosniff');
   headers.set('Referrer-Policy', 'no-referrer');
@@ -48,7 +50,10 @@ function withStaticHeaders(request, response) {
   if (url.pathname === '/' || /\.html?$/i.test(url.pathname)) {
     headers.set('Content-Security-Policy', "frame-ancestors 'none'");
   }
-  if (url.searchParams.has('v')) {
+  if (isHtmlFallback) {
+    headers.set('Cache-Control', 'no-store, max-age=0');
+    headers.set('X-NPSH-Asset-Fallback', '1');
+  } else if (url.searchParams.has('v')) {
     headers.set('Cache-Control', 'public, max-age=31536000, immutable');
   } else if (!headers.has('Cache-Control') || /must-revalidate/i.test(headers.get('Cache-Control') || '')) {
     headers.set('Cache-Control', 'no-cache');
