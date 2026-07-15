@@ -11,8 +11,8 @@
 })(function createEngineeringExcelCalculationTraceRuntime(root) {
   "use strict";
 
-  const VERSION = "engineering-excel-calculation-trace.v5";
-  const CACHE_KEY = "20260707-excel-calculation-trace5";
+  const VERSION = "engineering-excel-calculation-trace.v6-water-only-ph-sheets";
+  const CACHE_KEY = "20260715-excel-water-only-ph-sheets1";
   const G = 9.80665;
   const ATM_BAR = 1.01325;
   const MAX_SEGMENTS = 6;
@@ -99,6 +99,17 @@
   function safeName(value, fallback = "Model") {
     const text = String(value || fallback).trim();
     return text || fallback;
+  }
+
+  function shouldIncludePressureEnthalpySheets(scenario) {
+    return String(scenario?.fluid?.name || "").trim().toLowerCase() === "water";
+  }
+
+  function sheetNamesForScenario(scenario) {
+    const includePressureEnthalpy = shouldIncludePressureEnthalpySheets(scenario);
+    return Object.values(SHEETS).filter((sheetName) => (
+      includePressureEnthalpy || (sheetName !== SHEETS.phData && sheetName !== SHEETS.phChart)
+    ));
   }
 
   function normalizeDiameter(value, fallback = 0.05) {
@@ -654,7 +665,9 @@
 
     buildInputSheet(ctx);
     buildFluidBasisSheet(ctx);
-    buildPressureEnthalpySheets(ctx);
+    if (shouldIncludePressureEnthalpySheets(scenario)) {
+      buildPressureEnthalpySheets(ctx);
+    }
     buildPipeCalculationSheet(ctx, "suction");
     buildMoodySheet(ctx, "suction");
     buildPipeCalculationSheet(ctx, "discharge");
@@ -1145,8 +1158,8 @@
         ok: true,
         filename,
         version: VERSION,
-        chartCount: 1 + 2,
-        sheets: Object.values(SHEETS)
+        chartCount: shouldIncludePressureEnthalpySheets(scenario) ? 3 : 2,
+        sheets: sheetNamesForScenario(scenario)
       };
     } catch (error) {
       console.error("Excel Calculation Trace export failed.", error);
@@ -1399,6 +1412,8 @@
     version: VERSION,
     cacheKey: CACHE_KEY,
     sheetNames: SHEETS,
+    shouldIncludePressureEnthalpySheets,
+    sheetNamesForScenario,
     collectScenario,
     createWorkbook,
     buildXlsxBuffer,

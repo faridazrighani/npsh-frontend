@@ -10,8 +10,8 @@ async function waitForNpshApp(page) {
   await page.waitForFunction(() => (
     typeof window.updateSimulation === 'function'
     && window.EngineeringCalculationLifecycle?.version === 'engineering-calculation-lifecycle.v1'
-    && window.EngineeringSimulationLoadTransaction?.version === 'engineering-simulation-load-transaction-manager.v6-stale-promise-clean'
-    && window.EngineeringSimulationLoadTransaction?.cacheKey === '20260712-simulation-load-stale-promise-clean1'
+    && window.EngineeringSimulationLoadTransaction?.version === 'engineering-simulation-load-transaction-manager.v7-export-lock-dedupe'
+    && window.EngineeringSimulationLoadTransaction?.cacheKey === '20260715-external-open-export-unlock1'
     && window.EngineeringCalculationLifecycle?.cacheKey === '20260711-solver-always-calculates1'
   ), null, { timeout: 30000 });
 }
@@ -183,6 +183,17 @@ test('repeated case and external file loads keep Validate responsive', async ({ 
 
   const runtimeMetrics = await page.evaluate(() => {
     const visual = window.EngineeringSimulationLoadTransaction?.visualRefreshSummary?.() || {};
+    const scriptSources = Array.from(document.scripts).map((script) => script.src).filter(Boolean);
+    const scriptPathCounts = scriptSources.reduce((counts, src) => {
+      let pathname = src;
+      try {
+        pathname = new URL(src, document.baseURI).pathname;
+      } catch (error) {
+        pathname = String(src).split(/[?#]/)[0];
+      }
+      counts[pathname] = (counts[pathname] || 0) + 1;
+      return counts;
+    }, {});
     const countWrapperOwners = (start) => {
       const seen = new Set();
       const counts = { warningCleanup: 0, loadTransaction: 0 };
@@ -200,6 +211,7 @@ test('repeated case and external file loads keep Validate responsive', async ({ 
     return {
       bodyDomNodes: document.body?.querySelectorAll?.('*')?.length || 0,
       scripts: document.scripts?.length || 0,
+      duplicateScriptPathnames: Object.entries(scriptPathCounts).filter(([, count]) => count > 1),
       taskWindows: document.querySelectorAll('.task-window, .persistent-object-properties-task-window').length,
       visualQueueSize: visual.queueSize || 0,
       lifecycleSequence: window.EngineeringCalculationLifecycle?.current?.()?.sequence || 0,
@@ -213,6 +225,7 @@ test('repeated case and external file loads keep Validate responsive', async ({ 
   expect(Math.max(...timings.map((entry) => entry.validateDurationMs))).toBeLessThan(10000);
   expect(runtimeMetrics.bodyDomNodes).toBeLessThan(1000);
   expect(runtimeMetrics.scripts).toBe(61);
+  expect(runtimeMetrics.duplicateScriptPathnames).toEqual([]);
   expect(runtimeMetrics.taskWindows).toBeLessThanOrEqual(1);
   expect(runtimeMetrics.visualQueueSize).toBe(0);
   expect(runtimeMetrics.lifecycleSequence).toBeLessThan(180);
@@ -275,6 +288,43 @@ test('external file readiness releases from the completed canonical load transac
   const finalState = await expectReadySnapshot(page, 'external file canonical transaction release');
   expect(finalState.transaction?.status).toBe('completed');
   expect(finalState.readiness).toBe(null);
+});
+
+test('external file load restores the File Export submenu and keeps one readiness runtime', async ({ page }) => {
+  await waitForNpshApp(page);
+  const externalFile = path.join(process.cwd(), 'journals', 'simulasi_6', 'Evaluasi_Pompa_Sentrifugal_P-2941A_sebagai_Pompa_Air_Panas.untirta');
+
+  await openExternalUntirta(page, externalFile);
+  await waitForReady(page, 'external file export unlock');
+  await expectReadySnapshot(page, 'external file export unlock');
+
+  const runtimeScriptState = await page.evaluate(() => {
+    const sources = Array.from(document.scripts).map((script) => script.src).filter(Boolean);
+    const pathCounts = sources.reduce((counts, src) => {
+      const pathname = new URL(src, document.baseURI).pathname;
+      counts[pathname] = (counts[pathname] || 0) + 1;
+      return counts;
+    }, {});
+    return {
+      readinessSources: sources.filter((src) => new URL(src, document.baseURI).pathname.endsWith('/engineering-open-file-readiness-gate.js')),
+      duplicatePathnames: Object.entries(pathCounts).filter(([, count]) => count > 1)
+    };
+  });
+  expect(runtimeScriptState.readinessSources).toHaveLength(1);
+  expect(runtimeScriptState.duplicatePathnames).toEqual([]);
+
+  await page.locator('#menu-file').click();
+  const exportTrigger = page.locator('#menu-file-export');
+  const excelExport = page.locator('#menu-export-excel-trace');
+  const pdfExport = page.locator('#menu-export-appendix-pdf');
+  await expect(exportTrigger).toBeEnabled();
+  await expect(excelExport).toBeEnabled();
+  await expect(pdfExport).toBeEnabled();
+  await expect(exportTrigger).not.toHaveAttribute('aria-disabled', 'true');
+
+  await exportTrigger.click();
+  await expect(exportTrigger).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#dropdown-file-export')).toBeVisible();
 });
 
 test('repeated Validate timing remains bounded on one loaded case', async ({ page }) => {

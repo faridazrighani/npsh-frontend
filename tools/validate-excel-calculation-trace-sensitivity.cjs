@@ -125,7 +125,7 @@ const sensitivityTests = [
 
 async function main() {
   const api = require(RUNTIME_FILE);
-  assert.equal(api.version, "engineering-excel-calculation-trace.v5", "sensitivity validator must run against runtime v5 or newer.");
+  assert.equal(api.version, "engineering-excel-calculation-trace.v6-water-only-ph-sheets", "sensitivity validator must run against the Water-only P-H sheet runtime.");
   const outputDir = path.join(FRONTEND_ROOT, "test-artifacts");
   fs.mkdirSync(outputDir, { recursive: true });
   const workbookPath = path.join(outputDir, "excel-calculation-trace-sensitivity.xlsx");

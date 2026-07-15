@@ -27,8 +27,8 @@ const packageJson = JSON.parse(read(packagePath));
 const manifestSource = read(manifestPath);
 
 [
-  'engineering-simulation-load-transaction-manager.v6-stale-promise-clean',
-  '20260712-simulation-load-stale-promise-clean1',
+  'engineering-simulation-load-transaction-manager.v7-export-lock-dedupe',
+  '20260715-external-open-export-unlock1',
   'AbortController',
   'beginTransaction',
   'abortPrevious',
@@ -67,6 +67,8 @@ const manifestSource = read(manifestPath);
   'clearSettleWatchdogs',
   'commandReleaseNeeded',
   'forceReadinessGateRelease',
+  'runtimeScriptPathname',
+  'engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-sink-solver-flash-lock1',
   'prefetchSimulationCases',
   'cleanWorkspaceForLoad',
   'input[type="file"]',
@@ -116,12 +118,12 @@ const manifestSource = read(manifestPath);
 
 assertIncludes(
   indexSource,
-  'engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-stale-promise-clean2',
+  'engineering-simulation-load-transaction-manager.js?v=20260715-external-open-export-unlock1',
   'index.html'
 );
 
 const appIndex = indexSource.indexOf('app.bundle.min.js?v=20260707-pipe-canvas-loss-label1');
-const managerIndex = indexSource.indexOf('engineering-simulation-load-transaction-manager.js?v=20260712-simulation-load-stale-promise-clean2');
+const managerIndex = indexSource.indexOf('engineering-simulation-load-transaction-manager.js?v=20260715-external-open-export-unlock1');
 const readinessIndex = indexSource.indexOf('engineering-open-file-readiness-gate.js?v=20260712-open-file-sink-flash-lock1');
 assert(appIndex >= 0 && managerIndex > appIndex, 'simulation load transaction manager must load after app.bundle.min.js');
 assert(readinessIndex > managerIndex, 'open-file readiness gate must load after simulation load transaction manager');
@@ -135,8 +137,12 @@ assertIncludes(manifestSource, 'engineering-simulation-load-transaction-manager.
 assertIncludes(manifestSource, 'Simulation load transaction manager cache key', 'FILE_MANIFEST.md');
 
 const runtime = require(runtimePath);
-assert(runtime.version === 'engineering-simulation-load-transaction-manager.v6-stale-promise-clean', 'runtime version mismatch');
-assert(runtime.cacheKey === '20260712-simulation-load-stale-promise-clean1', 'runtime cache key mismatch');
+assert(runtime.version === 'engineering-simulation-load-transaction-manager.v7-export-lock-dedupe', 'runtime version mismatch');
+assert(runtime.cacheKey === '20260715-external-open-export-unlock1', 'runtime cache key mismatch');
+assert(
+  !runtime.warmRuntimeSources.some((src) => src.includes('engineering-open-file-readiness-gate.js')),
+  'open-file readiness gate must not be loaded by the warm runtime list because index.html owns the critical instance'
+);
 [
   'install',
   'beginTransaction',

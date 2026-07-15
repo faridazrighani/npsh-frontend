@@ -13,7 +13,7 @@ const MANIFEST_FILE = path.join(FRONTEND_ROOT, "FILE_MANIFEST.md");
 const UPLOAD_READINESS_FILE = path.join(FRONTEND_ROOT, "UPLOAD_READINESS.md");
 const E2E_FILE = path.join(FRONTEND_ROOT, "tests", "e2e", "excel-calculation-trace.spec.cjs");
 
-const CACHE_KEY = "engineering-excel-calculation-trace-runtime.js?v=20260707-excel-calculation-trace5";
+const CACHE_KEY = "engineering-excel-calculation-trace-runtime.js?v=20260715-excel-water-only-ph-sheets1";
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");
@@ -86,6 +86,12 @@ function twoPipeProject() {
   };
 }
 
+function projectWithFluid(fluidName) {
+  const project = twoPipeProject();
+  project.model.FLUID.props.fluidName = fluidName;
+  return project;
+}
+
 (async () => {
   const runtimeSource = read(RUNTIME_FILE);
   const indexHtml = read(INDEX_FILE);
@@ -95,9 +101,11 @@ function twoPipeProject() {
   const e2eSource = read(E2E_FILE);
 
   [
-    "engineering-excel-calculation-trace.v5",
-    "20260707-excel-calculation-trace5",
+    "engineering-excel-calculation-trace.v6-water-only-ph-sheets",
+    "20260715-excel-water-only-ph-sheets1",
     "exportScenarioCalculationTraceToExcel",
+    "shouldIncludePressureEnthalpySheets",
+    "sheetNamesForScenario",
     "Calculation Trace Inputs - single editable source",
     "OUTPUT PUMP",
     "OUTPUT PFV (Suction)",
@@ -166,6 +174,7 @@ function twoPipeProject() {
     "Excel Calculation Trace (.xlsx)",
     "waitForEvent('download')",
     "PH_Phase_Chart",
+    "omits both P-H sheets for non-Water Fluid Basis",
     "Moody_Discharge",
     "xl/charts/chart",
     "LOG10",
@@ -173,10 +182,11 @@ function twoPipeProject() {
   ].forEach((needle) => assert(e2eSource.includes(needle), `E2E must verify ${needle}`));
 
   const api = require(RUNTIME_FILE);
-  assert.equal(api.version, "engineering-excel-calculation-trace.v5", "runtime API version mismatch.");
-  assert.equal(api.cacheKey, "20260707-excel-calculation-trace5", "runtime API cache key mismatch.");
+  assert.equal(api.version, "engineering-excel-calculation-trace.v6-water-only-ph-sheets", "runtime API version mismatch.");
+  assert.equal(api.cacheKey, "20260715-excel-water-only-ph-sheets1", "runtime API cache key mismatch.");
   assert.equal(typeof api.createWorkbook, "function", "runtime must expose createWorkbook.");
   assert.equal(typeof api.buildXlsxBuffer, "function", "runtime must expose buildXlsxBuffer.");
+  assert.equal(typeof api.shouldIncludePressureEnthalpySheets, "function", "runtime must expose the P-H sheet eligibility rule.");
 
   const JSZip = require(path.join(FRONTEND_ROOT, "vendor", "jszip.min.js"));
   const workbook = await api.createWorkbook(twoPipeProject());
@@ -195,6 +205,37 @@ function twoPipeProject() {
     "Calculation_Sequence"
   ].forEach((name) => assert(sheetNames.includes(name), `workbook must include ${name}`));
   assert.equal(workbook.__engineeringChartDefs.length, 3, "workbook must define P-H, suction Moody, and discharge Moody charts.");
+
+  assert.equal(api.shouldIncludePressureEnthalpySheets(api.collectScenario(twoPipeProject())), true, "Water must include both P-H sheets.");
+  for (const fluidName of ["Methanol", "Custom Fluid"]) {
+    const nonWaterProject = projectWithFluid(fluidName);
+    const nonWaterScenario = api.collectScenario(nonWaterProject);
+    assert.equal(api.shouldIncludePressureEnthalpySheets(nonWaterScenario), false, `${fluidName} must not include P-H sheets.`);
+    assert(!api.sheetNamesForScenario(nonWaterScenario).includes("PH_Phase_Data"), `${fluidName} metadata must omit PH_Phase_Data.`);
+    assert(!api.sheetNamesForScenario(nonWaterScenario).includes("PH_Phase_Chart"), `${fluidName} metadata must omit PH_Phase_Chart.`);
+
+    const nonWaterWorkbook = await api.createWorkbook(nonWaterProject);
+    const nonWaterSheetNames = nonWaterWorkbook.worksheets.map((worksheet) => worksheet.name);
+    assert(!nonWaterSheetNames.includes("PH_Phase_Data"), `${fluidName} workbook must not create PH_Phase_Data.`);
+    assert(!nonWaterSheetNames.includes("PH_Phase_Chart"), `${fluidName} workbook must not create PH_Phase_Chart.`);
+    assert.equal(nonWaterWorkbook.__engineeringChartDefs.length, 2, `${fluidName} workbook must define only suction and discharge Moody charts.`);
+
+    const nonWaterBuffer = await api.buildXlsxBuffer(nonWaterProject);
+    const nonWaterZip = await JSZip.loadAsync(nonWaterBuffer);
+    const nonWaterWorkbookXml = await nonWaterZip.file("xl/workbook.xml").async("string");
+    assert(!nonWaterWorkbookXml.includes("PH_Phase_Data"), `${fluidName} workbook XML must omit PH_Phase_Data.`);
+    assert(!nonWaterWorkbookXml.includes("PH_Phase_Chart"), `${fluidName} workbook XML must omit PH_Phase_Chart.`);
+    const nonWaterChartFiles = Object.keys(nonWaterZip.files).filter((file) => /^xl\/charts\/chart\d+\.xml$/.test(file));
+    assert.equal(nonWaterChartFiles.length, 2, `${fluidName} xlsx must contain only two Moody chart XML parts.`);
+    const nonWaterChartXml = (await Promise.all(nonWaterChartFiles.map((file) => nonWaterZip.file(file).async("string")))).join("\n");
+    assert(!nonWaterChartXml.includes("Pressure-enthalpy phase chart"), `${fluidName} chart XML must omit the P-H chart.`);
+    assert(!nonWaterChartXml.includes("PH_Phase_Data"), `${fluidName} chart XML must not reference P-H data.`);
+
+    const exportResult = await api.exportScenarioCalculationTraceToExcel({ state: nonWaterProject, download: false });
+    assert.equal(exportResult.chartCount, 2, `${fluidName} export metadata must report two charts.`);
+    assert(!exportResult.sheets.includes("PH_Phase_Data"), `${fluidName} export metadata must omit PH_Phase_Data.`);
+    assert(!exportResult.sheets.includes("PH_Phase_Chart"), `${fluidName} export metadata must omit PH_Phase_Chart.`);
+  }
 
   const buffer = await api.buildXlsxBuffer(twoPipeProject());
   const zip = await JSZip.loadAsync(buffer);

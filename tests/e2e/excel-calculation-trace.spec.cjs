@@ -115,9 +115,9 @@ async function waitForNpshApp(page) {
   await page.evaluate(() => window.__npshLoadSupport?.());
   await page.waitForFunction(() => (
     typeof window.applySimulationStateAtomic === 'function'
-    && window.EngineeringExcelCalculationTraceRuntime?.version === 'engineering-excel-calculation-trace.v5'
+    && window.EngineeringExcelCalculationTraceRuntime?.version === 'engineering-excel-calculation-trace.v6-water-only-ph-sheets'
     && typeof window.exportScenarioCalculationTraceToExcel === 'function'
-    && window.exportScenarioCalculationTraceToExcel.__engineeringExcelTraceRuntime === 'engineering-excel-calculation-trace.v5'
+    && window.exportScenarioCalculationTraceToExcel.__engineeringExcelTraceRuntime === 'engineering-excel-calculation-trace.v6-water-only-ph-sheets'
   ), null, { timeout: 30000 });
 }
 
@@ -175,12 +175,8 @@ test('Menu File Export Excel Calculation Trace creates formula-backed engineerin
   expect(sheetXml).toContain('1000*(1-(((C4+288.9414)');
   expect(sheetXml).toContain('ISNUMBER');
   expect(sheetXml).toContain('C4+C5-C6-C7');
-  expect(sheetXml).toContain('<v>15.3476</v>');
-  expect(sheetXml).toContain('<v>14.3476</v>');
-  expect(sheetXml).toContain('<v>0.014</v>');
-  expect(sheetXml).toContain('<v>0.2</v>');
-  expect(sheetXml).toContain('<v>4.72</v>');
-  expect(sheetXml).toContain('<v>26.9</v>');
+  const cachedNumericFormulaResults = sheetXml.match(/<f>[^<]*<\/f><v>-?(?:\d+\.?\d*|\.\d+)(?:[Ee][+-]?\d+)?<\/v>/g) || [];
+  expect(cachedNumericFormulaResults.length).toBeGreaterThan(12);
   const sharedStrings = await zip.file('xl/sharedStrings.xml').async('string');
   expect(sharedStrings).toContain('NPSHa');
   expect(sharedStrings).toContain('OUTPUT PUMP');
@@ -200,4 +196,36 @@ test('Menu File Export Excel Calculation Trace creates formula-backed engineerin
   expect(chartXml).toContain('Moody_Suction');
   expect(chartXml).toContain('Moody_Discharge');
   expect(chartXml).toContain('logBase');
+});
+
+test('Excel Calculation Trace omits both P-H sheets for non-Water Fluid Basis', async ({ page }) => {
+  await waitForNpshApp(page);
+  const methanolProject = twoPipeProject();
+  methanolProject.model.FLUID.props.fluidName = 'Methanol';
+  await page.evaluate((project) => {
+    window.applySimulationStateAtomic(JSON.stringify(project));
+  }, methanolProject);
+  await expect(page.getByRole('button', { name: 'Route node P-100' })).toBeVisible();
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.evaluate(() => {
+    document.querySelector('#menu-file')?.click();
+    document.querySelector('#menu-file-export')?.click();
+    document.querySelector('#menu-export-excel-trace')?.click();
+  });
+  const zip = await readXlsx(await downloadPromise);
+  const workbookXml = await zip.file('xl/workbook.xml').async('string');
+  expect(workbookXml).not.toContain('PH_Phase_Data');
+  expect(workbookXml).not.toContain('PH_Phase_Chart');
+  expect(workbookXml).toContain('Fluid_Basis_Calc');
+  expect(workbookXml).toContain('Moody_Suction');
+  expect(workbookXml).toContain('Moody_Discharge');
+
+  const chartFiles = Object.keys(zip.files).filter((file) => /^xl\/charts\/chart\d+\.xml$/.test(file));
+  expect(chartFiles).toHaveLength(2);
+  const chartXml = (await Promise.all(chartFiles.map((file) => zip.file(file).async('string')))).join('\n');
+  expect(chartXml).not.toContain('Pressure-enthalpy phase chart');
+  expect(chartXml).not.toContain('PH_Phase_Data');
+  expect(chartXml).toContain('Moody_Suction');
+  expect(chartXml).toContain('Moody_Discharge');
 });

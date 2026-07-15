@@ -6,8 +6,8 @@
 })((root) => {
   'use strict';
 
-  const VERSION = 'engineering-simulation-load-transaction-manager.v6-stale-promise-clean';
-  const CACHE_KEY = '20260712-simulation-load-stale-promise-clean1';
+  const VERSION = 'engineering-simulation-load-transaction-manager.v7-export-lock-dedupe';
+  const CACHE_KEY = '20260715-external-open-export-unlock1';
   const ACTIVE_CLASS = 'npsh-simulation-load-transaction-active';
   const CASE_OPEN_SELECTOR = '[data-simulation-case-action="open"][data-simulation-case-id]';
   const SAMPLE_DIALOG_OPEN_TEXT = /open\s+sample\s+case/i;
@@ -32,9 +32,8 @@
   const WARM_CASE_IDS = ['simulation-case-1', 'simulation-case-4', 'simulation-case-6'];
   const WARM_RUNTIME_SOURCES = [
     'engineering-pipe-canvas-hydraulic-label-runtime-20260707-pfv-loss-summary-clean1.js?v=20260711-reynolds-darcy-flash-lock1',
-    'engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-sink-canvas-template-lock1',
-    'engineering-pump-envelope-warning-cleanup-runtime.js?v=20260712-warning-lifecycle-current-request-lock1',
-    'engineering-open-file-readiness-gate.js?v=20260711-open-file-hard-release1'
+    'engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-sink-solver-flash-lock1',
+    'engineering-pump-envelope-warning-cleanup-runtime.js?v=20260712-warning-lifecycle-current-request-lock1'
   ];
   const EVENT_NAMES = {
     begin: 'npsh:simulation-load-transaction-begin',
@@ -1508,11 +1507,24 @@
     return true;
   }
 
+  function runtimeScriptPathname(src) {
+    const value = String(src || '').trim();
+    if (!value) return '';
+    try {
+      return new URL(value, document.baseURI || root.location?.href || 'http://localhost/').pathname;
+    } catch (error) {
+      return value.split(/[?#]/)[0];
+    }
+  }
+
   function ensureWarmScript(src) {
     if (!hasDocument() || !src) return Promise.resolve(false);
     if (warmScriptPromises.has(src)) return warmScriptPromises.get(src);
     const promise = new Promise((resolve, reject) => {
-      const existing = Array.from(document.scripts || []).find((script) => String(script.getAttribute('src') || '') === src);
+      const targetPathname = runtimeScriptPathname(src);
+      const existing = Array.from(document.scripts || []).find((script) => (
+        runtimeScriptPathname(script.getAttribute('src') || script.src) === targetPathname
+      ));
       if (existing) {
         if (existing.dataset.npshLoaded === 'true' || existing.readyState === 'complete') {
           resolve(true);
