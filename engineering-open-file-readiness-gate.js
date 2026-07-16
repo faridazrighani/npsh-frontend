@@ -24,7 +24,7 @@
   const STABLE_READY_EVIDENCE_MS = 280;
   const POST_CLEANUP_READY_MS = 900;
   const HARD_RELEASE_MS = MAX_WAIT_MS + POST_CLEANUP_READY_MS + 600;
-  const PIPE_LABEL_RUNTIME_SRC = 'engineering-pipe-canvas-hydraulic-label-runtime-20260707-pfv-loss-summary-clean1.js?v=20260711-reynolds-darcy-flash-lock1';
+  const PIPE_LABEL_RUNTIME_SRC = 'engineering-pipe-canvas-hydraulic-label-runtime-20260716-smooth-drag1.js?v=20260716-canvas-object-smooth-drag1';
   const ROUTE_TRACE_RUNTIME_SRC = 'engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-sink-solver-flash-lock1';
   const DISABLED_DURING_OPEN_SELECTOR = [
     '#btn-solve',

@@ -589,7 +589,7 @@ test('Pipe canvas hydraulic label does not flash during protected solver redraw'
 
   await page.waitForFunction(() => {
     return document.querySelectorAll('#svg-lines .pipe-hydraulic-label[data-pipe-id]').length >= 1
-      && window.EngineeringPipeCanvasHydraulicLabelRuntime?.version === '2026.07-pipe-canvas-reynolds-darcy2-flash-lock';
+      && window.EngineeringPipeCanvasHydraulicLabelRuntime?.version === '2026.07-pipe-canvas-reynolds-darcy3-smooth-drag';
   }, null, { timeout: 10000 });
 
   const moodyCanvasRows = await page.evaluate(() => {

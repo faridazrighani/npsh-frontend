@@ -7,7 +7,7 @@
   'use strict';
 
   const VERSION = 'engineering-simulation-load-transaction-manager.v7-export-lock-dedupe';
-  const CACHE_KEY = '20260715-external-open-export-unlock1';
+  const CACHE_KEY = '20260716-canvas-object-smooth-drag1';
   const ACTIVE_CLASS = 'npsh-simulation-load-transaction-active';
   const CASE_OPEN_SELECTOR = '[data-simulation-case-action="open"][data-simulation-case-id]';
   const SAMPLE_DIALOG_OPEN_TEXT = /open\s+sample\s+case/i;
@@ -31,7 +31,7 @@
   const VISUAL_REFRESH_PATCH_RETRY_DELAYS_MS = [400, 1200, 3000, 6000];
   const WARM_CASE_IDS = ['simulation-case-1', 'simulation-case-4', 'simulation-case-6'];
   const WARM_RUNTIME_SOURCES = [
-    'engineering-pipe-canvas-hydraulic-label-runtime-20260707-pfv-loss-summary-clean1.js?v=20260711-reynolds-darcy-flash-lock1',
+    'engineering-pipe-canvas-hydraulic-label-runtime-20260716-smooth-drag1.js?v=20260716-canvas-object-smooth-drag1',
     'engineering-route-trace-audit-20260704-sink-pabs-dedupe1.js?v=20260712-sink-solver-flash-lock1',
     'engineering-pump-envelope-warning-cleanup-runtime.js?v=20260712-warning-lifecycle-current-request-lock1'
   ];

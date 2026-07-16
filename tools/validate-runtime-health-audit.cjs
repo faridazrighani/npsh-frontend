@@ -24,7 +24,7 @@ assert.ok(
   "Runtime health audit must load after the performance baseline runtime."
 );
 assert.ok(
-  indexHtml.indexOf("engineering-simulation-load-transaction-manager-20260715-export-lock-dedupe1.js?v=20260715-external-open-export-unlock1") <
+  indexHtml.indexOf("engineering-simulation-load-transaction-manager-20260715-export-lock-dedupe1.js?v=20260716-canvas-object-smooth-drag1") <
     indexHtml.indexOf(cacheKey),
   "Runtime health audit must load after the Simulation Load Transaction Manager."
 );

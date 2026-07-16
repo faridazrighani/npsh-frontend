@@ -32,7 +32,7 @@ assert(runtimeAliasSource === runtimeSource, 'cache-busted Simulation Load Trans
 
 [
   'engineering-simulation-load-transaction-manager.v7-export-lock-dedupe',
-  '20260715-external-open-export-unlock1',
+  '20260716-canvas-object-smooth-drag1',
   'AbortController',
   'beginTransaction',
   'abortPrevious',
@@ -122,13 +122,13 @@ assert(runtimeAliasSource === runtimeSource, 'cache-busted Simulation Load Trans
 
 assertIncludes(
   indexSource,
-  'engineering-simulation-load-transaction-manager-20260715-export-lock-dedupe1.js?v=20260715-external-open-export-unlock1',
+  'engineering-simulation-load-transaction-manager-20260715-export-lock-dedupe1.js?v=20260716-canvas-object-smooth-drag1',
   'index.html'
 );
 
 const appIndex = indexSource.indexOf('app.bundle.min.js?v=20260707-pipe-canvas-loss-label1');
-const managerIndex = indexSource.indexOf('engineering-simulation-load-transaction-manager-20260715-export-lock-dedupe1.js?v=20260715-external-open-export-unlock1');
-const readinessIndex = indexSource.indexOf('engineering-open-file-readiness-gate.js?v=20260712-open-file-sink-flash-lock1');
+const managerIndex = indexSource.indexOf('engineering-simulation-load-transaction-manager-20260715-export-lock-dedupe1.js?v=20260716-canvas-object-smooth-drag1');
+const readinessIndex = indexSource.indexOf('engineering-open-file-readiness-gate.js?v=20260716-canvas-object-smooth-drag1');
 assert(appIndex >= 0 && managerIndex > appIndex, 'simulation load transaction manager must load after app.bundle.min.js');
 assert(readinessIndex > managerIndex, 'open-file readiness gate must load after simulation load transaction manager');
 
@@ -142,7 +142,7 @@ assertIncludes(manifestSource, 'Simulation load transaction manager cache key', 
 
 const runtime = require(runtimePath);
 assert(runtime.version === 'engineering-simulation-load-transaction-manager.v7-export-lock-dedupe', 'runtime version mismatch');
-assert(runtime.cacheKey === '20260715-external-open-export-unlock1', 'runtime cache key mismatch');
+assert(runtime.cacheKey === '20260716-canvas-object-smooth-drag1', 'runtime cache key mismatch');
 assert(
   !runtime.warmRuntimeSources.some((src) => src.includes('engineering-open-file-readiness-gate.js')),
   'open-file readiness gate must not be loaded by the warm runtime list because index.html owns the critical instance'

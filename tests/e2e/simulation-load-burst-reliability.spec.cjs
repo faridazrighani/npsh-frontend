@@ -11,7 +11,7 @@ async function waitForNpshApp(page) {
     typeof window.updateSimulation === 'function'
     && window.EngineeringCalculationLifecycle?.version === 'engineering-calculation-lifecycle.v1'
     && window.EngineeringSimulationLoadTransaction?.version === 'engineering-simulation-load-transaction-manager.v7-export-lock-dedupe'
-    && window.EngineeringSimulationLoadTransaction?.cacheKey === '20260715-external-open-export-unlock1'
+    && window.EngineeringSimulationLoadTransaction?.cacheKey === '20260716-canvas-object-smooth-drag1'
     && window.EngineeringCalculationLifecycle?.cacheKey === '20260711-solver-always-calculates1'
   ), null, { timeout: 30000 });
 }

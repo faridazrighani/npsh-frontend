@@ -1,7 +1,7 @@
 !function(root) {
   "use strict";
 
-  const VERSION = "2026.07-pipe-canvas-reynolds-darcy2-flash-lock";
+  const VERSION = "2026.07-pipe-canvas-reynolds-darcy3-smooth-drag";
   const STYLE_ID = "engineeringPipeCanvasHydraulicLabelStyle";
   const SVG_NS = "http://www.w3.org/2000/svg";
   const LABEL_SELECTOR = "#svg-lines .pipe-delta-label[data-pipe-id]";
@@ -50,6 +50,10 @@
   let pipeLabelBusyFlushTimer = null;
   let solverRefreshEventsInstalled = false;
   let canvasInteractionEventsInstalled = false;
+  let canvasDrawFrame = null;
+  let canvasDrawPending = null;
+  let canvasDrawOriginal = null;
+  let canvasFullDrawTimer = null;
   let installAttempts = 0;
   const solverRefreshWrappedFunctions = new Set();
   const stableLabelDataByPipe = new Map();
@@ -845,17 +849,103 @@
     return retained;
   }
 
+  function refreshConnectionGeometryDuringDrag() {
+    if (typeof document === "undefined") return false;
+    const routePoints = root.getPipeRoutePoints;
+    const pathData = root.pointsToPath;
+    const svg = document.getElementById("svg-lines");
+    if (!svg || typeof routePoints !== "function" || typeof pathData !== "function") return false;
+    svg.querySelectorAll(".pipe-line[data-pipe-id]").forEach((path) => {
+      const points = routePoints(path.dataset.pipeId);
+      if (Array.isArray(points) && points.length > 1) path.setAttribute("d", pathData(points));
+    });
+    return true;
+  }
+
+  function runFullCanvasDraw(context = root, args = []) {
+    if (typeof canvasDrawOriginal !== "function") return undefined;
+    const previousLabels = captureHydraulicLabelNodes();
+    markPipeLabelBusy();
+    const result = canvasDrawOriginal.apply(context, args);
+    retainHydraulicLabelNodes(previousLabels);
+    runImmediateRefresh({ force: true });
+    queueRefresh(0, { force: true });
+    return result;
+  }
+
+  function scheduleFullCanvasDrawAfterInteraction() {
+    if (canvasFullDrawTimer && typeof root.clearTimeout === "function") root.clearTimeout(canvasFullDrawTimer);
+    if (typeof root.setTimeout !== "function") return;
+    canvasFullDrawTimer = root.setTimeout(() => {
+      canvasFullDrawTimer = null;
+      if (isCanvasInteractionActive()) {
+        scheduleFullCanvasDrawAfterInteraction();
+        return;
+      }
+      runFullCanvasDraw();
+    }, CANVAS_INTERACTION_SETTLE_MS);
+  }
+
+  function hasPipeCanvasDrawPatch(functionRef) {
+    const candidates = [functionRef];
+    const visited = new Set();
+    while (candidates.length && visited.size < 48) {
+      const candidate = candidates.shift();
+      if (typeof candidate !== "function" || visited.has(candidate)) continue;
+      visited.add(candidate);
+      if (candidate.__pipeCanvasHydraulicLabelPatched) return true;
+      Object.getOwnPropertyNames(candidate).forEach((propertyName) => {
+        if (!/original/i.test(propertyName)) return;
+        let nested = null;
+        try {
+          nested = candidate[propertyName];
+        } catch (error) {
+          nested = null;
+        }
+        if (typeof nested === "function" && !visited.has(nested)) candidates.push(nested);
+      });
+    }
+    return false;
+  }
+
+  function queueCanvasGeometryDraw(context, args) {
+    canvasDrawPending = { context, args };
+    if (canvasDrawFrame !== null) return undefined;
+    canvasDrawFrame = root.requestAnimationFrame(() => {
+      canvasDrawFrame = null;
+      const pending = canvasDrawPending;
+      canvasDrawPending = null;
+      if (!pending) return;
+      markPipeLabelBusy();
+      if (!refreshConnectionGeometryDuringDrag() && typeof canvasDrawOriginal === "function") {
+        canvasDrawOriginal.apply(pending.context, pending.args);
+      }
+      deferRefreshUntilInteractionSettles();
+    });
+    return undefined;
+  }
+
   function patchDrawConnections() {
     const original = root.drawConnections;
-    if (typeof original !== "function" || original.__pipeCanvasHydraulicLabelPatched) return false;
+    if (typeof original !== "function" || original.__pipeCanvasHydraulicDragGate) return false;
+    if (hasPipeCanvasDrawPatch(original)) {
+      function pipeCanvasHydraulicDragGate(...args) {
+        if (isCanvasInteractionActive() && typeof root.requestAnimationFrame === "function") {
+          return queueCanvasGeometryDraw(this, args);
+        }
+        return original.apply(this, args);
+      }
+      pipeCanvasHydraulicDragGate.__pipeCanvasHydraulicDragGate = VERSION;
+      pipeCanvasHydraulicDragGate.__pipeCanvasHydraulicDragGateOriginal = original;
+      root.drawConnections = pipeCanvasHydraulicDragGate;
+      return true;
+    }
+    canvasDrawOriginal = original;
     function patchedDrawConnections(...args) {
-      const previousLabels = captureHydraulicLabelNodes();
-      markPipeLabelBusy();
-      const result = original.apply(this, args);
-      retainHydraulicLabelNodes(previousLabels);
-      runImmediateRefresh({ force: true });
-      queueRefresh(0, { force: true });
-      return result;
+      if (isCanvasInteractionActive() && typeof root.requestAnimationFrame === "function") {
+        return queueCanvasGeometryDraw(this, args);
+      }
+      return runFullCanvasDraw(this, args);
     }
     patchedDrawConnections.__pipeCanvasHydraulicLabelPatched = true;
     root.drawConnections = patchedDrawConnections;
@@ -925,7 +1015,7 @@
 
   function continueCanvasInteraction() {
     if (!canvasPointerActive) return;
-    markPipeLabelBusy();
+    pipeLabelBusyUntil = Math.max(pipeLabelBusyUntil, nowMs() + PIPE_LABEL_BUSY_SETTLE_MS);
     canvasInteractionUntil = Date.now() + CANVAS_INTERACTION_SETTLE_MS;
   }
 
@@ -935,6 +1025,7 @@
     canvasPointerActive = false;
     canvasInteractionUntil = Date.now() + CANVAS_INTERACTION_SETTLE_MS;
     deferRefreshUntilInteractionSettles();
+    scheduleFullCanvasDrawAfterInteraction();
   }
 
   function installCanvasInteractionEvents() {
@@ -989,7 +1080,8 @@
             || node?.querySelector?.(".pipe-delta-label")
           ));
       })) {
-        if (isPipeLabelBusy()) runImmediateRefresh({ force: true });
+        if (isCanvasInteractionActive()) deferRefreshUntilInteractionSettles();
+        else if (isPipeLabelBusy()) runImmediateRefresh({ force: true });
         else queueRefresh(0);
       }
     });

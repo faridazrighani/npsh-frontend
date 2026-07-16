@@ -38,14 +38,14 @@ assert.strictEqual(
   'package.json must expose the open-file readiness gate validator.'
 );
 
-assert(indexHtml.includes('engineering-open-file-readiness-gate.js?v=20260712-open-file-sink-flash-lock1'), 'index.html must load the open-file readiness gate runtime.');
+assert(indexHtml.includes('engineering-open-file-readiness-gate.js?v=20260716-canvas-object-smooth-drag1'), 'index.html must load the open-file readiness gate runtime.');
 assert(
   indexHtml.indexOf('app.bundle.min.js?v=20260707-pipe-canvas-loss-label1')
-    < indexHtml.indexOf('engineering-open-file-readiness-gate.js?v=20260712-open-file-sink-flash-lock1'),
+    < indexHtml.indexOf('engineering-open-file-readiness-gate.js?v=20260716-canvas-object-smooth-drag1'),
   'Open-file gate should load after the app bundle.'
 );
 assert(
-  indexHtml.indexOf('engineering-open-file-readiness-gate.js?v=20260712-open-file-sink-flash-lock1')
+  indexHtml.indexOf('engineering-open-file-readiness-gate.js?v=20260716-canvas-object-smooth-drag1')
     < indexHtml.indexOf('engineering-model-snapshot-export-runtime.js?v=20260707-fluid-basis-workspace-snapshot11'),
   'Open-file gate should load early in the critical runtime pack.'
 );
@@ -115,7 +115,7 @@ assert(runtimeSource.includes('document.body.classList.remove(ACTIVE_CLASS, WARN
 });
 
 if (manifest) {
-  assert(manifest.includes('Open file readiness gate cache key: engineering-open-file-readiness-gate.js?v=20260712-open-file-sink-flash-lock1'), 'FILE_MANIFEST must document the open-file readiness gate cache key.');
+  assert(manifest.includes('Open file readiness gate cache key: engineering-open-file-readiness-gate.js?v=20260716-canvas-object-smooth-drag1'), 'FILE_MANIFEST must document the open-file readiness gate cache key.');
   assert(manifest.includes('validate:open-file-readiness-gate'), 'FILE_MANIFEST must mention the open-file readiness gate validator.');
 }
 if (uploadReadiness) {
